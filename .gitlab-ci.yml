@@ -70,11 +70,11 @@ test:
   stage: test
   image: $DOCKER_IMAGE
   script:
-    # Test coverage
     - mkdir -p testdata
+    # Test coverage
     - goverage -coverprofile=testdata/coverage.out -v ./... 2>&1 | grep -v "no packages being tested depend on"
-    # Exclude some specific packages and files
-    - grep -v cmd testdata/coverage.out > testdata/coverage-real.out
+    # Exclude cmd from test coverage as it is command line related tooling
+    - grep -v -e cmd testdata/coverage.out > testdata/coverage-real.out
     - go tool cover -func=testdata/coverage-real.out
     - go tool cover -html=testdata/coverage-real.out -o testdata/coverage.html
 
