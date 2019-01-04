@@ -4,10 +4,16 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-package main
+package cmd
 
-import "gitlab.com/elixxir/registration/cmd"
+import (
+	"fmt"
+)
 
-func main() {
-	cmd.Execute()
+//go:generate go run gen.go
+// The above generates: GITVERSION, GLIDEDEPS, and SEMVER
+
+func printVersion() {
+	fmt.Printf("Elixxir Registration Server v%s -- %s\n\n", SEMVER, GITVERSION)
+	fmt.Printf("Dependencies:\n\n%s\n", GLIDEDEPS)
 }
