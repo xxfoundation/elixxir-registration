@@ -19,6 +19,7 @@ func NewRegistrationImpl() registration.Handler {
 	return registration.Handler(&RegistrationImpl{})
 }
 
+// Handle registration attempt by a Client
 func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 	G []byte) (hash, R, S []byte, err error) {
 
