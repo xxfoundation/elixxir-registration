@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	"gitlab.com/elixxir/comms/registration"
 	"os"
 )
 
@@ -31,6 +32,18 @@ var rootCmd = &cobra.Command{
 			printVersion()
 			return
 		}
+
+		// Parse config file options
+		certPath := viper.GetString("certPath")
+		keyPath := viper.GetString("keyPath")
+		address := viper.GetString("registrationAddress")
+
+		// Set up registration server
+		registration.StartRegistrationServer(address, NewRegistrationImpl(),
+			certPath, keyPath)
+
+		// Wait forever
+		select {}
 	},
 }
 
