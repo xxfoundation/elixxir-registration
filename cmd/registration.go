@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"gitlab.com/elixxir/comms/registration"
+	"gitlab.com/elixxir/registration/database"
 )
 
 type RegistrationImpl struct{}
@@ -24,14 +25,13 @@ func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 	G []byte) (hash, R, S []byte, err error) {
 
 	// Check registration code database to verify given registration code
-	// exists and has at least one remaining use
+	err = database.RegCodes.UseCode(registrationCode)
+	if err != nil {
+		// Invalid registration code, return an error
+		return make([]byte, 0), make([]byte, 0), make([]byte, 0), err
+	}
 
-	// If valid registration code:
-	//     Decrement registration code counter in registration code database
-	//     Use hardcoded RegistrationServer keypair to sign Client-provided public key
-	//     Return signed public key to Client with empty error field
-
-	// If invalid registration code:
-	//     Return empty message with relevant error field
+	// TODO: Use hardcoded RegistrationServer keypair to sign Client-provided public key
+	// TODO: Return signed public key to Client with empty error field
 	return make([]byte, 0), make([]byte, 0), make([]byte, 0), nil
 }
