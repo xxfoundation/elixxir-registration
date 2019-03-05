@@ -9,6 +9,11 @@ Library containing the Registration Server for adding new clients to cMix
 # Registration Server Configuration
 # ==================================
 
+# Verbose logging
+verbose: "true"
+# Path to log file
+logPath: "registration.log"
+
 # The listening address of this registration server
 registrationAddress: "0.0.0.0:11420"
 
