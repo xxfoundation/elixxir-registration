@@ -17,6 +17,9 @@ import (
 	"time"
 )
 
+// Global variable for database interaction
+var RegCodes RegistrationStorage
+
 // Interface for Registration Code storage operations
 type RegistrationStorage interface {
 	// Inserts  code with given number of uses
@@ -94,6 +97,14 @@ func createSchema(db *pg.DB) error {
 	}
 	// No error, return nil
 	return nil
+}
+
+// Adds some dummy registration codes to the database
+func PopulateDummyRegistrationCodes() {
+	err := RegCodes.InsertCode("AAAA", 10)
+	if err != nil {
+		jww.ERROR.Printf("Unable to populate dummy codes: %s", err)
+	}
 }
 
 // Inserts code with given number of uses

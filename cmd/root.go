@@ -14,6 +14,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/registration"
+	"gitlab.com/elixxir/registration/database"
 	"os"
 )
 
@@ -38,8 +39,17 @@ var rootCmd = &cobra.Command{
 		keyPath := viper.GetString("keyPath")
 		address := viper.GetString("registrationAddress")
 
+		// Set up database connection
+		database.RegCodes = database.NewRegistrationStorage(
+			viper.GetString("dbUsername"),
+			viper.GetString("dbPassword"),
+			viper.GetString("dbName"),
+			viper.GetString("dbAddress"),
+		)
+		database.PopulateDummyRegistrationCodes()
+
 		// Set up registration server
-		registration.StartRegistrationServer(address, NewRegistrationImpl(),
+		go registration.StartRegistrationServer(address, NewRegistrationImpl(),
 			certPath, keyPath)
 
 		// Wait forever
