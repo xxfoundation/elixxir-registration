@@ -15,7 +15,7 @@ registrationAddress: "0.0.0.0:11420"
 # Database connection information
 dbUsername: "cmix"
 dbPassword: ""
-dbName: "cmix_registration"
+dbName: "cmix_server"
 dbAddress: ""
 
 # === REQUIRED FOR ENABLING TLS ===
