@@ -9,12 +9,16 @@
 package cmd
 
 import (
+	"crypto/rand"
+	"errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/cyclic"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/registration/database"
 )
 
+// Hardcoded DSA keypair for registration server
 var PrivateKey = signature.ReconstructPrivateKey(
 	signature.ReconstructPublicKey(
 		signature.CustomDSAParams(
@@ -40,15 +44,30 @@ func NewRegistrationImpl() registration.Handler {
 func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 	G []byte) (hash, R, S []byte, err error) {
 
-	// Check registration code database to verify given registration code
+	// Check database to verify given registration code
 	err = database.RegCodes.UseCode(registrationCode)
 	if err != nil {
 		// Invalid registration code, return an error
+		jww.ERROR.Printf("Error validating registration code: %s", err)
 		return make([]byte, 0), make([]byte, 0), make([]byte, 0), err
 	}
 
-	// TODO: Use hardcoded RegistrationServer keypair to sign Client-provided public key
+	// Concatenate Client public key byte slices
+	data := make([]byte, 0)
+	data = append(data, Y...)
+	data = append(data, P...)
+	data = append(data, Q...)
+	data = append(data, G...)
 
-	// TODO: Return signed public key to Client with empty error field
-	return make([]byte, 0), make([]byte, 0), make([]byte, 0), nil
+	// Use hardcoded keypair to sign Client-provided public key
+	sig, err := PrivateKey.Sign(data, rand.Reader)
+	if err != nil {
+		// Unable to sign public key, return an error
+		jww.ERROR.Printf("Error signing client public key: %s", err)
+		return make([]byte, 0), make([]byte, 0), make([]byte, 0),
+			errors.New("unable to validate client public key")
+	}
+
+	// Return signed public key to Client with empty error field
+	return data, sig.R.Bytes(), sig.S.Bytes(), nil
 }
