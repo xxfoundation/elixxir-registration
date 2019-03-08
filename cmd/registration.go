@@ -69,5 +69,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 	}
 
 	// Return signed public key to Client with empty error field
+	jww.INFO.Printf("Verification complete for registration code %s",
+		registrationCode)
 	return data, sig.R.Bytes(), sig.S.Bytes(), nil
 }
