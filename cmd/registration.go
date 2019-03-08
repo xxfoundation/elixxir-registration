@@ -19,7 +19,7 @@ import (
 )
 
 // Hardcoded DSA keypair for registration server
-var PrivateKey = signature.ReconstructPrivateKey(
+var privateKey = signature.ReconstructPrivateKey(
 	signature.ReconstructPublicKey(
 		signature.CustomDSAParams(
 			cyclic.NewIntFromString(
@@ -60,12 +60,12 @@ func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 	data = append(data, G...)
 
 	// Use hardcoded keypair to sign Client-provided public key
-	sig, err := PrivateKey.Sign(data, rand.Reader)
+	sig, err := privateKey.Sign(data, rand.Reader)
 	if err != nil {
 		// Unable to sign public key, return an error
 		jww.ERROR.Printf("Error signing client public key: %s", err)
 		return make([]byte, 0), make([]byte, 0), make([]byte, 0),
-			errors.New("unable to validate client public key")
+			errors.New("unable to sign client public key")
 	}
 
 	// Return signed public key to Client with empty error field
