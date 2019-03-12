@@ -6,7 +6,9 @@
 
 package main
 
-import "gitlab.com/elixxir/registration/cmd"
+import (
+	"gitlab.com/elixxir/registration/cmd"
+)
 
 func main() {
 	cmd.Execute()
