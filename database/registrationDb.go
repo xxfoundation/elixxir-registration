@@ -39,7 +39,7 @@ type RegistrationCode struct {
 	tableName struct{} `sql:"registration_codes,alias:registration_codes"`
 
 	// Registration code acts as the primary key
-	Code string `sql:"pk_id"`
+	Code string `sql:",pk"`
 	// Remaining uses for the RegistrationCode
 	RemainingUses int
 }
@@ -101,7 +101,7 @@ func createSchema(db *pg.DB) error {
 
 // Adds some dummy registration codes to the database
 func PopulateDummyRegistrationCodes() {
-	err := RegCodes.InsertCode("AAAA", 10)
+	err := RegCodes.InsertCode("AAAA", 100)
 	if err != nil {
 		jww.ERROR.Printf("Unable to populate dummy codes: %s", err)
 	}
