@@ -121,6 +121,7 @@ func (m *RegistrationDatabase) UseCode(code string) error {
 
 	// Look up given registration code
 	regCode := RegistrationCode{Code: code}
+	jww.INFO.Printf("Attempting to use code %s...", code)
 	err := m.db.Select(&regCode)
 	if err != nil {
 		// Unable to find code, return error
@@ -135,6 +136,9 @@ func (m *RegistrationDatabase) UseCode(code string) error {
 	// Decrement remaining uses by one
 	regCode.RemainingUses -= 1
 	err = m.db.Update(&regCode)
+
+	jww.INFO.Printf("Code %s used, %d uses remaining", code,
+		regCode.RemainingUses)
 
 	// Return error, if any
 	return err
