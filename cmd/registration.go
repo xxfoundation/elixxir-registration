@@ -10,12 +10,14 @@ package cmd
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/large"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/registration/database"
+	"io/ioutil"
 )
 
 // DSA Params
@@ -38,6 +40,26 @@ type RegistrationImpl struct{}
 
 // Initializes a Registration Handler interface
 func NewRegistrationImpl() registration.Handler {
+
+	dsaParams := signature.GetDefaultDSAParams()
+	publicKey := dsaParams.PrivateKeyGen(rand.Reader).PublicKeyGen()
+
+	jsonStruct := struct {
+		Dsa_public_key *signature.DSAPublicKey
+	}{
+		publicKey,
+	}
+
+	// Generate JSON from structure
+	data, err := json.Marshal(jsonStruct)
+
+	if err != nil {
+		jww.ERROR.Printf("Error encoding structure to JSON: %s", err)
+	}
+
+	// Write JSON to file
+	_ = ioutil.WriteFile("dsa_public_key.json", data, 0644)
+
 	return registration.Handler(&RegistrationImpl{})
 }
 
