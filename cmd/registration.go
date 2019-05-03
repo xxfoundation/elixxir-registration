@@ -38,12 +38,15 @@ var privateKey = signature.ReconstructPrivateKey(
 
 type RegistrationImpl struct{}
 
-// Initializes a Registration Handler interface
+// Initializes a Registration Handler interface and saves the DSA public key to
+// a JSON file.
 func NewRegistrationImpl() registration.Handler {
 
+	// Get the default parameters and generate a public key from it
 	dsaParams := signature.GetDefaultDSAParams()
 	publicKey := dsaParams.PrivateKeyGen(rand.Reader).PublicKeyGen()
 
+	// Setup struct that will dictate the JSON structure
 	jsonStruct := struct {
 		Dsa_public_key *signature.DSAPublicKey
 	}{
