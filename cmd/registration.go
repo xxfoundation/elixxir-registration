@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"github.com/mitchellh/go-homedir"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/large"
@@ -55,13 +56,22 @@ func NewRegistrationImpl() registration.Handler {
 
 	// Generate JSON from structure
 	data, err := json.Marshal(jsonStruct)
-
 	if err != nil {
 		jww.ERROR.Printf("Error encoding structure to JSON: %s", err)
 	}
 
+	// Get the user's home directory
+	homeDir, err := homedir.Dir()
+	if err != nil {
+		jww.ERROR.Printf("Unable to retrieve user's home directory: %s", err)
+	}
+
 	// Write JSON to file
-	_ = ioutil.WriteFile("dsa_public_key.json", data, 0644)
+	err = ioutil.WriteFile(homeDir+"/.elixxir/registration_info.json",
+		data, 0644)
+	if err != nil {
+		jww.ERROR.Printf("Error writing JSON file: %s", err)
+	}
 
 	return registration.Handler(&RegistrationImpl{})
 }
