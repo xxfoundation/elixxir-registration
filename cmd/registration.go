@@ -43,35 +43,8 @@ type RegistrationImpl struct{}
 // a JSON file.
 func NewRegistrationImpl() registration.Handler {
 
-	// Get the default parameters and generate a public key from it
-	dsaParams := signature.GetDefaultDSAParams()
-	publicKey := dsaParams.PrivateKeyGen(rand.Reader).PublicKeyGen()
-
-	// Setup struct that will dictate the JSON structure
-	jsonStruct := struct {
-		Dsa_public_key *signature.DSAPublicKey
-	}{
-		publicKey,
-	}
-
-	// Generate JSON from structure
-	data, err := json.Marshal(jsonStruct)
-	if err != nil {
-		jww.ERROR.Printf("Error encoding structure to JSON: %s", err)
-	}
-
-	// Get the user's home directory
-	homeDir, err := homedir.Dir()
-	if err != nil {
-		jww.ERROR.Printf("Unable to retrieve user's home directory: %s", err)
-	}
-
-	// Write JSON to file
-	err = ioutil.WriteFile(homeDir+"/.elixxir/registration_info.json",
-		data, 0644)
-	if err != nil {
-		jww.ERROR.Printf("Error writing JSON file: %s", err)
-	}
+	// Output the DSA public key to JSON file
+	outputDsaPubKeyToJson(".elixxir", "registration_info.json")
 
 	return registration.Handler(&RegistrationImpl{})
 }
@@ -108,4 +81,38 @@ func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 	jww.INFO.Printf("Verification complete for registration code %s",
 		registrationCode)
 	return data, sig.R.Bytes(), sig.S.Bytes(), nil
+}
+
+// outputDsaPubKeyToJson encodes the DSA public key to JSON and outputs it to
+// the specified directory with the specified file name.
+func outputDsaPubKeyToJson(dir, fileName string) {
+
+	// Get the default parameters and generate a public key from it
+	dsaParams := signature.GetDefaultDSAParams()
+	publicKey := dsaParams.PrivateKeyGen(rand.Reader).PublicKeyGen()
+
+	// Setup struct that will dictate the JSON structure
+	jsonStruct := struct {
+		Dsa_public_key *signature.DSAPublicKey
+	}{
+		Dsa_public_key: publicKey,
+	}
+
+	// Generate JSON from structure
+	data, err := json.MarshalIndent(jsonStruct, "", "\t")
+	if err != nil {
+		jww.ERROR.Printf("Error encoding structure to JSON: %s", err)
+	}
+
+	// Get the user's home directory
+	homeDir, err := homedir.Dir()
+	if err != nil {
+		jww.ERROR.Printf("Unable to retrieve user's home directory: %s", err)
+	}
+
+	// Write JSON to file
+	err = ioutil.WriteFile(homeDir+"/"+dir+"/"+fileName, data, 0644)
+	if err != nil {
+		jww.ERROR.Printf("Error writing JSON file: %s", err)
+	}
 }
