@@ -43,8 +43,12 @@ type RegistrationImpl struct{}
 // a JSON file.
 func NewRegistrationImpl() registration.Handler {
 
+	// Get the default parameters and generate a public key from it
+	dsaParams := signature.GetDefaultDSAParams()
+	publicKey := dsaParams.PrivateKeyGen(rand.Reader).PublicKeyGen()
+
 	// Output the DSA public key to JSON file
-	outputDsaPubKeyToJson(".elixxir", "registration_info.json")
+	outputDsaPubKeyToJson(publicKey, ".elixxir", "registration_info.json")
 
 	return registration.Handler(&RegistrationImpl{})
 }
@@ -85,17 +89,18 @@ func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 
 // outputDsaPubKeyToJson encodes the DSA public key to JSON and outputs it to
 // the specified directory with the specified file name.
-func outputDsaPubKeyToJson(dir, fileName string) {
-
-	// Get the default parameters and generate a public key from it
-	dsaParams := signature.GetDefaultDSAParams()
-	publicKey := dsaParams.PrivateKeyGen(rand.Reader).PublicKeyGen()
+func outputDsaPubKeyToJson(publicKey *signature.DSAPublicKey, dir, fileName string) {
+	// Encode the public key for the pem format
+	encodedKey, err := publicKey.PemEncode()
+	if err != nil {
+		jww.ERROR.Printf("Error Pem encoding public key: %s", err)
+	}
 
 	// Setup struct that will dictate the JSON structure
 	jsonStruct := struct {
-		Dsa_public_key *signature.DSAPublicKey
+		Dsa_public_key string
 	}{
-		Dsa_public_key: publicKey,
+		Dsa_public_key: string(encodedKey),
 	}
 
 	// Generate JSON from structure
