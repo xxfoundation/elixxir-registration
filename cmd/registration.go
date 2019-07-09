@@ -58,7 +58,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 	G []byte) (hash, R, S []byte, err error) {
 
 	// Check database to verify given registration code
-	err = database.RegCodes.UseCode(registrationCode)
+	err = database.PermissioningDb.UseCode(registrationCode)
 	if err != nil {
 		// Invalid registration code, return an error
 		jww.ERROR.Printf("Error validating registration code: %s", err)
