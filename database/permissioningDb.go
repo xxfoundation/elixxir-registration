@@ -9,6 +9,7 @@
 package database
 
 import (
+	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 )
 
@@ -43,11 +44,13 @@ func (m *DatabaseImpl) InsertNodeRegCode(code string) error {
 	return err
 }
 
-// Obtain the full internal node topology
-func (m *DatabaseImpl) GetNodeInformation() ([]NodeInformation, error) {
+// Obtain the full internal registered node topology
+func (m *DatabaseImpl) GetRegisteredNodes() ([]NodeInformation, error) {
 	var nodes []NodeInformation
-	err := m.db.Model(nodes).Select()
+	// Only select Nodes that have already been registered
+	err := m.db.Model(&nodes).Where("id IS NOT NULL").Select()
 	if err != nil {
+		fmt.Printf("%+v", err)
 		return nil, err
 	}
 	return nodes, nil

@@ -34,7 +34,7 @@ type Database interface {
 	// Insert node registration code into the database
 	InsertNodeRegCode(code string) error
 	// Obtain the full internal node topology
-	GetNodeInformation() ([]NodeInformation, error)
+	GetRegisteredNodes() ([]NodeInformation, error)
 }
 
 // Struct representing a RegistrationCode table in the database
@@ -134,4 +134,6 @@ func PopulateDummyRegistrationCodes() {
 				err)
 		}
 	}
+	r, _ := PermissioningDb.GetRegisteredNodes()
+	jww.ERROR.Printf("%+v", r)
 }
