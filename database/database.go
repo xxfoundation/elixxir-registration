@@ -33,6 +33,8 @@ type Database interface {
 	InsertNode(code string, id []byte, address, cert string) error
 	// Insert node registration code into the database
 	InsertNodeRegCode(code string) error
+	// Obtain the full internal node topology
+	GetNodeInformation() ([]NodeInformation, error)
 }
 
 // Struct representing a RegistrationCode table in the database

@@ -42,3 +42,13 @@ func (m *DatabaseImpl) InsertNodeRegCode(code string) error {
 	err := m.db.Insert(&regCode)
 	return err
 }
+
+// Obtain the full internal node topology
+func (m *DatabaseImpl) GetNodeInformation() ([]NodeInformation, error) {
+	var nodes []NodeInformation
+	err := m.db.Model(nodes).Select()
+	if err != nil {
+		return nil, err
+	}
+	return nodes, nil
+}
