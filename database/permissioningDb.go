@@ -9,7 +9,6 @@
 package database
 
 import (
-	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 )
 
@@ -50,7 +49,6 @@ func (m *DatabaseImpl) GetRegisteredNodes() ([]NodeInformation, error) {
 	// Only select Nodes that have already been registered
 	err := m.db.Model(&nodes).Where("id IS NOT NULL").Select()
 	if err != nil {
-		fmt.Printf("%+v", err)
 		return nil, err
 	}
 	return nodes, nil
