@@ -19,7 +19,7 @@ func (m *DatabaseImpl) InsertNode(id []byte, code, address,
 
 	// Look up given node registration code
 	nodeInfo := NodeInformation{Code: code}
-	jww.INFO.Printf("Attempting to register node with code %s...", code)
+	jww.INFO.Printf("Attempting to register node with code: %s", code)
 	err := m.db.Select(&nodeInfo)
 
 	if err != nil {

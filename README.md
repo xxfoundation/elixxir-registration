@@ -24,6 +24,12 @@ dbPassword: ""
 dbName: "cmix_server"
 dbAddress: ""
 
+# List of Node registration codes (in order of network placement)
+registrationCodes:
+  - "1"
+  - "2"
+  - "3"
+
 # === REQUIRED FOR ENABLING TLS ===
 # Path to the permissioning server private key file
 keyPath: ""

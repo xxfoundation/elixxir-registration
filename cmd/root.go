@@ -22,6 +22,7 @@ import (
 var cfgFile string
 var verbose bool
 var showVer bool
+var RegistrationCodes []string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -47,7 +48,13 @@ var rootCmd = &cobra.Command{
 			viper.GetString("dbName"),
 			viper.GetString("dbAddress"),
 		)
-		database.PopulateDummyRegistrationCodes()
+
+		// Populate Client registration codes into the database
+		database.PopulateClientRegistrationCodes([]string{"AAAA"}, 100)
+
+		// Populate Node registration codes into the database
+		RegistrationCodes = viper.GetStringSlice("registrationCodes")
+		database.PopulateNodeRegistrationCodes(RegistrationCodes)
 
 		// Set up registration server
 		go registration.StartRegistrationServer(address, NewRegistrationImpl(),
@@ -104,20 +111,17 @@ func initConfig() {
 	validConfig := true
 	f, err := os.Open(cfgFile)
 	if err != nil {
-		jww.ERROR.Printf("Unable to open config file (%s): %s", cfgFile,
-			err.Error())
+		jww.ERROR.Printf("Unable to open config file (%s): %+v", cfgFile, err)
 		validConfig = false
 	}
 	_, err = f.Stat()
 	if err != nil {
-		jww.ERROR.Printf("Invalid config file (%s): %s", cfgFile,
-			err.Error())
+		jww.ERROR.Printf("Invalid config file (%s): %+v", cfgFile, err)
 		validConfig = false
 	}
 	err = f.Close()
 	if err != nil {
-		jww.ERROR.Printf("Unable to close config file (%s): %s", cfgFile,
-			err.Error())
+		jww.ERROR.Printf("Unable to close config file (%s): %+v", cfgFile, err)
 		validConfig = false
 	}
 
@@ -128,8 +132,7 @@ func initConfig() {
 
 		// If a config file is found, read it in.
 		if err := viper.ReadInConfig(); err != nil {
-			jww.ERROR.Printf("Unable to parse config file (%s): %s", cfgFile,
-				err.Error())
+			jww.ERROR.Printf("Unable to parse config file (%s): %+v", cfgFile, err)
 			validConfig = false
 		}
 	}

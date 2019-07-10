@@ -81,10 +81,17 @@ func NewDatabase(username, password, database, address string) Database {
 		MaxConnAge:  time.Duration(1) * time.Hour,
 	})
 
-	// Attempt to connect to the database and initialize the schema
-	err := createSchema(db)
+	// Ensure an empty NodeInformation table
+	err := db.DropTable(&NodeInformation{},
+		&orm.DropTableOptions{IfExists: true})
 	if err != nil {
-		jww.FATAL.Panicf("Unable to initialize database backend: %s", err)
+		jww.FATAL.Panicf("Unable to drop Node table: %+v", err)
+	}
+
+	// Attempt to connect to the database and initialize the schema
+	err = createSchema(db)
+	if err != nil {
+		jww.FATAL.Panicf("Unable to initialize database backend: %+v", err)
 	}
 
 	// Return the database-backed Database interface
@@ -118,21 +125,23 @@ func createSchema(db *pg.DB) error {
 	return nil
 }
 
-// Adds dummy registration codes to the database
-func PopulateDummyRegistrationCodes() {
-	// Client registration codes
-	err := PermissioningDb.InsertClientRegCode("AAAA", 100)
-	if err != nil {
-		jww.ERROR.Printf("Unable to populate dummy client registration codes"+
-			": %s", err)
+// Adds Client registration codes to the database
+func PopulateClientRegistrationCodes(codes []string, uses int) {
+	for _, code := range codes {
+		err := PermissioningDb.InsertClientRegCode(code, uses)
+		if err != nil {
+			jww.ERROR.Printf("Unable to populate Client registration code: %+v",
+				err)
+		}
 	}
+}
 
-	// Node registration codes
-	codes := []string{"ZZZZ", "YYYY", "XXXX"}
+// Adds Node registration codes to the database
+func PopulateNodeRegistrationCodes(codes []string) {
 	for _, code := range codes {
 		err := PermissioningDb.InsertNodeRegCode(code)
 		if err != nil {
-			jww.ERROR.Printf("Unable to populate node registration codes: %s",
+			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
 				err)
 		}
 	}

@@ -91,6 +91,20 @@ func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
 	GatewayTLSCert, RegistrationCode string) error {
 
+	// TODO: ADD LOGIC FOR PermissioningDb.InsertNode CALL HERE
+
+	// Obtain a list of registered nodes
+	registeredNodes, err := database.PermissioningDb.GetRegisteredNodes()
+	if err != nil {
+		jww.ERROR.Printf("Unable to obtain registered Nodes: %+v", err)
+		return err
+	}
+
+	// If all nodes have registered
+	if len(registeredNodes) == len(RegistrationCodes) {
+		// TODO: PASS IN registeredNodes TO BROADCAST FUNCTION
+		// TODO: VERIFY THE ORDER MATCHES THE ORDER OF RegistrationCodes
+	}
 	return nil
 }
 
