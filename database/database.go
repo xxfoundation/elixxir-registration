@@ -134,6 +134,4 @@ func PopulateDummyRegistrationCodes() {
 				err)
 		}
 	}
-	r, _ := PermissioningDb.GetRegisteredNodes()
-	jww.ERROR.Printf("%+v", r)
 }
