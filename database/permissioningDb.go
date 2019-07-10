@@ -14,7 +14,8 @@ import (
 
 // If the given node registration code exists,
 // insert the provided node information
-func (m *DatabaseImpl) InsertNode(code string, id []byte, address, cert string) error {
+func (m *DatabaseImpl) InsertNode(id []byte, code, address,
+	nodeCert, gatewayCert string) error {
 
 	// Look up given node registration code
 	nodeInfo := NodeInformation{Code: code}
@@ -29,7 +30,8 @@ func (m *DatabaseImpl) InsertNode(code string, id []byte, address, cert string) 
 	// Update the record with the new node information
 	nodeInfo.Id = id
 	nodeInfo.Address = address
-	nodeInfo.Certificate = cert
+	nodeInfo.NodeCertificate = nodeCert
+	nodeInfo.GatewayCertificate = gatewayCert
 	err = m.db.Update(nodeInfo)
 	return err
 }

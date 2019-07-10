@@ -30,7 +30,7 @@ type Database interface {
 	// If client registration code is valid, decrements remaining uses
 	UseCode(code string) error
 	// If node registration code is valid, add node information
-	InsertNode(code string, id []byte, address, cert string) error
+	InsertNode(id []byte, code, address, nodeCert, gatewayCert string) error
 	// Insert node registration code into the database
 	InsertNodeRegCode(code string) error
 	// Obtain the full internal node topology
@@ -59,8 +59,10 @@ type NodeInformation struct {
 	Id []byte
 	// IP address
 	Address string
-	// TLS public certificate in PEM string format
-	Certificate string
+	// Node TLS public certificate in PEM string format
+	NodeCertificate string
+	// Gateway TLS public certificate in PEM string format
+	GatewayCertificate string
 }
 
 // Initialize the Database interface with database backend

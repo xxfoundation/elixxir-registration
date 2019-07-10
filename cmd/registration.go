@@ -87,6 +87,13 @@ func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 	return data, sig.R.Bytes(), sig.S.Bytes(), nil
 }
 
+// Handle registration attempt by a Node
+func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
+	GatewayTLSCert, RegistrationCode string) error {
+
+	return nil
+}
+
 // outputDsaPubKeyToJson encodes the DSA public key to JSON and outputs it to
 // the specified directory with the specified file name.
 func outputDsaPubKeyToJson(publicKey *signature.DSAPublicKey, dir, fileName string) {
