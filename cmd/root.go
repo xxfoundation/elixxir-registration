@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
@@ -37,10 +38,10 @@ var rootCmd = &cobra.Command{
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
-		address := viper.GetString("registrationAddress")
+		address := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 
 		// Set up database connection
-		database.RegCodes = database.NewRegistrationStorage(
+		database.PermissioningDb = database.NewDatabase(
 			viper.GetString("dbUsername"),
 			viper.GetString("dbPassword"),
 			viper.GetString("dbName"),

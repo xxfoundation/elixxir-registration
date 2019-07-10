@@ -58,7 +58,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 	G []byte) (hash, R, S []byte, err error) {
 
 	// Check database to verify given registration code
-	err = database.RegCodes.UseCode(registrationCode)
+	err = database.PermissioningDb.UseCode(registrationCode)
 	if err != nil {
 		// Invalid registration code, return an error
 		jww.ERROR.Printf("Error validating registration code: %s", err)
@@ -85,6 +85,13 @@ func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 	jww.INFO.Printf("Verification complete for registration code %s",
 		registrationCode)
 	return data, sig.R.Bytes(), sig.S.Bytes(), nil
+}
+
+// Handle registration attempt by a Node
+func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
+	GatewayTLSCert, RegistrationCode string) error {
+
+	return nil
 }
 
 // outputDsaPubKeyToJson encodes the DSA public key to JSON and outputs it to
