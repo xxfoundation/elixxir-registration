@@ -89,9 +89,14 @@ func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
 
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
-	GatewayTLSCert, RegistrationCode string) error {
+	GatewayTLSCert, RegistrationCode, Addr string) error {
 
-	// TODO: ADD LOGIC FOR PermissioningDb.InsertNode CALL HERE
+	// Attempt to insert Node into the database
+	err := database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, NodeTLSCert, GatewayTLSCert)
+	if err != nil {
+		jww.ERROR.Printf("Unable to insert node: %+v", err)
+		return err
+	}
 
 	// Obtain a list of registered nodes
 	registeredNodes, err := database.PermissioningDb.GetRegisteredNodes()
