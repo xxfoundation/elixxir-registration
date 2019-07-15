@@ -98,15 +98,15 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
 		return err
 	}
 
-	// Obtain a list of registered nodes
-	registeredNodes, err := database.PermissioningDb.GetRegisteredNodes()
+	// Obtain the number of registered nodes
+	numNodes, err := database.PermissioningDb.CountRegisteredNodes()
 	if err != nil {
-		jww.ERROR.Printf("Unable to obtain registered Nodes: %+v", err)
+		jww.ERROR.Printf("Unable to count registered Nodes: %+v", err)
 		return err
 	}
 
 	// If all nodes have registered
-	if len(registeredNodes) == len(RegistrationCodes) {
+	if numNodes == len(RegistrationCodes) {
 		// TODO: PASS IN registeredNodes TO BROADCAST FUNCTION
 		// TODO: VERIFY THE ORDER MATCHES THE ORDER OF RegistrationCodes
 	}
