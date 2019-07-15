@@ -25,16 +25,18 @@ var PermissioningDb Database
 
 // Interface database storage operations
 type Database interface {
-	// Inserts client registration code with given number of uses
+	// Inserts Client registration code with given number of uses
 	InsertClientRegCode(code string, uses int) error
-	// If client registration code is valid, decrements remaining uses
+	// If Client registration code is valid, decrements remaining uses
 	UseCode(code string) error
-	// If node registration code is valid, add node information
+	// If Node registration code is valid, add Node information
 	InsertNode(id []byte, code, address, nodeCert, gatewayCert string) error
-	// Insert node registration code into the database
+	// Insert Node registration code into the database
 	InsertNodeRegCode(code string) error
-	// Obtain the full internal node topology
-	GetRegisteredNodes() ([]NodeInformation, error)
+	// Count the number of Nodes currently registered
+	CountRegisteredNodes() (int, error)
+	// Get Node information for the given Node registration code
+	GetNode(code string) (*NodeInformation, error)
 }
 
 // Struct representing a RegistrationCode table in the database
