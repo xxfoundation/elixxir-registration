@@ -2,7 +2,6 @@ package cert_authority
 
 import (
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -22,7 +21,8 @@ func Sign(clientCSRFile, CACertFile, caPrivFile string) []byte {
 	fmt.Println("loaded CA cert")
 	caPrivKey := loadPrivKey(caPrivFile)
 	fmt.Println("loaded CA key")
-
+	//
+	//if caPrivKey
 	//Make sure that the csr has not already been signed
 	err := clientCSR.CheckSignature()
 	if err != nil {
@@ -35,9 +35,11 @@ func Sign(clientCSRFile, CACertFile, caPrivFile string) []byte {
 	fmt.Println(clientCSR.PublicKeyAlgorithm)
 	//Sign the certificate using the caCert as the parent certificate
 	clientSignedCert, err := x509.CreateCertificate(rand.Reader, clientCertTemplate, caCert, clientCSR.PublicKey, caPrivKey)
+	fmt.Println("pre err")
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
+	fmt.Println("post err")
 	//return the raw, or just create a file
 	//for testing purposes we could just return
 	// wouldn't necesarily incorrect to store them in files
@@ -135,8 +137,9 @@ func loadCertificateRequest(file string) *x509.CertificateRequest {
 
 	return cert
 }
-
-func loadPrivKey(file string) *rsa.PrivateKey {
+//hacked by making it return an interface
+//TODO make sure it returns a ecdsa.private key (ie that it is pkcs8)
+func loadPrivKey(file string) interface{} {
 	pemEncodedBlock, err := ioutil.ReadFile(file)
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
@@ -147,26 +150,12 @@ func loadPrivKey(file string) *rsa.PrivateKey {
 		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
 	}
 	fmt.Println(certDecoded.Bytes)
-	//TODO test which of these i have to do, the uncommented or the commented one
-	//  i.e figure out if priv key has a password associated..
-	//  it may not, but if it doesn't ask if it will in the future
 
-	if x509.IsEncryptedPEMBlock(certDecoded) == false{
-		fmt.Println("i'm dumb")
-		//return  nil
-	}
-	//not password encrypted, do not need this
-	_, err = x509.DecryptPEMBlock(certDecoded, []byte(""))
-	if err != nil {
-		jww.ERROR.Println(err.Error())
-	}
 	//Openssl creates pkcs8 by default now...
-	privateKey, err := x509.ParsePKCS8PrivateKey(certDecoded.Bytes)
+	privateKey, err :=  x509.ParsePKCS8PrivateKey(certDecoded.Bytes)
 
-	fmt.Println("pre fucked")
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
-	fmt.Println("fucked")
 	return privateKey
 }
