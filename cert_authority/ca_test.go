@@ -1,13 +1,15 @@
 package cert_authority
 
 import (
+	"bytes"
+	"encoding/pem"
 	"fmt"
 	"gitlab.com/elixxir/registration/testkeys"
 	"testing"
 )
 
-func getKnownSignature() []byte {
-	return []byte(`-----BEGIN CERTIFICATE-----
+func getKnownSignature() *pem.Block {
+	fileIo := []byte(`-----BEGIN CERTIFICATE-----
 MIIFVjCCAz6gAwIBAgIBAjANBgkqhkiG9w0BAQsFADCBkjELMAkGA1UEBhMCVVMx
 CzAJBgNVBAgMAkNBMRIwEAYDVQQHDAlDbGFyZW1vbnQxEDAOBgNVBAoMB0VsaXh4
 aXIxFDASBgNVBAsMC0RldmVsb3BtZW50MRkwFwYDVQQDDBBnYXRld2F5LmNtaXgu
@@ -38,6 +40,8 @@ CnGgEV7kMbIJm53Ooy/nDxpXawRSlRjbAVnEmLAKy7iSYBOucx+BQ/3TnTQ9S7Ii
 XObTGJ8pmDRq9vobLxvxZ6v5wle8nEef5HZW2ddcBQ/2cQdJNIgi7DJi86qj9gc1
 8ScD4Dr1Gt4wnORAq0jHkl45CNICTCoplY0=
 -----END CERTIFICATE-----`)
+	ret, _ := pem.Decode(fileIo)
+	return ret
 }
 
 func writeCorrectlySignedCert() {
@@ -53,13 +57,20 @@ func TestSign(t *testing.T) {
 
 //test repeatability by pulling the signed cert, resigning (they should be the same with the same csr, CACert
 // and privKey
-func TestSign_Consistency(t *testing.T)  {
-	
+func TestSign_Consistency(t *testing.T) {
+	expected := *getKnownSignature()
+	observed := Sign(testkeys.GetNodeCSRPath(), testkeys.GetGatewayCertPath(), testkeys.GetGatewayKeyPath())
+
+	fmt.Println(expected.Bytes)
+	fmt.Println(observed)
+	//won't be exactly the same as some randomness is added..idiot
+	if bytes.Compare(expected.Bytes,observed) != 0 {
+		t.Error("Failed signature consistency")
+	}
 }
 
 //Test the checksign is implemented correctly in sign
 func TestSign_CheckSignature(t *testing.T) {
-	expected := getKnownSignature()
 
 
 }
