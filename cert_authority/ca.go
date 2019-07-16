@@ -84,7 +84,6 @@ func writeToFile(signedCert []byte, filepath string) {
 	}
 }
 
-
 func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate {
 	return &x509.Certificate{
 		Signature:          csr.Signature,
@@ -92,9 +91,9 @@ func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate {
 
 		PublicKey:          csr.PublicKey,
 		PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
-		SerialNumber:big.NewInt(2),//TODO probs need to edit this
-		Issuer:    csr.Subject,
-		NotBefore: time.Now(),
+		SerialNumber:       big.NewInt(2), //TODO probs need to edit this
+		Issuer:             csr.Subject,
+		NotBefore:          time.Now(),
 		//TODO figure out when client certs should expire
 		// Thoughts on this reviewer?
 		NotAfter: time.Now().Add(24 * time.Hour),
@@ -144,6 +143,7 @@ func loadCertificateRequest(file string) *x509.CertificateRequest {
 
 	return cert
 }
+
 //hacked by making it return an interface
 //TODO make sure it returns a ecdsa.private key (ie that it is pkcs8)\
 //loadPrivKey takes the file given and returns a private key of type ecdsa or rs
@@ -158,7 +158,7 @@ func loadPrivKey(file string) interface{} {
 	}
 
 	//Openssl creates pkcs8 by default now...
-	privateKey, err :=  x509.ParsePKCS8PrivateKey(certDecoded.Bytes)
+	privateKey, err := x509.ParsePKCS8PrivateKey(certDecoded.Bytes)
 
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
