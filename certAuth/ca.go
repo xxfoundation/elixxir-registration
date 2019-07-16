@@ -7,11 +7,12 @@ import (
 	"encoding/pem"
 	jww "github.com/spf13/jwalterweatherman"
 	"io/ioutil"
+	"os"
 	"time"
 )
 
 //Take in 3 files: one from the client (to be signed) and 2 from us, a cert and a private key
-func Sign(clientCSRFile, CACertFile, caPrivFile string) {
+func Sign(clientCSRFile, CACertFile, caPrivFile string) []byte {
 	//Load certs and keys
 	clientCSR := loadCertificateRequest(clientCSRFile)
 	caCert := loadCertificate(CACertFile)
@@ -30,8 +31,22 @@ func Sign(clientCSRFile, CACertFile, caPrivFile string) {
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
+	//return the raw, or just create a file
+	//for testing purposes we could just return
+	// wouldn't necesarily incorrect to store them in files
+	// question would be is this a security flaw? Do root CAs keep all signatures.
+	//TODO research whether CAs keep all signed certs locally (my guess is no)
 
+	/*  Or we could do this, thoughts?
+	clientCRTFile, err := os.Create("cert/client.crt") //name could be customized to "cert/" + nodeIDFromArgFileName + ".crt"
+	err := pem.Encode(clientCRTFile, &pem.Block{Type:"CERTIFICATE", Bytes:clientSignedCert})
+	if err != nil {
+		jww.ERROR.Printf(err.Error())
+	}
 
+	clientCRTFile.Close()
+	 */
+	return clientSignedCert
 
 }
 
