@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	jww "github.com/spf13/jwalterweatherman"
 	"io/ioutil"
+	"os"
 	"time"
 )
 
@@ -37,17 +38,35 @@ func Sign(clientCSRFile, CACertFile, caPrivFile string) []byte {
 	// question would be is this a security flaw? Do root CAs keep all signatures.
 	//TODO research whether CAs keep all signed certs locally (my guess is no)
 
-	/*  Or we could do this, thoughts?
-	clientCRTFile, err := os.Create("cert/client.crt") //name could be customized to "cert/" + nodeIDFromArgFileName + ".crt"
-	err := pem.Encode(clientCRTFile, &pem.Block{Type:"CERTIFICATE", Bytes:clientSignedCert})
+	// Or we could do this, thoughts?
+	/*
+		clientCRTFile, err := os.Create("cert/client.crt") //name could be customized to "cert/" + nodeIDFromArgFileName + ".crt"
+		err := pem.Encode(clientCRTFile, &pem.Block{Type:"CERTIFICATE", Bytes:clientSignedCert})
+		if err != nil {
+			jww.ERROR.Printf(err.Error())
+		}
+
+		clientCRTFile.Close()
+	*/
+	return clientSignedCert
+
+}
+
+//Call to write the passed in cert to a file. Maybe we don't need this in the CA specifically?
+func writeToFile(signedCert []byte, filepath string) {
+	clientCRTFile, err := os.Create(filepath)
+	if err != nil {
+		jww.ERROR.Printf(err.Error())
+	}
+	err = pem.Encode(clientCRTFile, &pem.Block{Type: "CERTIFICATE", Bytes: signedCert})
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
 
-	clientCRTFile.Close()
-	*/
-	return clientSignedCert
-
+	err = clientCRTFile.Close()
+	if err != nil {
+		jww.ERROR.Printf(err.Error())
+	}
 }
 
 func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate {
