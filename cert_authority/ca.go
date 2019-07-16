@@ -91,7 +91,7 @@ func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate {
 		NotAfter: time.Now().Add(24 * time.Hour),
 		KeyUsage: x509.KeyUsageDigitalSignature,
 		// Use the below
-		// ExtKeyUsage:
+		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 }
 
@@ -127,7 +127,7 @@ func loadCertificateRequest(file string) *x509.CertificateRequest {
 	if certDecoded == nil {
 		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
 	}
-
+	fmt.Println(certDecoded.Headers)
 	cert, err := x509.ParseCertificateRequest(certDecoded.Bytes)
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
@@ -141,20 +141,27 @@ func loadPrivKey(file string) *rsa.PrivateKey {
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
-
+	fmt.Println(pemEncodedBlock)
 	certDecoded, _ := pem.Decode(pemEncodedBlock)
 	if certDecoded == nil {
 		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
 	}
+	fmt.Println(certDecoded.Bytes)
 	//TODO test which of these i have to do, the uncommented or the commented one
 	//  i.e figure out if priv key has a password associated..
 	//  it may not, but if it doesn't ask if it will in the future
-	der, err := x509.DecryptPEMBlock(certDecoded, []byte(""))
+
+	if x509.IsEncryptedPEMBlock(certDecoded) == false{
+		fmt.Println("i'm dumb")
+		//return  nil
+	}
+	//not password encrypted, do not need this
+	_, err = x509.DecryptPEMBlock(certDecoded, []byte(""))
 	if err != nil {
 		jww.ERROR.Println(err.Error())
 	}
-	//May have to decrypt
-	privateKey, err := x509.ParsePKCS1PrivateKey(der)
+	//Openssl creates pkcs8 by default now...
+	privateKey, err := x509.ParsePKCS8PrivateKey(certDecoded.Bytes)
 
 	fmt.Println("pre fucked")
 	if err != nil {
