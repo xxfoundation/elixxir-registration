@@ -157,14 +157,9 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
 		}
 
 		// Broadcast to all nodes
-		for index, nodeInfo := range nodeTopology.Topology {
-			// FIXME: Not sure if this is correct way to check ordering
-			// Verify node order matches before broadcast
-			if nodeInfo.Index != uint32(index) {
-				return errors.New("Unable to broadcast due to incorrect node topology order.")
-			}
-			regCode := RegistrationCodes[index]
-			errReg := registrationImpl.Comms.SendNodeTopology(connectionID(regCode), &nodeTopology)
+		jww.INFO.Printf("INFO: Broadcasting node topology: %+v", topology)
+		for _, nodeInfo := range nodeTopology.Topology {
+			errReg := registrationImpl.Comms.SendNodeTopology(connectionID(nodeInfo.Id), &nodeTopology)
 			if errReg != nil {
 				return err
 			}
