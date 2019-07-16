@@ -5,7 +5,18 @@ import (
 	"testing"
 )
 
+func writeCorrectlySignedCert() {
+	pem := Sign(testkeys.GetNodeCSRPath(),testkeys.GetGatewayCertPath(),testkeys.GetGatewayKeyPath())
+	writeToFile(pem, testkeys.GetNodeCertPath_KnownSignature())
+}
+
 func TestSign(t *testing.T) {
+	//Sign()
+	writeCorrectlySignedCert()
+}
+
+//Test the checksign is implemented correctly in sign
+func TestSign_CheckSignature(t *testing.T)  {
 
 }
 
@@ -17,7 +28,7 @@ func TestSign_VerifySignatureSuccess(t *testing.T) {
 //Check that an already signed cert does not pass
 func TestSign_VerifySignatureFailure(t *testing.T)  {
 
-	alreadySignedCert := loadCertificate(testkeys.GetCSR_AlreadySigned())
+	alreadySignedCert := loadCertificate(testkeys.GetCertPath_MysteriousSignature())
 	CACert := loadCertificate(testkeys.GetGatewayCertPath())
 
 	err := alreadySignedCert.CheckSignatureFrom(CACert)

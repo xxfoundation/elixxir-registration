@@ -5,8 +5,10 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"io/ioutil"
+	"math/big"
 	"os"
 	"time"
 )
@@ -15,8 +17,11 @@ import (
 func Sign(clientCSRFile, CACertFile, caPrivFile string) []byte {
 	//Load certs and keys
 	clientCSR := loadCertificateRequest(clientCSRFile)
+	fmt.Println("loaded CSR")
 	caCert := loadCertificate(CACertFile)
+	fmt.Println("loaded CA cert")
 	caPrivKey := loadPrivKey(caPrivFile)
+	fmt.Println("loaded CA key")
 
 	//Make sure that the csr has not already been signed
 	err := clientCSR.CheckSignature()
@@ -26,7 +31,8 @@ func Sign(clientCSRFile, CACertFile, caPrivFile string) []byte {
 
 	//Create a template certificate to be used in the signing of the clients CSR
 	clientCertTemplate := createCertTemplate(clientCSR)
-
+	fmt.Println(clientCSR.PublicKey)
+	fmt.Println(clientCSR.PublicKeyAlgorithm)
 	//Sign the certificate using the caCert as the parent certificate
 	clientSignedCert, err := x509.CreateCertificate(rand.Reader, clientCertTemplate, caCert, clientCSR.PublicKey, caPrivKey)
 	if err != nil {
@@ -77,7 +83,7 @@ func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate {
 
 		PublicKey:          csr.PublicKey,
 		PublicKeyAlgorithm: csr.PublicKeyAlgorithm,
-
+		SerialNumber:big.NewInt(2),//TODO probs need to edit this
 		Issuer:    csr.Subject,
 		NotBefore: time.Now(),
 		//TODO figure out when client certs should expire
@@ -143,12 +149,17 @@ func loadPrivKey(file string) *rsa.PrivateKey {
 	//TODO test which of these i have to do, the uncommented or the commented one
 	//  i.e figure out if priv key has a password associated..
 	//  it may not, but if it doesn't ask if it will in the future
-	//der, err := x509.DecryptPEMBlock(certDecoded, []byte(""))
+	der, err := x509.DecryptPEMBlock(certDecoded, []byte(""))
+	if err != nil {
+		jww.ERROR.Println(err.Error())
+	}
 	//May have to decrypt
-	privateKey, err := x509.ParsePKCS1PrivateKey(certDecoded.Bytes)
+	privateKey, err := x509.ParsePKCS1PrivateKey(der)
+
+	fmt.Println("pre fucked")
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
-
+	fmt.Println("fucked")
 	return privateKey
 }
