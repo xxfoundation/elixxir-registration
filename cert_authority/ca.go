@@ -69,6 +69,7 @@ func writeToFile(signedCert []byte, filepath string) {
 	}
 }
 
+
 func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate {
 	return &x509.Certificate{
 		Signature:          csr.Signature,
@@ -88,6 +89,7 @@ func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate {
 	}
 }
 
+//Maybe simplify sign, move these to tests? Thoughts?
 func loadCertificate(file string) *x509.Certificate {
 	pemEncodedBlock, err := ioutil.ReadFile(file)
 	if err != nil {
