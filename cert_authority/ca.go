@@ -1,7 +1,9 @@
 package cert_authority
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
@@ -21,8 +23,14 @@ func Sign(clientCSRFile, CACertFile, caPrivFile string) []byte {
 	fmt.Println("loaded CA cert")
 	caPrivKey := loadPrivKey(caPrivFile)
 	fmt.Println("loaded CA key")
-	//
-	//if caPrivKey
+	//Check that loadPrivateKey returned an expected interface
+	switch caPrivKey.(type) {
+	case *ecdsa.PrivateKey:
+	case *rsa.PrivateKey:
+	default:
+		jww.ERROR.Println("Not an expected key type")
+
+	}
 	//Make sure that the csr has not already been signed
 	err := clientCSR.CheckSignature()
 	if err != nil {
@@ -33,13 +41,12 @@ func Sign(clientCSRFile, CACertFile, caPrivFile string) []byte {
 	clientCertTemplate := createCertTemplate(clientCSR)
 	fmt.Println(clientCSR.PublicKey)
 	fmt.Println(clientCSR.PublicKeyAlgorithm)
-	//Sign the certificate using the caCert as the parent certificate
+	//Sign the certificate using the caCert as the parent certificate. This takes a generic interface for the public
+	//and private key given as the last 2 args
 	clientSignedCert, err := x509.CreateCertificate(rand.Reader, clientCertTemplate, caCert, clientCSR.PublicKey, caPrivKey)
-	fmt.Println("pre err")
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
-	fmt.Println("post err")
 	//return the raw, or just create a file
 	//for testing purposes we could just return
 	// wouldn't necesarily incorrect to store them in files
@@ -138,18 +145,17 @@ func loadCertificateRequest(file string) *x509.CertificateRequest {
 	return cert
 }
 //hacked by making it return an interface
-//TODO make sure it returns a ecdsa.private key (ie that it is pkcs8)
+//TODO make sure it returns a ecdsa.private key (ie that it is pkcs8)\
+//loadPrivKey takes the file given and returns a private key of type ecdsa or rs
 func loadPrivKey(file string) interface{} {
 	pemEncodedBlock, err := ioutil.ReadFile(file)
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
-	fmt.Println(pemEncodedBlock)
 	certDecoded, _ := pem.Decode(pemEncodedBlock)
 	if certDecoded == nil {
 		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
 	}
-	fmt.Println(certDecoded.Bytes)
 
 	//Openssl creates pkcs8 by default now...
 	privateKey, err :=  x509.ParsePKCS8PrivateKey(certDecoded.Bytes)
@@ -157,5 +163,6 @@ func loadPrivKey(file string) interface{} {
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
+	fmt.Println("above an error")
 	return privateKey
 }
