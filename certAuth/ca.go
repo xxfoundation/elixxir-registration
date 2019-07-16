@@ -7,10 +7,10 @@ import (
 	"encoding/pem"
 	jww "github.com/spf13/jwalterweatherman"
 	"io/ioutil"
+	"time"
 )
 
-//Take in two files: one from the client (to be signed) and one from us, probably a private key
-//
+//Take in 3 files: one from the client (to be signed) and 2 from us, a cert and a private key
 func Sign(clientCSRFile, CACertFile, caPrivFile string) {
 	//Load certs and keys
 	clientCSR := loadCertificateRequest(clientCSRFile)
@@ -22,8 +22,36 @@ func Sign(clientCSRFile, CACertFile, caPrivFile string) {
 		jww.ERROR.Panicf(err.Error())
 	}
 
+	//Create a template certificate to be used in the signing of the clients CSR
+	clientCertTemplate := createCertTemplate(clientCSR)
+
+	//Sign the certificate using the caCert as the parent certificate
+	clientSignedCert, err := x509.CreateCertificate(rand.Reader, clientCertTemplate, caCert, clientCSR.PublicKey, caPrivKey )
+	if err != nil {
+		jww.ERROR.Printf(err.Error())
+	}
 
 
+
+}
+
+func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate  {
+	return &x509.Certificate{
+		Signature:csr.Signature,
+		SignatureAlgorithm:csr.SignatureAlgorithm,
+
+		PublicKey:csr.PublicKey,
+		PublicKeyAlgorithm:csr.PublicKeyAlgorithm,
+
+		Issuer:csr.Subject,
+		NotBefore:time.Now(),
+		//TODO figure out when client certs should expire
+		// Thoughts on this reviewer?
+		NotAfter:time.Now().Add(24 * time.Hour),
+		KeyUsage:x509.KeyUsageDigitalSignature,
+		// Use the below
+		// ExtKeyUsage:
+	}
 }
 
 func loadCertificate(file string) *x509.Certificate {
