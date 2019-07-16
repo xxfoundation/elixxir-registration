@@ -176,7 +176,6 @@ func getNodeInfo(dbNodeInfo *database.NodeInformation, index uint32, NodeTLSCert
 		Index:     index,
 		IpAddress: dbNodeInfo.Address,
 		TlsCert:   NodeTLSCert,
-		Signature: nil, // TODO: how do we get this
 	}
 
 	return &nodeInfo
