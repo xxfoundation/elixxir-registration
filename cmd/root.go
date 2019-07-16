@@ -14,7 +14,6 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
-	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/registration/database"
 	"os"
 )
@@ -56,12 +55,16 @@ var rootCmd = &cobra.Command{
 		RegistrationCodes = viper.GetStringSlice("registrationCodes")
 		database.PopulateNodeRegistrationCodes(RegistrationCodes)
 
-		// Set up registration server
-		go registration.StartRegistrationServer(address, NewRegistrationImpl(),
-			certPath, keyPath)
+		// Populate params
+		params := Params{
+			Address:  address,
+			CertPath: certPath,
+			KeyPath:  keyPath,
+		}
 
-		// Wait forever
-		select {}
+		// Start registration server
+		StartRegistration(params)
+
 	},
 }
 

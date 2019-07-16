@@ -14,12 +14,16 @@ import (
 	"errors"
 	"github.com/mitchellh/go-homedir"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/large"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
 )
+
+// Registration Implementation
+var registrationImpl RegistrationImpl
 
 // DSA Params
 var dsaParams = signature.GetDefaultDSAParams()
@@ -37,11 +41,36 @@ var privateKey = signature.ReconstructPrivateKey(
 			"346117df2acf2bab22d942de1a70e8d5d62fc0e99d8742a0f16df94ce3a0abbb", 16)),
 	large.NewIntFromString("dab0febfab103729077ad4927754f6390e366fdf4c58e8d40dadb3e94c444b54", 16))
 
-type RegistrationImpl struct{}
+type RegistrationImpl struct {
+	Comms *registration.RegistrationComms
+}
 
-// Initializes a Registration Handler interface and saves the DSA public key to
-// a JSON file.
-func NewRegistrationImpl() registration.Handler {
+type Params struct {
+	Address  string
+	CertPath string
+	KeyPath  string
+}
+
+type connectionID string
+
+func (c connectionID) String() string {
+	return (string)(c)
+}
+
+// StartRegistration sets up registration server
+// and comms and waits forever
+func StartRegistration(params Params) {
+	registrationImpl := NewRegistrationImpl()
+
+	registrationImpl.Comms = registration.StartRegistrationServer(params.Address, registration.Handler(registrationImpl),
+		params.CertPath, params.KeyPath)
+
+	select {}
+}
+
+// Saves the DSA public key to a JSON file
+// and returns registation implementation
+func NewRegistrationImpl() *RegistrationImpl {
 
 	// Get the default parameters and generate a public key from it
 	dsaParams := signature.GetDefaultDSAParams()
@@ -50,7 +79,7 @@ func NewRegistrationImpl() registration.Handler {
 	// Output the DSA public key to JSON file
 	outputDsaPubKeyToJson(publicKey, ".elixxir", "registration_info.json")
 
-	return registration.Handler(&RegistrationImpl{})
+	return &RegistrationImpl{}
 }
 
 // Handle registration attempt by a Client
@@ -107,10 +136,49 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
 
 	// If all nodes have registered
 	if numNodes == len(RegistrationCodes) {
-		// TODO: PASS IN registeredNodes TO BROADCAST FUNCTION
-		// TODO: VERIFY THE ORDER MATCHES THE ORDER OF RegistrationCodes
+
+		// Create node topology
+		var topology []*mixmessages.NodeInfo
+		for index, registrationCode := range RegistrationCodes {
+
+			dbNodeInfo, err := database.PermissioningDb.GetNode(registrationCode)
+
+			if err != nil {
+				return err
+			}
+
+			nodeInfo := getNodeInfo(dbNodeInfo, uint32(index), NodeTLSCert)
+
+			topology = append(topology, nodeInfo)
+		}
+
+		nodeTopology := mixmessages.NodeTopology{
+			Topology: topology,
+		}
+
+		// Broadcast to all nodes
+		jww.INFO.Printf("INFO: Broadcasting node topology: %+v", topology)
+		for _, nodeInfo := range nodeTopology.Topology {
+			errReg := registrationImpl.Comms.SendNodeTopology(connectionID(nodeInfo.Id), &nodeTopology)
+			if errReg != nil {
+				return err
+			}
+		}
 	}
 	return nil
+}
+
+// getNodeInfo creates a NodeInfo mixmessage from the
+// node info in the database and other input params
+func getNodeInfo(dbNodeInfo *database.NodeInformation, index uint32, NodeTLSCert string) *mixmessages.NodeInfo {
+	nodeInfo := mixmessages.NodeInfo{
+		Id:        dbNodeInfo.Id,
+		Index:     index,
+		IpAddress: dbNodeInfo.Address,
+		TlsCert:   NodeTLSCert,
+	}
+
+	return &nodeInfo
 }
 
 // outputDsaPubKeyToJson encodes the DSA public key to JSON and outputs it to
