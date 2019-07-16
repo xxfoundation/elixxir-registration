@@ -1,6 +1,5 @@
 package testkeys
 
-
 import (
 	"path/filepath"
 	"runtime"
@@ -33,6 +32,6 @@ func GetGatewayKeyPath() string {
 	return filepath.Join(getDirForFile(), "gateway.cmix.rip.key")
 }
 
-func GetCSR_AlreadySigned() string  {
+func GetCSR_AlreadySigned() string {
 	return filepath.Join(getDirForFile(), "cmix-alreadySigned.crt")
 }
