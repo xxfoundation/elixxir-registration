@@ -5,10 +5,8 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/pem"
 	jww "github.com/spf13/jwalterweatherman"
 	"math/big"
-	"os"
 	"time"
 )
 
@@ -45,29 +43,13 @@ func Sign(clientCSR *x509.CertificateRequest, caCert *x509.Certificate, caPrivKe
 		jww.ERROR.Printf(err.Error())
 		return nil, nil
 	}
-	//Question: return the raw, or just create a file (ie use writeToFile)
+	//Question: return the raw, or just create a file (ie use writeToFile from testing)
 
 	return clientSignedCert, caCert
 
 }
 
-//Call to write the passed in cert to a file. Maybe we don't need this in the CA specifically?
-//Either do this here or in the sign.
-func writeToFile(signedCert []byte, filepath string) {
-	clientCRTFile, err := os.Create(filepath)
-	if err != nil {
-		jww.ERROR.Printf(err.Error())
-	}
-	err = pem.Encode(clientCRTFile, &pem.Block{Type: "CERTIFICATE", Bytes: signedCert})
-	if err != nil {
-		jww.ERROR.Printf(err.Error())
-	}
 
-	err = clientCRTFile.Close()
-	if err != nil {
-		jww.ERROR.Printf(err.Error())
-	}
-}
 
 func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate {
 	// Maybe do something like this? Thoughts??

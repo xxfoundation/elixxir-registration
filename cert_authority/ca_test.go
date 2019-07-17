@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/testkeys"
 	"io/ioutil"
@@ -51,7 +50,7 @@ func loadCertificateRequest(file string) *x509.CertificateRequest {
 	return cert
 }
 
-//loadPrivKey takes the file given and returns a private key of type ecdsa or rs
+//loadPrivKey takes the file given and returns a private key of type ecdsa or rsa
 func loadPrivKey(file string) interface{} {
 	pemEncodedBlock, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -62,7 +61,7 @@ func loadPrivKey(file string) interface{} {
 		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
 	}
 
-	//Openssl creates pkcs8 keys by default now as of openSSL 1.0.0
+	//Openssl creates pkcs8 keys by default as of openSSL 1.0.0
 	privateKey, err := x509.ParsePKCS8PrivateKey(certDecoded.Bytes)
 
 	if err != nil {
@@ -107,19 +106,7 @@ XObTGJ8pmDRq9vobLxvxZ6v5wle8nEef5HZW2ddcBQ/2cQdJNIgi7DJi86qj9gc1
 	return ret
 }
 
-func writeCorrectlySignedCert() {
-	//Load files
-	clientCSR := loadCertificateRequest(testkeys.GetNodeCSRPath())
-	caCert := loadCertificate(testkeys.GetCACertPath())
-	caPrivKey := loadPrivKey(testkeys.GetCAKeyPath())
-	pem, _ := Sign(clientCSR, caCert, caPrivKey)
-	writeToFile(pem, testkeys.GetNodeCertPath_KnownSignature())
-}
 
-func TestSign(t *testing.T) {
-	//Sign()
-	writeCorrectlySignedCert()
-}
 
 //test repeatability by pulling the signed cert, resigning (they should be the same with the same csr, CACert
 // and privKey
@@ -160,29 +147,11 @@ func TestSign_CheckSignature(t *testing.T) {
 
 }
 
-/*
-//put this in the ca.go file if it turns out to be more involved
-func TestSign_VerifySignatureSuccess(t *testing.T) {
-	//Load files
-	//rootCert := loadCertificate(testkeys.GetCACertPath())
-	clientCSR := loadCertificateRequest(testkeys.GetNodeCSRPath())
-	caCert := loadCertificate(testkeys.GetCACertPath())
-	caPrivKey := loadPrivKey(testkeys.GetCAKeyPath())
-
-	signatureBytes, _ := Sign(clientCSR, caCert, caPrivKey)
-	signedCert, err := x509.ParseCertificate(signatureBytes)
-	if err != nil {
-		t.Error(err)
-	}
-	//rootCert.Verify(signedCert.b)
-}
-
 //Check that an already signed cert does not pass
 func TestSign_VerifySignatureFailure(t *testing.T) {
 
-	alreadySignedCert := loadCertificate(testkeys.GetCertPath_PreviouslySignature())
+	alreadySignedCert := loadCertificate(testkeys.GetCertPath_PreviouslySigned())
 	CACert := loadCertificate(testkeys.GetCACertPath())
-
 	err := alreadySignedCert.CheckSignatureFrom(CACert)
 
 	if err == nil {
@@ -190,8 +159,4 @@ func TestSign_VerifySignatureFailure(t *testing.T) {
 	}
 }
 
-/*
-func TestSign_FileIsValidCert(t *testing.T) {
 
-}
-*/
