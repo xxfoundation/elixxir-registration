@@ -1,12 +1,13 @@
-# registration
+# permissioning
 
-Library containing the Registration Server for adding new clients to cMix
+Library containing the Permissioning Server for adding new clients and nodes to 
+cMix
 
 ## Example Configuration File
 
 ```yaml
 # ==================================
-# Registration Server Configuration
+# Permissioning Server Configuration
 # ==================================
 
 # Verbose logging
@@ -14,8 +15,8 @@ verbose: "true"
 # Path to log file
 logPath: "registration.log"
 
-# The listening address of this registration server
-registrationAddress: "0.0.0.0:11420"
+# The listening port of this  server
+port: 11420
 
 # Database connection information
 dbUsername: "cmix"
@@ -23,9 +24,15 @@ dbPassword: ""
 dbName: "cmix_server"
 dbAddress: ""
 
+# List of Node registration codes (in order of network placement)
+registrationCodes:
+  - "1"
+  - "2"
+  - "3"
+
 # === REQUIRED FOR ENABLING TLS ===
-# Path to the registration server private key file
+# Path to the permissioning server private key file
 keyPath: ""
-# Path to the registration server certificate file
+# Path to the permissioning server certificate file
 certPath: ""
 ```

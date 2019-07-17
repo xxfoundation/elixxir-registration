@@ -9,11 +9,11 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
-	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/registration/database"
 	"os"
 )
@@ -21,6 +21,7 @@ import (
 var cfgFile string
 var verbose bool
 var showVer bool
+var RegistrationCodes []string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -37,23 +38,33 @@ var rootCmd = &cobra.Command{
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
-		address := viper.GetString("registrationAddress")
+		address := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 
 		// Set up database connection
-		database.RegCodes = database.NewRegistrationStorage(
+		database.PermissioningDb = database.NewDatabase(
 			viper.GetString("dbUsername"),
 			viper.GetString("dbPassword"),
 			viper.GetString("dbName"),
 			viper.GetString("dbAddress"),
 		)
-		database.PopulateDummyRegistrationCodes()
 
-		// Set up registration server
-		go registration.StartRegistrationServer(address, NewRegistrationImpl(),
-			certPath, keyPath)
+		// Populate Client registration codes into the database
+		database.PopulateClientRegistrationCodes([]string{"AAAA"}, 100)
 
-		// Wait forever
-		select {}
+		// Populate Node registration codes into the database
+		RegistrationCodes = viper.GetStringSlice("registrationCodes")
+		database.PopulateNodeRegistrationCodes(RegistrationCodes)
+
+		// Populate params
+		params := Params{
+			Address:  address,
+			CertPath: certPath,
+			KeyPath:  keyPath,
+		}
+
+		// Start registration server
+		StartRegistration(params)
+
 	},
 }
 
@@ -103,20 +114,17 @@ func initConfig() {
 	validConfig := true
 	f, err := os.Open(cfgFile)
 	if err != nil {
-		jww.ERROR.Printf("Unable to open config file (%s): %s", cfgFile,
-			err.Error())
+		jww.ERROR.Printf("Unable to open config file (%s): %+v", cfgFile, err)
 		validConfig = false
 	}
 	_, err = f.Stat()
 	if err != nil {
-		jww.ERROR.Printf("Invalid config file (%s): %s", cfgFile,
-			err.Error())
+		jww.ERROR.Printf("Invalid config file (%s): %+v", cfgFile, err)
 		validConfig = false
 	}
 	err = f.Close()
 	if err != nil {
-		jww.ERROR.Printf("Unable to close config file (%s): %s", cfgFile,
-			err.Error())
+		jww.ERROR.Printf("Unable to close config file (%s): %+v", cfgFile, err)
 		validConfig = false
 	}
 
@@ -127,8 +135,7 @@ func initConfig() {
 
 		// If a config file is found, read it in.
 		if err := viper.ReadInConfig(); err != nil {
-			jww.ERROR.Printf("Unable to parse config file (%s): %s", cfgFile,
-				err.Error())
+			jww.ERROR.Printf("Unable to parse config file (%s): %+v", cfgFile, err)
 			validConfig = false
 		}
 	}
