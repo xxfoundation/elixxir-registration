@@ -43,7 +43,6 @@ func loadCertificateRequest(file string) *x509.CertificateRequest {
 	if certDecoded == nil {
 		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
 	}
-	fmt.Println(certDecoded.Headers)
 	cert, err := x509.ParseCertificateRequest(certDecoded.Bytes)
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
@@ -51,7 +50,6 @@ func loadCertificateRequest(file string) *x509.CertificateRequest {
 
 	return cert
 }
-
 
 //loadPrivKey takes the file given and returns a private key of type ecdsa or rs
 func loadPrivKey(file string) interface{} {
@@ -70,7 +68,6 @@ func loadPrivKey(file string) interface{} {
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
-	fmt.Println("above an error")
 	return privateKey
 }
 
@@ -137,10 +134,7 @@ func TestSign_Consistency(t *testing.T) {
 
 	observed, _ := Sign(clientCSR, caCert, caPrivKey)
 
-	fmt.Println(expected.Bytes)
-	fmt.Println(observed)
 	divison := 8
-	fmt.Println(observed[:len(observed)/divison])
 	//won't be exactly the same as some randomness is added
 	if bytes.Compare(expected.Bytes[:len(expected.Bytes)/divison], observed[:len(observed)/divison]) != 0 {
 		t.Error("Failed signature consistency")
@@ -149,23 +143,38 @@ func TestSign_Consistency(t *testing.T) {
 
 //Test the checksign is implemented correctly in sign
 func TestSign_CheckSignature(t *testing.T) {
-	Sign(testkeys.GetCertPath_PreviouslySignature(), testkeys.GetCACertPath(), testkeys.GetCAKeyPath())
-
-}
-
-//put this in the ca.go file if it turns out to be more involved
-func TestSign_VerifySignatureSuccess(t *testing.T) {
 	//Load files
-	rootCert := loadCertificate(testkeys.GetCACertPath())
 	clientCSR := loadCertificateRequest(testkeys.GetNodeCSRPath())
 	caCert := loadCertificate(testkeys.GetCACertPath())
 	caPrivKey := loadPrivKey(testkeys.GetCAKeyPath())
+
+	signedCertBytes, _ := Sign(clientCSR, caCert, caPrivKey)
+	signedCert, err := x509.ParseCertificate(signedCertBytes)
+	if err != nil {
+		t.Error(err)
+	}
+	err = signedCert.CheckSignatureFrom(caCert)
+	if err != nil {
+		t.Error("Certificate signature not constructed properly")
+	}
+
+}
+
+/*
+//put this in the ca.go file if it turns out to be more involved
+func TestSign_VerifySignatureSuccess(t *testing.T) {
+	//Load files
+	//rootCert := loadCertificate(testkeys.GetCACertPath())
+	clientCSR := loadCertificateRequest(testkeys.GetNodeCSRPath())
+	caCert := loadCertificate(testkeys.GetCACertPath())
+	caPrivKey := loadPrivKey(testkeys.GetCAKeyPath())
+
 	signatureBytes, _ := Sign(clientCSR, caCert, caPrivKey)
 	signedCert, err := x509.ParseCertificate(signatureBytes)
 	if err != nil {
 		t.Error(err)
 	}
-	rootCert.Verify(signedCert.b)
+	//rootCert.Verify(signedCert.b)
 }
 
 //Check that an already signed cert does not pass
@@ -180,7 +189,6 @@ func TestSign_VerifySignatureFailure(t *testing.T) {
 		t.Errorf("Failed to detect a certificate not signed by the root CA")
 	}
 }
-
 
 /*
 func TestSign_FileIsValidCert(t *testing.T) {

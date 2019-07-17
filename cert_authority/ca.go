@@ -23,12 +23,16 @@ func Sign(clientCSR *x509.CertificateRequest, caCert *x509.Certificate, caPrivKe
 	case *rsa.PrivateKey:
 	default:
 		jww.ERROR.Println("Not an expected key type")
+
+		return nil, nil
 	}
 
 	//Make sure that the csr is valid
 	err := clientCSR.CheckSignature()
 	if err != nil {
-		jww.ERROR.Panicf(err.Error())
+		jww.ERROR.Println(err.Error())
+		return nil, nil
+
 	}
 
 	//Create a template certificate to be used in the signing of the clients CSR
@@ -39,6 +43,7 @@ func Sign(clientCSR *x509.CertificateRequest, caCert *x509.Certificate, caPrivKe
 	clientSignedCert, err := x509.CreateCertificate(rand.Reader, clientCertTemplate, caCert, clientCertTemplate.PublicKey, caPrivKey)
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
+		return nil, nil
 	}
 	//Question: return the raw, or just create a file (ie use writeToFile)
 
@@ -65,7 +70,7 @@ func writeToFile(signedCert []byte, filepath string) {
 }
 
 func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate {
-	// Maybe do something like this?
+	// Maybe do something like this? Thoughts??
 	//serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	// use our brand new and shiny rng?
 	//serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
@@ -81,9 +86,8 @@ func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate {
 		NotBefore: time.Now(),
 		//TODO figure out when client certs should expire
 		// Thoughts on this reviewer?
-		NotAfter: time.Now().Add(24 * time.Hour),
-		KeyUsage: x509.KeyUsageDigitalSignature,
-		// Use the below
+		NotAfter:    time.Now().Add(24 * time.Hour),
+		KeyUsage:    x509.KeyUsageDigitalSignature,
 		ExtKeyUsage: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 	}
 }
