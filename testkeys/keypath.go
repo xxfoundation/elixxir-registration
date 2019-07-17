@@ -5,6 +5,16 @@ import (
 	"runtime"
 )
 
+//The previously signed certificate in testkeys was generated using the following commands
+//openssl x509 -req -days 360 -in <CSR> -CA <CA-CERT> -CAkey <CA-KEY> -CAcreateserial -out alreadySigned.crt -sha256
+//The inputs (CA cert/key & CSR) were generated unrelated to the ones in testkeys (ie the following was run twice)
+/*		CA TLS keypair generation		*/
+//openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 \
+//-nodes -out <CA-CERT> -keyout <CA-KEY> -subj <CA-SUBJ>
+
+//where one output was put in test keys as the testing environment, and one generated a 'mysteriously' signed cert from
+//a root ca cert/key pair that is not known (could be revoked or malicious)
+
 func getDirForFile() string {
 	// Get the filename we're in
 	_, currentFile, _, _ := runtime.Caller(0)
@@ -24,11 +34,11 @@ func GetNodeCSRPath() string {
 	return filepath.Join(getDirForFile(), "cmix.rip.csr")
 }
 
-func GetGatewayCertPath() string {
+func GetCACertPath() string {
 	return filepath.Join(getDirForFile(), "gateway.cmix.rip.crt")
 }
 
-func GetGatewayKeyPath() string {
+func GetCAKeyPath() string {
 	return filepath.Join(getDirForFile(), "gateway.cmix.rip.key")
 }
 
