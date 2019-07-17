@@ -43,7 +43,7 @@ func GetCAKeyPath() string {
 }
 
 //Signed by a certificate that is not currently used by the CA (for testing)
-func GetCertPath_PreviouslySignature() string {
+func GetCertPath_PreviouslySigned() string {
 	return filepath.Join(getDirForFile(), "cmix-alreadySigned.crt")
 }
 

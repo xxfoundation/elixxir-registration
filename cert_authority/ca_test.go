@@ -106,8 +106,6 @@ XObTGJ8pmDRq9vobLxvxZ6v5wle8nEef5HZW2ddcBQ/2cQdJNIgi7DJi86qj9gc1
 	return ret
 }
 
-
-
 //test repeatability by pulling the signed cert, resigning (they should be the same with the same csr, CACert
 // and privKey
 //Might be a hackey test since we're only comparing up to a certain length..Thoughts?
@@ -158,5 +156,3 @@ func TestSign_VerifySignatureFailure(t *testing.T) {
 		t.Errorf("Failed to detect a certificate not signed by the root CA")
 	}
 }
-
-

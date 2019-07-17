@@ -49,8 +49,6 @@ func Sign(clientCSR *x509.CertificateRequest, caCert *x509.Certificate, caPrivKe
 
 }
 
-
-
 func createCertTemplate(csr *x509.CertificateRequest) *x509.Certificate {
 	// Maybe do something like this? Thoughts??
 	//serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
