@@ -2,11 +2,78 @@ package cert_authority
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/testkeys"
+	"io/ioutil"
 	"testing"
 )
+
+//Maybe simplify sign, move these to tests? Thoughts?
+func loadCertificate(file string) *x509.Certificate {
+	pemEncodedBlock, err := ioutil.ReadFile(file)
+	if err != nil {
+		jww.ERROR.Printf(err.Error())
+	}
+
+	certDecoded, _ := pem.Decode(pemEncodedBlock)
+	if certDecoded == nil {
+		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
+	}
+
+	cert, err := x509.ParseCertificate(certDecoded.Bytes)
+
+	if err != nil {
+		jww.ERROR.Printf(err.Error())
+	}
+
+	return cert
+
+}
+
+func loadCertificateRequest(file string) *x509.CertificateRequest {
+	pemEncodedBlock, err := ioutil.ReadFile(file)
+	if err != nil {
+		jww.ERROR.Printf(err.Error())
+	}
+
+	certDecoded, _ := pem.Decode(pemEncodedBlock)
+	if certDecoded == nil {
+		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
+	}
+	fmt.Println(certDecoded.Headers)
+	cert, err := x509.ParseCertificateRequest(certDecoded.Bytes)
+	if err != nil {
+		jww.ERROR.Printf(err.Error())
+	}
+
+	return cert
+}
+
+//hacked by making it return an interface
+//TODO make sure it returns a ecdsa.private key (ie that it is pkcs8)\
+//loadPrivKey takes the file given and returns a private key of type ecdsa or rs
+func loadPrivKey(file string) interface{} {
+	pemEncodedBlock, err := ioutil.ReadFile(file)
+	if err != nil {
+		jww.ERROR.Printf(err.Error())
+	}
+	certDecoded, _ := pem.Decode(pemEncodedBlock)
+	if certDecoded == nil {
+		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
+	}
+
+	//Openssl creates pkcs8 by default now...
+	privateKey, err := x509.ParsePKCS8PrivateKey(certDecoded.Bytes)
+
+	if err != nil {
+		jww.ERROR.Printf(err.Error())
+	}
+	fmt.Println("above an error")
+	return privateKey
+}
 
 func getKnownSignature() *pem.Block {
 	fileIo := []byte(`-----BEGIN CERTIFICATE-----
@@ -44,6 +111,16 @@ XObTGJ8pmDRq9vobLxvxZ6v5wle8nEef5HZW2ddcBQ/2cQdJNIgi7DJi86qj9gc1
 	return ret
 }
 
+//The previously signed certificate in testkeys was generated using the following commands
+//openssl x509 -req -days 360 -in <CSR> -CA <CA-CERT> -CAkey <CA-KEY> -CAcreateserial -out alreadySigned.crt -sha256
+//The inputs (CA cert/key & CSR) were generated unrelated to the ones in testkeys (ie the following was run twice)
+/*		CA TLS keypair generation		*/
+//openssl req -new -newkey rsa:4096 -x509 -sha256 -days 365 \
+//-nodes -out <CA-CERT> -keyout <CA-KEY> -subj <CA-SUBJ>
+
+//where one output was put in test keys as the testing environment, and one generated a 'mysteriously' signed cert from
+//a root ca cert/key pair that is not known (could be revoked or malicious)
+
 func writeCorrectlySignedCert() {
 	pem := Sign(testkeys.GetNodeCSRPath(), testkeys.GetGatewayCertPath(), testkeys.GetGatewayKeyPath())
 	writeToFile(pem, testkeys.GetNodeCertPath_KnownSignature())
@@ -57,33 +134,48 @@ func TestSign(t *testing.T) {
 
 //test repeatability by pulling the signed cert, resigning (they should be the same with the same csr, CACert
 // and privKey
+//Might be a hackey test since we're only going up to a certain length..Thoughts?
 func TestSign_Consistency(t *testing.T) {
 	expected := *getKnownSignature()
-	observed := Sign(testkeys.GetNodeCSRPath(), testkeys.GetGatewayCertPath(), testkeys.GetGatewayKeyPath())
+	clientCSR := loadCertificateRequest(testkeys.GetNodeCSRPath())
+	fmt.Println("loaded CSR")
+	caCert := loadCertificate(testkeys.GetGatewayCertPath())
+	fmt.Println("loaded CA cert")
+	caPrivKey := loadPrivKey(testkeys.GetGatewayKeyPath())
+	fmt.Println("loaded CA key")
+	observed := Sign(clientCSR, caCert, caPrivKey)
 
 	fmt.Println(expected.Bytes)
 	fmt.Println(observed)
+	divison := 8
+	fmt.Println(observed[:len(observed)/divison])
 	//won't be exactly the same as some randomness is added..idiot
-	if bytes.Compare(expected.Bytes,observed) != 0 {
+	if bytes.Compare(expected.Bytes[:len(expected.Bytes)/divison], observed[:len(observed)/divison]) != 0 {
 		t.Error("Failed signature consistency")
 	}
 }
 
 //Test the checksign is implemented correctly in sign
 func TestSign_CheckSignature(t *testing.T) {
-
+	Sign(testkeys.GetCertPath_PreviouslySignature(), testkeys.GetGatewayCertPath(), testkeys.GetGatewayKeyPath())
 
 }
 
 //put this in the ca.go file if it turns out to be more involved
 func TestSign_VerifySignatureSuccess(t *testing.T) {
-
+	rootCert := loadCertificate(testkeys.GetGatewayCertPath())
+	signatureBytes := Sign(testkeys.GetNodeCSRPath(), testkeys.GetGatewayCertPath(), testkeys.GetGatewayKeyPath())
+	signedCert, err := x509.ParseCertificate(signatureBytes)
+	if err != nil {
+		t.Error(err)
+	}
+	rootCert.Verify(signedCert.b)
 }
 
 //Check that an already signed cert does not pass
 func TestSign_VerifySignatureFailure(t *testing.T) {
 
-	alreadySignedCert := loadCertificate(testkeys.GetCertPath_MysteriousSignature())
+	alreadySignedCert := loadCertificate(testkeys.GetCertPath_PreviouslySignature())
 	CACert := loadCertificate(testkeys.GetGatewayCertPath())
 
 	err := alreadySignedCert.CheckSignatureFrom(CACert)
