@@ -24,7 +24,6 @@ func GetNodeCSRPath() string {
 	return filepath.Join(getDirForFile(), "cmix.rip.csr")
 }
 
-
 func GetGatewayCertPath() string {
 	return filepath.Join(getDirForFile(), "gateway.cmix.rip.crt")
 }
@@ -34,10 +33,11 @@ func GetGatewayKeyPath() string {
 }
 
 //Signed by a certificate that is not currently used by the CA (for testing)
-func GetCertPath_MysteriousSignature() string {
+func GetCertPath_PreviouslySignature() string {
 	return filepath.Join(getDirForFile(), "cmix-alreadySigned.crt")
 }
 
+//A certificate signed by the certificate authority
 func GetNodeCertPath_KnownSignature() string {
 	return filepath.Join(getDirForFile(), "cmix-signed.crt")
 }

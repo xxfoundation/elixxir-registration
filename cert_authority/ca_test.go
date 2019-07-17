@@ -11,7 +11,6 @@ import (
 	"testing"
 )
 
-//Maybe simplify sign, move these to tests? Thoughts?
 func loadCertificate(file string) *x509.Certificate {
 	pemEncodedBlock, err := ioutil.ReadFile(file)
 	if err != nil {
