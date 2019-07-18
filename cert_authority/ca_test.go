@@ -106,6 +106,13 @@ XObTGJ8pmDRq9vobLxvxZ6v5wle8nEef5HZW2ddcBQ/2cQdJNIgi7DJi86qj9gc1
 	return ret
 }
 
+func ConvertToASNBytes(pemString string) *pem.Block {
+	decodedBytes, _ := pem.Decode([]byte(pemString))
+
+	return decodedBytes
+
+}
+
 //test repeatability by pulling the signed cert, resigning (they should be the same with the same csr, CACert
 // and privKey
 //Might be a hackey test since we're only comparing up to a certain length..Thoughts?
@@ -117,11 +124,11 @@ func TestSign_Consistency(t *testing.T) {
 
 	expected := *getKnownSignature()
 
-	observed, _ := Sign(clientCSR, caCert, caPrivKey)
-
+	observedString, _ := Sign(clientCSR, caCert, caPrivKey)
+	observed := ConvertToASNBytes(observedString)
 	divison := 8
 	//won't be exactly the same as some randomness is added
-	if bytes.Compare(expected.Bytes[:len(expected.Bytes)/divison], observed[:len(observed)/divison]) != 0 {
+	if bytes.Compare(expected.Bytes[:len(expected.Bytes)/divison], observed.Bytes[:len(observed.Bytes)/divison]) != 0 {
 		t.Error("Failed signature consistency")
 	}
 }
@@ -133,8 +140,9 @@ func TestSign_CheckSignature(t *testing.T) {
 	caCert := loadCertificate(testkeys.GetCACertPath())
 	caPrivKey := loadPrivKey(testkeys.GetCAKeyPath())
 
-	signedCertBytes, _ := Sign(clientCSR, caCert, caPrivKey)
-	signedCert, err := x509.ParseCertificate(signedCertBytes)
+	signedCertString, _ := Sign(clientCSR, caCert, caPrivKey)
+	signedCertBytes := ConvertToASNBytes(signedCertString)
+	signedCert, err := x509.ParseCertificate(signedCertBytes.Bytes)
 	if err != nil {
 		t.Error(err)
 	}
