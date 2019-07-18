@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	jww "github.com/spf13/jwalterweatherman"
 	"math/big"
+	"sync"
 	"time"
 )
 
@@ -51,7 +52,6 @@ func Sign(clientCSR *x509.CertificateRequest, caCert *x509.Certificate, caPrivKe
 
 	//encode the pem block, and then convert it into a string for return
 	clientSignedCert := string(pem.EncodeToMemory(pemBlock))
-
 	return clientSignedCert, caCert
 
 }
