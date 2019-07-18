@@ -1,4 +1,4 @@
-package cert_authority
+package certAuthority
 
 import (
 	"bytes"
