@@ -8,7 +8,6 @@ import (
 	"encoding/pem"
 	jww "github.com/spf13/jwalterweatherman"
 	"math/big"
-	"sync"
 	"time"
 )
 
