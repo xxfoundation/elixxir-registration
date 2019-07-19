@@ -9,12 +9,16 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	"gitlab.com/elixxir/crypto/large"
+	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/registration/database"
+	"io/ioutil"
 	"os"
 )
 
@@ -22,6 +26,7 @@ var cfgFile string
 var verbose bool
 var showVer bool
 var RegistrationCodes []string
+var dsaKeyPairPath string
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -34,6 +39,27 @@ var rootCmd = &cobra.Command{
 			printVersion()
 			return
 		}
+
+		//get the DSA private key
+		dsaKeyBytes, err := ioutil.ReadFile(dsaKeyPairPath)
+
+		if err != nil {
+			jww.FATAL.Panicf("Could not read dsa keys file: %v", err)
+		}
+
+		dsaKeys := DSAKeysJson{}
+
+		err = json.Unmarshal(dsaKeyBytes, &dsaKeys)
+
+		if err != nil {
+			jww.FATAL.Panicf("Could not unmarshal dsa keys file: %v", err)
+		}
+
+		dsaPrivInt := large.NewIntFromString(dsaKeys.PrivateKeyHex, 16)
+		dsaPubInt := large.NewIntFromString(dsaKeys.PublicKeyHex, 16)
+
+		pubKey := signature.ReconstructPublicKey(dsaParams, dsaPubInt)
+		privateKey = signature.ReconstructPrivateKey(pubKey, dsaPrivInt)
 
 		// Parse config file options
 		certPath := viper.GetString("certPath")
@@ -94,6 +120,8 @@ func init() {
 		"Show verbose logs for debugging")
 	rootCmd.Flags().BoolVarP(&showVer, "version", "V", false,
 		"Show version information")
+	rootCmd.Flags().StringVarP(&dsaKeyPairPath, "keyPairOverride", "k",
+		"", "Defined a DSA keypair to use instead of generating a new one")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -161,4 +189,9 @@ func initLog() {
 			jww.SetLogOutput(logFile)
 		}
 	}
+}
+
+type DSAKeysJson struct {
+	PrivateKeyHex string
+	PublicKeyHex  string
 }
