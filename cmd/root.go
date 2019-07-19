@@ -122,6 +122,8 @@ func init() {
 		"Show version information")
 	rootCmd.Flags().StringVarP(&dsaKeyPairPath, "keyPairOverride", "k",
 		"", "Defined a DSA keypair to use instead of generating a new one")
+	rootCmd.Flags().StringVarP(&cfgFile, "configPath", "c",
+		"", "Sets a custom  config file path")
 }
 
 // initConfig reads in config file and ENV variables if set.
