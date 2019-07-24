@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
-	"gitlab.com/elixxir/crypto/large"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
@@ -40,26 +39,26 @@ var rootCmd = &cobra.Command{
 			return
 		}
 
-		//get the DSA private key
+		// Get the DSA private key
 		dsaKeyBytes, err := ioutil.ReadFile(dsaKeyPairPath)
-
 		if err != nil {
 			jww.FATAL.Panicf("Could not read dsa keys file: %v", err)
 		}
 
-		dsaKeys := DSAKeysJson{}
-
-		err = json.Unmarshal(dsaKeyBytes, &dsaKeys)
-
+		// Marshall into JSON
+		var data map[string]string
+		err = json.Unmarshal(dsaKeyBytes, &data)
 		if err != nil {
 			jww.FATAL.Panicf("Could not unmarshal dsa keys file: %v", err)
 		}
 
-		dsaPrivInt := large.NewIntFromString(dsaKeys.PrivateKeyHex, 16)
-		dsaPubInt := large.NewIntFromString(dsaKeys.PublicKeyHex, 16)
-
-		pubKey := signature.ReconstructPublicKey(dsaParams, dsaPubInt)
-		privateKey = signature.ReconstructPrivateKey(pubKey, dsaPrivInt)
+		// Build the private key
+		privateKey = &signature.DSAPrivateKey{}
+		privateKey, err = privateKey.PemDecode([]byte(data["PrivateKey"]))
+		if err != nil {
+			jww.FATAL.Panicf("Unable to parse permissioning private key: %+v",
+				err)
+		}
 
 		// Parse config file options
 		certPath := viper.GetString("certPath")
@@ -191,9 +190,4 @@ func initLog() {
 			jww.SetLogOutput(logFile)
 		}
 	}
-}
-
-type DSAKeysJson struct {
-	PrivateKeyHex string
-	PublicKeyHex  string
 }
