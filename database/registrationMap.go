@@ -4,7 +4,7 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles the database ORM for registration codes
+// Handles the Map backend for registration codes
 
 package database
 
@@ -14,40 +14,36 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 )
 
-// Inserts client registration code with given number of uses
-func (m *DatabaseImpl) InsertClientRegCode(code string, uses int) error {
+// Inserts Client registration code with given number of uses
+func (m *MapImpl) InsertClientRegCode(code string, uses int) error {
 	jww.INFO.Printf("Inserting code %s, %d uses remaining", code, uses)
-	err := m.db.Insert(&RegistrationCode{
+	m.client[code] = &RegistrationCode{
 		Code:          code,
 		RemainingUses: uses,
-	})
-	return err
+	}
+	return nil
 }
 
-// If client registration code is valid, decrements remaining uses
-func (m *DatabaseImpl) UseCode(code string) error {
+// If Client registration code is valid, decrements remaining uses
+func (m *MapImpl) UseCode(code string) error {
 
 	// Look up given registration code
-	regCode := RegistrationCode{Code: code}
 	jww.INFO.Printf("Attempting to use code %s...", code)
-	err := m.db.Select(&regCode)
-	if err != nil {
+	reg := m.client[code]
+	if reg == nil {
 		// Unable to find code, return error
-		return err
+		return errors.New("invalid registration code")
 	}
 
-	if regCode.RemainingUses < 1 {
+	if reg.RemainingUses < 1 {
 		// Code has no remaining uses, return error
-		return errors.New(fmt.Sprintf("Code %s has no remaining uses", code))
+		return errors.New(fmt.Sprintf(
+			"registration code %s has no remaining uses", code))
 	}
 
 	// Decrement remaining uses by one
-	regCode.RemainingUses -= 1
-	err = m.db.Update(&regCode)
-
+	reg.RemainingUses -= 1
 	jww.INFO.Printf("Code %s used, %d uses remaining", code,
-		regCode.RemainingUses)
-
-	// Return error, if any
-	return err
+		reg.RemainingUses)
+	return nil
 }
