@@ -24,7 +24,9 @@ func (m *MapImpl) InsertNode(id []byte, code, address,
 		info.GatewayCertificate = gatewayCert
 		info.NodeCertificate = nodeCert
 		info.Address = address
+		return nil
 	}
+
 	return errors.New(fmt.Sprintf("unable to register node %s", code))
 
 }
@@ -32,6 +34,13 @@ func (m *MapImpl) InsertNode(id []byte, code, address,
 // Insert Node registration code into the database
 func (m *MapImpl) InsertNodeRegCode(code string) error {
 	jww.INFO.Printf("Adding node registration code: %s", code)
+
+	// Enforce unique registration code
+	if m.node[code] != nil {
+		return errors.New(fmt.Sprintf(
+			"node registration code %s already exists", code))
+	}
+
 	m.node[code] = &NodeInformation{Code: code}
 	return nil
 }
