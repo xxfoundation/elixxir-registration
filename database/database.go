@@ -20,6 +20,12 @@ type DatabaseImpl struct {
 	db *pg.DB // Stored database connection
 }
 
+// Struct implementing the Database Interface with an underlying Map
+type MapImpl struct {
+	client map[string]*RegistrationCode
+	node   map[string]*NodeInformation
+}
+
 // Global variable for database interaction
 var PermissioningDb Database
 
@@ -87,10 +93,16 @@ func NewDatabase(username, password, database, address string) Database {
 	err := db.DropTable(&NodeInformation{},
 		&orm.DropTableOptions{IfExists: true})
 	if err != nil {
-		jww.FATAL.Panicf("Unable to drop Node table: %+v", err)
+		// If an error is thrown with the database, run with a map backend
+		jww.INFO.Println("Using map backend for UserRegistry!")
+		return Database(&MapImpl{
+			client: make(map[string]*RegistrationCode),
+			node:   make(map[string]*NodeInformation),
+		})
 	}
 
-	// Attempt to connect to the database and initialize the schema
+	// Initialize the schema
+	jww.INFO.Println("Using database backend for Permissioning!")
 	err = createSchema(db)
 	if err != nil {
 		jww.FATAL.Panicf("Unable to initialize database backend: %+v", err)
