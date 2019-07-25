@@ -38,6 +38,7 @@ type Params struct {
 	Address  string
 	CertPath string
 	KeyPath  string
+	PermPath string
 }
 
 type connectionID string
@@ -145,6 +146,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
 			Topology: topology,
 		}
 
+		outputNodeTopologyToJSON(nodeTopology, RegParams.PermPath)
+
 		// Broadcast to all nodes
 		jww.INFO.Printf("INFO: Broadcasting node topology: %+v", topology)
 		for _, nodeInfo := range nodeTopology.Topology {
@@ -168,6 +171,28 @@ func getNodeInfo(dbNodeInfo *database.NodeInformation, index uint32, NodeTLSCert
 	}
 
 	return &nodeInfo
+}
+
+// outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
+// outputs it to the specified file path.
+func outputNodeTopologyToJSON(topology mixmessages.NodeTopology, filePath string) {
+	// Generate JSON from structure
+	data, err := json.MarshalIndent(topology, "", "\t")
+	if err != nil {
+		jww.ERROR.Printf("Error encoding NodeTopology structure to JSON: %s", err)
+	}
+
+	// Get the user's home directory
+	homeDir, err := homedir.Dir()
+	if err != nil {
+		jww.ERROR.Printf("Unable to retrieve user's home directory: %s", err)
+	}
+
+	// Write JSON to file
+	err = ioutil.WriteFile(homeDir+"/"+filePath, data, 0644)
+	if err != nil {
+		jww.ERROR.Printf("Error writing NodeTopology JSON file: %s", err)
+	}
 }
 
 // outputDsaPubKeyToJson encodes the DSA public key to JSON and outputs it to
