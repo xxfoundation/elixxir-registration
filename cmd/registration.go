@@ -148,7 +148,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
 
 		err = outputNodeTopologyToJSON(nodeTopology, RegParams.NdfOutputPath)
 		if err != nil {
-			return err
+			jww.ERROR.Printf("Unable to output NDF JSON file: %+v", err)
 		}
 
 		// Broadcast to all nodes
