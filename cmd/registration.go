@@ -12,7 +12,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
-	"github.com/mitchellh/go-homedir"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
@@ -35,9 +34,10 @@ type RegistrationImpl struct {
 }
 
 type Params struct {
-	Address  string
-	CertPath string
-	KeyPath  string
+	Address       string
+	CertPath      string
+	KeyPath       string
+	NdfOutputPath string
 }
 
 type connectionID string
@@ -60,14 +60,6 @@ func StartRegistration(params Params) {
 // Saves the DSA public key to a JSON file
 // and returns registation implementation
 func NewRegistrationImpl() *RegistrationImpl {
-
-	// Get the default parameters and generate a public key from it
-	dsaParams := signature.GetDefaultDSAParams()
-	publicKey := dsaParams.PrivateKeyGen(rand.Reader).PublicKeyGen()
-
-	// Output the DSA public key to JSON file
-	outputDsaPubKeyToJson(publicKey, ".elixxir", "registration_info.json")
-
 	return &RegistrationImpl{}
 }
 
@@ -145,6 +137,11 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
 			Topology: topology,
 		}
 
+		err = outputNodeTopologyToJSON(nodeTopology, RegParams.NdfOutputPath)
+		if err != nil {
+			jww.ERROR.Printf("Unable to output NDF JSON file: %+v", err)
+		}
+
 		// Broadcast to all nodes
 		jww.INFO.Printf("INFO: Broadcasting node topology: %+v", topology)
 		for _, nodeInfo := range nodeTopology.Topology {
@@ -170,37 +167,21 @@ func getNodeInfo(dbNodeInfo *database.NodeInformation, index uint32, NodeTLSCert
 	return &nodeInfo
 }
 
-// outputDsaPubKeyToJson encodes the DSA public key to JSON and outputs it to
-// the specified directory with the specified file name.
-func outputDsaPubKeyToJson(publicKey *signature.DSAPublicKey, dir, fileName string) {
-	// Encode the public key for the pem format
-	encodedKey, err := publicKey.PemEncode()
-	if err != nil {
-		jww.ERROR.Printf("Error Pem encoding public key: %s", err)
-	}
-
-	// Setup struct that will dictate the JSON structure
-	jsonStruct := struct {
-		Dsa_public_key string
-	}{
-		Dsa_public_key: string(encodedKey),
-	}
-
+// outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
+// outputs it to the specified file path. An error is returned if the JSON
+// marshaling fails or if the JSON file cannot be created.
+func outputNodeTopologyToJSON(topology mixmessages.NodeTopology, filePath string) error {
 	// Generate JSON from structure
-	data, err := json.MarshalIndent(jsonStruct, "", "\t")
+	data, err := json.MarshalIndent(topology, "", "\t")
 	if err != nil {
-		jww.ERROR.Printf("Error encoding structure to JSON: %s", err)
-	}
-
-	// Get the user's home directory
-	homeDir, err := homedir.Dir()
-	if err != nil {
-		jww.ERROR.Printf("Unable to retrieve user's home directory: %s", err)
+		return err
 	}
 
 	// Write JSON to file
-	err = ioutil.WriteFile(homeDir+"/"+dir+"/"+fileName, data, 0644)
+	err = ioutil.WriteFile(filePath, data, 0644)
 	if err != nil {
-		jww.ERROR.Printf("Error writing JSON file: %s", err)
+		return err
 	}
+
+	return nil
 }

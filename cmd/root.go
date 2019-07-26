@@ -21,11 +21,14 @@ import (
 	"os"
 )
 
-var cfgFile string
-var verbose bool
-var showVer bool
-var RegistrationCodes []string
-var dsaKeyPairPath string
+var (
+	cfgFile           string
+	verbose           bool
+	showVer           bool
+	RegistrationCodes []string
+	dsaKeyPairPath    string
+	RegParams         Params
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -64,6 +67,7 @@ var rootCmd = &cobra.Command{
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
 		address := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
+		ndfOutputPath := viper.GetString("ndfOutputPath")
 
 		// Set up database connection
 		database.PermissioningDb = database.NewDatabase(
@@ -81,14 +85,15 @@ var rootCmd = &cobra.Command{
 		database.PopulateNodeRegistrationCodes(RegistrationCodes)
 
 		// Populate params
-		params := Params{
-			Address:  address,
-			CertPath: certPath,
-			KeyPath:  keyPath,
+		RegParams = Params{
+			Address:       address,
+			CertPath:      certPath,
+			KeyPath:       keyPath,
+			NdfOutputPath: ndfOutputPath,
 		}
 
 		// Start registration server
-		StartRegistration(params)
+		StartRegistration(RegParams)
 
 	},
 }
