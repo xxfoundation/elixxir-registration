@@ -67,7 +67,7 @@ var rootCmd = &cobra.Command{
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
 		address := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
-		permPath := viper.GetString("permPath")
+		ndfOutputPath := viper.GetString("ndfOutputPath")
 
 		// Set up database connection
 		database.PermissioningDb = database.NewDatabase(
@@ -86,10 +86,10 @@ var rootCmd = &cobra.Command{
 
 		// Populate params
 		RegParams = Params{
-			Address:  address,
-			CertPath: certPath,
-			KeyPath:  keyPath,
-			PermPath: permPath,
+			Address:       address,
+			CertPath:      certPath,
+			KeyPath:       keyPath,
+			NdfOutputPath: ndfOutputPath,
 		}
 
 		// Start registration server

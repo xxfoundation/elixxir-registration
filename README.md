@@ -36,6 +36,6 @@ keyPath: ""
 # Path to the permissioning server certificate file
 certPath: ""
 # Path to the node topology permissioning info
-permPath:
+ndfOutputPath:
 ```
 

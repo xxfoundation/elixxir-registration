@@ -35,10 +35,10 @@ type RegistrationImpl struct {
 }
 
 type Params struct {
-	Address  string
-	CertPath string
-	KeyPath  string
-	PermPath string
+	Address       string
+	CertPath      string
+	KeyPath       string
+	NdfOutputPath string
 }
 
 type connectionID string
@@ -146,7 +146,10 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
 			Topology: topology,
 		}
 
-		outputNodeTopologyToJSON(nodeTopology, RegParams.PermPath)
+		err = outputNodeTopologyToJSON(nodeTopology, RegParams.NdfOutputPath)
+		if err != nil {
+			return err
+		}
 
 		// Broadcast to all nodes
 		jww.INFO.Printf("INFO: Broadcasting node topology: %+v", topology)
@@ -174,25 +177,29 @@ func getNodeInfo(dbNodeInfo *database.NodeInformation, index uint32, NodeTLSCert
 }
 
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
-// outputs it to the specified file path.
-func outputNodeTopologyToJSON(topology mixmessages.NodeTopology, filePath string) {
+// outputs it to the specified file path. An error is returned if the JSON
+// marshaling fails, if  the user's home directory cannot be retrieved, or if
+// the JSON file cannot be created.
+func outputNodeTopologyToJSON(topology mixmessages.NodeTopology, filePath string) error {
 	// Generate JSON from structure
 	data, err := json.MarshalIndent(topology, "", "\t")
 	if err != nil {
-		jww.ERROR.Printf("Error encoding NodeTopology structure to JSON: %s", err)
+		return err
 	}
 
 	// Get the user's home directory
 	homeDir, err := homedir.Dir()
 	if err != nil {
-		jww.ERROR.Printf("Unable to retrieve user's home directory: %s", err)
+		return err
 	}
 
 	// Write JSON to file
 	err = ioutil.WriteFile(homeDir+"/"+filePath, data, 0644)
 	if err != nil {
-		jww.ERROR.Printf("Error writing NodeTopology JSON file: %s", err)
+		return err
 	}
+
+	return nil
 }
 
 // outputDsaPubKeyToJson encodes the DSA public key to JSON and outputs it to
