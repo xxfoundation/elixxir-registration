@@ -51,8 +51,18 @@ func (c connectionID) String() string {
 func StartRegistration(params Params) {
 	registrationImpl := NewRegistrationImpl()
 
+	cert, err := ioutil.ReadFile(params.CertPath)
+	if err != nil {
+		jww.ERROR.Printf("failed to read certificate at %s: %+v", params.CertPath, err)
+	}
+
+	key, err := ioutil.ReadFile(params.KeyPath)
+	if err != nil {
+		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
+	}
+
 	registrationImpl.Comms = registration.StartRegistrationServer(params.Address, registration.Handler(registrationImpl),
-		params.CertPath, params.KeyPath)
+		cert, key)
 
 	select {}
 }
