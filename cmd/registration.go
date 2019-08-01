@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
+	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
@@ -22,9 +23,6 @@ import (
 
 // Registration Implementation
 var registrationImpl RegistrationImpl
-
-// DSA Params
-var dsaParams = signature.GetDefaultDSAParams()
 
 // Hardcoded DSA keypair for registration server
 var privateKey *signature.DSAPrivateKey
@@ -46,24 +44,24 @@ func (c connectionID) String() string {
 	return (string)(c)
 }
 
-// StartRegistration sets up registration server
-// and comms and waits forever
+// Configure and start the Permissioning Server
 func StartRegistration(params Params) {
-	registrationImpl := NewRegistrationImpl()
 
+	// Read in TLS keys from files
 	cert, err := ioutil.ReadFile(params.CertPath)
 	if err != nil {
 		jww.ERROR.Printf("failed to read certificate at %s: %+v", params.CertPath, err)
 	}
-
 	key, err := ioutil.ReadFile(params.KeyPath)
 	if err != nil {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
 	}
 
-	registrationImpl.Comms = registration.StartRegistrationServer(params.Address, registration.Handler(registrationImpl),
-		cert, key)
+	// Start the communication server
+	registrationImpl.Comms = registration.StartRegistrationServer(params.Address,
+		NewRegistrationImpl(), cert, key)
 
+	// Wait forever to prevent process from ending
 	select {}
 }
 
@@ -127,38 +125,54 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
 
 	// If all nodes have registered
 	if numNodes == len(RegistrationCodes) {
+		// Finish the node registration process in another thread
+		go completeNodeRegistration()
+	}
+	return nil
+}
 
-		// Create node topology
-		var topology []*mixmessages.NodeInfo
-		for index, registrationCode := range RegistrationCodes {
+// Wrapper for completeNodeRegistrationHelper() error-handling
+func completeNodeRegistration() {
+	err := completeNodeRegistrationHelper()
+	if err != nil {
+		jww.FATAL.Panicf("Error completing node registration: %+v", err)
+	}
+}
 
-			dbNodeInfo, err := database.PermissioningDb.GetNode(registrationCode)
-
-			if err != nil {
-				return err
-			}
-
-			nodeInfo := getNodeInfo(dbNodeInfo, uint32(index), NodeTLSCert)
-
-			topology = append(topology, nodeInfo)
-		}
-
-		nodeTopology := mixmessages.NodeTopology{
-			Topology: topology,
-		}
-
-		err = outputNodeTopologyToJSON(nodeTopology, RegParams.NdfOutputPath)
+// Once all nodes have registered, this function is triggered
+// to assemble and broadcast the completed topology to all nodes
+func completeNodeRegistrationHelper() error {
+	// Assemble the completed topology
+	var topology []*mixmessages.NodeInfo
+	for index, registrationCode := range RegistrationCodes {
+		// Get node information for each registration code
+		dbNodeInfo, err := database.PermissioningDb.GetNode(registrationCode)
 		if err != nil {
-			jww.ERROR.Printf("Unable to output NDF JSON file: %+v", err)
+			return errors.New(fmt.Sprintf(
+				"unable to obtain node for registration"+
+					" code %s: %+v", registrationCode, err))
 		}
+		topology = append(topology, getNodeInfo(dbNodeInfo, index))
+	}
+	nodeTopology := mixmessages.NodeTopology{
+		Topology: topology,
+	}
 
-		// Broadcast to all nodes
-		jww.INFO.Printf("INFO: Broadcasting node topology: %+v", topology)
-		for _, nodeInfo := range nodeTopology.Topology {
-			errReg := registrationImpl.Comms.SendNodeTopology(connectionID(nodeInfo.Id), &nodeTopology)
-			if errReg != nil {
-				return err
-			}
+	// Output the completed topology to a JSON file
+	err := outputNodeTopologyToJSON(nodeTopology, RegParams.NdfOutputPath)
+	if err != nil {
+		return errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
+			err))
+	}
+
+	// Broadcast completed topology to all nodes
+	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
+	for _, nodeInfo := range nodeTopology.Topology {
+		err = registrationImpl.Comms.SendNodeTopology(connectionID(nodeInfo.
+			Id), &nodeTopology)
+		if err != nil {
+			return errors.New(fmt.Sprintf(
+				"unable to broadcast node topology: %+v", err))
 		}
 	}
 	return nil
@@ -166,14 +180,13 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
 
 // getNodeInfo creates a NodeInfo mixmessage from the
 // node info in the database and other input params
-func getNodeInfo(dbNodeInfo *database.NodeInformation, index uint32, NodeTLSCert string) *mixmessages.NodeInfo {
+func getNodeInfo(dbNodeInfo *database.NodeInformation, index int) *mixmessages.NodeInfo {
 	nodeInfo := mixmessages.NodeInfo{
 		Id:        dbNodeInfo.Id,
-		Index:     index,
+		Index:     uint32(index),
 		IpAddress: dbNodeInfo.Address,
-		TlsCert:   NodeTLSCert,
+		TlsCert:   dbNodeInfo.NodeCertificate,
 	}
-
 	return &nodeInfo
 }
 
