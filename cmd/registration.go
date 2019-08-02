@@ -13,6 +13,7 @@ import (
 	"errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
+	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
@@ -45,11 +46,11 @@ func (c connectionID) String() string {
 func StartRegistration(params Params) {
 
 	// Read in TLS keys from files
-	cert, err := ioutil.ReadFile(params.CertPath)
+	cert, err := ioutil.ReadFile(utils.GetFullPath(params.CertPath))
 	if err != nil {
 		jww.ERROR.Printf("failed to read certificate at %s: %+v", params.CertPath, err)
 	}
-	key, err := ioutil.ReadFile(params.KeyPath)
+	key, err := ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
 	if err != nil {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
 	}
