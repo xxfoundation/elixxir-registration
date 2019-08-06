@@ -14,7 +14,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
-	"gitlab.com/elixxir/crypto/signature"
+	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
 )
@@ -22,8 +22,8 @@ import (
 // Registration Implementation
 var registrationImpl RegistrationImpl
 
-// Hardcoded DSA keypair for registration server
-var privateKey *signature.DSAPrivateKey
+// Hardcoded RSA keypair for registration server
+var privateKey *rsa.PrivateKey
 
 type RegistrationImpl struct {
 	Comms *registration.RegistrationComms
@@ -44,7 +44,6 @@ func (c connectionID) String() string {
 
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) {
-
 	// Read in TLS keys from files
 	cert, err := ioutil.ReadFile(utils.GetFullPath(params.CertPath))
 	if err != nil {
@@ -63,7 +62,7 @@ func StartRegistration(params Params) {
 	select {}
 }
 
-// Saves the DSA public key to a JSON file
+// Saves the RSA public key to a JSON file
 // and returns registration implementation
 func NewRegistrationImpl() *RegistrationImpl {
 	return &RegistrationImpl{}

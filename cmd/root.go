@@ -16,6 +16,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/crypto/signature"
+	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
 	"os"
@@ -26,7 +27,7 @@ var (
 	verbose           bool
 	showVer           bool
 	RegistrationCodes []string
-	dsaKeyPairPath    string
+	rsaKeyPairPath    string
 	RegParams         Params
 )
 
@@ -42,21 +43,22 @@ var rootCmd = &cobra.Command{
 			return
 		}
 
-		// Get the DSA private key
-		dsaKeyBytes, err := ioutil.ReadFile(dsaKeyPairPath)
+		// Get the RSA private key
+		saKeyBytes, err := ioutil.ReadFile(rsaKeyPairPath)
 		if err != nil {
-			jww.FATAL.Panicf("Could not read dsa keys file: %v", err)
+			jww.FATAL.Panicf("Could not read rsa keys file: %v", err)
 		}
 
 		// Marshall into JSON
 		var data map[string]string
-		err = json.Unmarshal(dsaKeyBytes, &data)
+		err = json.Unmarshal(saKeyBytes, &data)
 		if err != nil {
-			jww.FATAL.Panicf("Could not unmarshal dsa keys file: %v", err)
+			jww.FATAL.Panicf("Could not unmarshal rsa keys file: %v", err)
 		}
 
 		// Build the private key
-		privateKey = &signature.DSAPrivateKey{}
+		privateKey = &rsa.PrivateKey{}
+		//TODO add a pem decode function in crypto, or as if we even need pemDecode anymore (probs the second)
 		privateKey, err = privateKey.PemDecode([]byte(data["PrivateKey"]))
 		if err != nil {
 			jww.FATAL.Panicf("Unable to parse permissioning private key: %+v",
@@ -124,8 +126,8 @@ func init() {
 		"Show verbose logs for debugging")
 	rootCmd.Flags().BoolVarP(&showVer, "version", "V", false,
 		"Show version information")
-	rootCmd.Flags().StringVarP(&dsaKeyPairPath, "keyPairOverride", "k",
-		"", "Defined a DSA keypair to use instead of generating a new one")
+	rootCmd.Flags().StringVarP(&rsaKeyPairPath, "keyPairOverride", "k",
+		"", "Defined a RSA keypair to use instead of generating a new one")
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c",
 		"", "Sets a custom config file path")
 }

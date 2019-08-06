@@ -1,7 +1,6 @@
 package certAuthority
 
 import (
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -18,7 +17,6 @@ func Sign(clientCSR *x509.CertificateRequest, caCert *x509.Certificate, caPrivKe
 	//Load certs and keys
 	//Check that loadPrivateKey returned an expected interface
 	switch caPrivKey.(type) {
-	case *ecdsa.PrivateKey:
 	case *rsa.PrivateKey:
 	default:
 		jww.ERROR.Println("Not an expected key type")
