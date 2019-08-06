@@ -47,7 +47,6 @@ func GetCertPath_PreviouslySigned() string {
 	return filepath.Join(getDirForFile(), "cmix-alreadySigned.crt")
 }
 
-//A certificate signed by the certificate authority
-func GetNodeCertPath_KnownSignature() string {
-	return filepath.Join(getDirForFile(), "cmix-signed.crt")
+func GetDSAKeyPath() string {
+	return filepath.Join(getDirForFile(), "dsaKey.pem")
 }

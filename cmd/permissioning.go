@@ -9,21 +9,50 @@
 package cmd
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
 )
 
+var permissioningCert *x509.Certificate
+var permissioningKey *rsa.PrivateKey
+
 // Handle registration attempt by a Node
-func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
-	GatewayTLSCert, RegistrationCode, Addr string) error {
+func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
+	GatewayTlsCert, RegistrationCode, Addr string) error {
+	//Load the node and gateway's cert's
+	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
+	if err != nil {
+		return err
+	}
+	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCert)
+	if err != nil {
+		return err
+	}
+
+	//Sign the node cert reqs
+	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, permissioningKey)
+	if err != nil {
+		jww.ERROR.Printf("Failed to sign node certificate: %v", err)
+		return err
+	}
+
+	//Sign the gateway cert reqs
+	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, permissioningKey)
+	if err != nil {
+		return err
+	}
 
 	// Attempt to insert Node into the database
-	err := database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, NodeTLSCert, GatewayTLSCert)
+	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
 	if err != nil {
 		jww.ERROR.Printf("Unable to insert node: %+v", err)
 		return err
@@ -109,10 +138,11 @@ func broadcastTopology(topology *mixmessages.NodeTopology) error {
 // node info in the database and other input params
 func getNodeInfo(dbNodeInfo *database.NodeInformation, index int) *mixmessages.NodeInfo {
 	nodeInfo := mixmessages.NodeInfo{
-		Id:        dbNodeInfo.Id,
-		Index:     uint32(index),
-		IpAddress: dbNodeInfo.Address,
-		TlsCert:   dbNodeInfo.NodeCertificate,
+		Id:             dbNodeInfo.Id,
+		Index:          uint32(index),
+		IpAddress:      dbNodeInfo.Address,
+		ServerTlsCert:  dbNodeInfo.NodeCertificate,
+		GatewayTlsCert: dbNodeInfo.GatewayCertificate,
 	}
 	return &nodeInfo
 }
