@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	jww "github.com/spf13/jwalterweatherman"
 	"math/big"
 	"time"
 )
