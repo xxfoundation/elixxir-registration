@@ -89,3 +89,7 @@ func TestSign_VerifySignatureFailure(t *testing.T) {
 		t.Errorf("Failed to detect a certificate not signed by the root CA")
 	}
 }
+
+func TestDSAKeyCert(t *testing.T) {
+
+}

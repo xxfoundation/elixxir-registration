@@ -28,7 +28,7 @@ var permissioningKey *rsa.PrivateKey
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
-	//Load the node and gateway's csr's
+	//Load the node and gateway's cert's
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
 		return err
@@ -37,10 +37,6 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	if err != nil {
 		return err
 	}
-
-	//Create certificate templates for gateway & node
-
-	//Get the permissioning server's certificate
 
 	//Sign the node cert reqs
 	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, permissioningKey)
