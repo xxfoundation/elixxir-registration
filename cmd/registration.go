@@ -10,11 +10,13 @@ package cmd
 
 import (
 	"crypto/rand"
+	"crypto/x509"
 	"errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/signature"
+	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
 )
@@ -53,6 +55,18 @@ func StartRegistration(params Params) {
 	key, err := ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
 	if err != nil {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
+	}
+
+	//Set globals for permissioning server
+	permissioningCert, err := x509.ParseCertificate(cert)
+	if err != nil {
+		jww.ERROR.Printf("Failed to parse permissioning server's cert: %+v. Permissioning cert is %+v",
+			err, permissioningCert)
+	}
+	permissioningKey, err := rsa.LoadPrivateKeyFromPem(key)
+	if err != nil {
+		jww.ERROR.Printf("Failed to parse permissioning server's key: %+v. PermissioningKey is %+v",
+			err, permissioningKey)
 	}
 
 	// Start the communication server
