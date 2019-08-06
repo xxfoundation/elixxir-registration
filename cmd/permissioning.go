@@ -40,7 +40,6 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 
 	//Create certificate templates for gateway & node
 
-
 	//Get the permissioning server's certificate
 
 	//Sign the node cert reqs
