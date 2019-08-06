@@ -27,7 +27,6 @@ func Sign(clientCSR *x509.CertificateRequest, caCert *x509.Certificate, caPrivKe
 	//Make sure that the csr is valid
 	err := clientCSR.CheckSignature()
 	if err != nil {
-		jww.ERROR.Println(err.Error())
 		return "", err
 
 	}

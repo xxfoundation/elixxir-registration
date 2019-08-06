@@ -61,7 +61,6 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeCSR,
 	//Sign the gateway cert reqs
 	signedGatewayCert, err := certAuthority.Sign(gatewayCSR, permissioningCert, permissioningKey)
 	if err != nil {
-		jww.ERROR.Printf("Failed to gateway node certificate: %v", err)
 		return err
 	}
 
