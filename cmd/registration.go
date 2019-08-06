@@ -55,6 +55,10 @@ func StartRegistration(params Params) {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
 	}
 
+	//Set globals for permissioning server
+	permissioningCertBytes = cert
+	permissioningKeyBytes = key
+
 	// Start the communication server
 	registrationImpl.Comms = registration.StartRegistrationServer(params.Address,
 		NewRegistrationImpl(), cert, key)

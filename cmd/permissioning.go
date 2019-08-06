@@ -9,21 +9,77 @@
 package cmd
 
 import (
+	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
 )
 
+var permissioningCertBytes []byte
+var permissioningKeyBytes []byte
+
 // Handle registration attempt by a Node
-func (m *RegistrationImpl) RegisterNode(ID []byte, NodeTLSCert,
-	GatewayTLSCert, RegistrationCode, Addr string) error {
+func (m *RegistrationImpl) RegisterNode(ID []byte, NodeCSR,
+	GatewayCSR, RegistrationCode, Addr string) error {
+	//Load the node and gateway's csr's
+	nodeCSR, err := tls.LoadCSR(NodeCSR)
+	if err != nil {
+		jww.ERROR.Printf("Failed to load node's certificate request: %v", err)
+		return err
+	}
+	gatewayCSR, err := tls.LoadCSR(GatewayCSR)
+	if err != nil {
+		jww.ERROR.Printf("Failed to load gateway's certificate request: %v", err)
+		return nil
+	}
+
+	//Create certificate templates for gateway & node
+	nodeCertTemplate := certAuthority.CreateCertTemplate(nodeCSR)
+
+	//Connect back to the node using the unsigned cert
+	nodePemCertTmp := pem.EncodeToMemory(&pem.Block{Type: "Certificate", Bytes: nodeCertTemplate.Raw})
+	err = m.Comms.ConnectToNode(connectionID(ID), Addr, nodePemCertTmp)
+	if err != nil {
+		jww.ERROR.Printf("Failed to connect to node: %v", err)
+		return err
+	}
+
+	//Get the permissioning server's certificate
+	permissioningCert, err := x509.ParseCertificate(permissioningCertBytes)
+	if err != nil {
+		jww.ERROR.Printf("Failed to parse permissioning server's certificate: %v", err)
+		return nil
+	}
+	//Get the permissioning server's private key
+	permissioningKey, err := rsa.LoadPrivateKeyFromPem(permissioningKeyBytes)
+	if err != nil {
+		jww.ERROR.Printf("Failed to parse permissioning server's key: %v", err)
+	}
+
+	//Sign the node cert reqs
+	signedNodeCert, err := certAuthority.Sign(nodeCSR, permissioningCert, permissioningKey)
+	if err != nil {
+		jww.ERROR.Printf("Failed to sign node certificate: %v", err)
+		return err
+	}
+
+	//Sign the gateway cert reqs
+	signedGatewayCert, err := certAuthority.Sign(gatewayCSR, permissioningCert, permissioningKey)
+	if err != nil {
+		jww.ERROR.Printf("Failed to gateway node certificate: %v", err)
+		return err
+	}
 
 	// Attempt to insert Node into the database
-	err := database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, NodeTLSCert, GatewayTLSCert)
+	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
 	if err != nil {
 		jww.ERROR.Printf("Unable to insert node: %+v", err)
 		return err
@@ -109,10 +165,11 @@ func broadcastTopology(topology *mixmessages.NodeTopology) error {
 // node info in the database and other input params
 func getNodeInfo(dbNodeInfo *database.NodeInformation, index int) *mixmessages.NodeInfo {
 	nodeInfo := mixmessages.NodeInfo{
-		Id:        dbNodeInfo.Id,
-		Index:     uint32(index),
-		IpAddress: dbNodeInfo.Address,
-		TlsCert:   dbNodeInfo.NodeCertificate,
+		Id:             dbNodeInfo.Id,
+		Index:          uint32(index),
+		IpAddress:      dbNodeInfo.Address,
+		ServerTlsCert:  dbNodeInfo.NodeCertificate,
+		GatewayTlsCert: dbNodeInfo.GatewayCertificate,
 	}
 	return &nodeInfo
 }
