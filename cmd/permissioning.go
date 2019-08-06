@@ -23,8 +23,8 @@ import (
 	"io/ioutil"
 )
 
-var permissioningCertBytes []byte
-var permissioningKeyBytes []byte
+var permissioningCert *x509.Certificate
+var permissioningKey *rsa.PrivateKey
 
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, NodeCSR,
@@ -32,13 +32,11 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeCSR,
 	//Load the node and gateway's csr's
 	nodeCSR, err := tls.LoadCSR(NodeCSR)
 	if err != nil {
-		jww.ERROR.Printf("Failed to load node's certificate request: %v", err)
 		return err
 	}
 	gatewayCSR, err := tls.LoadCSR(GatewayCSR)
 	if err != nil {
-		jww.ERROR.Printf("Failed to load gateway's certificate request: %v", err)
-		return nil
+		return err
 	}
 
 	//Create certificate templates for gateway & node
@@ -48,21 +46,10 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, NodeCSR,
 	nodePemCertTmp := pem.EncodeToMemory(&pem.Block{Type: "Certificate", Bytes: nodeCertTemplate.Raw})
 	err = m.Comms.ConnectToNode(connectionID(ID), Addr, nodePemCertTmp)
 	if err != nil {
-		jww.ERROR.Printf("Failed to connect to node: %v", err)
 		return err
 	}
 
 	//Get the permissioning server's certificate
-	permissioningCert, err := x509.ParseCertificate(permissioningCertBytes)
-	if err != nil {
-		jww.ERROR.Printf("Failed to parse permissioning server's certificate: %v", err)
-		return nil
-	}
-	//Get the permissioning server's private key
-	permissioningKey, err := rsa.LoadPrivateKeyFromPem(permissioningKeyBytes)
-	if err != nil {
-		jww.ERROR.Printf("Failed to parse permissioning server's key: %v", err)
-	}
 
 	//Sign the node cert reqs
 	signedNodeCert, err := certAuthority.Sign(nodeCSR, permissioningCert, permissioningKey)
