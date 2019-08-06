@@ -11,7 +11,6 @@ package cmd
 import (
 	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
@@ -34,7 +33,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	if err != nil {
 		return err
 	}
-	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCertCert)
+	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCert)
 	if err != nil {
 		return err
 	}

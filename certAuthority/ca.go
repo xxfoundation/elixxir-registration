@@ -1,7 +1,6 @@
 package certAuthority
 
 import (
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -17,7 +16,6 @@ func Sign(clientCert *x509.Certificate, caCert *x509.Certificate, caPrivKey inte
 	//Check that loadPrivateKey returned an expected interface
 	switch caPrivKey.(type) {
 	case *rsa.PrivateKey:
-	case *ecdsa.PrivateKey:
 	default:
 		err := errors.New("Not an expected key type")
 		return "", err
