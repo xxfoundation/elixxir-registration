@@ -5,8 +5,8 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"golang.org/x/tools/go/ssa/interp/testdata/src/errors"
 	"math/big"
 	"time"
 )
@@ -20,8 +20,7 @@ func Sign(clientCSR *x509.CertificateRequest, caCert *x509.Certificate, caPrivKe
 	switch caPrivKey.(type) {
 	case *rsa.PrivateKey:
 	default:
-		jww.ERROR.Println("Not an expected key type")
-		err := errors.New("Not an expected key type (expected rsa")
+		err := errors.New("Not an expected key type, expected rsa")
 		return "", err
 	}
 
@@ -40,7 +39,6 @@ func Sign(clientCSR *x509.CertificateRequest, caCert *x509.Certificate, caPrivKe
 	//and private key given as the last 2 args
 	clientSignedCertBytes, err := x509.CreateCertificate(rand.Reader, clientCertTemplate, caCert, clientCertTemplate.PublicKey, caPrivKey)
 	if err != nil {
-		jww.ERROR.Printf(err.Error())
 		return "", err
 	}
 
