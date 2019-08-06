@@ -1,7 +1,6 @@
 package certAuthority
 
 import (
-	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
