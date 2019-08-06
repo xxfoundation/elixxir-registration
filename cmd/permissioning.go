@@ -27,39 +27,32 @@ var permissioningCert *x509.Certificate
 var permissioningKey *rsa.PrivateKey
 
 // Handle registration attempt by a Node
-func (m *RegistrationImpl) RegisterNode(ID []byte, NodeCSR,
-	GatewayCSR, RegistrationCode, Addr string) error {
+func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
+	GatewayTlsCert, RegistrationCode, Addr string) error {
 	//Load the node and gateway's csr's
-	nodeCSR, err := tls.LoadCSR(NodeCSR)
+	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
 		return err
 	}
-	gatewayCSR, err := tls.LoadCSR(GatewayCSR)
+	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCertCert)
 	if err != nil {
 		return err
 	}
 
 	//Create certificate templates for gateway & node
-	nodeCertTemplate := certAuthority.CreateCertTemplate(nodeCSR)
 
-	//Connect back to the node using the unsigned cert
-	nodePemCertTmp := pem.EncodeToMemory(&pem.Block{Type: "Certificate", Bytes: nodeCertTemplate.Raw})
-	err = m.Comms.ConnectToNode(connectionID(ID), Addr, nodePemCertTmp)
-	if err != nil {
-		return err
-	}
 
 	//Get the permissioning server's certificate
 
 	//Sign the node cert reqs
-	signedNodeCert, err := certAuthority.Sign(nodeCSR, permissioningCert, permissioningKey)
+	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, permissioningKey)
 	if err != nil {
 		jww.ERROR.Printf("Failed to sign node certificate: %v", err)
 		return err
 	}
 
 	//Sign the gateway cert reqs
-	signedGatewayCert, err := certAuthority.Sign(gatewayCSR, permissioningCert, permissioningKey)
+	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, permissioningKey)
 	if err != nil {
 		return err
 	}
