@@ -9,7 +9,7 @@
 package cmd
 
 import (
-	"crypto"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
@@ -23,7 +23,7 @@ import (
 )
 
 var permissioningCert *x509.Certificate
-var permissioningKey crypto.PrivateKey
+var permissioningKey *rsa.PrivateKey
 
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
