@@ -9,14 +9,15 @@
 package cmd
 
 import (
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
@@ -28,6 +29,14 @@ var permissioningKey *rsa.PrivateKey
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
+
+	// Connect back to the Node using the provided certificate
+	err := m.Comms.ConnectToNode(id.NewNodeFromBytes(ID), Addr,
+		[]byte(ServerTlsCert))
+	if err != nil {
+		jww.ERROR.Printf("Failed to return connection to Node: %+v", err)
+		return err
+	}
 
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
@@ -126,7 +135,7 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, error) {
 func broadcastTopology(topology *mixmessages.NodeTopology) error {
 	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
 	for _, nodeInfo := range topology.Topology {
-		err := registrationImpl.Comms.SendNodeTopology(connectionID(nodeInfo.
+		err := registrationImpl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.
 			Id), topology)
 		if err != nil {
 			return errors.New(fmt.Sprintf(
