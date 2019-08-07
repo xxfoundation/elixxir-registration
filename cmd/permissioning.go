@@ -135,7 +135,7 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, error) {
 func broadcastTopology(topology *mixmessages.NodeTopology) error {
 	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
 	for _, nodeInfo := range topology.Topology {
-		err := registrationImpl.Comms.SendNodeTopology(connectionID(nodeInfo.
+		err := registrationImpl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.
 			Id), topology)
 		if err != nil {
 			return errors.New(fmt.Sprintf(
