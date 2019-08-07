@@ -28,26 +28,28 @@ var permissioningKey *rsa.PrivateKey
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
-	//Load the node and gateway's cert's
+
+	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
+		jww.ERROR.Printf("Failed to load node certificate: %v", err)
 		return err
 	}
 	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCert)
 	if err != nil {
+		jww.ERROR.Printf("Failed to load gateway certificate: %v", err)
 		return err
 	}
 
-	//Sign the node cert reqs
+	// Sign the node and gateway certs
 	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, permissioningKey)
 	if err != nil {
 		jww.ERROR.Printf("Failed to sign node certificate: %v", err)
 		return err
 	}
-
-	//Sign the gateway cert reqs
 	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, permissioningKey)
 	if err != nil {
+		jww.ERROR.Printf("Failed to sign gateway certificate: %v", err)
 		return err
 	}
 
