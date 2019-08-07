@@ -14,6 +14,8 @@ cMix
 verbose: "true"
 # Path to log file
 logPath: "registration.log"
+# Path to the node topology permissioning info
+ndfOutputPath:
 
 # The listening port of this  server
 port: 11420
@@ -35,7 +37,5 @@ registrationCodes:
 keyPath: ""
 # Path to the permissioning server certificate file
 certPath: ""
-# Path to the node topology permissioning info
-ndfOutputPath:
 ```
 

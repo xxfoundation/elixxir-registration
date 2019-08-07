@@ -57,13 +57,13 @@ func StartRegistration(params Params) {
 	}
 
 	// Set globals for permissioning server
-	permissioningCert, err := tls.LoadCertificate(string(cert))
+	permissioningCert, err = tls.LoadCertificate(string(cert))
 	if err != nil {
 		jww.ERROR.Printf("Failed to parse permissioning server cert: %+v. "+
 			"Permissioning cert is %+v",
 			err, permissioningCert)
 	}
-	permissioningKey, err := tls.LoadPrivateKey(string(key))
+	permissioningKey, err = tls.LoadRSAPrivateKey(string(key))
 	if err != nil {
 		jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
 			"PermissioningKey is %+v",
