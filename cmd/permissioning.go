@@ -9,13 +9,13 @@
 package cmd
 
 import (
+	"crypto"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/database"
@@ -23,7 +23,7 @@ import (
 )
 
 var permissioningCert *x509.Certificate
-var permissioningKey *rsa.PrivateKey
+var permissioningKey crypto.PrivateKey
 
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,

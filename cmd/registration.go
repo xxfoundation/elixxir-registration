@@ -15,7 +15,6 @@ import (
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/signature"
-	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
@@ -57,15 +56,17 @@ func StartRegistration(params Params) {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
 	}
 
-	//Set globals for permissioning server
+	// Set globals for permissioning server
 	permissioningCert, err := tls.LoadCertificate(string(cert))
 	if err != nil {
-		jww.ERROR.Printf("Failed to parse permissioning server's cert: %+v. Permissioning cert is %+v",
+		jww.ERROR.Printf("Failed to parse permissioning server cert: %+v. "+
+			"Permissioning cert is %+v",
 			err, permissioningCert)
 	}
-	permissioningKey, err := rsa.LoadPrivateKeyFromPem(key)
+	permissioningKey, err := tls.LoadPrivateKey(string(key))
 	if err != nil {
-		jww.ERROR.Printf("Failed to parse permissioning server's key: %+v. PermissioningKey is %+v",
+		jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
+			"PermissioningKey is %+v",
 			err, permissioningKey)
 	}
 
