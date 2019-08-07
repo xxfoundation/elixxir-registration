@@ -16,6 +16,7 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/certAuthority"
@@ -169,7 +170,7 @@ func outputNodeTopologyToJSON(topology *mixmessages.NodeTopology, filePath strin
 	}
 
 	// Write JSON to file
-	err = ioutil.WriteFile(filePath, data, 0644)
+	err = ioutil.WriteFile(utils.GetFullPath(filePath), data, 0644)
 	if err != nil {
 		return err
 	}
