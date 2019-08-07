@@ -96,7 +96,7 @@ func TestDSAKeyCert(t *testing.T) {
 	caCert := loadCertificate(testkeys.GetCACertPath())
 	caPrivKey := loadPrivKey(testkeys.GetDSAKeyPath())
 
-	_, err := Sign(clientCert,caCert,caPrivKey)
+	_, err := Sign(clientCert, caCert, caPrivKey)
 	if err == nil {
 		t.Error("Failed to detect a DSA private key")
 	}

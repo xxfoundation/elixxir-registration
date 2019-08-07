@@ -9,13 +9,15 @@
 package cmd
 
 import (
+	"crypto"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
-	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
@@ -84,37 +86,44 @@ func NewRegistrationImpl() *RegistrationImpl {
 }
 
 // Handle registration attempt by a Client
-func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
-	G []byte) (hash, R, S []byte, err error) {
+//TODO: remove the args and returns, removing y,p,q,g, only return the signed public key
+func (m *RegistrationImpl) RegisterUser(registrationCode string, rsaPEMBlock []byte) (H, S []byte, err error) {
 
 	// Check database to verify given registration code
 	err = database.PermissioningDb.UseCode(registrationCode)
 	if err != nil {
 		// Invalid registration code, return an error
 		jww.ERROR.Printf("Error validating registration code: %s", err)
-		return make([]byte, 0), make([]byte, 0), make([]byte, 0), err
+		return make([]byte, 0), make([]byte, 0), err
+	}
+	//RSA signature's in PEM format for RSA signature, in which you can apparentally pull the hash from
+	//TODO: Change this so that it preps a signature option for privKey.Sign()
+	//Concatenate Client public key byte slices
+
+	//Pull the signature option from the pem block
+	block, _ := pem.Decode(rsaPEMBlock)
+	if block == nil {
+		err := fmt.Sprintf("failed to parse PEM block containing the key")
+		return nil, nil, errors.New(err)
+	}
+	//pull the public key from the byte slice..need??
+	rsaPubKey, err := x509.ParsePKCS1PublicKey(rsaPEMBlock)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	// Concatenate Client public key byte slices
-	data := make([]byte, 0)
-	data = append(data, Y...)
-	data = append(data, P...)
-	data = append(data, Q...)
-	data = append(data, G...)
-	var lol signature.DSAPrivateKey
-	lol.Sign()
-
+	//What hash to use??
 	// Use hardcoded keypair to sign Client-provided public key
-	sig, err := privateKey.Sign(data, rand.Reader)
+	sig, err := privateKey.Sign(rand.Reader, rsaPEMBlock, crypto.BLAKE2b_256)
 	if err != nil {
 		// Unable to sign public key, return an error
 		jww.ERROR.Printf("Error signing client public key: %s", err)
-		return make([]byte, 0), make([]byte, 0), make([]byte, 0),
+		return make([]byte, 0), make([]byte, 0),
 			errors.New("unable to sign client public key")
 	}
 
 	// Return signed public key to Client with empty error field
 	jww.INFO.Printf("Verification complete for registration code %s",
 		registrationCode)
-	return data, sig.R.Bytes(), sig.S.Bytes(), nil
+	return data, sig, nil
 }
