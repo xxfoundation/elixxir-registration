@@ -10,12 +10,14 @@ package cmd
 
 import (
 	"crypto/rand"
-	"crypto/x509"
+	"encoding/pem"
 	"errors"
+	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
 )
@@ -47,30 +49,40 @@ func (c connectionID) String() string {
 func StartRegistration(params Params) {
 
 	// Read in TLS keys from files
+	fmt.Println(params.KeyPath)
 	cert, err := ioutil.ReadFile(utils.GetFullPath(params.CertPath))
 	if err != nil {
 		jww.ERROR.Printf("failed to read certificate at %s: %+v", params.CertPath, err)
 	}
+	fmt.Printf("cert is %+v", cert)
 	key, err := ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
 	if err != nil {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
 	}
 	//Set globals for permissioning server
-	permissioningCert, err := x509.ParseCertificate(cert)
+	fmt.Println(cert)
+	permissioningCert, err = tls.LoadCertificate(string(cert))
 	if err != nil {
-		jww.ERROR.Printf("Failed to parse permissioning server's cert: %+v. Permissioning cert is %+v",
-			err, permissioningCert)
+		jww.ERROR.Printf("Failed to parse permissioning server's cert: %+v",
+			err)
 	}
+	fmt.Println(key)
 	permissioningKey, err := rsa.LoadPrivateKeyFromPem(key)
 	if err != nil {
 		jww.ERROR.Printf("Failed to parse permissioning server's key: %+v. PermissioningKey is %+v",
 			err, permissioningKey)
 	}
+	pemDecodedKey, rest := pem.Decode(key)
+	//TODO figure out how to handle the rest error
+	if len(rest) != 0 {
+		jww.ERROR.Printf("Rest is not nil: %+v", rest)
+	}
+
 
 	// Start the communication server
 	//Make the changes for download topology, now have to return the signed message as well...
 	registrationImpl.Comms = registration.StartRegistrationServer(params.Address,
-		NewRegistrationImpl(), cert, key)
+		NewRegistrationImpl(), cert, pemDecodedKey.Bytes)
 
 	// Wait forever to prevent process from ending
 	select {}

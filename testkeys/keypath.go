@@ -50,3 +50,7 @@ func GetCertPath_PreviouslySigned() string {
 func GetDSAKeyPath() string {
 	return filepath.Join(getDirForFile(), "dsaKey.pem")
 }
+
+func GetNDFPath() string {
+	return filepath.Join(getDirForFile(), "ndf.json")
+}

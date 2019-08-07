@@ -42,8 +42,8 @@ func loadPrivKey(file string) interface{} {
 		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
 	}
 
-	//Openssl creates pkcs8 keys by default as of openSSL 1.0.0
-	privateKey, err := x509.ParsePKCS8PrivateKey(certDecoded.Bytes)
+	//Openssl creates pkcs8 keys by default as of openSSL 1.0.0 need to be able to handle both
+	privateKey, err := x509.ParsePKCS8PrivateKey(pemEncodedBlock)
 
 	if err != nil {
 		jww.ERROR.Printf(err.Error())

@@ -11,6 +11,7 @@ package cmd
 import (
 	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
@@ -60,12 +61,18 @@ var rootCmd = &cobra.Command{
 		privateKey = &rsa.PrivateKey{}
 		//TODO add a pem decode function in crypto, or as if we even need pemDecode anymore (probs the second)
 		//how to build the private??
-		tmpKey, err := x509.ParsePKCS1PrivateKey(rsaKeyBytes)
+		//Do I need to pem decode?
+		decodedKey, rest := pem.Decode(rsaKeyBytes)
+		if rest != nil {
+			//TODO find the reference/link that has the more appropriate error msg
+			jww.ERROR.Printf("PEM Block contains more than one key")
+		}
+		tmpKey, err := x509.ParsePKCS1PrivateKey(decodedKey.Bytes)
 		if err != nil {
 			jww.FATAL.Panicf("Unable to parse permissioning private key: %+v",
 				err)
 		}
-		//FIXME: figure out why you can't set privatekey equal to parse w/o it yelling at you
+		//FIXME: figure out why you can't set privatekey as above w/o the IDE yelling at you
 		privateKey.PrivateKey = *tmpKey
 
 		// Parse config file options
