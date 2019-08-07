@@ -72,7 +72,7 @@ func StartRegistration(params Params) {
 
 	// Start the communication server
 	registrationImpl.Comms = registration.StartRegistrationServer(params.Address,
-		NewRegistrationImpl(), cert, key)
+		&registrationImpl, cert, key)
 
 	// Wait forever to prevent process from ending
 	select {}
