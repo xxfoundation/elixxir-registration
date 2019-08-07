@@ -9,13 +9,13 @@
 package cmd
 
 import (
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
-	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
@@ -44,14 +44,14 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Get the RSA private key
-		saKeyBytes, err := ioutil.ReadFile(rsaKeyPairPath)
+		rsaKeyBytes, err := ioutil.ReadFile(rsaKeyPairPath)
 		if err != nil {
 			jww.FATAL.Panicf("Could not read rsa keys file: %v", err)
 		}
 
 		// Marshall into JSON
 		var data map[string]string
-		err = json.Unmarshal(saKeyBytes, &data)
+		err = json.Unmarshal(rsaKeyBytes, &data)
 		if err != nil {
 			jww.FATAL.Panicf("Could not unmarshal rsa keys file: %v", err)
 		}
@@ -59,11 +59,14 @@ var rootCmd = &cobra.Command{
 		// Build the private key
 		privateKey = &rsa.PrivateKey{}
 		//TODO add a pem decode function in crypto, or as if we even need pemDecode anymore (probs the second)
-		privateKey, err = privateKey.PemDecode([]byte(data["PrivateKey"]))
+		//how to build the private??
+		tmpKey, err := x509.ParsePKCS1PrivateKey(rsaKeyBytes)
 		if err != nil {
 			jww.FATAL.Panicf("Unable to parse permissioning private key: %+v",
 				err)
 		}
+		//FIXME: figure out why you can't set privatekey equal to parse w/o it yelling at you
+		privateKey.PrivateKey = *tmpKey
 
 		// Parse config file options
 		certPath := viper.GetString("certPath")
