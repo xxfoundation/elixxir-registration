@@ -91,6 +91,7 @@ func completeNodeRegistration() {
 	if err != nil {
 		jww.FATAL.Panicf("Error completing node registration: %+v", err)
 	}
+	jww.INFO.Printf("Node registration complete!")
 }
 
 // Once all nodes have registered, this function is triggered
