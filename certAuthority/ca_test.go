@@ -3,7 +3,6 @@ package certAuthority
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/testkeys"
@@ -39,22 +38,15 @@ func loadPrivKey(file string) interface{} {
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
-fmt.Println(pemEncodedBlock)
-	certDecoded, rest := pem.Decode(pemEncodedBlock)
+	certDecoded, _ := pem.Decode(pemEncodedBlock)
 	if certDecoded == nil {
 		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
 	}
-	fmt.Println(rest)
-	fmt.Println(certDecoded)
-	fmt.Println(certDecoded.Type)
-	fmt.Println(certDecoded.Headers)
-	fmt.Println("parsing")
 	//Openssl creates pkcs8 keys by default as of openSSL 1.0.0 need to be able to handle both
 	privateKey, err := x509.ParsePKCS8PrivateKey(certDecoded.Bytes)
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
-	fmt.Println("end parsing")
 	return privateKey
 }
 
@@ -69,9 +61,6 @@ func ConvertToASNBytes(pemString string) *pem.Block {
 func TestSign_CheckSignature(t *testing.T) {
 	//Load files
 	clientCert := loadCertificate(testkeys.GetNodeCertPath())
-	fmt.Println("pulling key")
-	_ = loadPrivKey(testkeys.GetNodeKeyPath())
-	fmt.Println("end pulling key")
 	caCert := loadCertificate(testkeys.GetCACertPath())
 	pemKey, _ := ioutil.ReadFile(testkeys.GetCAKeyPath())
 	caPrivKey, _ := tls.LoadRSAPrivateKey(string(pemKey))

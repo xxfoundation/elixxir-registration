@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-func TestKey(t *testing.T){
+func TestKey(t *testing.T) {
 	privKeyBytes, err := ioutil.ReadFile(testkeys.GetNodeKeyPath())
 	if err != nil {
 		t.Error("Failed to open file in testKeys")
@@ -24,10 +24,10 @@ func TestKey(t *testing.T){
 	newImpl := NewRegistrationImpl()
 	fmt.Println(newImpl)
 	testParams := Params{
-		Address:"0.0.0.0:5800",
-		CertPath:testkeys.GetNodeCertPath(),
-		KeyPath:testkeys.GetNodeKeyPath(),
-		NdfOutputPath:testkeys.GetNDFPath(),
+		Address:       "0.0.0.0:5800",
+		CertPath:      testkeys.GetNodeCertPath(),
+		KeyPath:       testkeys.GetNodeKeyPath(),
+		NdfOutputPath: testkeys.GetNDFPath(),
 	}
 
 	StartRegistration(testParams)
