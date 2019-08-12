@@ -9,15 +9,14 @@
 package cmd
 
 import (
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
 	"os"
@@ -47,14 +46,14 @@ var rootCmd = &cobra.Command{
 		// Get the RSA private key
 		rsaKeyBytes, err := ioutil.ReadFile(rsaKeyPairPath)
 		if err != nil {
-			jww.FATAL.Panicf("Could not read rsa keys file: %v", err)
+			jww.FATAL.Panicf("could not read rsa keys file: %v", err)
 		}
 
 		// Marshall into JSON
 		var data map[string]string
 		err = json.Unmarshal(rsaKeyBytes, &data)
 		if err != nil {
-			jww.FATAL.Panicf("Could not unmarshal rsa keys file: %v", err)
+			jww.FATAL.Panicf("could not unmarshal rsa keys file: %v", err)
 		}
 
 		// Build the private key
@@ -62,15 +61,10 @@ var rootCmd = &cobra.Command{
 		//TODO add a pem decode function in crypto, or as if we even need pemDecode anymore (probs the second)
 		//how to build the private??
 		//Do I need to pem decode?
-		decodedKey, rest := pem.Decode(rsaKeyBytes)
-		if rest != nil {
-			//TODO find the reference/link that has the more appropriate error msg
-			jww.ERROR.Printf("PEM Block contains more than one key")
-		}
-		tmpKey, err := x509.ParsePKCS1PrivateKey(decodedKey.Bytes)
+		//TODO Change this to use the loadPrivateKey function, handle it properly
+		tmpKey, err := tls.LoadRSAPrivateKey(string(rsaKeyBytes))
 		if err != nil {
-			jww.FATAL.Panicf("Unable to parse permissioning private key: %+v",
-				err)
+			jww.FATAL.Printf("failed to load private key: %+v",err)
 		}
 		//FIXME: figure out why you can't set privatekey as above w/o the IDE yelling at you
 		privateKey.PrivateKey = *tmpKey

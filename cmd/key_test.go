@@ -24,11 +24,16 @@ func TestKey(t *testing.T){
 	newImpl := NewRegistrationImpl()
 	fmt.Println(newImpl)
 	testParams := Params{
-		Address:"0.0.0.0:5800",
-		CertPath:testkeys.GetNodeCertPath(),
-		KeyPath:testkeys.GetNodeKeyPath(),
+		Address:"0.0.0.0:5900",
+		CertPath:testkeys.GetCACertPath(),
+		KeyPath:testkeys.GetCAKeyPath(),
 		NdfOutputPath:testkeys.GetNDFPath(),
 	}
-
+	//thow in waitgroup, listen for outputs
 	StartRegistration(testParams)
+/*
+	serverCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
+	gateway, _ := ioutil.ReadFile(testkeys.GetNodeKeyPath())
+	newImpl.RegisterUser()
+	newImpl.RegisterNode(connectionID(0), string(serverCert), )*/
 }
