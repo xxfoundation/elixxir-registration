@@ -32,7 +32,7 @@ func (m *DatabaseImpl) InsertNode(id []byte, code, address,
 	nodeInfo.Address = address
 	nodeInfo.NodeCertificate = nodeCert
 	nodeInfo.GatewayCertificate = gatewayCert
-	err = m.db.Update(nodeInfo)
+	err = m.db.Update(&nodeInfo)
 	return err
 }
 
