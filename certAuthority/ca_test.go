@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/testkeys"
 	"io/ioutil"
 	"testing"
@@ -63,7 +64,8 @@ func TestSign_CheckSignature(t *testing.T) {
 	//Load files
 	clientCert := loadCertificate(testkeys.GetNodeCertPath())
 	caCert := loadCertificate(testkeys.GetCACertPath())
-	caPrivKey := loadPrivKey(testkeys.GetCAKeyPath())
+	pemKey, _ := ioutil.ReadFile(testkeys.GetCAKeyPath())
+	caPrivKey, _ := tls.LoadRSAPrivateKey(string(pemKey))
 
 	signedCertString, _ := Sign(clientCert, caCert, caPrivKey)
 	signedCertBytes := ConvertToASNBytes(signedCertString)
