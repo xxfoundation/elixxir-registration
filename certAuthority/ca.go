@@ -14,18 +14,20 @@ import (
 func Sign(clientCert *x509.Certificate, caCert *x509.Certificate, caPrivKey interface{}) (string, error) {
 	//Load certs and keys
 	//Check that loadPrivateKey returned an expected interface
+	var rsaKey *rsa.PrivateKey
 	switch caPrivKey.(type) {
 	case *rsa.PrivateKey:
 	default:
 		err := errors.New("Not an expected key type")
 		return "", err
 	}
-
 	//Create a template certificate to be used in the signing of the clients CSR
+	rsaKey = caPrivKey.(*rsa.PrivateKey)
 
 	//Sign the certificate using the caCert as the parent certificate. This takes a generic interface for the public
 	//and private key given as the last 2 args
-	clientSignedCertBytes, err := x509.CreateCertificate(rand.Reader, clientCert, caCert, clientCert.PublicKey, caPrivKey)
+
+	clientSignedCertBytes, err := x509.CreateCertificate(rand.Reader, clientCert, caCert, clientCert.PublicKey, rsaKey)
 	if err != nil {
 		return "", err
 	}

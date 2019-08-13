@@ -1,6 +1,7 @@
 package testkeys
 
 import (
+	"fmt"
 	"path/filepath"
 	"runtime"
 )
@@ -52,5 +53,6 @@ func GetDSAKeyPath() string {
 }
 
 func GetNDFPath() string {
+	fmt.Println(filepath.Join(getDirForFile(), "ndf.json"))
 	return filepath.Join(getDirForFile(), "ndf.json")
 }

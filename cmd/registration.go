@@ -55,9 +55,9 @@ func StartRegistration(params Params) {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
 	}
 
-
 	// Start the communication server
 	//Make the changes for download topology, now have to return the signed message as well...
+	//NOTE: see setPrviateKey
 	registrationImpl.Comms = registration.StartRegistrationServer(params.Address,
 		&registrationImpl, cert, key)
 

@@ -64,10 +64,11 @@ var rootCmd = &cobra.Command{
 		//TODO Change this to use the loadPrivateKey function, handle it properly
 		tmpKey, err := tls.LoadRSAPrivateKey(string(rsaKeyBytes))
 		if err != nil {
-			jww.FATAL.Printf("failed to load private key: %+v",err)
+			jww.FATAL.Printf("failed to load private key: %+v", err)
 		}
 		//FIXME: figure out why you can't set privatekey as above w/o the IDE yelling at you
-		privateKey.PrivateKey = *tmpKey
+		//privateKey.PrivateKey = *tmpKey
+		privateKey = &rsa.PrivateKey{*tmpKey}
 
 		// Parse config file options
 		certPath := viper.GetString("certPath")

@@ -33,25 +33,21 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	if err != nil {
 		return err
 	}
-
 	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCert)
 	if err != nil {
 		return err
 	}
-
 	//Sign the node cert reqs
-	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, permissioningKey)
+	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, &permissioningKey.PrivateKey)
 	if err != nil {
 		jww.ERROR.Printf("Failed to sign node certificate: %v", err)
 		return err
 	}
-
 	//Sign the gateway cert reqs
-	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, permissioningKey)
+	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, &permissioningKey.PrivateKey)
 	if err != nil {
 		return err
 	}
-
 	// Attempt to insert Node into the database
 	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
 	if err != nil {

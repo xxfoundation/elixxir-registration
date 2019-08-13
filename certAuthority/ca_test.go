@@ -39,7 +39,7 @@ func loadPrivKey(file string) interface{} {
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
-fmt.Println(pemEncodedBlock)
+	fmt.Println(pemEncodedBlock)
 	certDecoded, rest := pem.Decode(pemEncodedBlock)
 	if certDecoded == nil {
 		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
