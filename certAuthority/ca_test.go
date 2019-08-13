@@ -3,7 +3,6 @@ package certAuthority
 import (
 	"crypto/x509"
 	"encoding/pem"
-	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/testkeys"
@@ -39,8 +38,7 @@ func loadPrivKey(file string) interface{} {
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
-	fmt.Println(pemEncodedBlock)
-	certDecoded, rest := pem.Decode(pemEncodedBlock)
+	certDecoded, _ := pem.Decode(pemEncodedBlock)
 	if certDecoded == nil {
 		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
 	}
