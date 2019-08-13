@@ -13,7 +13,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
-	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
@@ -57,6 +56,18 @@ func StartRegistration(params Params) {
 	if err != nil {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
 	}
+	//Set globals for permissioning server
+	/**tmpKey, err := tls.LoadRSAPrivateKey(string(key))
+	if err != nil {
+		jww.ERROR.Printf("Failed to parse permissioning server's key: %+v",
+			err)
+	}/**/
+
+	//pemDecodedKey, rest := pem.Decode(key)
+	//TODO figure out how to handle the rest error
+	//if len(rest) != 0 {
+	//jww.ERROR.Printf("Rest is not nil: %+v", rest)
+	//}
 
 	// Start the communication server
 	//Make the changes for download topology, now have to return the signed message as well...
