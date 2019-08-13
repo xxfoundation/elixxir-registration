@@ -91,7 +91,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 	//Reviewer: What hash to use?? is the crypto newDefaultoptions correct??
 	// Use hardcoded keypair to sign Client-provided public key
 	hashed := sha256.New().Sum([]byte(pubKey))[len(pubKey):]
-	sig, err := rsa.Sign(rand.Reader,permissioningKey,crypto.SHA256, hashed[:],rsa.NewDefaultOptions())
+	sig, err := rsa.Sign(rand.Reader, permissioningKey, crypto.SHA256, hashed[:], rsa.NewDefaultOptions())
 	if err != nil {
 		retErr := errors.New(fmt.Sprintf("unable to sign client public key: %+v", err))
 		return make([]byte, 0),

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 )
+
 //Shouldn't it call this one
 // If the given Node registration code exists,
 // insert the provided Node information

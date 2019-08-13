@@ -1,7 +1,6 @@
 package testkeys
 
 import (
-	"fmt"
 	"path/filepath"
 	"runtime"
 )
@@ -53,6 +52,9 @@ func GetDSAKeyPath() string {
 }
 
 func GetNDFPath() string {
-	fmt.Println(filepath.Join(getDirForFile(), "ndf.json"))
 	return filepath.Join(getDirForFile(), "ndf.json")
+}
+
+func GetClientPublicKey() string {
+	return filepath.Join(getDirForFile(), "cmix.public_key.pem")
 }
