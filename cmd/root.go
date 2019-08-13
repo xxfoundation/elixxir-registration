@@ -85,6 +85,7 @@ var rootCmd = &cobra.Command{
 		)
 
 		// Populate Client registration codes into the database
+		//Possible bug: I Don't believe this points to the permissioning database? Where is this going??
 		database.PopulateClientRegistrationCodes([]string{"AAAA"}, 100)
 
 		// Populate Node registration codes into the database

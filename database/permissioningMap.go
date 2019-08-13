@@ -18,7 +18,8 @@ import (
 func (m *MapImpl) InsertNode(id []byte, code, address,
 	nodeCert, gatewayCert string) error {
 	jww.INFO.Printf("Attempting to register node with code: %s", code)
-
+	fmt.Println(code)
+	fmt.Println(m.client)
 	if info := m.node[code]; info != nil {
 		info.Id = id
 		info.GatewayCertificate = gatewayCert

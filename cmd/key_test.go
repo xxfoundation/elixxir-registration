@@ -78,7 +78,6 @@ func TestEmptyDataBase(t *testing.T) {
 //Happy path: looking for a code that is in the database
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	newImpl := NewRegistrationImpl()
-
 	startPermissioningServer()
 
 	nodeCert, _ := ioutil.ReadFile((testkeys.GetNodeCertPath()))
@@ -99,7 +98,24 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 
 //Happy Path:  Insert a reg code along with a node
 func TestRegCodeExists_InsertNode(t *testing.T) {
-	//newImpl := NewRegistrationImpl()
-
+	//Iniatialize an implementation and the permissioning server
+	newImpl := NewRegistrationImpl()
 	startPermissioningServer()
+
+	//Inialiaze the database
+	nodeKey, _ := ioutil.ReadFile((testkeys.GetNodeKeyPath()))
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
+	//Insert regcodes into it
+	err := database.PermissioningDb.InsertClientRegCode("AAAA", 100)
+	if err != nil {
+		t.Errorf("Failed to insert client reg code %+v", err)
+	}
+
+	//Attempt to register a node
+	_, err = newImpl.RegisterUser("AAAA",string(nodeKey))
+
+	if err != nil {
+		t.Errorf("Failed to register a node when it should have worked: %+v", err)
+	}
+
 }

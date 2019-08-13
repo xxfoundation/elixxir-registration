@@ -9,14 +9,15 @@
 package database
 
 import (
+	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 )
-
+//Shouldn't it call this one
 // If the given Node registration code exists,
 // insert the provided Node information
 func (m *DatabaseImpl) InsertNode(id []byte, code, address,
 	nodeCert, gatewayCert string) error {
-
+	fmt.Println("in this one homie")
 	// Look up given node registration code
 	nodeInfo := NodeInformation{Code: code}
 	jww.INFO.Printf("Attempting to register node with code: %s", code)

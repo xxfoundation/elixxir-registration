@@ -17,17 +17,18 @@ import (
 // Inserts Client registration code with given number of uses
 func (m *MapImpl) InsertClientRegCode(code string, uses int) error {
 	jww.INFO.Printf("Inserting code %s, %d uses remaining", code, uses)
-
+	fmt.Println("printint in mapimp for insert reg code")
 	// Enforce unique registration code
 	if m.client[code] != nil {
 		return errors.New(fmt.Sprintf(
 			"client registration code %s already exists", code))
 	}
-
+	fmt.Println(code)
 	m.client[code] = &RegistrationCode{
 		Code:          code,
 		RemainingUses: uses,
 	}
+	fmt.Println(m.client)
 	return nil
 }
 

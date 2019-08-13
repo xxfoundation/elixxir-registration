@@ -9,8 +9,11 @@
 package cmd
 
 import (
+	"crypto"
 	"crypto/rand"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
@@ -87,10 +90,12 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 
 	//Reviewer: What hash to use?? is the crypto newDefaultoptions correct??
 	// Use hardcoded keypair to sign Client-provided public key
-	sig, err := privateKey.Sign(rand.Reader, []byte(pubKey), rsa.NewDefaultOptions())
+	hashed := sha256.New().Sum([]byte(pubKey))[len(pubKey):]
+	sig, err := rsa.Sign(rand.Reader,permissioningKey,crypto.SHA256, hashed[:],rsa.NewDefaultOptions())
 	if err != nil {
+		retErr := errors.New(fmt.Sprintf("unable to sign client public key: %+v", err))
 		return make([]byte, 0),
-			errors.New("unable to sign client public key")
+			retErr
 	}
 	//Reviewer: thoughts on keeping this?
 	// Return signed public key to Client with empty error field
