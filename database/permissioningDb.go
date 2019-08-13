@@ -18,7 +18,6 @@ import (
 // insert the provided Node information
 func (m *DatabaseImpl) InsertNode(id []byte, code, address,
 	nodeCert, gatewayCert string) error {
-	fmt.Println("in this one homie")
 	// Look up given node registration code
 	nodeInfo := NodeInformation{Code: code}
 	jww.INFO.Printf("Attempting to register node with code: %s", code)

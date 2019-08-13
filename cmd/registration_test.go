@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"fmt"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
@@ -84,7 +85,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
 	//Insert a sample regCode
 	err := database.PermissioningDb.InsertNodeRegCode("AAAA")
-	if err == nil {
+	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 	//Register a node with that regCode
@@ -119,3 +120,85 @@ func TestRegCodeExists_InsertUser(t *testing.T) {
 	}
 
 }
+
+//Attempt to register a node after the
+func TestCompleteRegistration_ErrorPath(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+
+		}
+	}()
+	newImpl := NewRegistrationImpl()
+	/**/
+	//Note that to find where something is wrong in the setprivatekey, glide up and uncomment this block
+	testParams := Params{
+		Address:       "0.0.0.0:5900",
+		CertPath:      testkeys.GetCACertPath(),
+		KeyPath:       testkeys.GetCAKeyPath(),
+		NdfOutputPath: testkeys.GetNDFPath(),
+	}
+	//thow in waitgroup, listen for outputs??
+	//need this with startPermissioningServer
+	//go StartRegistration(testParams)
+	/**/
+	RegParams = testParams
+	startPermissioningServer()
+
+	nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
+	//Insert a sample regCode
+	//err := database.PermissioningDb.InsertNodeRegCode("AAAA")
+
+	strings := make([]string, 0)
+	fmt.Println(strings)
+	strings = append(strings, "BBBB")
+	database.PopulateNodeRegistrationCodes(strings)
+	RegistrationCodes = strings
+	err := newImpl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6900")
+
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+
+}
+
+/**
+//Attempt to register a node after the
+func TestCompleteRegistration_ErrorPath(t *testing.T)  {
+	defer func() {
+		if r := recover(); r != nil {
+
+		}
+	}()
+	newImpl := NewRegistrationImpl()
+	/**
+	//Note that to find where something is wrong in the setprivatekey, glide up and uncomment this block
+	testParams := Params{
+		Address:       "0.0.0.0:5900",
+		CertPath:      testkeys.GetCACertPath(),
+		KeyPath:       testkeys.GetCAKeyPath(),
+		NdfOutputPath: testkeys.GetNDFPath(),
+	}
+	//thow in waitgroup, listen for outputs??
+	//need this with startPermissioningServer
+	go StartRegistration(testParams)
+	/**
+	RegParams = testParams
+	startPermissioningServer()
+
+	nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
+	//Insert a sample regCode
+	//err := database.PermissioningDb.InsertNodeRegCode("AAAA")
+
+	strings := make([]string, 0)
+	fmt.Println(strings)
+	strings = append(strings,"BBBB")
+	database.PopulateNodeRegistrationCodes(strings)
+	RegistrationCodes = strings
+	err := newImpl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6900")
+	fmt.Println(err)
+	err = newImpl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6900")
+	fmt.Println(err)
+
+}*/
