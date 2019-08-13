@@ -9,7 +9,6 @@
 package database
 
 import (
-	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 )
 
