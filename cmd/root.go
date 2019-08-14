@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
@@ -44,7 +45,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Get the RSA private key
-		rsaKeyBytes, err := ioutil.ReadFile(rsaKeyPairPath)
+		rsaKeyBytes, err := ioutil.ReadFile(utils.GetFullPath(rsaKeyPairPath))
 		if err != nil {
 			jww.FATAL.Panicf("could not read rsa keys file: %v", err)
 		}
@@ -58,10 +59,6 @@ var rootCmd = &cobra.Command{
 
 		// Build the private key
 		privateKey = &rsa.PrivateKey{}
-		//TODO add a pem decode function in crypto, or as if we even need pemDecode anymore (probs the second)
-		//how to build the private??
-		//Do I need to pem decode?
-		//TODO Change this to use the loadPrivateKey function, handle it properly
 		tmpKey, err := tls.LoadRSAPrivateKey(string(rsaKeyBytes))
 		if err != nil {
 			jww.FATAL.Printf("failed to load private key: %+v", err)
@@ -85,7 +82,6 @@ var rootCmd = &cobra.Command{
 		)
 
 		// Populate Client registration codes into the database
-		//Possible bug: I Don't believe this points to the permissioning database? Where is this going??
 		database.PopulateClientRegistrationCodes([]string{"AAAA"}, 100)
 
 		// Populate Node registration codes into the database

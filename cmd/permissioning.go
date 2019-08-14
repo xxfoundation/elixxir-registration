@@ -54,8 +54,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	// Sign the node and gateway certs
 	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, permissioningKey)
 	if err != nil {
-		retErr := errors.New(fmt.Sprintf("failed to sign node certificate: %v", err))
-		return retErr
+		jww.ERROR.Printf("failed to sign node certificate: %v", err)
+		return err
 	}
 	//Sign the gateway cert reqs
 	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, &permissioningKey)
@@ -66,8 +66,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	// Attempt to insert Node into the database
 	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
 	if err != nil {
-		retErr := errors.New(fmt.Sprintf("unable to insert node: %+v", err))
-		return retErr
+		jww.ERROR.Printf("unable to insert node: %+v", err)
+		return err
 	}
 
 	// Obtain the number of registered nodes

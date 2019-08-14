@@ -12,8 +12,6 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
-	"errors"
-	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
@@ -73,7 +71,6 @@ func StartRegistration(params Params) {
 			err, permissioningKey)
 	}
 	// Start the communication server
-	//Make the changes for download topology, now have to return the signed message as well...
 	//NOTE: see setPrviateKey
 	registrationImpl.Comms = registration.StartRegistrationServer(params.Address,
 		&registrationImpl, cert, key)
@@ -89,9 +86,9 @@ func NewRegistrationImpl() *RegistrationImpl {
 }
 
 // Handle registration attempt by a Client
-//TODO: remove the args and returns, removing y,p,q,g, only return the signed public key
 func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signature []byte, err error) {
-
+	jww.INFO.Printf("Verifyign for registration code %s",
+		registrationCode)
 	// Check database to verify given registration code
 	err = database.PermissioningDb.UseCode(registrationCode)
 	if err != nil {
@@ -102,12 +99,15 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 
 	signingKey := &rsa.PrivateKey{*permissioningKey}
 	// Use hardcoded keypair to sign Client-provided public key
-	hashed := sha256.New().Sum([]byte(pubKey))[len(pubKey):]
+	//Create a hash, hash the pubKey and then truncate it
+	hash := sha256.New()
+	hashed := hash.Sum([]byte(pubKey))
+	hashed = hashed[len(pubKey):]
 	sig, err := rsa.Sign(rand.Reader, signingKey, crypto.SHA256, hashed[:], rsa.NewDefaultOptions())
 	if err != nil {
-		retErr := errors.New(fmt.Sprintf("unable to sign client public key: %+v", err))
+		jww.ERROR.Printf("unable to sign client public key: %+v", err)
 		return make([]byte, 0),
-			retErr
+			err
 	}
 	//Reviewer: thoughts on keeping this?
 	// Return signed public key to Client with empty error field
