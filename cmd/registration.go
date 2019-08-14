@@ -87,7 +87,7 @@ func NewRegistrationImpl() *RegistrationImpl {
 
 // Handle registration attempt by a Client
 func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signature []byte, err error) {
-	jww.INFO.Printf("Verifyign for registration code %s",
+	jww.INFO.Printf("Verifying for registration code %s",
 		registrationCode)
 	// Check database to verify given registration code
 	err = database.PermissioningDb.UseCode(registrationCode)
