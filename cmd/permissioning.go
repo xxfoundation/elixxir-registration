@@ -9,14 +9,16 @@
 package cmd
 
 import (
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
@@ -28,36 +30,38 @@ var permissioningKey *rsa.PrivateKey
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
-	//Load the node and gateway's cert's
+
+	// Connect back to the Node using the provided certificate
+	err := m.Comms.ConnectToNode(id.NewNodeFromBytes(ID), Addr,
+		[]byte(ServerTlsCert))
+	if err != nil {
+		jww.ERROR.Printf("Failed to return connection to Node: %+v", err)
+		return err
+	}
+
+	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
+		jww.ERROR.Printf("Failed to load node certificate: %v", err)
 		return err
 	}
 	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCert)
 	if err != nil {
+		jww.ERROR.Printf("Failed to load gateway certificate: %v", err)
 		return err
 	}
 
-	//Reviewer: was this removed for a reason, or just mistakenly lost
-	//Connect to the node with the unsigned cert
-	//Connect to the node with the unsigned cert
-	err = m.Comms.ConnectToNode(connectionID(ID), Addr, []byte(ServerTlsCert))
-	if err != nil {
-		retErr := errors.New(fmt.Sprintf("failed to connect to node %+v of address %+v: %+v",
-			connectionID(ID), Addr, err))
-		return retErr
-	}
-	//Sign the node cert reqs
-	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, &permissioningKey.PrivateKey)
+	// Sign the node and gateway certs
+	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, permissioningKey)
 	if err != nil {
 		retErr := errors.New(fmt.Sprintf("failed to sign node certificate: %v", err))
 		return retErr
 	}
 	//Sign the gateway cert reqs
-	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, &permissioningKey.PrivateKey)
+	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, &permissioningKey)
 	if err != nil {
-		retErr := errors.New(fmt.Sprintf("failed to sign gateway certificate: %v", err))
-		return retErr
+		jww.ERROR.Printf("Failed to sign gateway certificate: %v", err)
+		return err
 	}
 	// Attempt to insert Node into the database
 	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
@@ -86,6 +90,7 @@ func completeNodeRegistration() {
 	if err != nil {
 		jww.FATAL.Panicf("Error completing node registration: %+v", err)
 	}
+	jww.INFO.Printf("Node registration complete!")
 }
 
 // Once all nodes have registered, this function is triggered
@@ -131,7 +136,7 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, error) {
 func broadcastTopology(topology *mixmessages.NodeTopology) error {
 	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
 	for _, nodeInfo := range topology.Topology {
-		err := registrationImpl.Comms.SendNodeTopology(connectionID(nodeInfo.
+		err := registrationImpl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.
 			Id), topology)
 		if err != nil {
 			return errors.New(fmt.Sprintf(
@@ -165,7 +170,7 @@ func outputNodeTopologyToJSON(topology *mixmessages.NodeTopology, filePath strin
 	}
 
 	// Write JSON to file
-	err = ioutil.WriteFile(filePath, data, 0644)
+	err = ioutil.WriteFile(utils.GetFullPath(filePath), data, 0644)
 	if err != nil {
 		return err
 	}

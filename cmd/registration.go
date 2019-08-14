@@ -18,6 +18,7 @@ import (
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
 )
@@ -58,6 +59,20 @@ func StartRegistration(params Params) {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
 	}
 
+	// Set globals for permissioning server
+	permissioningCert, err = tls.LoadCertificate(string(cert))
+	if err != nil {
+		jww.ERROR.Printf("Failed to parse permissioning server cert: %+v. "+
+			"Permissioning cert is %+v",
+			err, permissioningCert)
+	}
+	permissioningKey, err = tls.LoadRSAPrivateKey(string(key))
+	if err != nil {
+		jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
+			"PermissioningKey is %+v",
+			err, permissioningKey)
+	}
+
 	// Start the communication server
 	//Make the changes for download topology, now have to return the signed message as well...
 	//NOTE: see setPrviateKey
@@ -85,10 +100,8 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 		jww.ERROR.Printf("Error validating registration code: %s", err)
 		return make([]byte, 0), err
 	}
-	//RSA signature's in PEM format for RSA signature, in which you can apparentally pull the hash from
-	//TODO: Change this so that it preps a signature option for privKey.Sign()
 
-	//Reviewer: What hash to use?? is the crypto newDefaultoptions correct??
+
 	// Use hardcoded keypair to sign Client-provided public key
 	hashed := sha256.New().Sum([]byte(pubKey))[len(pubKey):]
 	sig, err := rsa.Sign(rand.Reader, permissioningKey, crypto.SHA256, hashed[:], rsa.NewDefaultOptions())
