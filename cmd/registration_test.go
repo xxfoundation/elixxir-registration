@@ -6,7 +6,6 @@
 package cmd
 
 import (
-	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
 	"gitlab.com/elixxir/registration/testkeys"
@@ -20,9 +19,7 @@ func startPermissioningServer() {
 	permKeyBytes, _ := ioutil.ReadFile(testkeys.GetCAKeyPath())
 	permCertBytes, _ := ioutil.ReadFile(testkeys.GetCACertPath())
 
-	tmpKey, _ := tls.LoadRSAPrivateKey(string(permKeyBytes))
-	permissioningKey = &rsa.PrivateKey{*tmpKey}
-	//rmissioningKey.PrivateKey = *tmpKey
+	permissioningKey, _ = tls.LoadRSAPrivateKey(string(permKeyBytes))
 	permissioningCert, _ = tls.LoadCertificate(string(permCertBytes))
 
 }
