@@ -128,8 +128,7 @@ func init() {
 		"Show verbose logs for debugging")
 	rootCmd.Flags().BoolVarP(&showVer, "version", "V", false,
 		"Show version information")
-	rootCmd.Flags().StringVarP(&rsaKeyPairPath, "keyPairOverride", "k",
-		"", "Defined a RSA keypair to use instead of generating a new one")
+
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c",
 		"", "Sets a custom config file path")
 }
