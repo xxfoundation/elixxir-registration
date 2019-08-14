@@ -37,22 +37,33 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	if err != nil {
 		return err
 	}
+
+	//Reviewer: was this removed for a reason, or just mistakenly lost
+	//Connect to the node with the unsigned cert
+	//Connect to the node with the unsigned cert
+	err = m.Comms.ConnectToNode(connectionID(ID), Addr, []byte(ServerTlsCert))
+	if err != nil {
+		retErr := errors.New(fmt.Sprintf("failed to connect to node %+v of address %+v: %+v",
+			connectionID(ID), Addr, err))
+		return retErr
+	}
 	//Sign the node cert reqs
 	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, &permissioningKey.PrivateKey)
 	if err != nil {
-		jww.ERROR.Printf("Failed to sign node certificate: %v", err)
-		return err
+		retErr := errors.New(fmt.Sprintf("failed to sign node certificate: %v", err))
+		return retErr
 	}
 	//Sign the gateway cert reqs
 	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, &permissioningKey.PrivateKey)
 	if err != nil {
-		return err
+		retErr := errors.New(fmt.Sprintf("failed to sign gateway certificate: %v", err))
+		return retErr
 	}
 	// Attempt to insert Node into the database
 	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
 	if err != nil {
-		jww.ERROR.Printf("Unable to insert node: %+v", err)
-		return err
+		retErr := errors.New(fmt.Sprintf("unable to insert node: %+v", err))
+		return retErr
 	}
 
 	// Obtain the number of registered nodes

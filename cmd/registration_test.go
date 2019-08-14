@@ -32,7 +32,7 @@ func TestEmptyDataBase(t *testing.T) {
 	//Start the registration server
 	//Pass along channels?
 	newImpl := NewRegistrationImpl()
-	/** Fixme: Something is possibly broken in comms, tbe
+	/**/ //Fixme: Something is possibly broken in comms, tbe
 	//Note that to find where something is wrong in the setprivatekey, glide up and uncomment this block
 	testParams := Params{
 		Address:       "0.0.0.0:5900",
@@ -57,7 +57,6 @@ func TestEmptyDataBase(t *testing.T) {
 			"Expected %s, Recieved: %+v", expectedErr, err)
 		return
 	}
-
 
 }
 
@@ -102,10 +101,14 @@ func TestRegCodeExists_InsertUser(t *testing.T) {
 	}
 
 	//Attempt to register a node
-	_, err = newImpl.RegisterUser("AAAA", string(nodeKey))
+	sig, err := newImpl.RegisterUser("AAAA", string(nodeKey))
 
 	if err != nil {
 		t.Errorf("Failed to register a node when it should have worked: %+v", err)
+	}
+
+	if sig == nil {
+		t.Errorf("Failed to sign public key, recieved %+v as a signature", sig)
 	}
 
 }
@@ -149,4 +152,3 @@ func TestCompleteRegistration_ErrorPath(t *testing.T) {
 	}
 
 }
-
