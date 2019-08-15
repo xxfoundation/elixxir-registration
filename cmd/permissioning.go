@@ -32,12 +32,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
 
 	// Connect back to the Node using the provided certificate
-	err := m.Comms.ConnectToNode(id.NewNodeFromBytes(ID), Addr,
-		[]byte(ServerTlsCert))
-	if err != nil {
-		jww.ERROR.Printf("Failed to return connection to Node: %+v", err)
-		return err
-	}
+
 
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
