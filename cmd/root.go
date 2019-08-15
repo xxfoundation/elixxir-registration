@@ -99,6 +99,9 @@ var rootCmd = &cobra.Command{
 		// Start registration server
 		StartRegistration(RegParams)
 
+		// Wait forever to prevent process from ending
+		select {}
+
 	},
 }
 

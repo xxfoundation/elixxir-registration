@@ -21,9 +21,6 @@ import (
 	"io/ioutil"
 )
 
-// Registration Implementation
-var registrationImpl RegistrationImpl
-
 // Hardcoded RSA keypair for registration server
 var privateKey *rsa.PrivateKey
 
@@ -45,7 +42,9 @@ func (c connectionID) String() string {
 }
 
 // Configure and start the Permissioning Server
-func StartRegistration(params Params) {
+func StartRegistration(params Params) *RegistrationImpl {
+
+	registrationImpl := &RegistrationImpl{}
 
 	// Read in TLS keys from files
 	cert, err := ioutil.ReadFile(utils.GetFullPath(params.CertPath))
@@ -64,7 +63,7 @@ func StartRegistration(params Params) {
 			"Permissioning cert is %+v",
 			err, permissioningCert)
 	}
-	permissioningKey, err = tls.LoadRSAPrivateKey(string(key))
+	permissioningKey, err := rsa.LoadPrivateKeyFromPem(key)
 	if err != nil {
 		jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
 			"PermissioningKey is %+v",
@@ -73,16 +72,9 @@ func StartRegistration(params Params) {
 	// Start the communication server
 	//NOTE: see setPrviateKey
 	registrationImpl.Comms = registration.StartRegistrationServer(params.Address,
-		&registrationImpl, cert, key)
+		registrationImpl, cert, key)
 
-	// Wait forever to prevent process from ending
-	select {}
-}
-
-// Saves the RSA public key to a JSON file
-// and returns registration implementation
-func NewRegistrationImpl() *RegistrationImpl {
-	return &RegistrationImpl{}
+	return registrationImpl
 }
 
 // Handle registration attempt by a Client
@@ -97,13 +89,12 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 		return make([]byte, 0), err
 	}
 
-	signingKey := &rsa.PrivateKey{*permissioningKey}
 	// Use hardcoded keypair to sign Client-provided public key
 	//Create a hash, hash the pubKey and then truncate it
 	hash := sha256.New()
 	hashed := hash.Sum([]byte(pubKey))
 	hashed = hashed[len(pubKey):]
-	sig, err := rsa.Sign(rand.Reader, signingKey, crypto.SHA256, hashed[:], rsa.NewDefaultOptions())
+	sig, err := rsa.Sign(rand.Reader, permissioningKey, crypto.SHA256, hashed[:], rsa.NewDefaultOptions())
 	if err != nil {
 		jww.ERROR.Printf("unable to sign client public key: %+v", err)
 		return make([]byte, 0),

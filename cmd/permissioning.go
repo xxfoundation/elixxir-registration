@@ -9,7 +9,6 @@
 package cmd
 
 import (
-	"crypto/rsa"
 	"crypto/x509"
 	"encoding/json"
 	"errors"
@@ -17,6 +16,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/utils"
+	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/certAuthority"
@@ -30,9 +30,13 @@ var permissioningKey *rsa.PrivateKey
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
-
 	// Connect back to the Node using the provided certificate
-
+	err := m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), Addr,
+		[]byte(ServerTlsCert))
+	if err != nil {
+		jww.ERROR.Printf("Failed to return connection to Node: %+v", err)
+		return err
+	}
 
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
@@ -47,13 +51,13 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	}
 
 	// Sign the node and gateway certs
-	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, permissioningKey)
+	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, &(permissioningKey.PrivateKey))
 	if err != nil {
 		jww.ERROR.Printf("failed to sign node certificate: %v", err)
 		return err
 	}
 	//Sign the gateway cert reqs
-	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, &permissioningKey)
+	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, &(permissioningKey.PrivateKey))
 	if err != nil {
 		jww.ERROR.Printf("Failed to sign gateway certificate: %v", err)
 		return err
@@ -74,14 +78,14 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	// If all nodes have registered
 	if numNodes == len(RegistrationCodes) {
 		// Finish the node registration process in another thread
-		go completeNodeRegistration()
+		go completeNodeRegistration(m)
 	}
 	return nil
 }
 
 // Wrapper for completeNodeRegistrationHelper() error-handling
-func completeNodeRegistration() {
-	err := completeNodeRegistrationHelper()
+func completeNodeRegistration(impl *RegistrationImpl) {
+	err := completeNodeRegistrationHelper(impl)
 	if err != nil {
 		jww.FATAL.Panicf("Error completing node registration: %+v", err)
 	}
@@ -90,7 +94,7 @@ func completeNodeRegistration() {
 
 // Once all nodes have registered, this function is triggered
 // to assemble and broadcast the completed topology to all nodes
-func completeNodeRegistrationHelper() error {
+func completeNodeRegistrationHelper(impl *RegistrationImpl) error {
 	// Assemble the completed topology
 	topology, err := assembleTopology(RegistrationCodes)
 	if err != nil {
@@ -105,7 +109,7 @@ func completeNodeRegistrationHelper() error {
 	}
 
 	// Broadcast completed topology to all nodes
-	return broadcastTopology(topology)
+	return broadcastTopology(impl, topology)
 }
 
 // Assemble the completed topology from the database
@@ -128,10 +132,10 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, error) {
 }
 
 // Broadcast completed topology to all nodes
-func broadcastTopology(topology *mixmessages.NodeTopology) error {
+func broadcastTopology(impl *RegistrationImpl, topology *mixmessages.NodeTopology) error {
 	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
 	for _, nodeInfo := range topology.Topology {
-		err := registrationImpl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.
+		err := impl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.
 			Id), topology)
 		if err != nil {
 			return errors.New(fmt.Sprintf(

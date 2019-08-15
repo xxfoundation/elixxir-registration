@@ -6,20 +6,50 @@
 package cmd
 
 import (
+	"fmt"
+	"gitlab.com/elixxir/comms/node"
+	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
 	"gitlab.com/elixxir/registration/testkeys"
 	"io/ioutil"
+	"os"
 	"testing"
 )
 
+var nodeAddr = "0.0.0.0:6900"
+var nodeCert []byte
+var nodeKey []byte
+
+func TestMain(m *testing.M) {
+	var err error
+	nodeCert, err = ioutil.ReadFile(testkeys.GetNodeCertPath())
+	if err != nil {
+		fmt.Printf("Could not get node cert: %+v\n", err)
+	}
+
+	nodeKey, err = ioutil.ReadFile(testkeys.GetNodeKeyPath())
+	if err != nil {
+		fmt.Printf("Could not get node key: %+v\n", err)
+	}
+
+	nodeComm := node.StartNode(nodeAddr, node.NewImplementation(), nodeCert, nodeKey)
+
+	runFunc := func() int {
+		code := m.Run()
+		nodeComm.Shutdown()
+		return code
+	}
+	os.Exit(runFunc())
+}
+
 //Helper function that initailizes the permisssioning server's globals
 //Todo: throw in the permDB??
-func startPermissioningServer() {
+func initPermissioningServerKeys() {
 	permKeyBytes, _ := ioutil.ReadFile(testkeys.GetCAKeyPath())
 	permCertBytes, _ := ioutil.ReadFile(testkeys.GetCACertPath())
 
-	permissioningKey, _ = tls.LoadRSAPrivateKey(string(permKeyBytes))
+	permissioningKey, _ = rsa.LoadPrivateKeyFromPem(permKeyBytes)
 	permissioningCert, _ = tls.LoadCertificate(string(permCertBytes))
 
 }
@@ -27,46 +57,44 @@ func startPermissioningServer() {
 //Error path: Test an insertion on an empty database
 func TestEmptyDataBase(t *testing.T) {
 	//Start the registration server
-	//Pass along channels?
-	newImpl := NewRegistrationImpl()
-	/**/ //Fixme: Something is possibly broken in comms, tbe
-	//Note that to find where something is wrong in the setprivatekey, glide up and uncomment this block
 	testParams := Params{
 		Address:       "0.0.0.0:5900",
 		CertPath:      testkeys.GetCACertPath(),
 		KeyPath:       testkeys.GetCAKeyPath(),
 		NdfOutputPath: testkeys.GetNDFPath(),
 	}
-	go StartRegistration(testParams)
-	/**/
+	impl := StartRegistration(testParams)
 
-	//Set the permissioning key for testing
-	startPermissioningServer()
+	//Set the permissioning keys for testing
+	initPermissioningServerKeys()
 
-	nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
-	err := newImpl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert),
-		"AAA", "0.0.0.0:6900")
+	//using node cert as gateway cert
+	err := impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert),
+		"AAA", nodeAddr)
 	if err == nil {
 		expectedErr := "Unable to insert node: unable to register node AAA"
 		t.Errorf("Database was empty but allowed a reg code to go through. "+
 			"Expected %s, Recieved: %+v", expectedErr, err)
 		return
 	}
+	impl.Comms.Shutdown()
 
 }
 
-//func TestKey_IncorrectRegCode
-
-//Testing: create a reg server that has some code
-
 //Happy path: looking for a code that is in the database
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
-	newImpl := NewRegistrationImpl()
-	startPermissioningServer()
+	initPermissioningServerKeys()
 
-	nodeCert, _ := ioutil.ReadFile((testkeys.GetNodeCertPath()))
+	testParams := Params{
+		Address:       "0.0.0.0:5900",
+		CertPath:      testkeys.GetCACertPath(),
+		KeyPath:       testkeys.GetCAKeyPath(),
+		NdfOutputPath: testkeys.GetNDFPath(),
+	}
+	impl := StartRegistration(testParams)
+
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
 	//Insert a sample regCode
 	err := database.PermissioningDb.InsertNodeRegCode("AAAA")
@@ -74,22 +102,23 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 	//Register a node with that regCode
-	err = newImpl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert),
+	err = impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert),
 		"AAAA", "0.0.0.0:6900")
 
 	if err != nil {
 		t.Errorf("Registered a node with a known reg code, but recieved the following error: %+v", err)
 	}
+
+	impl.Comms.Shutdown()
 }
 
 //Happy Path:  Insert a reg code along with a node
-func TestRegCodeExists_InsertUser(t *testing.T) {
+func TestRegCodeExists_InsertNode(t *testing.T) {
 	//Iniatialize an implementation and the permissioning server
-	newImpl := NewRegistrationImpl()
-	startPermissioningServer()
+	initPermissioningServerKeys()
+	newImpl := &RegistrationImpl{}
 
 	//Inialiaze the database
-	nodeKey, _ := ioutil.ReadFile((testkeys.GetClientPublicKey()))
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
 	//Insert regcodes into it
 	err := database.PermissioningDb.InsertClientRegCode("AAAA", 100)
@@ -117,8 +146,7 @@ func TestCompleteRegistration_ErrorPath(t *testing.T) {
 
 		}
 	}()
-	newImpl := NewRegistrationImpl()
-	/**/
+	newImpl := RegistrationImpl{}
 	//Note that to find where something is wrong in the setprivatekey, glide up and uncomment this block
 	testParams := Params{
 		Address:       "0.0.0.0:5900",
@@ -127,11 +155,11 @@ func TestCompleteRegistration_ErrorPath(t *testing.T) {
 		NdfOutputPath: testkeys.GetNDFPath(),
 	}
 	//thow in waitgroup, listen for outputs??
-	//need this with startPermissioningServer
+	//need this with initPermissioningServerKeys
 	//go StartRegistration(testParams)
-	/**/
+
 	RegParams = testParams
-	startPermissioningServer()
+	initPermissioningServerKeys()
 
 	nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
@@ -147,5 +175,7 @@ func TestCompleteRegistration_ErrorPath(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
+
+	newImpl.Comms.Shutdown()
 
 }
