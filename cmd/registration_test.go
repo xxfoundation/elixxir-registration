@@ -95,7 +95,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	}
 	impl := StartRegistration(testParams)
 
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	err := database.PermissioningDb.InsertNodeRegCode("AAAA")
 	if err != nil {
@@ -119,7 +119,7 @@ func TestRegCodeExists_InsertNode(t *testing.T) {
 	newImpl := &RegistrationImpl{}
 
 	//Inialiaze the database
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert regcodes into it
 	err := database.PermissioningDb.InsertClientRegCode("AAAA", 100)
 	if err != nil {
@@ -139,43 +139,73 @@ func TestRegCodeExists_InsertNode(t *testing.T) {
 
 }
 
-//Attempt to register a node after the
-func TestCompleteRegistration_ErrorPath(t *testing.T) {
-	defer func() {
+//Happy path Attempt to register a node after inserting using PopulateNodeRegistrationCodes
+func TestCompleteRegistration_HappyPath(t *testing.T) {
+	//This was making it not hit the connect, we will need a mock node
+	/*defer func()
 		if r := recover(); r != nil {
-
 		}
-	}()
-	newImpl := RegistrationImpl{}
-	//Note that to find where something is wrong in the setprivatekey, glide up and uncomment this block
+	}()*/
+	//With this, comms is nil and thus returns a seg fault/nil pointer deref
 	testParams := Params{
 		Address:       "0.0.0.0:5900",
 		CertPath:      testkeys.GetCACertPath(),
 		KeyPath:       testkeys.GetCAKeyPath(),
 		NdfOutputPath: testkeys.GetNDFPath(),
 	}
-	//thow in waitgroup, listen for outputs??
-	//need this with initPermissioningServerKeys
-	//go StartRegistration(testParams)
+
+	newImpl := StartRegistration(testParams)
+	fmt.Println(newImpl)
 
 	RegParams = testParams
 	initPermissioningServerKeys()
 
 	nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	//err := database.PermissioningDb.InsertNodeRegCode("AAAA")
-
+	fmt.Println("pre popuplate")
 	strings := make([]string, 0)
 	strings = append(strings, "BBBB")
 	database.PopulateNodeRegistrationCodes(strings)
+	fmt.Println("post populate")
 	RegistrationCodes = strings
-	err := newImpl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6900")
-
+	//Attempt to regeist a node with an existing regCode
+	err := newImpl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
+	fmt.Println("register node post")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-
 	newImpl.Comms.Shutdown()
 
+}
+
+
+func TestTopology(t *testing.T)  {
+	testParams := Params{
+		Address:       "0.0.0.0:5900",
+		CertPath:      testkeys.GetCACertPath(),
+		KeyPath:       testkeys.GetCAKeyPath(),
+		NdfOutputPath: testkeys.GetNDFPath(),
+	}
+
+	newImpl := StartRegistration(testParams)
+
+	RegParams = testParams
+	initPermissioningServerKeys()
+
+	nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
+	database.PermissioningDb =  database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
+
+	regCodes := make([]string,0)
+	//Allow for more than one node so they can communicate the topoplogy
+	regCodes = append(regCodes,"BBBB", "CCCC")
+	database.PopulateNodeRegistrationCodes(regCodes)
+
+	RegistrationCodes = regCodes
+	//Should hit complete registration
+	_ = newImpl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:7900")
+	_ = newImpl.RegisterNode([]byte("B"), string(nodeCert), string(nodeCert), "CCCC", "0.0.0.0:8900")
+
+	newImpl.Comms.Shutdown()
 }

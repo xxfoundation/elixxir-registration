@@ -37,7 +37,6 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		jww.ERROR.Printf("Failed to return connection to Node: %+v", err)
 		return err
 	}
-
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
@@ -62,19 +61,21 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		jww.ERROR.Printf("Failed to sign gateway certificate: %v", err)
 		return err
 	}
+	fmt.Println("insert node")
 	// Attempt to insert Node into the database
 	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
 	if err != nil {
 		jww.ERROR.Printf("unable to insert node: %+v", err)
 		return err
 	}
-
 	// Obtain the number of registered nodes
 	numNodes, err := database.PermissioningDb.CountRegisteredNodes()
 	if err != nil {
 		jww.ERROR.Printf("Unable to count registered Nodes: %+v", err)
 		return err
 	}
+	fmt.Println(numNodes)
+	fmt.Println(len(RegistrationCodes))
 	// If all nodes have registered
 	if numNodes == len(RegistrationCodes) {
 		// Finish the node registration process in another thread
@@ -85,6 +86,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 
 // Wrapper for completeNodeRegistrationHelper() error-handling
 func completeNodeRegistration(impl *RegistrationImpl) {
+	fmt.Println("completing reg")
 	err := completeNodeRegistrationHelper(impl)
 	if err != nil {
 		jww.FATAL.Panicf("Error completing node registration: %+v", err)
