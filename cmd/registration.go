@@ -55,10 +55,6 @@ func StartRegistration(params Params) *RegistrationImpl {
 		if err != nil {
 			jww.ERROR.Printf("failed to read certificate at %s: %+v", params.CertPath, err)
 		}
-		key, err = ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
-		if err != nil {
-			jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
-		}
 
 		// Set globals for permissioning server
 		regImpl.permissioningCert, err = tls.LoadCertificate(string(cert))
@@ -67,16 +63,21 @@ func StartRegistration(params Params) *RegistrationImpl {
 				"Permissioning cert is %+v",
 				err, regImpl.permissioningCert)
 		}
-		regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
-		if err != nil {
-			jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
-				"PermissioningKey is %+v",
-				err, regImpl.permissioningKey)
-		}
+
+	}
+
+	key, err = ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
+	if err != nil {
+		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
+	}
+	regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
+	if err != nil {
+		jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
+			"PermissioningKey is %+v",
+			err, regImpl.permissioningKey)
 	}
 
 	// Start the communication server
-	//NOTE: see setPrviateKey
 	regImpl.Comms = registration.StartRegistrationServer(params.Address,
 		regImpl, cert, key)
 
