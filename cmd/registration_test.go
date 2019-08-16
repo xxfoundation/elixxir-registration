@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"crypto/x509"
 	"fmt"
 	"gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/crypto/signature/rsa"
@@ -20,6 +21,10 @@ import (
 var nodeAddr = "0.0.0.0:6900"
 var nodeCert []byte
 var nodeKey []byte
+
+/*
+var testPermissioningKey *rsa.PrivateKey
+var testpermissioningCert *x509.Certificate*/
 
 func TestMain(m *testing.M) {
 	var err error
@@ -45,12 +50,13 @@ func TestMain(m *testing.M) {
 
 //Helper function that initailizes the permisssioning server's globals
 //Todo: throw in the permDB??
-func initPermissioningServerKeys() {
+func initPermissioningServerKeys() (*rsa.PrivateKey, *x509.Certificate) {
 	permKeyBytes, _ := ioutil.ReadFile(testkeys.GetCAKeyPath())
 	permCertBytes, _ := ioutil.ReadFile(testkeys.GetCACertPath())
 
-	permissioningKey, _ = rsa.LoadPrivateKeyFromPem(permKeyBytes)
-	permissioningCert, _ = tls.LoadCertificate(string(permCertBytes))
+	testPermissioningKey, _ := rsa.LoadPrivateKeyFromPem(permKeyBytes)
+	testpermissioningCert, _ := tls.LoadCertificate(string(permCertBytes))
+	return testPermissioningKey, testpermissioningCert
 
 }
 
@@ -66,7 +72,7 @@ func TestEmptyDataBase(t *testing.T) {
 	impl := StartRegistration(testParams)
 
 	//Set the permissioning keys for testing
-	initPermissioningServerKeys()
+	//initPermissioningServerKeys()
 
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
@@ -85,7 +91,7 @@ func TestEmptyDataBase(t *testing.T) {
 
 //Happy path: looking for a code that is in the database
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
-	initPermissioningServerKeys()
+	//initPermissioningServerKeys()
 
 	testParams := Params{
 		Address:       "0.0.0.0:5900",
@@ -115,8 +121,10 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 //Happy Path:  Insert a reg code along with a node
 func TestRegCodeExists_InsertNode(t *testing.T) {
 	//Iniatialize an implementation and the permissioning server
-	initPermissioningServerKeys()
+	//initPermissioningServerKeys()
 	newImpl := &RegistrationImpl{}
+
+	newImpl.permissioningKey, newImpl.permissioningCert = initPermissioningServerKeys()
 
 	//Inialiaze the database
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
@@ -147,19 +155,7 @@ func TestCompleteRegistration_ErrorPath(t *testing.T) {
 		}
 	}()
 	newImpl := RegistrationImpl{}
-	//Note that to find where something is wrong in the setprivatekey, glide up and uncomment this block
-	testParams := Params{
-		Address:       "0.0.0.0:5900",
-		CertPath:      testkeys.GetCACertPath(),
-		KeyPath:       testkeys.GetCAKeyPath(),
-		NdfOutputPath: testkeys.GetNDFPath(),
-	}
-	//thow in waitgroup, listen for outputs??
-	//need this with initPermissioningServerKeys
-	//go StartRegistration(testParams)
-
-	RegParams = testParams
-	initPermissioningServerKeys()
+	newImpl.permissioningKey, newImpl.permissioningCert = initPermissioningServerKeys()
 
 	nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")

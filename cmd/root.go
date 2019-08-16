@@ -9,17 +9,12 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
-	"gitlab.com/elixxir/comms/utils"
-	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
-	"io/ioutil"
 	"os"
 )
 
@@ -27,8 +22,8 @@ var (
 	cfgFile           string
 	verbose           bool
 	showVer           bool
+	noTLS             bool
 	RegistrationCodes []string
-	rsaKeyPairPath    string
 	RegParams         Params
 )
 
@@ -43,29 +38,6 @@ var rootCmd = &cobra.Command{
 			printVersion()
 			return
 		}
-
-		// Get the RSA private key
-		rsaKeyBytes, err := ioutil.ReadFile(utils.GetFullPath(rsaKeyPairPath))
-		if err != nil {
-			jww.FATAL.Panicf("could not read rsa keys file: %v", err)
-		}
-
-		// Marshall into JSON
-		var data map[string]string
-		err = json.Unmarshal(rsaKeyBytes, &data)
-		if err != nil {
-			jww.FATAL.Panicf("could not unmarshal rsa keys file: %v", err)
-		}
-
-		// Build the private key
-		privateKey = &rsa.PrivateKey{}
-		tmpKey, err := tls.LoadRSAPrivateKey(string(rsaKeyBytes))
-		if err != nil {
-			jww.FATAL.Printf("failed to load private key: %+v", err)
-		}
-		//FIXME: figure out why you can't set privatekey as above w/o the IDE yelling at you
-		//privateKey.PrivateKey = *tmpKey
-		privateKey = &rsa.PrivateKey{*tmpKey}
 
 		// Parse config file options
 		certPath := viper.GetString("certPath")
@@ -134,6 +106,9 @@ func init() {
 
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c",
 		"", "Sets a custom config file path")
+
+	rootCmd.Flags().BoolVar(&noTLS, "noTLS", false,
+		"Runs without TLS enabled")
 }
 
 // initConfig reads in config file and ENV variables if set.

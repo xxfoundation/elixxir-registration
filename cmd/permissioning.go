@@ -9,23 +9,18 @@
 package cmd
 
 import (
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/utils"
-	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
 )
-
-var permissioningCert *x509.Certificate
-var permissioningKey *rsa.PrivateKey
 
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
@@ -51,13 +46,13 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	}
 
 	// Sign the node and gateway certs
-	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, &(permissioningKey.PrivateKey))
+	signedNodeCert, err := certAuthority.Sign(nodeCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
 	if err != nil {
 		jww.ERROR.Printf("failed to sign node certificate: %v", err)
 		return err
 	}
 	//Sign the gateway cert reqs
-	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, &(permissioningKey.PrivateKey))
+	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
 	if err != nil {
 		jww.ERROR.Printf("Failed to sign gateway certificate: %v", err)
 		return err
