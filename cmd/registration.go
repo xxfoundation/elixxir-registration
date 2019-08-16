@@ -12,6 +12,7 @@ import (
 	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/x509"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
@@ -21,11 +22,10 @@ import (
 	"io/ioutil"
 )
 
-// Hardcoded RSA keypair for registration server
-var privateKey *rsa.PrivateKey
-
 type RegistrationImpl struct {
-	Comms *registration.RegistrationComms
+	Comms             *registration.RegistrationComms
+	permissioningCert *x509.Certificate
+	permissioningKey  *rsa.PrivateKey
 }
 
 type Params struct {
@@ -44,37 +44,43 @@ func (c connectionID) String() string {
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) *RegistrationImpl {
 
-	registrationImpl := &RegistrationImpl{}
+	regImpl := &RegistrationImpl{}
 
-	// Read in TLS keys from files
-	cert, err := ioutil.ReadFile(utils.GetFullPath(params.CertPath))
-	if err != nil {
-		jww.ERROR.Printf("failed to read certificate at %s: %+v", params.CertPath, err)
-	}
-	key, err := ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
-	if err != nil {
-		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
+	var cert, key []byte
+	var err error
+
+	if !noTLS {
+		// Read in TLS keys from files
+		cert, err = ioutil.ReadFile(utils.GetFullPath(params.CertPath))
+		if err != nil {
+			jww.ERROR.Printf("failed to read certificate at %s: %+v", params.CertPath, err)
+		}
+		key, err = ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
+		if err != nil {
+			jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
+		}
+
+		// Set globals for permissioning server
+		regImpl.permissioningCert, err = tls.LoadCertificate(string(cert))
+		if err != nil {
+			jww.ERROR.Printf("Failed to parse permissioning server cert: %+v. "+
+				"Permissioning cert is %+v",
+				err, regImpl.permissioningCert)
+		}
+		regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
+		if err != nil {
+			jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
+				"PermissioningKey is %+v",
+				err, regImpl.permissioningKey)
+		}
 	}
 
-	// Set globals for permissioning server
-	permissioningCert, err = tls.LoadCertificate(string(cert))
-	if err != nil {
-		jww.ERROR.Printf("Failed to parse permissioning server cert: %+v. "+
-			"Permissioning cert is %+v",
-			err, permissioningCert)
-	}
-	permissioningKey, err := rsa.LoadPrivateKeyFromPem(key)
-	if err != nil {
-		jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
-			"PermissioningKey is %+v",
-			err, permissioningKey)
-	}
 	// Start the communication server
 	//NOTE: see setPrviateKey
-	registrationImpl.Comms = registration.StartRegistrationServer(params.Address,
-		registrationImpl, cert, key)
+	regImpl.Comms = registration.StartRegistrationServer(params.Address,
+		regImpl, cert, key)
 
-	return registrationImpl
+	return regImpl
 }
 
 // Handle registration attempt by a Client
@@ -94,7 +100,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 	hash := sha256.New()
 	hashed := hash.Sum([]byte(pubKey))
 	hashed = hashed[len(pubKey):]
-	sig, err := rsa.Sign(rand.Reader, permissioningKey, crypto.SHA256, hashed[:], rsa.NewDefaultOptions())
+	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, crypto.SHA256, hashed[:], rsa.NewDefaultOptions())
 	if err != nil {
 		jww.ERROR.Printf("unable to sign client public key: %+v", err)
 		return make([]byte, 0),

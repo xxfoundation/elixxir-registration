@@ -9,6 +9,7 @@
 package database
 
 import (
+	"fmt"
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 	jww "github.com/spf13/jwalterweatherman"
@@ -153,6 +154,7 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 // Adds Node registration codes to the database
 func PopulateNodeRegistrationCodes(codes []string) {
 	for _, code := range codes {
+		fmt.Println(codes)
 		err := PermissioningDb.InsertNodeRegCode(code)
 		if err != nil {
 			jww.ERROR.Printf("Unable to populate Node registration code: %+v",

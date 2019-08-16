@@ -9,14 +9,12 @@
 package cmd
 
 import (
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/utils"
-	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/certAuthority"
@@ -24,13 +22,11 @@ import (
 	"io/ioutil"
 )
 
-var permissioningCert *x509.Certificate
-var permissioningKey *rsa.PrivateKey
-
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
 	// Connect back to the Node using the provided certificate
+	fmt.Println(m)
 	err := m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), Addr,
 		[]byte(ServerTlsCert))
 	if err != nil {
@@ -50,13 +46,13 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	}
 
 	// Sign the node and gateway certs
-	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, &(permissioningKey.PrivateKey))
+	signedNodeCert, err := certAuthority.Sign(nodeCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
 	if err != nil {
 		jww.ERROR.Printf("failed to sign node certificate: %v", err)
 		return err
 	}
 	//Sign the gateway cert reqs
-	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, &(permissioningKey.PrivateKey))
+	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
 	if err != nil {
 		jww.ERROR.Printf("Failed to sign gateway certificate: %v", err)
 		return err
@@ -104,6 +100,7 @@ func completeNodeRegistrationHelper(impl *RegistrationImpl) error {
 	}
 
 	// Output the completed topology to a JSON file
+	fmt.Println("outputting to json")
 	err = outputNodeTopologyToJSON(topology, RegParams.NdfOutputPath)
 	if err != nil {
 		return errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
@@ -165,12 +162,15 @@ func getNodeInfo(dbNodeInfo *database.NodeInformation, index int) *mixmessages.N
 // marshaling fails or if the JSON file cannot be created.
 func outputNodeTopologyToJSON(topology *mixmessages.NodeTopology, filePath string) error {
 	// Generate JSON from structure
+	fmt.Println("outputting")
 	data, err := json.MarshalIndent(topology, "", "\t")
 	if err != nil {
 		return err
 	}
 
 	// Write JSON to file
+	fmt.Println("file path")
+	fmt.Println(utils.GetFullPath(filePath))
 	err = ioutil.WriteFile(utils.GetFullPath(filePath), data, 0644)
 	if err != nil {
 		return err

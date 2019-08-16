@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"crypto/x509"
 	"fmt"
 	"gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/crypto/signature/rsa"
@@ -20,6 +21,10 @@ import (
 var nodeAddr = "0.0.0.0:6900"
 var nodeCert []byte
 var nodeKey []byte
+
+/*
+var testPermissioningKey *rsa.PrivateKey
+var testpermissioningCert *x509.Certificate*/
 
 func TestMain(m *testing.M) {
 	var err error
@@ -45,12 +50,13 @@ func TestMain(m *testing.M) {
 
 //Helper function that initailizes the permisssioning server's globals
 //Todo: throw in the permDB??
-func initPermissioningServerKeys() {
+func initPermissioningServerKeys() (*rsa.PrivateKey, *x509.Certificate) {
 	permKeyBytes, _ := ioutil.ReadFile(testkeys.GetCAKeyPath())
 	permCertBytes, _ := ioutil.ReadFile(testkeys.GetCACertPath())
 
-	permissioningKey, _ = rsa.LoadPrivateKeyFromPem(permKeyBytes)
-	permissioningCert, _ = tls.LoadCertificate(string(permCertBytes))
+	testPermissioningKey, _ := rsa.LoadPrivateKeyFromPem(permKeyBytes)
+	testpermissioningCert, _ := tls.LoadCertificate(string(permCertBytes))
+	return testPermissioningKey, testpermissioningCert
 
 }
 
@@ -58,15 +64,13 @@ func initPermissioningServerKeys() {
 func TestEmptyDataBase(t *testing.T) {
 	//Start the registration server
 	testParams := Params{
-		Address:       "0.0.0.0:5900",
 		CertPath:      testkeys.GetCACertPath(),
 		KeyPath:       testkeys.GetCAKeyPath(),
-		NdfOutputPath: testkeys.GetNDFPath(),
 	}
 	impl := StartRegistration(testParams)
-
+	fmt.Println(impl)
 	//Set the permissioning keys for testing
-	initPermissioningServerKeys()
+	//initPermissioningServerKeys()
 
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
@@ -85,7 +89,7 @@ func TestEmptyDataBase(t *testing.T) {
 
 //Happy path: looking for a code that is in the database
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
-	initPermissioningServerKeys()
+	//initPermissioningServerKeys()
 
 	testParams := Params{
 		Address:       "0.0.0.0:5900",
@@ -115,11 +119,13 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 //Happy Path:  Insert a reg code along with a node
 func TestRegCodeExists_InsertNode(t *testing.T) {
 	//Iniatialize an implementation and the permissioning server
-	initPermissioningServerKeys()
+	//initPermissioningServerKeys()
 	newImpl := &RegistrationImpl{}
 
+	newImpl.permissioningKey, newImpl.permissioningCert = initPermissioningServerKeys()
+
 	//Inialiaze the database
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
 	//Insert regcodes into it
 	err := database.PermissioningDb.InsertClientRegCode("AAAA", 100)
 	if err != nil {
@@ -139,73 +145,67 @@ func TestRegCodeExists_InsertNode(t *testing.T) {
 
 }
 
-//Happy path Attempt to register a node after inserting using PopulateNodeRegistrationCodes
+//Attempt to register a node after the
 func TestCompleteRegistration_HappyPath(t *testing.T) {
-	//This was making it not hit the connect, we will need a mock node
-	/*defer func()
-		if r := recover(); r != nil {
-		}
-	}()*/
-	//With this, comms is nil and thus returns a seg fault/nil pointer deref
+
 	testParams := Params{
-		Address:       "0.0.0.0:5900",
 		CertPath:      testkeys.GetCACertPath(),
 		KeyPath:       testkeys.GetCAKeyPath(),
-		NdfOutputPath: testkeys.GetNDFPath(),
+		NdfOutputPath:testkeys.GetNDFPath(),
 	}
+	RegParams = testParams
 
 	newImpl := StartRegistration(testParams)
-	fmt.Println(newImpl)
-
-	RegParams = testParams
-	initPermissioningServerKeys()
-
-	nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
+	//nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	//err := database.PermissioningDb.InsertNodeRegCode("AAAA")
-	fmt.Println("pre popuplate")
+	//This is the only difference witht hte test above..
 	strings := make([]string, 0)
-	strings = append(strings, "BBBB")
+	strings = append(strings, "BBBB", "CCCC")
 	database.PopulateNodeRegistrationCodes(strings)
-	fmt.Println("post populate")
 	RegistrationCodes = strings
-	//Attempt to regeist a node with an existing regCode
-	err := newImpl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
-	fmt.Println("register node post")
+	err := newImpl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6900")
+
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
+
 	newImpl.Comms.Shutdown()
 
 }
 
 
-func TestTopology(t *testing.T)  {
+func TestTopology (t *testing.T) {
 	testParams := Params{
-		Address:       "0.0.0.0:5900",
 		CertPath:      testkeys.GetCACertPath(),
 		KeyPath:       testkeys.GetCAKeyPath(),
-		NdfOutputPath: testkeys.GetNDFPath(),
+		NdfOutputPath:testkeys.GetNDFPath(),
 	}
+	RegParams = testParams
 
 	newImpl := StartRegistration(testParams)
 
-	RegParams = testParams
-	initPermissioningServerKeys()
-
 	nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
-	database.PermissioningDb =  database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:5900")
+	//Insert a sample regCode
+	//err := database.PermissioningDb.InsertNodeRegCode("AAAA")
 
-	regCodes := make([]string,0)
-	//Allow for more than one node so they can communicate the topoplogy
-	regCodes = append(regCodes,"BBBB", "CCCC")
-	database.PopulateNodeRegistrationCodes(regCodes)
+	//This is the only difference witht hte test above..
+	strings := make([]string, 0)
+	strings = append(strings, "BBBB", "CCCC")
+	database.PopulateNodeRegistrationCodes(strings)
+	RegistrationCodes = strings
+	fmt.Println("registerign first node")
+	err := newImpl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
+	fmt.Println("registered first node")
 
-	RegistrationCodes = regCodes
-	//Should hit complete registration
-	_ = newImpl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:7900")
-	_ = newImpl.RegisterNode([]byte("B"), string(nodeCert), string(nodeCert), "CCCC", "0.0.0.0:8900")
+	fmt.Println("registering second node")
+	err = newImpl.RegisterNode([]byte("B"), string(nodeCert), string(nodeCert), "CCCC", "0.0.0.0:7900")
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+	fmt.Println("registered second node")
 
 	newImpl.Comms.Shutdown()
 }
