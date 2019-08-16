@@ -67,7 +67,8 @@ var rootCmd = &cobra.Command{
 			KeyPath:       keyPath,
 			NdfOutputPath: ndfOutputPath,
 		}
-
+		jww.INFO.Println("Starting Permissioning")
+		jww.INFO.Println("Starting User Registration")
 		// Start registration server
 		StartRegistration(RegParams)
 
