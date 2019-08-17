@@ -114,7 +114,8 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	if err != nil {
 		t.Errorf("Registered a node with a known reg code, but recieved the following error: %+v", err)
 	}
-	//nodeComm.Disconnect("Permissioning")
+
+	//Kill the connections for the next test
 	impl.Comms.Shutdown()
 }
 
@@ -180,12 +181,15 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
+	//Kill the connections for the next test
 	nodeComm.Disconnect("Permissioning")
 	newImpl.Comms.Shutdown()
 
 }
 
+//Happy path: attempt to register 2 nodes
 func TestTopology_MultiNodes(t *testing.T) {
+	//Start registration server
 	testParams := Params{
 		Address:       permAddr,
 		CertPath:      testkeys.GetCACertPath(),
@@ -193,43 +197,40 @@ func TestTopology_MultiNodes(t *testing.T) {
 		NdfOutputPath: testkeys.GetNDFPath(),
 	}
 	RegParams = testParams
-
 	newImpl := StartRegistration(testParams)
 	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
-	fmt.Println("starting 2nd node comm")
-	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
-	fmt.Println("connecting 1st node")
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
-	fmt.Println("connecting 2nd node")
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
-	fmt.Println("starting database")
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
-	//Insert a sample regCode
-	//err := database.PermissioningDb.InsertNodeRegCode("AAAA")
 
+	//Create a second node to register
+	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+
+	//Connect both nodes to the registration server
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//mock node that has a mock download topology function
 
-	//This is the only difference witht hte test above..
+	//Create reg codes and populate the database
 	strings := make([]string, 0)
 	strings = append(strings, "BBBB", "CCCC")
 	database.PopulateNodeRegistrationCodes(strings)
 	RegistrationCodes = strings
-	fmt.Println("registering 1st node")
-	err := newImpl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
 
-	//newImpl2 := StartRegistration(testParams)
-	//fmt.Printf("at initalizationg, conn manager is (newimpl2): %+v\n", newImpl.Comms.ConnectionManager)
-	fmt.Printf("Registering 2nd node\n")
-	//Does this need to be in the code somewhere, or am I doing a dumb thing?
+	//Register 1st node
+	err := newImpl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+
+	//Register 2nd node
 	err = newImpl.RegisterNode([]byte("B"), string(nodeCert), string(nodeCert), "CCCC", "0.0.0.0:6901")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
+	//Sleep so that the permisioning has time to connect to the nodes (ie impl isn't destroyed)
 	time.Sleep(5 * time.Second)
 
-	fmt.Println("disconnecting")
+	//Kill the connections for the next test
 	nodeComm.Disconnect("Permissioning")
 	nodeComm2.Disconnect("Permissioning")
-
 	newImpl.Comms.Shutdown()
 }
