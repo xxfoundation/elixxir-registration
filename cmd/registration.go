@@ -13,6 +13,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
@@ -27,7 +28,7 @@ type RegistrationImpl struct {
 	permissioningCert *x509.Certificate
 	permissioningKey  *rsa.PrivateKey
 	ndfOutputPath   string
-	completedNodes chan struct{comms *registration.RegistrationComms}
+	completedNodes chan struct{}
 	NumNodesInNet  int
 }
 
@@ -69,7 +70,8 @@ func StartRegistration(params Params) *RegistrationImpl {
 		}
 
 	}
-
+	regImpl.NumNodesInNet = len(RegistrationCodes)
+	fmt.Printf("num of nodes: %+v\n", regImpl.NumNodesInNet)
 	key, err = ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
 	if err != nil {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
@@ -88,7 +90,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 		regImpl, cert, key)
 
 	//TODO: change the buffer length to that set in params..also set in params :)
-	regImpl.completedNodes = make(chan struct{comms *registration.RegistrationComms})
+	regImpl.completedNodes = make(chan struct{}, regImpl.NumNodesInNet)
 	return regImpl
 }
 

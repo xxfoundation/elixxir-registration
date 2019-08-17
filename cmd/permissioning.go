@@ -14,7 +14,6 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
@@ -64,32 +63,25 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		return err
 	}
 	// Obtain the number of registered nodes
-	numNodes, err := database.PermissioningDb.CountRegisteredNodes()
+	_, err = database.PermissioningDb.CountRegisteredNodes()
 	if err != nil {
 		jww.ERROR.Printf("Unable to count registered Nodes: %+v", err)
 		return err
 	}
-
-	runFunc := func() {
-		go NodeRegistrationCompleter(m)
-		m.completedNodes <- struct{ comms *registration.RegistrationComms }{comms: m.Comms}
-
-	}
-
-	// If all nodes have registered
-	if numNodes == len(RegistrationCodes) {
-
-		// Finish the node registration process in another thread
-		go runFunc()
-	}
+	fmt.Println("passinbg along")
+	m.completedNodes <- struct{}{}
+	fmt.Println("passed along")
 	return nil
 }
 
 // Wrapper for completeNodeRegistrationHelper() error-handling
 func NodeRegistrationCompleter(impl *RegistrationImpl) {
 
-	tmpComms := <-impl.completedNodes
-	impl.Comms = tmpComms.comms
+	for numNodes:=0;numNodes<impl.NumNodesInNet;numNodes++{
+		<-impl.completedNodes
+	}
+
+
 	err := completeNodeRegistrationHelper(impl)
 	if err != nil {
 		jww.FATAL.Panicf("Error completing node registration: %+v", err)

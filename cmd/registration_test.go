@@ -104,7 +104,7 @@ func TestEmptyDataBase(t *testing.T) {
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
 
 	impl := StartRegistration(testParams)
-
+	impl.completedNodes = make(chan struct{}, 1)
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	err := database.PermissioningDb.InsertNodeRegCode("AAAA")
@@ -114,7 +114,6 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	//Register a node with that regCode
 	err = impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert),
 		"AAAA", nodeAddr)
-
 	if err != nil {
 		t.Errorf("Registered a node with a known reg code, but recieved the following error: %+v", err)
 	}
@@ -127,9 +126,10 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 func TestRegCodeExists_InsertNode(t *testing.T) {
 	//Iniatialize an implementation and the permissioning server
 	//initPermissioningServerKeys()
-	newImpl := &RegistrationImpl{}
+	impl := &RegistrationImpl{}
+	impl.completedNodes = make(chan struct{}, 1)
 
-	newImpl.permissioningKey, newImpl.permissioningCert = initPermissioningServerKeys()
+	impl.permissioningKey, impl.permissioningCert = initPermissioningServerKeys()
 
 	//Inialiaze the database
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
@@ -140,7 +140,7 @@ func TestRegCodeExists_InsertNode(t *testing.T) {
 	}
 
 	//Attempt to register a node
-	sig, err := newImpl.RegisterUser("AAAA", string(nodeKey))
+	sig, err := impl.RegisterUser("AAAA", string(nodeKey))
 
 	if err != nil {
 		t.Errorf("Failed to register a node when it should have worked: %+v", err)
@@ -155,16 +155,6 @@ func TestRegCodeExists_InsertNode(t *testing.T) {
 //Attempt to register a node after the
 func TestCompleteRegistration_HappyPath(t *testing.T) {
 
-
-	//Need to set the global ndf...change? add to impl??
-	RegParams = testParams
-
-	newImpl := StartRegistration(testParams)
-	//connect to the node
-	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
-
-	//nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	//err := database.PermissioningDb.InsertNodeRegCode("AAAA")
@@ -172,8 +162,20 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	strings := make([]string, 0)
 	strings = append(strings, "BBBB")
 	database.PopulateNodeRegistrationCodes(strings)
+	//Need to set the global ndf...change? add to impl??
 	RegistrationCodes = strings
-	err := newImpl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6900")
+
+	impl := StartRegistration(testParams)
+	RegParams = testParams
+	go NodeRegistrationCompleter(impl)
+	//connect to the node
+	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+
+	//nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
+
+	fmt.Println("registering node")
+	err := impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6900")
 	//So the impl is not destroyed
 	time.Sleep(5 * time.Second)
 
@@ -182,24 +184,13 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	}
 	//Kill the connections for the next test
 	nodeComm.Disconnect("Permissioning")
-	newImpl.Comms.Shutdown()
+	impl.Comms.Shutdown()
 
 }
 
 //Happy path: attempt to register 2 nodes
 func TestTopology_MultiNodes(t *testing.T) {
-	//Start registration server
 
-	RegParams = testParams
-	newImpl := StartRegistration(testParams)
-	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
-
-	//Create a second node to register
-	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
-
-	//Connect both nodes to the registration server
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//mock node that has a mock download topology function
 
@@ -208,15 +199,29 @@ func TestTopology_MultiNodes(t *testing.T) {
 	strings = append(strings, "BBBB", "CCCC")
 	database.PopulateNodeRegistrationCodes(strings)
 	RegistrationCodes = strings
+	RegParams = testParams
+	//Start registration server
+	impl := StartRegistration(testParams)
+	go NodeRegistrationCompleter(impl)
+
+	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+
+	//Create a second node to register
+	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+
+	//Connect both nodes to the registration server
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+
 
 	//Register 1st node
-	err := newImpl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
+	err := impl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
 	//Register 2nd node
-	err = newImpl.RegisterNode([]byte("B"), string(nodeCert), string(nodeCert), "CCCC", "0.0.0.0:6901")
+	err = impl.RegisterNode([]byte("B"), string(nodeCert), string(nodeCert), "CCCC", "0.0.0.0:6901")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
@@ -226,5 +231,5 @@ func TestTopology_MultiNodes(t *testing.T) {
 	//Kill the connections for the next test
 	nodeComm.Disconnect("Permissioning")
 	nodeComm2.Disconnect("Permissioning")
-	newImpl.Comms.Shutdown()
+	impl.Comms.Shutdown()
 }
