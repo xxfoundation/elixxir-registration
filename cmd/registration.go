@@ -13,6 +13,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
@@ -26,6 +27,9 @@ type RegistrationImpl struct {
 	Comms             *registration.RegistrationComms
 	permissioningCert *x509.Certificate
 	permissioningKey  *rsa.PrivateKey
+	//ndfOutputPAth string
+	completedNodes chan *registration.RegistrationComms
+	NumNodesInNet  int
 }
 
 type Params struct {
@@ -33,6 +37,7 @@ type Params struct {
 	CertPath      string
 	KeyPath       string
 	NdfOutputPath string
+	NumNodesInNet int
 }
 
 type connectionID string
@@ -81,6 +86,9 @@ func StartRegistration(params Params) *RegistrationImpl {
 	regImpl.Comms = registration.StartRegistrationServer(params.Address,
 		regImpl, cert, key)
 
+
+	//TODO: change the buffer length to that set in params..also set in params :)
+	regImpl.completedNodes = make(chan *registration.RegistrationComms)
 	return regImpl
 }
 

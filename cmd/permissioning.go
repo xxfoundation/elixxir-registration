@@ -26,7 +26,6 @@ import (
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
 	// Connect back to the Node using the provided certificate
-	fmt.Println(m)
 	err := m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), Addr,
 		[]byte(ServerTlsCert))
 	if err != nil {
@@ -57,7 +56,6 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		jww.ERROR.Printf("Failed to sign gateway certificate: %v", err)
 		return err
 	}
-	fmt.Println("insert node")
 	// Attempt to insert Node into the database
 	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
 	if err != nil {
@@ -70,19 +68,32 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		jww.ERROR.Printf("Unable to count registered Nodes: %+v", err)
 		return err
 	}
-	fmt.Println(numNodes)
-	fmt.Println(len(RegistrationCodes))
+
+	runFunc := func() {
+		go NodeRegistrationCompleter(m)
+		m.completedNodes <- m.Comms
+
+	}
+
 	// If all nodes have registered
 	if numNodes == len(RegistrationCodes) {
+
 		// Finish the node registration process in another thread
-		go completeNodeRegistration(m)
+		go runFunc()
 	}
 	return nil
 }
 
 // Wrapper for completeNodeRegistrationHelper() error-handling
-func completeNodeRegistration(impl *RegistrationImpl) {
-	fmt.Println("completing reg")
+func NodeRegistrationCompleter(impl *RegistrationImpl) {
+	//var tmp *registration.RegistrationComms
+	//doubt that you need something this complex.. you might only need a channel of one
+	//you only need one if you are going to use one impl to make all the connections
+	//if you are having an impl for every conn, you are gonna have to pass the map for each..add to some data struct
+	//But I doubt that this is the case (the multi impl's)
+	//wtf
+	//
+	impl.Comms = <-impl.completedNodes
 	err := completeNodeRegistrationHelper(impl)
 	if err != nil {
 		jww.FATAL.Panicf("Error completing node registration: %+v", err)
@@ -100,13 +111,11 @@ func completeNodeRegistrationHelper(impl *RegistrationImpl) error {
 	}
 
 	// Output the completed topology to a JSON file
-	fmt.Println("outputting to json")
 	err = outputNodeTopologyToJSON(topology, RegParams.NdfOutputPath)
 	if err != nil {
 		return errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
 			err))
 	}
-
 	// Broadcast completed topology to all nodes
 	return broadcastTopology(impl, topology)
 }
@@ -134,8 +143,7 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, error) {
 func broadcastTopology(impl *RegistrationImpl, topology *mixmessages.NodeTopology) error {
 	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
 	for _, nodeInfo := range topology.Topology {
-		err := impl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.
-			Id), topology)
+		err := impl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.Id), topology)
 		if err != nil {
 			return errors.New(fmt.Sprintf(
 				"unable to broadcast node topology: %+v", err))
@@ -162,15 +170,12 @@ func getNodeInfo(dbNodeInfo *database.NodeInformation, index int) *mixmessages.N
 // marshaling fails or if the JSON file cannot be created.
 func outputNodeTopologyToJSON(topology *mixmessages.NodeTopology, filePath string) error {
 	// Generate JSON from structure
-	fmt.Println("outputting")
 	data, err := json.MarshalIndent(topology, "", "\t")
 	if err != nil {
 		return err
 	}
 
 	// Write JSON to file
-	fmt.Println("file path")
-	fmt.Println(utils.GetFullPath(filePath))
 	err = ioutil.WriteFile(utils.GetFullPath(filePath), data, 0644)
 	if err != nil {
 		return err

@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/registration/database"
 	"os"
 )
@@ -25,6 +26,7 @@ var (
 	noTLS             bool
 	RegistrationCodes []string
 	RegParams         Params
+	ch                chan connect.ConnectionManager
 )
 
 // rootCmd represents the base command when called without any subcommands
