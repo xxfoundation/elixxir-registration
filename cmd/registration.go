@@ -47,7 +47,7 @@ func (c connectionID) String() string {
 
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) *RegistrationImpl {
-
+	jww.DEBUG.Printf("Starting registration\n")
 	regImpl := &RegistrationImpl{}
 
 	var cert, key []byte

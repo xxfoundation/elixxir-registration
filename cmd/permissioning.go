@@ -32,6 +32,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		jww.ERROR.Printf("Failed to return connection to Node: %+v", err)
 		return err
 	}
+	jww.DEBUG.Printf("Connected to node %+v of address %+v\n", ID, Addr)
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
@@ -56,12 +57,14 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		jww.ERROR.Printf("Failed to sign gateway certificate: %v", err)
 		return err
 	}
+	jww.DEBUG.Printf("Signed the certificates\n")
 	// Attempt to insert Node into the database
 	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
 	if err != nil {
 		jww.ERROR.Printf("unable to insert node: %+v", err)
 		return err
 	}
+	jww.DEBUG.Printf("Inserted node: %+v to the database with code %+v\n", ID, RegistrationCode)
 	// Obtain the number of registered nodes
 	_, err = database.PermissioningDb.CountRegisteredNodes()
 	if err != nil {
