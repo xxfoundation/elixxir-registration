@@ -26,6 +26,9 @@ type RegistrationImpl struct {
 	Comms             *registration.RegistrationComms
 	permissioningCert *x509.Certificate
 	permissioningKey  *rsa.PrivateKey
+	ndfOutputPath     string
+	completedNodes    chan struct{}
+	NumNodesInNet     int
 }
 
 type Params struct {
@@ -33,6 +36,7 @@ type Params struct {
 	CertPath      string
 	KeyPath       string
 	NdfOutputPath string
+	NumNodesInNet int
 }
 
 type connectionID string
@@ -65,7 +69,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 		}
 
 	}
-
+	regImpl.NumNodesInNet = len(RegistrationCodes)
 	key, err = ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
 	if err != nil {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
@@ -77,10 +81,14 @@ func StartRegistration(params Params) *RegistrationImpl {
 			err, regImpl.permissioningKey)
 	}
 
+	regImpl.ndfOutputPath = params.NdfOutputPath
+
 	// Start the communication server
 	regImpl.Comms = registration.StartRegistrationServer(params.Address,
 		regImpl, cert, key)
 
+	//TODO: change the buffer length to that set in params..also set in params :)
+	regImpl.completedNodes = make(chan struct{}, regImpl.NumNodesInNet)
 	return regImpl
 }
 

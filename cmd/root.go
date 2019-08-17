@@ -70,7 +70,10 @@ var rootCmd = &cobra.Command{
 		jww.INFO.Println("Starting Permissioning")
 		jww.INFO.Println("Starting User Registration")
 		// Start registration server
-		StartRegistration(RegParams)
+		impl := StartRegistration(RegParams)
+
+		// Begin the thread which handles the completion registration
+		go NodeRegistrationCompleter(impl)
 
 		// Wait forever to prevent process from ending
 		select {}
