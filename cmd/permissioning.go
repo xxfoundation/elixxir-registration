@@ -82,7 +82,7 @@ func NodeRegistrationCompleter(impl *RegistrationImpl) {
 	// Assemble the completed topology
 	topology, err := assembleTopology(RegistrationCodes)
 	if err != nil {
-		return err
+		jww.FATAL.Printf("unable to assemble topology: %+v", err)
 	}
 
 	// Output the completed topology to a JSON file
