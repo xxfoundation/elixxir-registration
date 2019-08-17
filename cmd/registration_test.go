@@ -71,7 +71,6 @@ func TestEmptyDataBase(t *testing.T) {
 		KeyPath:  testkeys.GetCAKeyPath(),
 	}
 	impl := StartRegistration(testParams)
-	fmt.Println(impl)
 	//Set the permissioning keys for testing
 	//initPermissioningServerKeys()
 
@@ -152,7 +151,7 @@ func TestRegCodeExists_InsertNode(t *testing.T) {
 func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 	testParams := Params{
-		Address:	   permAddr,
+		Address:       permAddr,
 		CertPath:      testkeys.GetCACertPath(),
 		KeyPath:       testkeys.GetCAKeyPath(),
 		NdfOutputPath: testkeys.GetNDFPath(),
@@ -163,7 +162,6 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	newImpl := StartRegistration(testParams)
 	//connect to the node
 	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
-	fmt.Printf("nodecomms: %+v\n", nodeComm)
 	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
 
 	//nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
@@ -189,7 +187,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 func TestTopology_MultiNodes(t *testing.T) {
 	testParams := Params{
-		Address:permAddr,
+		Address:       permAddr,
 		CertPath:      testkeys.GetCACertPath(),
 		KeyPath:       testkeys.GetCAKeyPath(),
 		NdfOutputPath: testkeys.GetNDFPath(),
@@ -204,8 +202,8 @@ func TestTopology_MultiNodes(t *testing.T) {
 	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
 	fmt.Println("connecting 2nd node")
 	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
-
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:5900")
+	fmt.Println("starting database")
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	//err := database.PermissioningDb.InsertNodeRegCode("AAAA")
 
@@ -216,16 +214,20 @@ func TestTopology_MultiNodes(t *testing.T) {
 	strings = append(strings, "BBBB", "CCCC")
 	database.PopulateNodeRegistrationCodes(strings)
 	RegistrationCodes = strings
+	fmt.Println("registering 1st node")
 	err := newImpl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
 
 	//newImpl2 := StartRegistration(testParams)
 	//fmt.Printf("at initalizationg, conn manager is (newimpl2): %+v\n", newImpl.Comms.ConnectionManager)
-	fmt.Printf("after 1st reg: %+v\n", newImpl)
+	fmt.Printf("Registering 2nd node\n")
 	//Does this need to be in the code somewhere, or am I doing a dumb thing?
 	err = newImpl.RegisterNode([]byte("B"), string(nodeCert), string(nodeCert), "CCCC", "0.0.0.0:6901")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
+	time.Sleep(5 * time.Second)
+
+	fmt.Println("disconnecting")
 	nodeComm.Disconnect("Permissioning")
 	nodeComm2.Disconnect("Permissioning")
 

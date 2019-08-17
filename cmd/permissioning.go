@@ -86,13 +86,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 
 // Wrapper for completeNodeRegistrationHelper() error-handling
 func NodeRegistrationCompleter(impl *RegistrationImpl) {
-	//var tmp *registration.RegistrationComms
-	//doubt that you need something this complex.. you might only need a channel of one
-	//you only need one if you are going to use one impl to make all the connections
-	//if you are having an impl for every conn, you are gonna have to pass the map for each..add to some data struct
-	//But I doubt that this is the case (the multi impl's)
-	//wtf
-	//
+
 	impl.Comms = <-impl.completedNodes
 	err := completeNodeRegistrationHelper(impl)
 	if err != nil {
