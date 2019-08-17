@@ -23,6 +23,7 @@ var nodeAddr = "0.0.0.0:6900"
 var nodeCert []byte
 var nodeKey []byte
 var permAddr = "0.0.0.0:5900"
+var testParams Params
 
 /*
 var testPermissioningKey *rsa.PrivateKey
@@ -41,6 +42,13 @@ func TestMain(m *testing.M) {
 		fmt.Printf("Could not get node key: %+v\n", err)
 	}
 
+	testParams = Params{
+		Address:       permAddr,
+		CertPath:      testkeys.GetCACertPath(),
+		KeyPath:       testkeys.GetCAKeyPath(),
+		NdfOutputPath: testkeys.GetNDFPath(),
+	}
+
 	nodeComm = node.StartNode(nodeAddr, node.NewImplementation(), nodeCert, nodeKey)
 
 	runFunc := func() int {
@@ -48,6 +56,9 @@ func TestMain(m *testing.M) {
 		nodeComm.Shutdown()
 		return code
 	}
+
+
+
 	os.Exit(runFunc())
 }
 
@@ -91,14 +102,7 @@ func TestEmptyDataBase(t *testing.T) {
 
 //Happy path: looking for a code that is in the database
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
-	//initPermissioningServerKeys()
 
-	testParams := Params{
-		Address:       permAddr,
-		CertPath:      testkeys.GetCACertPath(),
-		KeyPath:       testkeys.GetCAKeyPath(),
-		NdfOutputPath: testkeys.GetNDFPath(),
-	}
 	impl := StartRegistration(testParams)
 
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
@@ -151,12 +155,7 @@ func TestRegCodeExists_InsertNode(t *testing.T) {
 //Attempt to register a node after the
 func TestCompleteRegistration_HappyPath(t *testing.T) {
 
-	testParams := Params{
-		Address:       permAddr,
-		CertPath:      testkeys.GetCACertPath(),
-		KeyPath:       testkeys.GetCAKeyPath(),
-		NdfOutputPath: testkeys.GetNDFPath(),
-	}
+
 	//Need to set the global ndf...change? add to impl??
 	RegParams = testParams
 
@@ -190,12 +189,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 //Happy path: attempt to register 2 nodes
 func TestTopology_MultiNodes(t *testing.T) {
 	//Start registration server
-	testParams := Params{
-		Address:       permAddr,
-		CertPath:      testkeys.GetCACertPath(),
-		KeyPath:       testkeys.GetCAKeyPath(),
-		NdfOutputPath: testkeys.GetNDFPath(),
-	}
+
 	RegParams = testParams
 	newImpl := StartRegistration(testParams)
 	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())

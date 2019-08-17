@@ -26,8 +26,8 @@ type RegistrationImpl struct {
 	Comms             *registration.RegistrationComms
 	permissioningCert *x509.Certificate
 	permissioningKey  *rsa.PrivateKey
-	//ndfOutputPAth string
-	completedNodes chan *registration.RegistrationComms
+	ndfOutputPath   string
+	completedNodes chan struct{comms *registration.RegistrationComms}
 	NumNodesInNet  int
 }
 
@@ -81,12 +81,14 @@ func StartRegistration(params Params) *RegistrationImpl {
 			err, regImpl.permissioningKey)
 	}
 
+	regImpl.ndfOutputPath = params.NdfOutputPath
+
 	// Start the communication server
 	regImpl.Comms = registration.StartRegistrationServer(params.Address,
 		regImpl, cert, key)
 
 	//TODO: change the buffer length to that set in params..also set in params :)
-	regImpl.completedNodes = make(chan *registration.RegistrationComms)
+	regImpl.completedNodes = make(chan struct{comms *registration.RegistrationComms})
 	return regImpl
 }
 

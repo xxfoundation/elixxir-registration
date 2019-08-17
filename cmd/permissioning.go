@@ -14,6 +14,7 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
@@ -71,7 +72,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 
 	runFunc := func() {
 		go NodeRegistrationCompleter(m)
-		m.completedNodes <- m.Comms
+		m.completedNodes <- struct{ comms *registration.RegistrationComms }{comms: m.Comms}
 
 	}
 
@@ -87,7 +88,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 // Wrapper for completeNodeRegistrationHelper() error-handling
 func NodeRegistrationCompleter(impl *RegistrationImpl) {
 
-	impl.Comms = <-impl.completedNodes
+	tmpComms := <-impl.completedNodes
+	impl.Comms = tmpComms.comms
 	err := completeNodeRegistrationHelper(impl)
 	if err != nil {
 		jww.FATAL.Panicf("Error completing node registration: %+v", err)
@@ -105,7 +107,7 @@ func completeNodeRegistrationHelper(impl *RegistrationImpl) error {
 	}
 
 	// Output the completed topology to a JSON file
-	err = outputNodeTopologyToJSON(topology, RegParams.NdfOutputPath)
+	err = outputNodeTopologyToJSON(topology, impl.ndfOutputPath)
 	if err != nil {
 		return errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
 			err))
