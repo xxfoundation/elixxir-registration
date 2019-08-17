@@ -79,16 +79,6 @@ func NodeRegistrationCompleter(impl *RegistrationImpl) {
 		<-impl.completedNodes
 	}
 
-	err := completeNodeRegistrationHelper(impl)
-	if err != nil {
-		jww.FATAL.Panicf("Error completing node registration: %+v", err)
-	}
-	jww.INFO.Printf("Node registration complete!")
-}
-
-// Once all nodes have registered, this function is triggered
-// to assemble and broadcast the completed topology to all nodes
-func completeNodeRegistrationHelper(impl *RegistrationImpl) error {
 	// Assemble the completed topology
 	topology, err := assembleTopology(RegistrationCodes)
 	if err != nil {
@@ -98,11 +88,17 @@ func completeNodeRegistrationHelper(impl *RegistrationImpl) error {
 	// Output the completed topology to a JSON file
 	err = outputNodeTopologyToJSON(topology, impl.ndfOutputPath)
 	if err != nil {
-		return errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
+		error := errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
 			err))
+		jww.FATAL.Printf(error.Error())
 	}
 	// Broadcast completed topology to all nodes
-	return broadcastTopology(impl, topology)
+	err = broadcastTopology(impl, topology)
+
+	if err != nil {
+		jww.FATAL.Panicf("Error completing node registration: %+v", err)
+	}
+	jww.INFO.Printf("Node registration complete!")
 }
 
 // Assemble the completed topology from the database
