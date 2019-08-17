@@ -120,6 +120,7 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, error) {
 	nodeTopology := mixmessages.NodeTopology{
 		Topology: topology,
 	}
+	jww.DEBUG.Printf("Assembled the topology")
 	return &nodeTopology, nil
 }
 
