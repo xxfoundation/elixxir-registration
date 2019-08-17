@@ -27,9 +27,9 @@ type RegistrationImpl struct {
 	Comms             *registration.RegistrationComms
 	permissioningCert *x509.Certificate
 	permissioningKey  *rsa.PrivateKey
-	ndfOutputPath   string
-	completedNodes chan struct{}
-	NumNodesInNet  int
+	ndfOutputPath     string
+	completedNodes    chan struct{}
+	NumNodesInNet     int
 }
 
 type Params struct {
@@ -71,7 +71,6 @@ func StartRegistration(params Params) *RegistrationImpl {
 
 	}
 	regImpl.NumNodesInNet = len(RegistrationCodes)
-	fmt.Printf("num of nodes: %+v\n", regImpl.NumNodesInNet)
 	key, err = ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
 	if err != nil {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)

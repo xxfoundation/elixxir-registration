@@ -75,7 +75,6 @@ var rootCmd = &cobra.Command{
 		// Begin the thread which handles the completion registration
 		go NodeRegistrationCompleter(impl)
 
-
 		// Wait forever to prevent process from ending
 		select {}
 

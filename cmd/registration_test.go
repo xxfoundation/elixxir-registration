@@ -57,8 +57,6 @@ func TestMain(m *testing.M) {
 		return code
 	}
 
-
-
 	os.Exit(runFunc())
 }
 
@@ -124,8 +122,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 
 //Happy Path:  Insert a reg code along with a node
 func TestRegCodeExists_InsertNode(t *testing.T) {
-	//Iniatialize an implementation and the permissioning server
-	//initPermissioningServerKeys()
+	//Initialize an implementation and the permissioning server
 	impl := &RegistrationImpl{}
 	impl.completedNodes = make(chan struct{}, 1)
 
@@ -154,27 +151,25 @@ func TestRegCodeExists_InsertNode(t *testing.T) {
 
 //Attempt to register a node after the
 func TestCompleteRegistration_HappyPath(t *testing.T) {
-
+	//Crate database
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
-	//err := database.PermissioningDb.InsertNodeRegCode("AAAA")
-	//This is the only difference witht hte test above..
 	strings := make([]string, 0)
 	strings = append(strings, "BBBB")
 	database.PopulateNodeRegistrationCodes(strings)
-	//Need to set the global ndf...change? add to impl??
 	RegistrationCodes = strings
 
+	//Start the registration server
 	impl := StartRegistration(testParams)
 	RegParams = testParams
 	go NodeRegistrationCompleter(impl)
-	//connect to the node
+
+	//connect the node to the permissioning server
 	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
 	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
 
 	//nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
 
-	fmt.Println("registering node")
 	err := impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6900")
 	//So the impl is not destroyed
 	time.Sleep(5 * time.Second)
@@ -190,9 +185,8 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 //Happy path: attempt to register 2 nodes
 func TestTopology_MultiNodes(t *testing.T) {
-
+	//Create database
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
-	//mock node that has a mock download topology function
 
 	//Create reg codes and populate the database
 	strings := make([]string, 0)
@@ -200,6 +194,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	database.PopulateNodeRegistrationCodes(strings)
 	RegistrationCodes = strings
 	RegParams = testParams
+
 	//Start registration server
 	impl := StartRegistration(testParams)
 	go NodeRegistrationCompleter(impl)
@@ -212,7 +207,6 @@ func TestTopology_MultiNodes(t *testing.T) {
 	//Connect both nodes to the registration server
 	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
 	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
-
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)

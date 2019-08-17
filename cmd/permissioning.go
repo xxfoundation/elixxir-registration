@@ -68,19 +68,16 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		jww.ERROR.Printf("Unable to count registered Nodes: %+v", err)
 		return err
 	}
-	fmt.Println("passinbg along")
 	m.completedNodes <- struct{}{}
-	fmt.Println("passed along")
 	return nil
 }
 
 // Wrapper for completeNodeRegistrationHelper() error-handling
 func NodeRegistrationCompleter(impl *RegistrationImpl) {
 
-	for numNodes:=0;numNodes<impl.NumNodesInNet;numNodes++{
+	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
 		<-impl.completedNodes
 	}
-
 
 	err := completeNodeRegistrationHelper(impl)
 	if err != nil {
