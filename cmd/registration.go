@@ -67,7 +67,9 @@ func StartRegistration(params Params) *RegistrationImpl {
 				"Permissioning cert is %+v",
 				err, regImpl.permissioningCert)
 		}
-
+		jww.DEBUG.Printf("permissioningCert: %+v\n", regImpl.permissioningCert)
+		jww.DEBUG.Printf("permissioning public key: %+v\n", regImpl.permissioningCert.PublicKey)
+		jww.DEBUG.Printf("permissioning private key: %+v\n", regImpl.permissioningKey)
 	}
 	regImpl.NumNodesInNet = len(RegistrationCodes)
 	key, err = ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
