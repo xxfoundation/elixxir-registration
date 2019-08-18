@@ -39,6 +39,18 @@ var rootCmd = &cobra.Command{
 			return
 		}
 
+		if verbose {
+			err := os.Setenv("GRPC_GO_LOG_SEVERITY_LEVEL", "info")
+			if err != nil {
+				jww.ERROR.Printf("Could not set GRPC_GO_LOG_SEVERITY_LEVEL: %+v", err)
+			}
+
+			err = os.Setenv("GRPC_GO_LOG_VERBOSITY_LEVEL", "2")
+			if err != nil {
+				jww.ERROR.Printf("Could not set GRPC_GO_LOG_VERBOSITY_LEVEL: %+v", err)
+			}
+		}
+
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")

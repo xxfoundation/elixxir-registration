@@ -104,20 +104,22 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 		return make([]byte, 0), err
 	}
 
+	sha := crypto.SHA256
+
 	// Use hardcoded keypair to sign Client-provided public key
 	//Create a hash, hash the pubKey and then truncate it
-	hash := sha256.New()
-	hashed := hash.Sum([]byte(pubKey))
-	hashed = hashed[len(pubKey):]
-	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, crypto.SHA256, hashed[:], rsa.NewDefaultOptions())
+	h := sha256.New()
+	h.Write([]byte(pubKey))
+	data := h.Sum(nil)
+	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, sha, data, nil)
 	if err != nil {
 		jww.ERROR.Printf("unable to sign client public key: %+v", err)
 		return make([]byte, 0),
 			err
 	}
-	//Reviewer: thoughts on keeping this?
-	// Return signed public key to Client with empty error field
+
 	jww.INFO.Printf("Verification complete for registration code %s",
 		registrationCode)
+	// Return signed public key to Client with empty error field
 	return sig, nil
 }
