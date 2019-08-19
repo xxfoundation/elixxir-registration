@@ -63,3 +63,9 @@ func (m *MapImpl) GetNode(code string) (*NodeInformation, error) {
 	}
 	return info, nil
 }
+
+//Delete a code from being able to be used again
+func (m *MapImpl) DeleteCode(code string) error {
+	m.client[code] = nil
+	return nil
+}

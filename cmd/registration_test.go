@@ -136,7 +136,7 @@ func TestRegCodeExists_InsertNode(t *testing.T) {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 
-	//Attempt to register a node
+	//Attempt to register a user
 	sig, err := impl.RegisterUser("AAAA", string(nodeKey))
 
 	if err != nil {

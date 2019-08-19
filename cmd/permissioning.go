@@ -71,6 +71,12 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		jww.ERROR.Printf("Unable to count registered Nodes: %+v", err)
 		return err
 	}
+	//Delete the registration code when
+	err = database.PermissioningDb.DeleteCode(RegistrationCode)
+	if err != nil {
+		jww.ERROR.Printf("unable to delete registration code %+v: %+v", RegistrationCode, err)
+		return err
+	}
 	m.completedNodes <- struct{}{}
 	return nil
 }
