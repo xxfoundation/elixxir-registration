@@ -9,7 +9,6 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,7 +31,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		return errors.New(fmt.Sprintf(
 			"Failed to check if registation code has already been registered: %+v", err))
 	}
-	if bytes.Compare(nodeInfo.Id, []byte("NULL"))  == 0{
+	//Check that the node hasn't already been registered
+	if nodeInfo.Id != nil {
 		return errors.New(fmt.Sprintf(
 			"Node with registration code %+v has already been registered", RegistrationCode))
 	}

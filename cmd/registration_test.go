@@ -183,6 +183,56 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 }
 
+//Error path:
+func TestDoubleRegistration(t *testing.T)  {
+	//Create database
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+
+	//Create reg codes and populate the database
+	strings := make([]string, 0)
+	strings = append(strings, "AAAA", "BBBB", "CCCC")
+	database.PopulateNodeRegistrationCodes(strings)
+	RegistrationCodes = strings
+	RegParams = testParams
+
+	//Start registration server
+	impl := StartRegistration(testParams)
+	go NodeRegistrationCompleter(impl)
+
+	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+
+	//Create a second node to register
+	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+
+	//Connect both nodes to the registration server
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+
+	//Register 1st node
+	err := impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+
+	//Register 2nd node
+	err = impl.RegisterNode([]byte("duplicate"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6901")
+	if err != nil {
+		//Kill the connections for the next test
+		nodeComm.Disconnect("Permissioning")
+		nodeComm2.Disconnect("Permissioning")
+		impl.Comms.Shutdown()
+		return
+	}
+	//Sleep so that the permisioning has time to connect to the nodes (ie impl isn't destroyed)
+	time.Sleep(5 * time.Second)
+
+	//Kill the connections for the next test
+	nodeComm.Disconnect("Permissioning")
+	nodeComm2.Disconnect("Permissioning")
+	impl.Comms.Shutdown()
+	t.Errorf("Expected happy path, recieved error: %+v", err)
+}
+
 //Happy path: attempt to register 2 nodes
 func TestTopology_MultiNodes(t *testing.T) {
 	//Create database
