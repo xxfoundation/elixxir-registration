@@ -25,24 +25,28 @@ import (
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
-	// Connect back to the Node using the provided certificate
+
+	//Check that the node hasn't already been registered
 	nodeInfo, err := database.PermissioningDb.GetNode(RegistrationCode)
 	if err != nil {
 		return errors.New(fmt.Sprintf(
 			"Failed to check if registation code has already been registered: %+v", err))
 	}
-	//Check that the node hasn't already been registered
 	if nodeInfo.Id != nil {
 		return errors.New(fmt.Sprintf(
 			"Node with registration code %+v has already been registered", RegistrationCode))
 	}
+
+	// Connect back to the Node using the provided certificate
 	err = m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), Addr,
 		[]byte(ServerTlsCert))
 	if err != nil {
 		jww.ERROR.Printf("Failed to return connection to Node: %+v", err)
 		return err
 	}
+
 	jww.DEBUG.Printf("Connected to node %+v of address %+v\n", ID, Addr)
+
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
@@ -68,6 +72,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		return err
 	}
 	jww.DEBUG.Printf("Signed the certificates\n")
+
 	// Attempt to insert Node into the database
 	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
 	if err != nil {
@@ -75,12 +80,14 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		return err
 	}
 	jww.DEBUG.Printf("Inserted node: %+v to the database with code %+v\n", ID, RegistrationCode)
+
 	// Obtain the number of registered nodes
 	_, err = database.PermissioningDb.CountRegisteredNodes()
 	if err != nil {
 		jww.ERROR.Printf("Unable to count registered Nodes: %+v", err)
 		return err
 	}
+
 	m.completedNodes <- struct{}{}
 	return nil
 }

@@ -183,9 +183,8 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 }
 
-
 //Error path: test that trying to register with the same reg code fails
-func TestDoubleRegistration(t *testing.T)  {
+func TestDoubleRegistration(t *testing.T) {
 	//Create database
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
@@ -222,7 +221,7 @@ func TestDoubleRegistration(t *testing.T)  {
 	nodeComm2.Disconnect("Permissioning")
 	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
-	time.Sleep(5*time.Second)
+	time.Sleep(5 * time.Second)
 	if err != nil {
 		return
 	}
@@ -275,5 +274,3 @@ func TestTopology_MultiNodes(t *testing.T) {
 	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
 }
-
-
