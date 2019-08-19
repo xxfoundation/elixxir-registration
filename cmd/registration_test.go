@@ -183,7 +183,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 }
 
- */
+
 //Error path: test that trying to register with the same reg code fails
 func TestDoubleRegistration(t *testing.T)  {
 	//Create database
@@ -198,6 +198,7 @@ func TestDoubleRegistration(t *testing.T)  {
 
 	//Start registration server
 	impl := StartRegistration(testParams)
+	go NodeRegistrationCompleter(impl)
 
 	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
 
