@@ -56,10 +56,3 @@ func (m *DatabaseImpl) GetNode(code string) (*NodeInformation, error) {
 	err := m.db.Select(node)
 	return node, err
 }
-
-//Delete a code from being able to be used again
-func (m *DatabaseImpl) DeleteNodeRegCode(code string) error {
-	nodeInfo := NodeInformation{Code: code}
-	err := m.db.Delete(nodeInfo)
-	return err
-}

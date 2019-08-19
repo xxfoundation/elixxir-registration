@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -26,7 +27,12 @@ import (
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
 	// Connect back to the Node using the provided certificate
-	err := m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), Addr,
+	nodeInfo, err := database.PermissioningDb.GetNode(RegistrationCode)
+	if bytes.Compare(nodeInfo.Id, []byte("NULL"))  == 0{
+		return errors.New(fmt.Sprintf(
+			"Node with registration code %+v has already been registered. ", RegistrationCode))
+	}
+	err = m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), Addr,
 		[]byte(ServerTlsCert))
 	if err != nil {
 		jww.ERROR.Printf("Failed to return connection to Node: %+v", err)
@@ -69,12 +75,6 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	_, err = database.PermissioningDb.CountRegisteredNodes()
 	if err != nil {
 		jww.ERROR.Printf("Unable to count registered Nodes: %+v", err)
-		return err
-	}
-	//Delete the registration code when
-	err = database.PermissioningDb.DeleteNodeRegCode(RegistrationCode)
-	if err != nil {
-		jww.ERROR.Printf("unable to delete registration code %+v: %+v", RegistrationCode, err)
 		return err
 	}
 	m.completedNodes <- struct{}{}

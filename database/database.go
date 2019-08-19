@@ -12,6 +12,7 @@ import (
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 	jww "github.com/spf13/jwalterweatherman"
+	"sync"
 	"time"
 )
 
@@ -24,6 +25,7 @@ type DatabaseImpl struct {
 type MapImpl struct {
 	client map[string]*RegistrationCode
 	node   map[string]*NodeInformation
+	mut    sync.Mutex
 }
 
 // Global variable for database interaction
@@ -43,8 +45,6 @@ type Database interface {
 	CountRegisteredNodes() (int, error)
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*NodeInformation, error)
-	// Delete a reg code (only used after successful registration)
-	DeleteNodeRegCode(code string) error
 }
 
 // Struct representing a RegistrationCode table in the database
