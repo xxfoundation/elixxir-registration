@@ -8,6 +8,7 @@ package cmd
 import (
 	"crypto/x509"
 	"fmt"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
@@ -121,10 +122,12 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 }
 
 //Happy Path:  Insert a reg code along with a node
-func TestRegCodeExists_InsertNode(t *testing.T) {
+func TestRegCodeExists_RegUser(t *testing.T) {
 	//Initialize an implementation and the permissioning server
 	impl := &RegistrationImpl{}
 	impl.completedNodes = make(chan struct{}, 1)
+
+	jww.SetStdoutThreshold(jww.LevelInfo)
 
 	impl.permissioningKey, impl.permissioningCert = initPermissioningServerKeys()
 
