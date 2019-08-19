@@ -44,7 +44,7 @@ type Database interface {
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*NodeInformation, error)
 	// Delete a reg code (only used after successful registration)
-	DeleteCode(code string) error
+	DeleteNodeRegCode(code string) error
 }
 
 // Struct representing a RegistrationCode table in the database

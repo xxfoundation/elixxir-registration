@@ -72,7 +72,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		return err
 	}
 	//Delete the registration code when
-	err = database.PermissioningDb.DeleteCode(RegistrationCode)
+	err = database.PermissioningDb.DeleteNodeRegCode(RegistrationCode)
 	if err != nil {
 		jww.ERROR.Printf("unable to delete registration code %+v: %+v", RegistrationCode, err)
 		return err
