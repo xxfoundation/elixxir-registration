@@ -28,9 +28,13 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
 	// Connect back to the Node using the provided certificate
 	nodeInfo, err := database.PermissioningDb.GetNode(RegistrationCode)
+	if err != nil {
+		return errors.New(fmt.Sprintf(
+			"Failed to check if registation code has already been registered: %+v", err))
+	}
 	if bytes.Compare(nodeInfo.Id, []byte("NULL"))  == 0{
 		return errors.New(fmt.Sprintf(
-			"Node with registration code %+v has already been registered. ", RegistrationCode))
+			"Node with registration code %+v has already been registered", RegistrationCode))
 	}
 	err = m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), Addr,
 		[]byte(ServerTlsCert))
