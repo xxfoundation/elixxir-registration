@@ -271,6 +271,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	//Kill the connections for the next test
 	nodeComm.Disconnect("Permissioning")
 	nodeComm2.Disconnect("Permissioning")
+	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
 }
 
