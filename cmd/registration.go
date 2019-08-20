@@ -9,25 +9,26 @@
 package cmd
 
 import (
+	"crypto"
 	"crypto/rand"
-	"errors"
+	"crypto/sha256"
+	"crypto/x509"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
-	"gitlab.com/elixxir/crypto/signature"
+	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
 )
 
-// Registration Implementation
-var registrationImpl RegistrationImpl
-
-// Hardcoded DSA keypair for registration server
-var privateKey *signature.DSAPrivateKey
-
 type RegistrationImpl struct {
-	Comms *registration.RegistrationComms
+	Comms             *registration.RegistrationComms
+	permissioningCert *x509.Certificate
+	permissioningKey  *rsa.PrivateKey
+	ndfOutputPath     string
+	completedNodes    chan struct{}
+	NumNodesInNet     int
 }
 
 type Params struct {
@@ -35,6 +36,7 @@ type Params struct {
 	CertPath      string
 	KeyPath       string
 	NdfOutputPath string
+	NumNodesInNet int
 }
 
 type connectionID string
@@ -44,76 +46,82 @@ func (c connectionID) String() string {
 }
 
 // Configure and start the Permissioning Server
-func StartRegistration(params Params) {
+func StartRegistration(params Params) *RegistrationImpl {
+	jww.DEBUG.Printf("Starting registration\n")
+	regImpl := &RegistrationImpl{}
 
-	// Read in TLS keys from files
-	cert, err := ioutil.ReadFile(utils.GetFullPath(params.CertPath))
-	if err != nil {
-		jww.ERROR.Printf("failed to read certificate at %s: %+v", params.CertPath, err)
+	var cert, key []byte
+	var err error
+
+	if !noTLS {
+		// Read in TLS keys from files
+		cert, err = ioutil.ReadFile(utils.GetFullPath(params.CertPath))
+		if err != nil {
+			jww.ERROR.Printf("failed to read certificate at %s: %+v", params.CertPath, err)
+		}
+
+		// Set globals for permissioning server
+		regImpl.permissioningCert, err = tls.LoadCertificate(string(cert))
+		if err != nil {
+			jww.ERROR.Printf("Failed to parse permissioning server cert: %+v. "+
+				"Permissioning cert is %+v",
+				err, regImpl.permissioningCert)
+		}
+		jww.DEBUG.Printf("permissioningCert: %+v\n", regImpl.permissioningCert)
+		jww.DEBUG.Printf("permissioning public key: %+v\n", regImpl.permissioningCert.PublicKey)
+		jww.DEBUG.Printf("permissioning private key: %+v\n", regImpl.permissioningKey)
 	}
-	key, err := ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
+	regImpl.NumNodesInNet = len(RegistrationCodes)
+	key, err = ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
 	if err != nil {
 		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
 	}
-
-	// Set globals for permissioning server
-	permissioningCert, err = tls.LoadCertificate(string(cert))
-	if err != nil {
-		jww.ERROR.Printf("Failed to parse permissioning server cert: %+v. "+
-			"Permissioning cert is %+v",
-			err, permissioningCert)
-	}
-	permissioningKey, err = tls.LoadRSAPrivateKey(string(key))
+	regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
 	if err != nil {
 		jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
 			"PermissioningKey is %+v",
-			err, permissioningKey)
+			err, regImpl.permissioningKey)
 	}
 
+	regImpl.ndfOutputPath = params.NdfOutputPath
+
 	// Start the communication server
-	registrationImpl.Comms = registration.StartRegistrationServer(params.Address,
-		&registrationImpl, cert, key)
+	regImpl.Comms = registration.StartRegistrationServer(params.Address,
+		regImpl, cert, key)
 
-	// Wait forever to prevent process from ending
-	select {}
-}
-
-// Saves the DSA public key to a JSON file
-// and returns registration implementation
-func NewRegistrationImpl() *RegistrationImpl {
-	return &RegistrationImpl{}
+	//TODO: change the buffer length to that set in params..also set in params :)
+	regImpl.completedNodes = make(chan struct{}, regImpl.NumNodesInNet)
+	return regImpl
 }
 
 // Handle registration attempt by a Client
-func (m *RegistrationImpl) RegisterUser(registrationCode string, Y, P, Q,
-	G []byte) (hash, R, S []byte, err error) {
-
+func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signature []byte, err error) {
+	jww.INFO.Printf("Verifying for registration code %s",
+		registrationCode)
 	// Check database to verify given registration code
 	err = database.PermissioningDb.UseCode(registrationCode)
 	if err != nil {
 		// Invalid registration code, return an error
 		jww.ERROR.Printf("Error validating registration code: %s", err)
-		return make([]byte, 0), make([]byte, 0), make([]byte, 0), err
+		return make([]byte, 0), err
 	}
 
-	// Concatenate Client public key byte slices
-	data := make([]byte, 0)
-	data = append(data, Y...)
-	data = append(data, P...)
-	data = append(data, Q...)
-	data = append(data, G...)
+	sha := crypto.SHA256
 
 	// Use hardcoded keypair to sign Client-provided public key
-	sig, err := privateKey.Sign(data, rand.Reader)
+	//Create a hash, hash the pubKey and then truncate it
+	h := sha256.New()
+	h.Write([]byte(pubKey))
+	data := h.Sum(nil)
+	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, sha, data, nil)
 	if err != nil {
-		// Unable to sign public key, return an error
-		jww.ERROR.Printf("Error signing client public key: %s", err)
-		return make([]byte, 0), make([]byte, 0), make([]byte, 0),
-			errors.New("unable to sign client public key")
+		jww.ERROR.Printf("unable to sign client public key: %+v", err)
+		return make([]byte, 0),
+			err
 	}
 
-	// Return signed public key to Client with empty error field
 	jww.INFO.Printf("Verification complete for registration code %s",
 		registrationCode)
-	return data, sig.R.Bytes(), sig.S.Bytes(), nil
+	// Return signed public key to Client with empty error field
+	return sig, nil
 }

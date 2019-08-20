@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/testkeys"
 	"io/ioutil"
 	"testing"
@@ -41,10 +42,8 @@ func loadPrivKey(file string) interface{} {
 	if certDecoded == nil {
 		jww.ERROR.Printf("Decoding PEM Failed For %v", file)
 	}
-
-	//Openssl creates pkcs8 keys by default as of openSSL 1.0.0
+	//Openssl creates pkcs8 keys by default as of openSSL 1.0.0 need to be able to handle both
 	privateKey, err := x509.ParsePKCS8PrivateKey(certDecoded.Bytes)
-
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
@@ -63,7 +62,8 @@ func TestSign_CheckSignature(t *testing.T) {
 	//Load files
 	clientCert := loadCertificate(testkeys.GetNodeCertPath())
 	caCert := loadCertificate(testkeys.GetCACertPath())
-	caPrivKey := loadPrivKey(testkeys.GetCAKeyPath())
+	pemKey, _ := ioutil.ReadFile(testkeys.GetCAKeyPath())
+	caPrivKey, _ := tls.LoadRSAPrivateKey(string(pemKey))
 
 	signedCertString, _ := Sign(clientCert, caCert, caPrivKey)
 	signedCertBytes := ConvertToASNBytes(signedCertString)
@@ -96,7 +96,7 @@ func TestDSAKeyCert(t *testing.T) {
 	caCert := loadCertificate(testkeys.GetCACertPath())
 	caPrivKey := loadPrivKey(testkeys.GetDSAKeyPath())
 
-	_, err := Sign(clientCert,caCert,caPrivKey)
+	_, err := Sign(clientCert, caCert, caPrivKey)
 	if err == nil {
 		t.Error("Failed to detect a DSA private key")
 	}

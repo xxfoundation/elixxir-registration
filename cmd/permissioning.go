@@ -9,8 +9,6 @@
 package cmd
 
 import (
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -24,21 +22,17 @@ import (
 	"io/ioutil"
 )
 
-var permissioningCert *x509.Certificate
-var permissioningKey *rsa.PrivateKey
-
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	GatewayTlsCert, RegistrationCode, Addr string) error {
-
 	// Connect back to the Node using the provided certificate
-	err := m.Comms.ConnectToNode(id.NewNodeFromBytes(ID), Addr,
+	err := m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), Addr,
 		[]byte(ServerTlsCert))
 	if err != nil {
 		jww.ERROR.Printf("Failed to return connection to Node: %+v", err)
 		return err
 	}
-
+	jww.DEBUG.Printf("Connected to node %+v of address %+v\n", ID, Addr)
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
@@ -52,66 +46,62 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	}
 
 	// Sign the node and gateway certs
-	signedNodeCert, err := certAuthority.Sign(nodeCertificate, permissioningCert, permissioningKey)
+	signedNodeCert, err := certAuthority.Sign(nodeCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
 	if err != nil {
-		jww.ERROR.Printf("Failed to sign node certificate: %v", err)
+		jww.ERROR.Printf("failed to sign node certificate: %v", err)
 		return err
 	}
-	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, permissioningCert, permissioningKey)
+	//Sign the gateway cert reqs
+	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
 	if err != nil {
 		jww.ERROR.Printf("Failed to sign gateway certificate: %v", err)
 		return err
 	}
-
+	jww.DEBUG.Printf("Signed the certificates\n")
 	// Attempt to insert Node into the database
 	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
 	if err != nil {
-		jww.ERROR.Printf("Unable to insert node: %+v", err)
+		jww.ERROR.Printf("unable to insert node: %+v", err)
 		return err
 	}
-
+	jww.DEBUG.Printf("Inserted node: %+v to the database with code %+v\n", ID, RegistrationCode)
 	// Obtain the number of registered nodes
-	numNodes, err := database.PermissioningDb.CountRegisteredNodes()
+	_, err = database.PermissioningDb.CountRegisteredNodes()
 	if err != nil {
 		jww.ERROR.Printf("Unable to count registered Nodes: %+v", err)
 		return err
 	}
-
-	// If all nodes have registered
-	if numNodes == len(RegistrationCodes) {
-		// Finish the node registration process in another thread
-		go completeNodeRegistration()
-	}
+	m.completedNodes <- struct{}{}
 	return nil
 }
 
 // Wrapper for completeNodeRegistrationHelper() error-handling
-func completeNodeRegistration() {
-	err := completeNodeRegistrationHelper()
+func NodeRegistrationCompleter(impl *RegistrationImpl) {
+
+	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
+		<-impl.completedNodes
+	}
+
+	// Assemble the completed topology
+	topology, err := assembleTopology(RegistrationCodes)
+	if err != nil {
+		jww.FATAL.Printf("unable to assemble topology: %+v", err)
+	}
+
+	// Output the completed topology to a JSON file
+	err = outputNodeTopologyToJSON(topology, impl.ndfOutputPath)
+	if err != nil {
+		error := errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
+			err))
+		jww.FATAL.Printf(error.Error())
+	}
+	// Broadcast completed topology to all nodes
+	err = broadcastTopology(impl, topology)
+
 	if err != nil {
 		jww.FATAL.Panicf("Error completing node registration: %+v", err)
 	}
 	jww.INFO.Printf("Node registration complete!")
-}
-
-// Once all nodes have registered, this function is triggered
-// to assemble and broadcast the completed topology to all nodes
-func completeNodeRegistrationHelper() error {
-	// Assemble the completed topology
-	topology, err := assembleTopology(RegistrationCodes)
-	if err != nil {
-		return err
-	}
-
-	// Output the completed topology to a JSON file
-	err = outputNodeTopologyToJSON(topology, RegParams.NdfOutputPath)
-	if err != nil {
-		return errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
-			err))
-	}
-
-	// Broadcast completed topology to all nodes
-	return broadcastTopology(topology)
 }
 
 // Assemble the completed topology from the database
@@ -130,15 +120,15 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, error) {
 	nodeTopology := mixmessages.NodeTopology{
 		Topology: topology,
 	}
+	jww.DEBUG.Printf("Assembled the topology")
 	return &nodeTopology, nil
 }
 
 // Broadcast completed topology to all nodes
-func broadcastTopology(topology *mixmessages.NodeTopology) error {
+func broadcastTopology(impl *RegistrationImpl, topology *mixmessages.NodeTopology) error {
 	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
 	for _, nodeInfo := range topology.Topology {
-		err := registrationImpl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.
-			Id), topology)
+		err := impl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.Id), topology)
 		if err != nil {
 			return errors.New(fmt.Sprintf(
 				"unable to broadcast node topology: %+v", err))

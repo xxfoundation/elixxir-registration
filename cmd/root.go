@@ -9,15 +9,12 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
-	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/registration/database"
-	"io/ioutil"
 	"os"
 )
 
@@ -25,8 +22,8 @@ var (
 	cfgFile           string
 	verbose           bool
 	showVer           bool
+	noTLS             bool
 	RegistrationCodes []string
-	dsaKeyPairPath    string
 	RegParams         Params
 )
 
@@ -42,25 +39,16 @@ var rootCmd = &cobra.Command{
 			return
 		}
 
-		// Get the DSA private key
-		dsaKeyBytes, err := ioutil.ReadFile(dsaKeyPairPath)
-		if err != nil {
-			jww.FATAL.Panicf("Could not read dsa keys file: %v", err)
-		}
+		if verbose {
+			err := os.Setenv("GRPC_GO_LOG_SEVERITY_LEVEL", "info")
+			if err != nil {
+				jww.ERROR.Printf("Could not set GRPC_GO_LOG_SEVERITY_LEVEL: %+v", err)
+			}
 
-		// Marshall into JSON
-		var data map[string]string
-		err = json.Unmarshal(dsaKeyBytes, &data)
-		if err != nil {
-			jww.FATAL.Panicf("Could not unmarshal dsa keys file: %v", err)
-		}
-
-		// Build the private key
-		privateKey = &signature.DSAPrivateKey{}
-		privateKey, err = privateKey.PemDecode([]byte(data["PrivateKey"]))
-		if err != nil {
-			jww.FATAL.Panicf("Unable to parse permissioning private key: %+v",
-				err)
+			err = os.Setenv("GRPC_GO_LOG_VERBOSITY_LEVEL", "2")
+			if err != nil {
+				jww.ERROR.Printf("Could not set GRPC_GO_LOG_VERBOSITY_LEVEL: %+v", err)
+			}
 		}
 
 		// Parse config file options
@@ -91,9 +79,16 @@ var rootCmd = &cobra.Command{
 			KeyPath:       keyPath,
 			NdfOutputPath: ndfOutputPath,
 		}
-
+		jww.INFO.Println("Starting Permissioning")
+		jww.INFO.Println("Starting User Registration")
 		// Start registration server
-		StartRegistration(RegParams)
+		impl := StartRegistration(RegParams)
+
+		// Begin the thread which handles the completion registration
+		go NodeRegistrationCompleter(impl)
+
+		// Wait forever to prevent process from ending
+		select {}
 
 	},
 }
@@ -124,10 +119,12 @@ func init() {
 		"Show verbose logs for debugging")
 	rootCmd.Flags().BoolVarP(&showVer, "version", "V", false,
 		"Show version information")
-	rootCmd.Flags().StringVarP(&dsaKeyPairPath, "keyPairOverride", "k",
-		"", "Defined a DSA keypair to use instead of generating a new one")
+
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c",
 		"", "Sets a custom config file path")
+
+	rootCmd.Flags().BoolVar(&noTLS, "noTLS", false,
+		"Runs without TLS enabled")
 }
 
 // initConfig reads in config file and ENV variables if set.
