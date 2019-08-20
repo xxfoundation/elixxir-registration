@@ -148,7 +148,7 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, error) {
 		if err != nil {
 			return nil, errors.New(fmt.Sprintf(
 				"unable to obtain node for registration"+
-					" code %s: %+v", registrationCode, err))
+					" code %+v: %+v", registrationCode, err))
 		}
 		topology = append(topology, getNodeInfo(dbNodeInfo, index))
 	}

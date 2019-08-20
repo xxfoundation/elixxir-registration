@@ -59,7 +59,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 		// Read in TLS keys from files
 		cert, err = ioutil.ReadFile(utils.GetFullPath(params.CertPath))
 		if err != nil {
-			jww.ERROR.Printf("failed to read certificate at %s: %+v", params.CertPath, err)
+			jww.ERROR.Printf("failed to read certificate at %+v: %+v", params.CertPath, err)
 		}
 
 		// Set globals for permissioning server
@@ -76,7 +76,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 	regImpl.NumNodesInNet = len(RegistrationCodes)
 	key, err = ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
 	if err != nil {
-		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
+		jww.ERROR.Printf("failed to read key at %+v: %+v", params.KeyPath, err)
 	}
 	regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
 	if err != nil {
@@ -98,15 +98,15 @@ func StartRegistration(params Params) *RegistrationImpl {
 
 // Handle registration attempt by a Client
 func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signature []byte, err error) {
-	jww.INFO.Printf("Verifying for registration code %s",
+	jww.INFO.Printf("Verifying for registration code %+v",
 		registrationCode)
 	// Check database to verify given registration code
 	err = database.PermissioningDb.UseCode(registrationCode)
 	if err != nil {
 		// Invalid registration code, return an error
 		errMsg := errors.New(fmt.Sprintf(
-			"Error validating registration code: %s", err))
-		jww.ERROR.Printf("%s", errMsg)
+			"Error validating registration code: %+v", err))
+		jww.ERROR.Printf("%+v", errMsg)
 		return make([]byte, 0), errMsg
 	}
 
@@ -126,7 +126,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 			err
 	}
 
-	jww.INFO.Printf("Verification complete for registration code %s",
+	jww.INFO.Printf("Verification complete for registration code %+v",
 		registrationCode)
 	// Return signed public key to Client with empty error field
 	return sig, nil
