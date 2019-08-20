@@ -13,12 +13,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
+	"golang.org/x/tools/go/ssa/interp/testdata/src/errors"
 	"io/ioutil"
 )
 
@@ -102,8 +104,10 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 	err = database.PermissioningDb.UseCode(registrationCode)
 	if err != nil {
 		// Invalid registration code, return an error
-		jww.ERROR.Printf("Error validating registration code: %s", err)
-		return make([]byte, 0), err
+		errMsg := errors.New(fmt.Sprintf(
+			"Error validating registration code: %s", err))
+		jww.ERROR.Printf("%s", errMsg)
+		return make([]byte, 0), errMsg
 	}
 
 	sha := crypto.SHA256
@@ -115,7 +119,9 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 	data := h.Sum(nil)
 	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, sha, data, nil)
 	if err != nil {
-		jww.ERROR.Printf("unable to sign client public key: %+v", err)
+		errMsg := errors.New(fmt.Sprintf(
+			"unable to sign client public key: %+v", err))
+		jww.ERROR.Printf("%+v", errMsg)
 		return make([]byte, 0),
 			err
 	}
