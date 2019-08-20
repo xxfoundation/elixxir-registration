@@ -12,6 +12,7 @@ import (
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 	jww "github.com/spf13/jwalterweatherman"
+	"sync"
 	"time"
 )
 
@@ -24,6 +25,7 @@ type DatabaseImpl struct {
 type MapImpl struct {
 	client map[string]*RegistrationCode
 	node   map[string]*NodeInformation
+	mut    sync.Mutex
 }
 
 // Global variable for database interaction
