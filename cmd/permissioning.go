@@ -31,13 +31,13 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf(
 			"Failed to check if registation code has already been registered: %+v", err))
-		jww.ERROR.Printf("%+v",errMsg)
+		jww.ERROR.Printf("%+v", errMsg)
 		return errMsg
 	}
 	if nodeInfo.Id != nil {
 		errMsg := errors.New(fmt.Sprintf(
 			"Node with registration code %+v has already been registered", RegistrationCode))
-		jww.ERROR.Print("%+v",errMsg)
+		jww.ERROR.Printf("%+v", errMsg)
 		return errMsg
 	}
 
@@ -56,7 +56,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
-		errMsg:= errors.New(fmt.Sprintf(
+		errMsg := errors.New(fmt.Sprintf(
 			"Failed to load node certificate: %v", err))
 		jww.ERROR.Printf("%v", errMsg)
 		return errMsg
