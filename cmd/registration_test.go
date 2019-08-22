@@ -169,7 +169,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 	//connect the node to the permissioning server
 	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
 	//nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
 
@@ -208,8 +208,8 @@ func TestDoubleRegistration(t *testing.T) {
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Connect both nodes to the registration server
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
@@ -254,8 +254,8 @@ func TestTopology_MultiNodes(t *testing.T) {
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Connect both nodes to the registration server
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
