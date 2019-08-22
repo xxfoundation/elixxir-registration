@@ -43,7 +43,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 
 	// Connect back to the Node using the provided certificate
 	err = m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), Addr,
-		[]byte(ServerTlsCert))
+		[]byte(ServerTlsCert), false)
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf(
 			"Failed to return connection to Node: %+v", err))
