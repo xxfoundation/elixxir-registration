@@ -22,6 +22,7 @@ import (
 	"gitlab.com/elixxir/registration/database"
 	"golang.org/x/tools/go/ssa/interp/testdata/src/errors"
 	"io/ioutil"
+	"strings"
 )
 
 type RegistrationImpl struct {
@@ -130,4 +131,25 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 		registrationCode)
 	// Return signed public key to Client with empty error field
 	return sig, nil
+}
+
+// Handle client version check
+func (m *RegistrationImpl) CheckClientVersion(clientVersion string) (isOK bool, err error) {
+	errInvalidVersionString := errors.New("Client version string must contain a major, minor, and patch version separated by \".\"")
+	versions := strings.SplitN(clientVersion, ".", 3)
+	if len(versions) != 3 {
+		return false, errInvalidVersionString
+	}
+
+	// Compare major version: must be equal to be deemed compatible
+	if versions[0] != desiredVersions[0] {
+		return false, nil
+	}
+	// Compare minor version: version must be greater than or equal desired version to be deemed compatible
+	if versions[1] < desiredVersions[1] {
+		return false, nil
+	}
+	// Patch versions aren't supposed to affect compatibility, so they're ignored for the check
+
+	return true, nil
 }
