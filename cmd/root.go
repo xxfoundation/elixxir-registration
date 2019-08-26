@@ -10,21 +10,32 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/registration/database"
 	"os"
+	"path"
+	"sync"
 )
 
+type clientVersion struct {
+	major int
+	minor int
+	patch string
+}
+
 var (
-	cfgFile           string
-	verbose           bool
-	showVer           bool
-	noTLS             bool
-	RegistrationCodes []string
-	RegParams         Params
+	cfgFile            string
+	verbose            bool
+	showVer            bool
+	noTLS              bool
+	RegistrationCodes  []string
+	RegParams          Params
+	desiredVersion     *clientVersion
+	desiredVersionLock sync.RWMutex
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -161,6 +172,11 @@ func initConfig() {
 
 	// Set the config file if it is valid
 	if validConfig {
+		// Set the config path to the directory containing the config file
+		// This may increase the reliability of the config watching, somewhat
+		cfgDir, _ := path.Split(cfgFile)
+		viper.AddConfigPath(cfgDir)
+
 		viper.SetConfigFile(cfgFile)
 		viper.AutomaticEnv() // read in environment variables that match
 
@@ -169,7 +185,19 @@ func initConfig() {
 			jww.ERROR.Printf("Unable to parse config file (%s): %+v", cfgFile, err)
 			validConfig = false
 		}
+		viper.OnConfigChange(updateClientVersion)
+		viper.WatchConfig()
 	}
+}
+
+func updateClientVersion(in fsnotify.Event) {
+	newVersion, err := parseClientVersion(viper.GetString("desiredVersion"))
+	if err != nil {
+		// Setting the wrong version is a misconfiguration
+		// In this case, we'll panic to make sure the mistake gets fixed ASAP
+		jww.ERROR.Panic(err)
+	}
+	setDesiredVersion(newVersion)
 }
 
 // initLog initializes logging thresholds and the log path.
