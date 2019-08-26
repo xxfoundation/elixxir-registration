@@ -38,7 +38,8 @@ type Database interface {
 	// If Client registration code is valid, decrements remaining uses
 	UseCode(code string) error
 	// If Node registration code is valid, add Node information
-	InsertNode(id []byte, code, address, nodeCert, gatewayCert string) error
+	InsertNode(id []byte, code, serverAddress, serverCert,
+		gatewayAddress, gatewayCert string) error
 	// Insert Node registration code into the database
 	InsertNodeRegCode(code string) error
 	// Count the number of Nodes currently registered
@@ -67,8 +68,10 @@ type NodeInformation struct {
 	Code string `sql:",pk"`
 	// Node ID
 	Id []byte
-	// IP address
-	Address string
+	// Server IP address
+	ServerAddress string
+	// Gateway IP address
+	GatewayAddress string
 	// Node TLS public certificate in PEM string format
 	NodeCertificate string
 	// Gateway TLS public certificate in PEM string format

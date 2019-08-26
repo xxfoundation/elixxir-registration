@@ -54,11 +54,11 @@ func TestMapImpl_InsertNode(t *testing.T) {
 	m.node[code] = &NodeInformation{Code: code}
 
 	// Attempt to insert a node
-	err := m.InsertNode(make([]byte, 0), code, code, code, code)
+	err := m.InsertNode(make([]byte, 0), code, code, code, code, code)
 
 	// Verify the insert was successful
 	if info := m.node[code]; err != nil || info.NodeCertificate != code ||
-		info.GatewayCertificate != code || info.Address != code {
+		info.GatewayCertificate != code || info.ServerAddress != code {
 		t.Errorf("Expected to successfully insert node information: %+v", info)
 	}
 }
@@ -73,7 +73,7 @@ func TestMapImpl_InsertNode_Invalid(t *testing.T) {
 	code := "TEST"
 
 	// Attempt to insert a node without an associated registration code
-	err := m.InsertNode(make([]byte, 0), code, code, code, code)
+	err := m.InsertNode(make([]byte, 0), code, code, code, code, code)
 
 	// Verify the insert failed
 	if err == nil {
@@ -122,11 +122,11 @@ func TestMapImpl_GetNode(t *testing.T) {
 
 	// Load in a registration code
 	code := "TEST"
-	m.node[code] = &NodeInformation{Code: code, Address: code}
+	m.node[code] = &NodeInformation{Code: code, ServerAddress: code}
 
 	// Check that the correct node is obtained
 	info, err := m.GetNode(code)
-	if err != nil || info.Address != code {
+	if err != nil || info.ServerAddress != code {
 		t.Errorf("Expected to be able to obtain correct node")
 	}
 }
