@@ -13,7 +13,6 @@ import (
 	"github.com/go-pg/pg/orm"
 	jww "github.com/spf13/jwalterweatherman"
 	"sync"
-	"time"
 )
 
 // Struct implementing the Database Interface with an underlying DB
@@ -83,17 +82,13 @@ func NewDatabase(username, password, database, address string) Database {
 
 	// Create the database connection
 	db := pg.Connect(&pg.Options{
-		User:        username,
-		Password:    password,
-		Database:    database,
-		Addr:        address,
-		PoolSize:    1,
-		MaxRetries:  10,
-		PoolTimeout: time.Duration(2) * time.Minute,
-		IdleTimeout: time.Duration(10) * time.Minute,
-		MaxConnAge:  time.Duration(1) * time.Hour,
+		User:         username,
+		Password:     password,
+		Database:     database,
+		Addr:         address,
+		MaxRetries:   10,
+		MinIdleConns: 1,
 	})
-
 	// Ensure an empty NodeInformation table
 	err := db.DropTable(&NodeInformation{},
 		&orm.DropTableOptions{IfExists: true})
