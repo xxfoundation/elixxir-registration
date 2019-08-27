@@ -79,7 +79,6 @@ type NodeInformation struct {
 
 // Initialize the Database interface with database backend
 func NewDatabase(username, password, database, address string) Database {
-
 	// Create the database connection
 	db := pg.Connect(&pg.Options{
 		User:         username,
@@ -89,6 +88,7 @@ func NewDatabase(username, password, database, address string) Database {
 		MaxRetries:   10,
 		MinIdleConns: 1,
 	})
+
 	// Ensure an empty NodeInformation table
 	err := db.DropTable(&NodeInformation{},
 		&orm.DropTableOptions{IfExists: true})
