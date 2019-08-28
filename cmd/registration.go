@@ -22,8 +22,6 @@ import (
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/registration/database"
 	"io/ioutil"
-	"strconv"
-	"strings"
 )
 
 type RegistrationImpl struct {
@@ -134,54 +132,14 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 	return sig, nil
 }
 
-// Handle client version check
-// Example valid version strings:
-// 0.1.0
-// 1.3.0-ff81cdae
-// Major and minor versions should both be numbers, and patch versions can be anything, but they must be present
-func (m *RegistrationImpl) CheckClientVersion(versionString string) (isOK bool, err error) {
-	version, err := parseClientVersion(versionString)
-	if err != nil {
-		return false, err
-	}
-
-	desiredVersionLock.RLock()
-	defer desiredVersionLock.RUnlock()
-	// Compare major version: must be equal to be deemed compatible
-	if version.major != desiredVersion.major {
-		return false, nil
-	}
-	// Compare minor version: version must be numerically greater than or equal desired version to be deemed compatible
-	if version.minor < desiredVersion.minor {
-		return false, nil
-	}
-	// Patch versions aren't supposed to affect compatibility, so they're ignored for the check
-
-	return true, nil
+func (m *RegistrationImpl) GetCurrentClientVersion() (version string, err error) {
+	clientVersionLock.RLock()
+	defer clientVersionLock.RUnlock()
+	return clientVersion, nil
 }
 
-func parseClientVersion(versionString string) (*clientVersion, error) {
-	versions := strings.SplitN(versionString, ".", 3)
-	if len(versions) != 3 {
-		return nil, errors.New("Client version string must contain a major, minor, and patch version separated by \".\"")
-	}
-	major, err := strconv.Atoi(versions[0])
-	if err != nil {
-		return nil, errors.New("Major client version couldn't be parsed as integer")
-	}
-	minor, err := strconv.Atoi(versions[0])
-	if err != nil {
-		return nil, errors.New("Minor client version couldn't be parsed as integer")
-	}
-	return &clientVersion{
-		major: major,
-		minor: minor,
-		patch: versions[2],
-	}, nil
-}
-
-func setDesiredVersion(version *clientVersion) {
-	desiredVersionLock.Lock()
-	desiredVersion = version
-	desiredVersionLock.Unlock()
+func setDesiredVersion(version string) {
+	clientVersionLock.Lock()
+	clientVersion = version
+	clientVersionLock.Unlock()
 }

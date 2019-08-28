@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/go-homedir"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
@@ -21,21 +22,15 @@ import (
 	"sync"
 )
 
-type clientVersion struct {
-	major int
-	minor int
-	patch string
-}
-
 var (
-	cfgFile            string
-	verbose            bool
-	showVer            bool
-	noTLS              bool
-	RegistrationCodes  []string
-	RegParams          Params
-	desiredVersion     *clientVersion
-	desiredVersionLock sync.RWMutex
+	cfgFile           string
+	verbose           bool
+	showVer           bool
+	noTLS             bool
+	RegistrationCodes []string
+	RegParams         Params
+	clientVersion     string
+	clientVersionLock sync.RWMutex
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -67,6 +62,7 @@ var rootCmd = &cobra.Command{
 		keyPath := viper.GetString("keyPath")
 		address := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 		ndfOutputPath := viper.GetString("ndfOutputPath")
+		setDesiredVersion(viper.GetString("clientVersion"))
 
 		// Set up database connection
 		database.PermissioningDb = database.NewDatabase(
@@ -191,13 +187,16 @@ func initConfig() {
 }
 
 func updateClientVersion(in fsnotify.Event) {
-	newVersion, err := parseClientVersion(viper.GetString("desiredVersion"))
+	newVersion := viper.GetString("clientVersion")
+	err := validateVersion(newVersion)
 	if err != nil {
-		// Setting the wrong version is a misconfiguration
-		// In this case, we'll panic to make sure the mistake gets fixed ASAP
-		jww.ERROR.Panic(err)
+		panic(err)
 	}
 	setDesiredVersion(newVersion)
+}
+
+func validateVersion(version string) error {
+	return errors.New("Unimplemented")
 }
 
 // initLog initializes logging thresholds and the log path.
