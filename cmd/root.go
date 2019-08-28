@@ -96,7 +96,7 @@ var rootCmd = &cobra.Command{
 		impl := StartRegistration(RegParams)
 
 		// Begin the thread which handles the completion registration
-		go NodeRegistrationCompleter(impl)
+		go nodeRegistrationCompleter(impl)
 
 		// Wait forever to prevent process from ending
 		select {}

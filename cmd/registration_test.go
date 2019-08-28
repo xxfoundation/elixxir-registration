@@ -87,8 +87,8 @@ func TestEmptyDataBase(t *testing.T) {
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
 	//using node cert as gateway cert
-	err := impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert),
-		"AAA", nodeAddr)
+	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
+		nodeAddr, string(nodeCert), "AAA")
 	if err == nil {
 		expectedErr := "Unable to insert node: unable to register node AAA"
 		t.Errorf("Database was empty but allowed a reg code to go through. "+
@@ -111,8 +111,8 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 	//Register a node with that regCode
-	err = impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert),
-		"AAAA", nodeAddr)
+	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
+		nodeAddr, string(nodeCert), "AAAA")
 	if err != nil {
 		t.Errorf("Registered a node with a known reg code, but recieved the following error: %+v", err)
 	}
@@ -165,15 +165,16 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	//Start the registration server
 	impl := StartRegistration(testParams)
 	RegParams = testParams
-	go NodeRegistrationCompleter(impl)
+	go nodeRegistrationCompleter(impl)
 
 	//connect the node to the permissioning server
 	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
 	//nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
 
-	err := impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6900")
+	err := impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
+		"0.0.0.0:6900", string(nodeCert), "BBBB")
 	//So the impl is not destroyed
 	time.Sleep(5 * time.Second)
 
@@ -200,7 +201,7 @@ func TestDoubleRegistration(t *testing.T) {
 
 	//Start registration server
 	impl := StartRegistration(testParams)
-	go NodeRegistrationCompleter(impl)
+	go nodeRegistrationCompleter(impl)
 
 	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
 
@@ -208,17 +209,19 @@ func TestDoubleRegistration(t *testing.T) {
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Connect both nodes to the registration server
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
 	//Register 1st node
-	err := impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
+	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
+		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode([]byte("B"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6901")
+	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
+		"0.0.0.0:6901", string(nodeCert), "BBBB")
 	//Kill the connections for the next test
 	nodeComm.Disconnect("Permissioning")
 	nodeComm2.Disconnect("Permissioning")
@@ -246,7 +249,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 
 	//Start registration server
 	impl := StartRegistration(testParams)
-	go NodeRegistrationCompleter(impl)
+	go nodeRegistrationCompleter(impl)
 
 	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
 
@@ -254,21 +257,24 @@ func TestTopology_MultiNodes(t *testing.T) {
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Connect both nodes to the registration server
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
 	//Register 1st node
-	err := impl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
+	err := impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
+		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode([]byte("B"), string(nodeCert), string(nodeCert), "CCCC", "0.0.0.0:6901")
+	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
+		"0.0.0.0:6901", string(nodeCert), "CCCC")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-	//Sleep so that the permisioning has time to connect to the nodes (ie impl isn't destroyed)
+	//Sleep so that the permissioning has time to connect to the nodes (
+	// ie impl isn't destroyed)
 	time.Sleep(5 * time.Second)
 
 	//Kill the connections for the next test

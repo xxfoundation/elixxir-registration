@@ -14,8 +14,8 @@ import (
 
 // If the given Node registration code exists,
 // insert the provided Node information
-func (m *DatabaseImpl) InsertNode(id []byte, code, address,
-	nodeCert, gatewayCert string) error {
+func (m *DatabaseImpl) InsertNode(id []byte, code, serverAddress, serverCert,
+	gatewayAddress, gatewayCert string) error {
 	// Look up given node registration code
 	nodeInfo := NodeInformation{Code: code}
 	jww.INFO.Printf("Attempting to register node with code: %s", code)
@@ -28,8 +28,9 @@ func (m *DatabaseImpl) InsertNode(id []byte, code, address,
 
 	// Update the record with the new node information
 	nodeInfo.Id = id
-	nodeInfo.Address = address
-	nodeInfo.NodeCertificate = nodeCert
+	nodeInfo.ServerAddress = serverAddress
+	nodeInfo.NodeCertificate = serverCert
+	nodeInfo.GatewayAddress = gatewayAddress
 	nodeInfo.GatewayCertificate = gatewayCert
 	err = m.db.Update(&nodeInfo)
 	return err
