@@ -132,14 +132,10 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 	return sig, nil
 }
 
+// This has to be part of RegistrationImpl and has to return an error because
+// of the way our comms are structured
 func (m *RegistrationImpl) GetCurrentClientVersion() (version string, err error) {
 	clientVersionLock.RLock()
 	defer clientVersionLock.RUnlock()
 	return clientVersion, nil
-}
-
-func setDesiredVersion(version string) {
-	clientVersionLock.Lock()
-	clientVersion = version
-	clientVersionLock.Unlock()
 }

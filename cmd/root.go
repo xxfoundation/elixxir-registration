@@ -19,6 +19,8 @@ import (
 	"gitlab.com/elixxir/registration/database"
 	"os"
 	"path"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -62,7 +64,7 @@ var rootCmd = &cobra.Command{
 		keyPath := viper.GetString("keyPath")
 		address := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 		ndfOutputPath := viper.GetString("ndfOutputPath")
-		setDesiredVersion(viper.GetString("clientVersion"))
+		setClientVersion(viper.GetString("clientVersion"))
 
 		// Set up database connection
 		database.PermissioningDb = database.NewDatabase(
@@ -91,7 +93,7 @@ var rootCmd = &cobra.Command{
 		// Start registration server
 		impl := StartRegistration(RegParams)
 
-		// Begin the thread which handles the completion registration
+		// Begin the thread which handles the completion of node registration
 		go nodeRegistrationCompleter(impl)
 
 		// Wait forever to prevent process from ending
@@ -192,11 +194,31 @@ func updateClientVersion(in fsnotify.Event) {
 	if err != nil {
 		panic(err)
 	}
-	setDesiredVersion(newVersion)
+	setClientVersion(newVersion)
 }
 
-func validateVersion(version string) error {
-	return errors.New("Unimplemented")
+func setClientVersion(version string) {
+	clientVersionLock.Lock()
+	clientVersion = version
+	clientVersionLock.Unlock()
+}
+
+func validateVersion(versionString string) (error) {
+	// If a version string has more than 2 dots in it, anything after the first
+	// 2 dots is considered to be part of the patch version
+	versions := strings.SplitN(versionString, ".", 3)
+	if len(versions) != 3 {
+		return errors.New("Client version string must contain a major, minor, and patch version separated by \".\"")
+	}
+	_, err := strconv.Atoi(versions[0])
+	if err != nil {
+		return errors.New("Major client version couldn't be parsed as integer")
+	}
+	_, err = strconv.Atoi(versions[1])
+	if err != nil {
+		return errors.New("Minor client version couldn't be parsed as integer")
+	}
+	return nil
 }
 
 // initLog initializes logging thresholds and the log path.
