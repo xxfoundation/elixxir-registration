@@ -196,7 +196,7 @@ func outputNodeTopologyToJSON(topology *mixmessages.NodeTopology, filePath strin
 	}
 
 	// Write JSON to file
-	err = utils.MakeDirsAndFile(filePath, data, utils.FilePerms, utils.DirPerms)
+	err = utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
 	if err != nil {
 		return err
 	}
