@@ -16,12 +16,11 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
-	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
 	"golang.org/x/tools/go/ssa/interp/testdata/src/errors"
-	"io/ioutil"
 )
 
 type RegistrationImpl struct {
@@ -57,7 +56,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 
 	if !noTLS {
 		// Read in TLS keys from files
-		cert, err = ioutil.ReadFile(utils.GetFullPath(params.CertPath))
+		cert, err = utils.ReadFile(params.CertPath)
 		if err != nil {
 			jww.ERROR.Printf("failed to read certificate at %+v: %+v", params.CertPath, err)
 		}
@@ -74,7 +73,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 		jww.DEBUG.Printf("permissioning private key: %+v\n", regImpl.permissioningKey)
 	}
 	regImpl.NumNodesInNet = len(RegistrationCodes)
-	key, err = ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
+	key, err = utils.ReadFile(params.KeyPath)
 	if err != nil {
 		jww.ERROR.Printf("failed to read key at %+v: %+v", params.KeyPath, err)
 	}
