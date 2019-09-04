@@ -25,6 +25,7 @@ var (
 	noTLS             bool
 	RegistrationCodes []string
 	RegParams         Params
+	DefaultRegCode    string
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -66,7 +67,11 @@ var rootCmd = &cobra.Command{
 		)
 
 		// Populate Client registration codes into the database
-		database.PopulateClientRegistrationCodes([]string{"AAAA"}, 100)
+		if DefaultRegCode != "" {
+			jww.WARN.Println("Using Insecure Client Registration Codes")
+			database.PopulateClientRegistrationCodes([]string{DefaultRegCode},
+				1000)
+		}
 
 		// Populate Node registration codes into the database
 		RegistrationCodes = viper.GetStringSlice("registrationCodes")
@@ -125,6 +130,9 @@ func init() {
 
 	rootCmd.Flags().BoolVar(&noTLS, "noTLS", false,
 		"Runs without TLS enabled")
+	rootCmd.Flags().StringVar(&DefaultRegCode, "InsecureClientRegCode", "",
+		"Specifies a client registration code which will have 1000 uses,"+
+			"only for development, not secure")
 }
 
 // initConfig reads in config file and ENV variables if set.
