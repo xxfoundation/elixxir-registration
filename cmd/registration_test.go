@@ -12,9 +12,9 @@ import (
 	"gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
 	"gitlab.com/elixxir/registration/testkeys"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -33,12 +33,12 @@ var nodeComm *node.NodeComms
 
 func TestMain(m *testing.M) {
 	var err error
-	nodeCert, err = ioutil.ReadFile(testkeys.GetNodeCertPath())
+	nodeCert, err = utils.ReadFile(testkeys.GetNodeCertPath())
 	if err != nil {
 		fmt.Printf("Could not get node cert: %+v\n", err)
 	}
 
-	nodeKey, err = ioutil.ReadFile(testkeys.GetNodeKeyPath())
+	nodeKey, err = utils.ReadFile(testkeys.GetNodeKeyPath())
 	if err != nil {
 		fmt.Printf("Could not get node key: %+v\n", err)
 	}
@@ -64,8 +64,8 @@ func TestMain(m *testing.M) {
 //Helper function that initailizes the permisssioning server's globals
 //Todo: throw in the permDB??
 func initPermissioningServerKeys() (*rsa.PrivateKey, *x509.Certificate) {
-	permKeyBytes, _ := ioutil.ReadFile(testkeys.GetCAKeyPath())
-	permCertBytes, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+	permKeyBytes, _ := utils.ReadFile(testkeys.GetCAKeyPath())
+	permCertBytes, _ := utils.ReadFile(testkeys.GetCACertPath())
 
 	testPermissioningKey, _ := rsa.LoadPrivateKeyFromPem(permKeyBytes)
 	testpermissioningCert, _ := tls.LoadCertificate(string(permCertBytes))
@@ -168,10 +168,10 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	go nodeRegistrationCompleter(impl)
 
 	//connect the node to the permissioning server
-	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
 	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
-	//nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
+	//nodeCert, _ := utils.ReadFile(testkeys.GetNodeCertPath())
 
 	err := impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
 		"0.0.0.0:6900", string(nodeCert), "BBBB")
@@ -203,7 +203,7 @@ func TestDoubleRegistration(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
 
 	//Create a second node to register
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
@@ -251,7 +251,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
 
 	//Create a second node to register
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
