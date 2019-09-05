@@ -31,6 +31,7 @@ var (
 	noTLS             bool
 	RegistrationCodes []string
 	RegParams         Params
+	DefaultRegCode    string
 	clientVersion     string
 	clientVersionLock sync.RWMutex
 )
@@ -75,7 +76,11 @@ var rootCmd = &cobra.Command{
 		)
 
 		// Populate Client registration codes into the database
-		database.PopulateClientRegistrationCodes([]string{"AAAA"}, 100)
+		if DefaultRegCode != "" {
+			jww.WARN.Println("Using Insecure Client Registration Codes")
+			database.PopulateClientRegistrationCodes([]string{DefaultRegCode},
+				1000)
+		}
 
 		// Populate Node registration codes into the database
 		RegistrationCodes = viper.GetStringSlice("registrationCodes")
@@ -134,6 +139,9 @@ func init() {
 
 	rootCmd.Flags().BoolVar(&noTLS, "noTLS", false,
 		"Runs without TLS enabled")
+	rootCmd.Flags().StringVar(&DefaultRegCode, "InsecureClientRegCode", "",
+		"Specifies a client registration code which will have 1000 uses,"+
+			"only for development, not secure")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -203,7 +211,7 @@ func setClientVersion(version string) {
 	clientVersionLock.Unlock()
 }
 
-func validateVersion(versionString string) (error) {
+func validateVersion(versionString string) error {
 	// If a version string has more than 2 dots in it, anything after the first
 	// 2 dots is considered to be part of the patch version
 	versions := strings.SplitN(versionString, ".", 3)
