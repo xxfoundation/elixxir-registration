@@ -94,6 +94,7 @@ func NewDatabase(username, password, database, address string) Database {
 		&orm.DropTableOptions{IfExists: true})
 	if err != nil {
 		// If an error is thrown with the database, run with a map backend
+		jww.ERROR.Printf("Unable to initalize database backend: %+v", err)
 		jww.INFO.Println("Using map backend for UserRegistry!")
 		return Database(&MapImpl{
 			client: make(map[string]*RegistrationCode),
