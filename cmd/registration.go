@@ -21,7 +21,6 @@ import (
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
-	"io/ioutil"
 )
 
 type RegistrationImpl struct {
