@@ -10,12 +10,18 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/go-homedir"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/registration/database"
 	"os"
+	"path"
+	"strconv"
+	"strings"
+	"sync"
 )
 
 var (
@@ -26,6 +32,8 @@ var (
 	RegistrationCodes []string
 	RegParams         Params
 	DefaultRegCode    string
+	clientVersion     string
+	clientVersionLock sync.RWMutex
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -57,6 +65,7 @@ var rootCmd = &cobra.Command{
 		keyPath := viper.GetString("keyPath")
 		address := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 		ndfOutputPath := viper.GetString("ndfOutputPath")
+		setClientVersion(viper.GetString("clientVersion"))
 
 		// Set up database connection
 		database.PermissioningDb = database.NewDatabase(
@@ -89,7 +98,7 @@ var rootCmd = &cobra.Command{
 		// Start registration server
 		impl := StartRegistration(RegParams)
 
-		// Begin the thread which handles the completion registration
+		// Begin the thread which handles the completion of node registration
 		go nodeRegistrationCompleter(impl)
 
 		// Wait forever to prevent process from ending
@@ -169,6 +178,11 @@ func initConfig() {
 
 	// Set the config file if it is valid
 	if validConfig {
+		// Set the config path to the directory containing the config file
+		// This may increase the reliability of the config watching, somewhat
+		cfgDir, _ := path.Split(cfgFile)
+		viper.AddConfigPath(cfgDir)
+
 		viper.SetConfigFile(cfgFile)
 		viper.AutomaticEnv() // read in environment variables that match
 
@@ -177,7 +191,42 @@ func initConfig() {
 			jww.ERROR.Printf("Unable to parse config file (%s): %+v", cfgFile, err)
 			validConfig = false
 		}
+		viper.OnConfigChange(updateClientVersion)
+		viper.WatchConfig()
 	}
+}
+
+func updateClientVersion(in fsnotify.Event) {
+	newVersion := viper.GetString("clientVersion")
+	err := validateVersion(newVersion)
+	if err != nil {
+		panic(err)
+	}
+	setClientVersion(newVersion)
+}
+
+func setClientVersion(version string) {
+	clientVersionLock.Lock()
+	clientVersion = version
+	clientVersionLock.Unlock()
+}
+
+func validateVersion(versionString string) error {
+	// If a version string has more than 2 dots in it, anything after the first
+	// 2 dots is considered to be part of the patch version
+	versions := strings.SplitN(versionString, ".", 3)
+	if len(versions) != 3 {
+		return errors.New("Client version string must contain a major, minor, and patch version separated by \".\"")
+	}
+	_, err := strconv.Atoi(versions[0])
+	if err != nil {
+		return errors.New("Major client version couldn't be parsed as integer")
+	}
+	_, err = strconv.Atoi(versions[1])
+	if err != nil {
+		return errors.New("Minor client version couldn't be parsed as integer")
+	}
+	return nil
 }
 
 // initLog initializes logging thresholds and the log path.

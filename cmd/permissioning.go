@@ -14,12 +14,11 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/database"
-	"io/ioutil"
 )
 
 // Handle registration attempt by a Node
@@ -197,7 +196,7 @@ func outputNodeTopologyToJSON(topology *mixmessages.NodeTopology, filePath strin
 	}
 
 	// Write JSON to file
-	err = ioutil.WriteFile(utils.GetFullPath(filePath), data, 0644)
+	err = utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
 	if err != nil {
 		return err
 	}

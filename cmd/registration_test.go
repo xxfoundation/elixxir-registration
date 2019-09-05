@@ -12,9 +12,9 @@ import (
 	"gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
 	"gitlab.com/elixxir/registration/testkeys"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -33,12 +33,12 @@ var nodeComm *node.NodeComms
 
 func TestMain(m *testing.M) {
 	var err error
-	nodeCert, err = ioutil.ReadFile(testkeys.GetNodeCertPath())
+	nodeCert, err = utils.ReadFile(testkeys.GetNodeCertPath())
 	if err != nil {
 		fmt.Printf("Could not get node cert: %+v\n", err)
 	}
 
-	nodeKey, err = ioutil.ReadFile(testkeys.GetNodeKeyPath())
+	nodeKey, err = utils.ReadFile(testkeys.GetNodeKeyPath())
 	if err != nil {
 		fmt.Printf("Could not get node key: %+v\n", err)
 	}
@@ -64,8 +64,8 @@ func TestMain(m *testing.M) {
 //Helper function that initailizes the permisssioning server's globals
 //Todo: throw in the permDB??
 func initPermissioningServerKeys() (*rsa.PrivateKey, *x509.Certificate) {
-	permKeyBytes, _ := ioutil.ReadFile(testkeys.GetCAKeyPath())
-	permCertBytes, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+	permKeyBytes, _ := utils.ReadFile(testkeys.GetCAKeyPath())
+	permCertBytes, _ := utils.ReadFile(testkeys.GetCACertPath())
 
 	testPermissioningKey, _ := rsa.LoadPrivateKeyFromPem(permKeyBytes)
 	testpermissioningCert, _ := tls.LoadCertificate(string(permCertBytes))
@@ -168,10 +168,10 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	go nodeRegistrationCompleter(impl)
 
 	//connect the node to the permissioning server
-	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
 	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
-	//nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
+	//nodeCert, _ := utils.ReadFile(testkeys.GetNodeCertPath())
 
 	err := impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
 		"0.0.0.0:6900", string(nodeCert), "BBBB")
@@ -203,7 +203,7 @@ func TestDoubleRegistration(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
 
 	//Create a second node to register
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
@@ -251,7 +251,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
 
 	//Create a second node to register
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
@@ -282,4 +282,49 @@ func TestTopology_MultiNodes(t *testing.T) {
 	nodeComm2.Disconnect("Permissioning")
 	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
+}
+
+func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {
+	impl := StartRegistration(testParams)
+	testVersion := "0.0.0a"
+	setClientVersion(testVersion)
+	version, err := impl.GetCurrentClientVersion()
+	if err != nil {
+		t.Error(err)
+	}
+	if version != testVersion {
+		t.Errorf("Version was %+v, expected %+v", version, testVersion)
+	}
+}
+
+// Test a case that should pass validation
+func TestValidateClientVersion_Success(t *testing.T) {
+	err := validateVersion("0.0.0a")
+	if err != nil {
+		t.Errorf("Unexpected error from validateVersion: %+v", err.Error())
+	}
+}
+
+// Test some cases that shouldn't pass validation
+func TestValidateClientVersion_Failure(t *testing.T) {
+	err := validateVersion("")
+	if err == nil {
+		t.Error("Expected error for empty version string")
+	}
+	err = validateVersion("0")
+	if err == nil {
+		t.Error("Expected error for version string with one number")
+	}
+	err = validateVersion("0.0")
+	if err == nil {
+		t.Error("Expected error for version string with two numbers")
+	}
+	err = validateVersion("a.4.0")
+	if err == nil {
+		t.Error("Expected error for version string with non-numeric major version")
+	}
+	err = validateVersion("4.a.0")
+	if err == nil {
+		t.Error("Expected error for version string with non-numeric minor version")
+	}
 }

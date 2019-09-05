@@ -5,14 +5,14 @@ import (
 	"encoding/pem"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/testkeys"
-	"io/ioutil"
 	"testing"
 )
 
 //Load files from filepaths that exist for testing purposes
 func loadCertificate(file string) *x509.Certificate {
-	pemEncodedBlock, err := ioutil.ReadFile(file)
+	pemEncodedBlock, err := utils.ReadFile(file)
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
@@ -34,7 +34,7 @@ func loadCertificate(file string) *x509.Certificate {
 
 //loadPrivKey takes the file given and returns a private key of type ecdsa or rsa
 func loadPrivKey(file string) interface{} {
-	pemEncodedBlock, err := ioutil.ReadFile(file)
+	pemEncodedBlock, err := utils.ReadFile(file)
 	if err != nil {
 		jww.ERROR.Printf(err.Error())
 	}
@@ -62,7 +62,7 @@ func TestSign_CheckSignature(t *testing.T) {
 	//Load files
 	clientCert := loadCertificate(testkeys.GetNodeCertPath())
 	caCert := loadCertificate(testkeys.GetCACertPath())
-	pemKey, _ := ioutil.ReadFile(testkeys.GetCAKeyPath())
+	pemKey, _ := utils.ReadFile(testkeys.GetCAKeyPath())
 	caPrivKey, _ := tls.LoadRSAPrivateKey(string(pemKey))
 
 	signedCertString, _ := Sign(clientCert, caCert, caPrivKey)
