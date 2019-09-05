@@ -14,13 +14,13 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"fmt"
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
-	"golang.org/x/tools/go/ssa/interp/testdata/src/errors"
 )
 
 type RegistrationImpl struct {
@@ -129,4 +129,12 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 		registrationCode)
 	// Return signed public key to Client with empty error field
 	return sig, nil
+}
+
+// This has to be part of RegistrationImpl and has to return an error because
+// of the way our comms are structured
+func (m *RegistrationImpl) GetCurrentClientVersion() (version string, err error) {
+	clientVersionLock.RLock()
+	defer clientVersionLock.RUnlock()
+	return clientVersion, nil
 }
