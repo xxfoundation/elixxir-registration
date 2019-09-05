@@ -29,7 +29,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	nodeInfo, err := database.PermissioningDb.GetNode(RegistrationCode)
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf(
-			"Failed to check if registation code has already been registered: %+v", err))
+			"Failed to check if registation code %+v has already been"+
+				" registered: %+v", RegistrationCode, err))
 		jww.ERROR.Printf("%+v", errMsg)
 		return errMsg
 	}
