@@ -13,13 +13,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"fmt"
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
-	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
-	"io/ioutil"
 )
 
 type RegistrationImpl struct {
@@ -55,9 +56,9 @@ func StartRegistration(params Params) *RegistrationImpl {
 
 	if !noTLS {
 		// Read in TLS keys from files
-		cert, err = ioutil.ReadFile(utils.GetFullPath(params.CertPath))
+		cert, err = utils.ReadFile(params.CertPath)
 		if err != nil {
-			jww.ERROR.Printf("failed to read certificate at %s: %+v", params.CertPath, err)
+			jww.ERROR.Printf("failed to read certificate at %+v: %+v", params.CertPath, err)
 		}
 
 		// Set globals for permissioning server
@@ -72,9 +73,9 @@ func StartRegistration(params Params) *RegistrationImpl {
 		jww.DEBUG.Printf("permissioning private key: %+v\n", regImpl.permissioningKey)
 	}
 	regImpl.NumNodesInNet = len(RegistrationCodes)
-	key, err = ioutil.ReadFile(utils.GetFullPath(params.KeyPath))
+	key, err = utils.ReadFile(params.KeyPath)
 	if err != nil {
-		jww.ERROR.Printf("failed to read key at %s: %+v", params.KeyPath, err)
+		jww.ERROR.Printf("failed to read key at %+v: %+v", params.KeyPath, err)
 	}
 	regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
 	if err != nil {
@@ -96,14 +97,16 @@ func StartRegistration(params Params) *RegistrationImpl {
 
 // Handle registration attempt by a Client
 func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signature []byte, err error) {
-	jww.INFO.Printf("Verifying for registration code %s",
+	jww.INFO.Printf("Verifying for registration code %+v",
 		registrationCode)
 	// Check database to verify given registration code
 	err = database.PermissioningDb.UseCode(registrationCode)
 	if err != nil {
 		// Invalid registration code, return an error
-		jww.ERROR.Printf("Error validating registration code: %s", err)
-		return make([]byte, 0), err
+		errMsg := errors.New(fmt.Sprintf(
+			"Error validating registration code: %+v", err))
+		jww.ERROR.Printf("%+v", errMsg)
+		return make([]byte, 0), errMsg
 	}
 
 	sha := crypto.SHA256
@@ -115,13 +118,23 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 	data := h.Sum(nil)
 	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, sha, data, nil)
 	if err != nil {
-		jww.ERROR.Printf("unable to sign client public key: %+v", err)
+		errMsg := errors.New(fmt.Sprintf(
+			"unable to sign client public key: %+v", err))
+		jww.ERROR.Printf("%+v", errMsg)
 		return make([]byte, 0),
 			err
 	}
 
-	jww.INFO.Printf("Verification complete for registration code %s",
+	jww.INFO.Printf("Verification complete for registration code %+v",
 		registrationCode)
 	// Return signed public key to Client with empty error field
 	return sig, nil
+}
+
+// This has to be part of RegistrationImpl and has to return an error because
+// of the way our comms are structured
+func (m *RegistrationImpl) GetCurrentClientVersion() (version string, err error) {
+	clientVersionLock.RLock()
+	defer clientVersionLock.RUnlock()
+	return clientVersion, nil
 }

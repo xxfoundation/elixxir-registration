@@ -32,6 +32,9 @@ registrationCodes:
   - "2"
   - "3"
 
+# Client version (will allow all versions with major version 0)
+clientVersion: "0.0.0"
+
 # === REQUIRED FOR ENABLING TLS ===
 # Path to the permissioning server private key file
 keyPath: ""

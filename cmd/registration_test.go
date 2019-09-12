@@ -12,9 +12,9 @@ import (
 	"gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
 	"gitlab.com/elixxir/registration/testkeys"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -33,12 +33,12 @@ var nodeComm *node.NodeComms
 
 func TestMain(m *testing.M) {
 	var err error
-	nodeCert, err = ioutil.ReadFile(testkeys.GetNodeCertPath())
+	nodeCert, err = utils.ReadFile(testkeys.GetNodeCertPath())
 	if err != nil {
 		fmt.Printf("Could not get node cert: %+v\n", err)
 	}
 
-	nodeKey, err = ioutil.ReadFile(testkeys.GetNodeKeyPath())
+	nodeKey, err = utils.ReadFile(testkeys.GetNodeKeyPath())
 	if err != nil {
 		fmt.Printf("Could not get node key: %+v\n", err)
 	}
@@ -64,8 +64,8 @@ func TestMain(m *testing.M) {
 //Helper function that initailizes the permisssioning server's globals
 //Todo: throw in the permDB??
 func initPermissioningServerKeys() (*rsa.PrivateKey, *x509.Certificate) {
-	permKeyBytes, _ := ioutil.ReadFile(testkeys.GetCAKeyPath())
-	permCertBytes, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+	permKeyBytes, _ := utils.ReadFile(testkeys.GetCAKeyPath())
+	permCertBytes, _ := utils.ReadFile(testkeys.GetCACertPath())
 
 	testPermissioningKey, _ := rsa.LoadPrivateKeyFromPem(permKeyBytes)
 	testpermissioningCert, _ := tls.LoadCertificate(string(permCertBytes))
@@ -87,8 +87,8 @@ func TestEmptyDataBase(t *testing.T) {
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
 	//using node cert as gateway cert
-	err := impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert),
-		"AAA", nodeAddr)
+	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
+		nodeAddr, string(nodeCert), "AAA")
 	if err == nil {
 		expectedErr := "Unable to insert node: unable to register node AAA"
 		t.Errorf("Database was empty but allowed a reg code to go through. "+
@@ -111,8 +111,8 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 	//Register a node with that regCode
-	err = impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert),
-		"AAAA", nodeAddr)
+	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
+		nodeAddr, string(nodeCert), "AAAA")
 	if err != nil {
 		t.Errorf("Registered a node with a known reg code, but recieved the following error: %+v", err)
 	}
@@ -139,7 +139,7 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 
-	//Attempt to register a node
+	//Attempt to register a user
 	sig, err := impl.RegisterUser("AAAA", string(nodeKey))
 
 	if err != nil {
@@ -165,15 +165,16 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	//Start the registration server
 	impl := StartRegistration(testParams)
 	RegParams = testParams
-	go NodeRegistrationCompleter(impl)
+	go nodeRegistrationCompleter(impl)
 
 	//connect the node to the permissioning server
-	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
-	//nodeCert, _ := ioutil.ReadFile(testkeys.GetNodeCertPath())
+	//nodeCert, _ := utils.ReadFile(testkeys.GetNodeCertPath())
 
-	err := impl.RegisterNode([]byte("test"), string(nodeCert), string(nodeCert), "BBBB", "0.0.0.0:6900")
+	err := impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
+		"0.0.0.0:6900", string(nodeCert), "BBBB")
 	//So the impl is not destroyed
 	time.Sleep(5 * time.Second)
 
@@ -184,6 +185,54 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	nodeComm.Disconnect("Permissioning")
 	impl.Comms.Shutdown()
 
+}
+
+//Error path: test that trying to register with the same reg code fails
+func TestDoubleRegistration(t *testing.T) {
+	//Create database
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+
+	//Create reg codes and populate the database
+	strings := make([]string, 0)
+	strings = append(strings, "AAAA", "BBBB", "CCCC")
+	database.PopulateNodeRegistrationCodes(strings)
+	RegistrationCodes = strings
+	RegParams = testParams
+
+	//Start registration server
+	impl := StartRegistration(testParams)
+	go nodeRegistrationCompleter(impl)
+
+	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
+
+	//Create a second node to register
+	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+
+	//Connect both nodes to the registration server
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+
+	//Register 1st node
+	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
+		nodeAddr, string(nodeCert), "BBBB")
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+
+	//Register 2nd node
+	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
+		"0.0.0.0:6901", string(nodeCert), "BBBB")
+	//Kill the connections for the next test
+	nodeComm.Disconnect("Permissioning")
+	nodeComm2.Disconnect("Permissioning")
+	nodeComm2.Shutdown()
+	impl.Comms.Shutdown()
+	time.Sleep(5 * time.Second)
+	if err != nil {
+		return
+	}
+
+	t.Errorf("Expected happy path, recieved error: %+v", err)
 }
 
 //Happy path: attempt to register 2 nodes
@@ -200,33 +249,82 @@ func TestTopology_MultiNodes(t *testing.T) {
 
 	//Start registration server
 	impl := StartRegistration(testParams)
-	go NodeRegistrationCompleter(impl)
+	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := ioutil.ReadFile(testkeys.GetCACertPath())
+	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
 
 	//Create a second node to register
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Connect both nodes to the registration server
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert)
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
 	//Register 1st node
-	err := impl.RegisterNode([]byte("A"), string(nodeCert), string(nodeCert), "BBBB", nodeAddr)
+	err := impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
+		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode([]byte("B"), string(nodeCert), string(nodeCert), "CCCC", "0.0.0.0:6901")
+	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
+		"0.0.0.0:6901", string(nodeCert), "CCCC")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-	//Sleep so that the permisioning has time to connect to the nodes (ie impl isn't destroyed)
+	//Sleep so that the permissioning has time to connect to the nodes (
+	// ie impl isn't destroyed)
 	time.Sleep(5 * time.Second)
 
 	//Kill the connections for the next test
 	nodeComm.Disconnect("Permissioning")
 	nodeComm2.Disconnect("Permissioning")
+	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
+}
+
+func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {
+	impl := StartRegistration(testParams)
+	testVersion := "0.0.0a"
+	setClientVersion(testVersion)
+	version, err := impl.GetCurrentClientVersion()
+	if err != nil {
+		t.Error(err)
+	}
+	if version != testVersion {
+		t.Errorf("Version was %+v, expected %+v", version, testVersion)
+	}
+}
+
+// Test a case that should pass validation
+func TestValidateClientVersion_Success(t *testing.T) {
+	err := validateVersion("0.0.0a")
+	if err != nil {
+		t.Errorf("Unexpected error from validateVersion: %+v", err.Error())
+	}
+}
+
+// Test some cases that shouldn't pass validation
+func TestValidateClientVersion_Failure(t *testing.T) {
+	err := validateVersion("")
+	if err == nil {
+		t.Error("Expected error for empty version string")
+	}
+	err = validateVersion("0")
+	if err == nil {
+		t.Error("Expected error for version string with one number")
+	}
+	err = validateVersion("0.0")
+	if err == nil {
+		t.Error("Expected error for version string with two numbers")
+	}
+	err = validateVersion("a.4.0")
+	if err == nil {
+		t.Error("Expected error for version string with non-numeric major version")
+	}
+	err = validateVersion("4.a.0")
+	if err == nil {
+		t.Error("Expected error for version string with non-numeric minor version")
+	}
 }

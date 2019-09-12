@@ -14,70 +14,103 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/comms/utils"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/database"
-	"io/ioutil"
 )
 
 // Handle registration attempt by a Node
-func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
-	GatewayTlsCert, RegistrationCode, Addr string) error {
-	// Connect back to the Node using the provided certificate
-	err := m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), Addr,
-		[]byte(ServerTlsCert))
+func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
+	GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
+
+	// Check that the node hasn't already been registered
+	nodeInfo, err := database.PermissioningDb.GetNode(RegistrationCode)
 	if err != nil {
-		jww.ERROR.Printf("Failed to return connection to Node: %+v", err)
-		return err
+		errMsg := errors.New(fmt.Sprintf(
+			"Registration code %+v is invalid or not currently enabled: %+v", RegistrationCode, err))
+		jww.ERROR.Printf("%+v", errMsg)
+		return errMsg
 	}
-	jww.DEBUG.Printf("Connected to node %+v of address %+v\n", ID, Addr)
+	if nodeInfo.Id != nil {
+		errMsg := errors.New(fmt.Sprintf(
+			"Node with registration code %+v has already been registered", RegistrationCode))
+		jww.ERROR.Printf("%+v", errMsg)
+		return errMsg
+	}
+
+	// Connect back to the Node using the provided certificate
+	err = m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), ServerAddr,
+		[]byte(ServerTlsCert), false)
+	if err != nil {
+		errMsg := errors.New(fmt.Sprintf(
+			"Failed to return connection to Node: %+v", err))
+		jww.ERROR.Printf("%+v", errMsg)
+		return errMsg
+	}
+	jww.INFO.Printf("Connected to node %+v at address %+v", ID, ServerAddr)
+
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
-		jww.ERROR.Printf("Failed to load node certificate: %v", err)
-		return err
+		errMsg := errors.New(fmt.Sprintf(
+			"Failed to load node certificate: %v", err))
+		jww.ERROR.Printf("%v", errMsg)
+		return errMsg
 	}
 	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCert)
 	if err != nil {
-		jww.ERROR.Printf("Failed to load gateway certificate: %v", err)
-		return err
+		errMsg := errors.New(fmt.Sprintf(
+			"Failed to load gateway certificate: %v", err))
+		jww.ERROR.Printf("%v", errMsg)
+		return errMsg
 	}
 
 	// Sign the node and gateway certs
 	signedNodeCert, err := certAuthority.Sign(nodeCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
 	if err != nil {
-		jww.ERROR.Printf("failed to sign node certificate: %v", err)
-		return err
+		errMsg := errors.New(fmt.Sprintf(
+			"failed to sign node certificate: %v", err))
+		jww.ERROR.Printf("%v", errMsg)
+		return errMsg
 	}
-	//Sign the gateway cert reqs
 	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
 	if err != nil {
-		jww.ERROR.Printf("Failed to sign gateway certificate: %v", err)
-		return err
+		errMsg := errors.New(fmt.Sprintf(
+			"Failed to sign gateway certificate: %v", err))
+		jww.ERROR.Printf("%v", errMsg)
+		return errMsg
 	}
-	jww.DEBUG.Printf("Signed the certificates\n")
+
 	// Attempt to insert Node into the database
-	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, Addr, signedNodeCert, signedGatewayCert)
+	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, ServerAddr,
+		signedNodeCert, GatewayAddr, signedGatewayCert)
 	if err != nil {
-		jww.ERROR.Printf("unable to insert node: %+v", err)
-		return err
+		errMsg := errors.New(fmt.Sprintf(
+			"unable to insert node: %+v", err))
+		jww.ERROR.Printf("%+v", errMsg)
+		return errMsg
 	}
-	jww.DEBUG.Printf("Inserted node: %+v to the database with code %+v\n", ID, RegistrationCode)
+	jww.DEBUG.Printf("Inserted node %+v into the database with code %+v",
+		ID, RegistrationCode)
+
 	// Obtain the number of registered nodes
 	_, err = database.PermissioningDb.CountRegisteredNodes()
 	if err != nil {
-		jww.ERROR.Printf("Unable to count registered Nodes: %+v", err)
-		return err
+		errMsg := errors.New(fmt.Sprintf(
+			"Unable to count registered Nodes: %+v", err))
+		jww.ERROR.Printf("%+v", errMsg)
+		return errMsg
 	}
+
 	m.completedNodes <- struct{}{}
 	return nil
 }
 
-// Wrapper for completeNodeRegistrationHelper() error-handling
-func NodeRegistrationCompleter(impl *RegistrationImpl) {
-
+// Wrapper for completed node registration error handling
+func nodeRegistrationCompleter(impl *RegistrationImpl) {
+	// Wait for all Nodes to complete registration
 	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
 		<-impl.completedNodes
 	}
@@ -91,16 +124,17 @@ func NodeRegistrationCompleter(impl *RegistrationImpl) {
 	// Output the completed topology to a JSON file
 	err = outputNodeTopologyToJSON(topology, impl.ndfOutputPath)
 	if err != nil {
-		error := errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
+		errMsg := errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
 			err))
-		jww.FATAL.Printf(error.Error())
+		jww.FATAL.Printf(errMsg.Error())
 	}
+
 	// Broadcast completed topology to all nodes
 	err = broadcastTopology(impl, topology)
-
 	if err != nil {
 		jww.FATAL.Panicf("Error completing node registration: %+v", err)
 	}
+
 	jww.INFO.Printf("Node registration complete!")
 }
 
@@ -113,7 +147,7 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, error) {
 		if err != nil {
 			return nil, errors.New(fmt.Sprintf(
 				"unable to obtain node for registration"+
-					" code %s: %+v", registrationCode, err))
+					" code %+v: %+v", registrationCode, err))
 		}
 		topology = append(topology, getNodeInfo(dbNodeInfo, index))
 	}
@@ -137,14 +171,15 @@ func broadcastTopology(impl *RegistrationImpl, topology *mixmessages.NodeTopolog
 	return nil
 }
 
-// getNodeInfo creates a NodeInfo mixmessage from the
+// getNodeInfo creates a NodeInfo message from the
 // node info in the database and other input params
 func getNodeInfo(dbNodeInfo *database.NodeInformation, index int) *mixmessages.NodeInfo {
 	nodeInfo := mixmessages.NodeInfo{
 		Id:             dbNodeInfo.Id,
 		Index:          uint32(index),
-		IpAddress:      dbNodeInfo.Address,
+		ServerAddress:  dbNodeInfo.ServerAddress,
 		ServerTlsCert:  dbNodeInfo.NodeCertificate,
+		GatewayAddress: dbNodeInfo.GatewayAddress,
 		GatewayTlsCert: dbNodeInfo.GatewayCertificate,
 	}
 	return &nodeInfo
@@ -161,7 +196,7 @@ func outputNodeTopologyToJSON(topology *mixmessages.NodeTopology, filePath strin
 	}
 
 	// Write JSON to file
-	err = ioutil.WriteFile(utils.GetFullPath(filePath), data, 0644)
+	err = utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
 	if err != nil {
 		return err
 	}
