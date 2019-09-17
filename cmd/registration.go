@@ -98,7 +98,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 }
 
 // Handle registration attempt by a Client
-func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string, ndf string) (signature []byte, err error) {
+func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signature []byte, err error) {
 	jww.INFO.Printf("Verifying for registration code %+v",
 		registrationCode)
 	// Check database to verify given registration code
