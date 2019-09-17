@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
@@ -30,6 +31,7 @@ type RegistrationImpl struct {
 	ndfOutputPath     string
 	completedNodes    chan struct{}
 	NumNodesInNet     int
+	ndfHash           []byte
 }
 
 type Params struct {
@@ -96,7 +98,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 }
 
 // Handle registration attempt by a Client
-func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signature []byte, err error) {
+func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string, ndf string) (signature []byte, err error) {
 	jww.INFO.Printf("Verifying for registration code %+v",
 		registrationCode)
 	// Check database to verify given registration code
@@ -129,6 +131,29 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 		registrationCode)
 	// Return signed public key to Client with empty error field
 	return sig, nil
+}
+
+//GetUpdatedNDF handles the client polling to an updated NDF
+func (m *RegistrationImpl) GetUpdatedNDF(ndf string) (newNDF []byte) {
+
+	//hash the ndf
+	h := sha256.New()
+	h.Reset()
+	h.Write([]byte(ndf))
+	ndfHash := h.Sum(nil)
+
+	//If both the client's hash and the permissioning hash match
+	//  return the same ndf that client passed
+	if bytes.Compare(m.ndfHash, ndfHash) == 0 {
+		return []byte(ndf)
+	}
+	//Otherwise return the updated ndf
+	newNDF, err := utils.ReadFile(m.ndfOutputPath)
+	if err != nil {
+		jww.ERROR.Printf("Failed to read ndf: %v", err.Error())
+	}
+	return newNDF
+
 }
 
 // This has to be part of RegistrationImpl and has to return an error because

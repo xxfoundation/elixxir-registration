@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -120,6 +121,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	if err != nil {
 		jww.FATAL.Printf("unable to assemble topology: %+v", err)
 	}
+	//TODO: Add udb to ndf..here?? in config
 
 	// Output the completed topology to a JSON file
 	err = outputNodeTopologyToJSON(topology, impl.ndfOutputPath)
@@ -128,6 +130,20 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 			err))
 		jww.FATAL.Printf(errMsg.Error())
 	}
+
+	ndfBytes, err := utils.ReadFile(impl.ndfOutputPath)
+	if err != nil {
+		jww.FATAL.Printf("unable to read from ndf: %v", err.Error())
+	}
+
+	hash := sha256.New()
+
+	if err != nil {
+		jww.FATAL.Panicf("Could not get sha hash: %s", err.Error())
+	}
+
+	hash.Write(ndfBytes)
+	impl.ndfHash = hash.Sum(nil)
 
 	// Broadcast completed topology to all nodes
 	err = broadcastTopology(impl, topology)
