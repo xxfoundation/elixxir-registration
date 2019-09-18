@@ -20,6 +20,7 @@ import (
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	ndf2 "gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
 )
@@ -134,25 +135,34 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 }
 
 //GetUpdatedNDF handles the client polling to an updated NDF
-func (m *RegistrationImpl) GetUpdatedNDF(ndf string) (newNDF []byte) {
+func (m *RegistrationImpl) GetUpdatedNDF(ndf string) ([]byte, error) {
 
 	//hash the ndf
 	h := sha256.New()
 	h.Reset()
-	h.Write([]byte(ndf))
+	ndfData, _, err := ndf2.DecodeNDF(ndf)
+	if err != nil {
+		errMsg := fmt.Sprintf("Failed to decode ndf from client: %v", err)
+		jww.ERROR.Printf(errMsg)
+		return nil, errors.New(errMsg)
+	}
+	ndfBytes := ndfData.Serialize()
+	h.Write(ndfBytes)
 	ndfHash := h.Sum(nil)
 
 	//If both the client's hash and the permissioning hash match
 	//  return the same ndf that client passed
 	if bytes.Compare(m.ndfHash, ndfHash) == 0 {
-		return []byte(ndf)
+		return []byte(ndf), nil
 	}
 	//Otherwise return the updated ndf
 	newNDF, err := utils.ReadFile(m.ndfOutputPath)
 	if err != nil {
-		jww.ERROR.Printf("Failed to read ndf: %v", err.Error())
+		errMsg := fmt.Sprintf("Failed to read ndf: %v", err.Error())
+		jww.ERROR.Printf(errMsg)
+		return nil, errors.New(errMsg)
 	}
-	return newNDF
+	return newNDF, nil
 
 }
 

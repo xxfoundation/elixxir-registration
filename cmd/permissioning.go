@@ -17,6 +17,7 @@ import (
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/database"
@@ -115,14 +116,13 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
 		<-impl.completedNodes
 	}
-
+	//Assemble ndf here as well??
 	// Assemble the completed topology
-	topology, err := assembleTopology(RegistrationCodes)
+	topology, gateways, nodes, err := assembleTopology(RegistrationCodes)
 	if err != nil {
 		jww.FATAL.Printf("unable to assemble topology: %+v", err)
 	}
 	//TODO: Add udb to ndf..here?? in config
-
 	// Output the completed topology to a JSON file
 	err = outputNodeTopologyToJSON(topology, impl.ndfOutputPath)
 	if err != nil {
@@ -130,10 +130,19 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 			err))
 		jww.FATAL.Printf(errMsg.Error())
 	}
-
-	ndfBytes, err := utils.ReadFile(impl.ndfOutputPath)
+	registration, err := assembleRegistration()
 	if err != nil {
-		jww.FATAL.Printf("unable to read from ndf: %v", err.Error())
+		jww.FATAL.Printf("Failed to build registration for ndf: %v", err)
+	}
+
+	//Either assemble again, or do it through assemble topology
+
+	//Assemble a different ndf
+	//how to add timestamps?
+	networkDef := &ndf.NetworkDefinition{
+		Registration: registration,
+		Nodes:        nodes,
+		Gateways:     gateways,
 	}
 
 	hash := sha256.New()
@@ -142,6 +151,8 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 		jww.FATAL.Panicf("Could not get sha hash: %s", err.Error())
 	}
 
+	//FIXME: Is this the same as reading from a file. I'm guessing no. So: b
+	ndfBytes := networkDef.Serialize()
 	hash.Write(ndfBytes)
 	impl.ndfHash = hash.Sum(nil)
 
@@ -154,24 +165,48 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	jww.INFO.Printf("Node registration complete!")
 }
 
+//Assemble the registration information
+func assembleRegistration() (ndf.Registration, error) {
+	var reg ndf.Registration
+	reg.Address = RegParams.Address
+	certBytes, err := utils.ReadFile(RegParams.CertPath)
+	if err != nil {
+		return ndf.Registration{}, errors.New(fmt.Sprintf("unable to read certificate path: %v", err))
+	}
+	reg.TlsCertificate = string(certBytes)
+
+	return reg, nil
+}
+
 // Assemble the completed topology from the database
-func assembleTopology(codes []string) (*mixmessages.NodeTopology, error) {
+func assembleTopology(codes []string) (*mixmessages.NodeTopology, []ndf.Gateway, []ndf.Node, error) {
 	var topology []*mixmessages.NodeInfo
+	var gateways []ndf.Gateway
+	var nodes []ndf.Node
 	for index, registrationCode := range codes {
 		// Get node information for each registration code
 		dbNodeInfo, err := database.PermissioningDb.GetNode(registrationCode)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf(
+			return nil, nil, nil, errors.New(fmt.Sprintf(
 				"unable to obtain node for registration"+
 					" code %+v: %+v", registrationCode, err))
 		}
+		var node ndf.Node
+		node.ID = dbNodeInfo.Id
+
+		var gateway ndf.Gateway
+		gateway.TlsCertificate = dbNodeInfo.GatewayCertificate
+		gateway.Address = dbNodeInfo.GatewayAddress
+
 		topology = append(topology, getNodeInfo(dbNodeInfo, index))
+		gateways = append(gateways, gateway)
+		nodes = append(nodes, node)
 	}
 	nodeTopology := mixmessages.NodeTopology{
 		Topology: topology,
 	}
 	jww.DEBUG.Printf("Assembled the topology")
-	return &nodeTopology, nil
+	return &nodeTopology, gateways, nodes, nil
 }
 
 // Broadcast completed topology to all nodes
