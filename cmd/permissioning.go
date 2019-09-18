@@ -143,6 +143,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 		Registration: registration,
 		Nodes:        nodes,
 		Gateways:     gateways,
+		UDB:          udbParams,
 	}
 
 	hash := sha256.New()
@@ -152,7 +153,8 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	}
 
 	//FIXME: Is this the same as reading from a file. I'm guessing no. So: b
-	ndfBytes := networkDef.Serialize()
+	ndfBytes := serializeNdf(networkDef)
+	//ndfBytes := networkDef.Serialize()
 	hash.Write(ndfBytes)
 	impl.ndfHash = hash.Sum(nil)
 

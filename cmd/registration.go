@@ -20,7 +20,7 @@ import (
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
-	ndf2 "gitlab.com/elixxir/primitives/ndf"
+	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
 )
@@ -135,35 +135,61 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 }
 
 //GetUpdatedNDF handles the client polling to an updated NDF
-func (m *RegistrationImpl) GetUpdatedNDF(ndf string) ([]byte, error) {
+func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (ndf.NetworkDefinition, error) {
+	//The timestamp will be the same
+	//big question: what the eff is the ndf that gets gen'd in regUser, where does that go?
+	//Other problem, the ndf being passed will carry the sig, need to ignore that
 
 	//hash the ndf
 	h := sha256.New()
 	h.Reset()
-	ndfData, _, err := ndf2.DecodeNDF(ndf)
+	clientNdf, _, err := ndf.DecodeNDF(ndfFile)
 	if err != nil {
 		errMsg := fmt.Sprintf("Failed to decode ndf from client: %v", err)
 		jww.ERROR.Printf(errMsg)
-		return nil, errors.New(errMsg)
+		return ndf.NetworkDefinition{}, errors.New(errMsg)
 	}
-	ndfBytes := ndfData.Serialize()
+	ndfBytes := serializeNdf(clientNdf)
 	h.Write(ndfBytes)
 	ndfHash := h.Sum(nil)
 
-	//If both the client's hash and the permissioning hash match
+	//How to extract the timestamp and cmix, e2e
+
+	//If both the client's ndf hash and the permissioning ndf hash match
 	//  return the same ndf that client passed
 	if bytes.Compare(m.ndfHash, ndfHash) == 0 {
-		return []byte(ndf), nil
+		return *clientNdf, nil
 	}
 	//Otherwise return the updated ndf
-	newNDF, err := utils.ReadFile(m.ndfOutputPath)
-	if err != nil {
-		errMsg := fmt.Sprintf("Failed to read ndf: %v", err.Error())
-		jww.ERROR.Printf(errMsg)
-		return nil, errors.New(errMsg)
-	}
-	return newNDF, nil
+	ndfData.CMIX = clientNdf.CMIX
+	ndfData.E2E = clientNdf.E2E
 
+	return ndfData, nil
+
+}
+
+func serializeNdf(networkDef *ndf.NetworkDefinition) []byte {
+	b := make([]byte, 0)
+
+	// Convert Gateways slice to byte slice
+	for _, val := range networkDef.Gateways {
+		b = append(b, []byte(val.Address)...)
+		b = append(b, []byte(val.TlsCertificate)...)
+	}
+
+	// Convert Nodes slice to byte slice
+	for _, val := range networkDef.Nodes {
+		b = append(b, val.ID...)
+	}
+
+	// Convert Registration to byte slice
+	b = append(b, []byte(networkDef.Registration.Address)...)
+	b = append(b, []byte(networkDef.Registration.TlsCertificate)...)
+
+	// Convert UDB to byte slice
+	b = append(b, []byte(networkDef.UDB.ID)...)
+
+	return b
 }
 
 // This has to be part of RegistrationImpl and has to return an error because

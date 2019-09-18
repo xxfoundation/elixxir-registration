@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/registration/database"
 	"os"
 	"path"
@@ -32,6 +33,8 @@ var (
 	RegistrationCodes []string
 	RegParams         Params
 	DefaultRegCode    string
+	udbParams         ndf.UDB
+	ndfData           ndf.NetworkDefinition
 	clientVersion     string
 	clientVersionLock sync.RWMutex
 )
@@ -85,6 +88,8 @@ var rootCmd = &cobra.Command{
 		// Populate Node registration codes into the database
 		RegistrationCodes = viper.GetStringSlice("registrationCodes")
 		database.PopulateNodeRegistrationCodes(RegistrationCodes)
+
+		udbParams.ID = []byte(viper.GetString("udb"))
 
 		// Populate params
 		RegParams = Params{
