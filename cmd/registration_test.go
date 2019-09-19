@@ -398,10 +398,12 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	}
 	time.Sleep(5 * time.Second)
 
-	_, err = impl.GetUpdatedNDF(string(ndfFile))
-	fmt.Println(err)
-	//t.Error()
+	observedNDF, err := impl.GetUpdatedNDF(string(ndfFile))
+	if err != nil {
+		t.Errorf("failed to update ndf: %v", err)
+	}
 
+	fmt.Printf("\n\n\n\nobservedNDF: %+v", observedNDF)
 	//Sleep so that the permissioning has time to connect to the nodes (
 	// ie impl isn't destroyed)
 
