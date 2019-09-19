@@ -34,7 +34,6 @@ var (
 	RegParams         Params
 	DefaultRegCode    string
 	udbParams         ndf.UDB
-	ndfData           ndf.NetworkDefinition
 	clientVersion     string
 	clientVersionLock sync.RWMutex
 )

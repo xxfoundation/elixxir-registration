@@ -33,6 +33,7 @@ type RegistrationImpl struct {
 	completedNodes    chan struct{}
 	NumNodesInNet     int
 	ndfHash           []byte
+	ndfData           *ndf.NetworkDefinition
 }
 
 type Params struct {
@@ -56,7 +57,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 
 	var cert, key []byte
 	var err error
-
+	regImpl.ndfHash = make([]byte, 0)
 	if !noTLS {
 		// Read in TLS keys from files
 		cert, err = utils.ReadFile(params.CertPath)
@@ -135,19 +136,26 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 }
 
 //GetUpdatedNDF handles the client polling to an updated NDF
-func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (ndf.NetworkDefinition, error) {
+func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition, error) {
 	//The timestamp will be the same
 	//big question: what the eff is the ndf that gets gen'd in regUser, where does that go?
 	//Other problem, the ndf being passed will carry the sig, need to ignore that
 
+	if bytes.Compare(m.ndfHash, make([]byte, 0)) == 0 {
+		errMsg := fmt.Sprintf("Permissioning server does not have an ndf to give to client")
+		jww.ERROR.Printf(errMsg)
+		return &ndf.NetworkDefinition{}, errors.New(errMsg)
+	}
+
 	//hash the ndf
 	h := sha256.New()
 	h.Reset()
+	fmt.Printf("client ndfFile: %v\n", ndfFile)
 	clientNdf, _, err := ndf.DecodeNDF(ndfFile)
 	if err != nil {
 		errMsg := fmt.Sprintf("Failed to decode ndf from client: %v", err)
 		jww.ERROR.Printf(errMsg)
-		return ndf.NetworkDefinition{}, errors.New(errMsg)
+		return &ndf.NetworkDefinition{}, errors.New(errMsg)
 	}
 	ndfBytes := serializeNdf(clientNdf)
 	h.Write(ndfBytes)
@@ -158,16 +166,23 @@ func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (ndf.NetworkDefinition,
 	//If both the client's ndf hash and the permissioning ndf hash match
 	//  return the same ndf that client passed
 	if bytes.Compare(m.ndfHash, ndfHash) == 0 {
-		return *clientNdf, nil
+		return clientNdf, nil
 	}
-	//Otherwise return the updated ndf
-	ndfData.CMIX = clientNdf.CMIX
-	ndfData.E2E = clientNdf.E2E
 
-	return ndfData, nil
+	newNdf := m.ndfData
+	fmt.Printf("client ndf: %v\n", clientNdf)
+	fmt.Printf("client ndf timestamp: %v\n", clientNdf.Timestamp)
+	fmt.Printf("client ndf e2e: %v\n", clientNdf.E2E)
+	//Otherwise return the updated ndf along with their timestamp, cmix and e2e vals
+	newNdf.Timestamp = clientNdf.Timestamp
+	newNdf.CMIX = clientNdf.CMIX
+	newNdf.E2E = clientNdf.E2E
+
+	return m.ndfData, nil
 
 }
 
+//SerializeNdf serializes all the nodes, gateways and udb of the ndf into bytes
 func serializeNdf(networkDef *ndf.NetworkDefinition) []byte {
 	b := make([]byte, 0)
 

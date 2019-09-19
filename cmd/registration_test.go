@@ -25,6 +25,9 @@ var nodeCert []byte
 var nodeKey []byte
 var permAddr = "0.0.0.0:5900"
 var testParams Params
+var gatewayKey []byte
+var gatewayCert []byte
+var ndfFile []byte
 
 /*
 var testPermissioningKey *rsa.PrivateKey
@@ -43,13 +46,28 @@ func TestMain(m *testing.M) {
 		fmt.Printf("Could not get node key: %+v\n", err)
 	}
 
+	gatewayKey, err = utils.ReadFile(testkeys.GetCAKeyPath())
+	if err != nil {
+		fmt.Printf("Could not get gateway key: %+v\n", err)
+	}
+
+	gatewayCert, err = utils.ReadFile(testkeys.GetCACertPath())
+	if err != nil {
+		fmt.Printf("Could not get gateway cert: %+v\n", err)
+	}
+
+	ndfFile, err = utils.ReadFile(testkeys.GetClientNdf())
+	if err != nil {
+		fmt.Printf("Could not get ndf: %+v\n", err)
+	}
+
 	testParams = Params{
 		Address:       permAddr,
 		CertPath:      testkeys.GetCACertPath(),
 		KeyPath:       testkeys.GetCAKeyPath(),
 		NdfOutputPath: testkeys.GetNDFPath(),
 	}
-
+	fmt.Printf("in test main, certpath: %v", testParams.CertPath)
 	nodeComm = node.StartNode(nodeAddr, node.NewImplementation(), nodeCert, nodeKey)
 
 	runFunc := func() int {
@@ -327,4 +345,74 @@ func TestValidateClientVersion_Failure(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for version string with non-numeric minor version")
 	}
+}
+
+//Happy path
+func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
+	//Create database
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+
+	//Create reg codes and populate the database
+	strings := make([]string, 0)
+	strings = append(strings, "BBBB", "CCCC", "DDDD")
+	database.PopulateNodeRegistrationCodes(strings)
+	RegistrationCodes = strings
+	RegParams = testParams
+
+	//Start registration server
+	impl := StartRegistration(testParams)
+	go nodeRegistrationCompleter(impl)
+
+	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
+
+	//Start the other nodes
+	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm3 := node.StartNode("0.0.0.0:6902", node.NewImplementation(), nodeCert, nodeKey)
+
+	udbParams.ID = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3}
+
+	//Connect to permissioning
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_ = nodeComm3.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+
+	//Register 1st node
+	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
+		"0.0.0.0:7900", string(gatewayCert), "BBBB")
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+
+	//Register 2nd node
+	err = impl.RegisterNode([]byte("C"), "0.0.0.0:6901", string(nodeCert),
+		"0.0.0.0:7901", string(gatewayCert), "CCCC")
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+
+	//Register 3rd node
+	err = impl.RegisterNode([]byte("D"), "0.0.0.0:6902", string(nodeCert),
+		"0.0.0.0:7902", string(gatewayCert), "DDDD")
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+	time.Sleep(5 * time.Second)
+
+	_, err = impl.GetUpdatedNDF(string(ndfFile))
+	fmt.Println(err)
+	//t.Error()
+
+	//Sleep so that the permissioning has time to connect to the nodes (
+	// ie impl isn't destroyed)
+
+	//Disconnect nodeComms
+	nodeComm.Disconnect("Permissioning")
+	nodeComm2.Disconnect("Permissioning")
+
+	//Shutdown node comms
+	nodeComm2.Shutdown()
+	nodeComm3.Shutdown()
+
+	//Shutdown registration
+	impl.Comms.Shutdown()
 }

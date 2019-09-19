@@ -116,6 +116,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
 		<-impl.completedNodes
 	}
+	fmt.Printf("in node reg complter\n")
 	//Assemble ndf here as well??
 	// Assemble the completed topology
 	topology, gateways, nodes, err := assembleTopology(RegistrationCodes)
@@ -124,12 +125,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	}
 	//TODO: Add udb to ndf..here?? in config
 	// Output the completed topology to a JSON file
-	err = outputNodeTopologyToJSON(topology, impl.ndfOutputPath)
-	if err != nil {
-		errMsg := errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
-			err))
-		jww.FATAL.Printf(errMsg.Error())
-	}
+
 	registration, err := assembleRegistration()
 	if err != nil {
 		jww.FATAL.Printf("Failed to build registration for ndf: %v", err)
@@ -146,10 +142,17 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 		UDB:          udbParams,
 	}
 
+	impl.ndfData = networkDef
+	//fmt.Printf("network def in regComplte: %v\n",networkDef)
+	//fmt.Printf("gateway: %v\n",gateways)
+	//fmt.Printf("nodes: %v\n",nodes)
 	hash := sha256.New()
 
+	err = outputToJSON(impl.ndfData, impl.ndfOutputPath)
 	if err != nil {
-		jww.FATAL.Panicf("Could not get sha hash: %s", err.Error())
+		errMsg := errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
+			err))
+		jww.FATAL.Printf(errMsg.Error())
 	}
 
 	//FIXME: Is this the same as reading from a file. I'm guessing no. So: b
@@ -157,7 +160,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	//ndfBytes := networkDef.Serialize()
 	hash.Write(ndfBytes)
 	impl.ndfHash = hash.Sum(nil)
-
+	fmt.Printf("ndf hash: %v\n", impl.ndfHash)
 	// Broadcast completed topology to all nodes
 	err = broadcastTopology(impl, topology)
 	if err != nil {
@@ -171,6 +174,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 func assembleRegistration() (ndf.Registration, error) {
 	var reg ndf.Registration
 	reg.Address = RegParams.Address
+	fmt.Printf("Assemblereg: %v\n", RegParams.CertPath)
 	certBytes, err := utils.ReadFile(RegParams.CertPath)
 	if err != nil {
 		return ndf.Registration{}, errors.New(fmt.Sprintf("unable to read certificate path: %v", err))
@@ -241,13 +245,14 @@ func getNodeInfo(dbNodeInfo *database.NodeInformation, index int) *mixmessages.N
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
 // outputs it to the specified file path. An error is returned if the JSON
 // marshaling fails or if the JSON file cannot be created.
-func outputNodeTopologyToJSON(topology *mixmessages.NodeTopology, filePath string) error {
+func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) error {
 	// Generate JSON from structure
-	data, err := json.MarshalIndent(topology, "", "\t")
+	fmt.Printf("output to json: %v\n", ndfData)
+	data, err := json.MarshalIndent(ndfData, "", "\t")
 	if err != nil {
 		return err
 	}
-
+	fmt.Println("")
 	// Write JSON to file
 	err = utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
 	if err != nil {
