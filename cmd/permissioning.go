@@ -135,7 +135,6 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 		Gateways:     gateways,
 		UDB:          udbParams,
 	}
-	fmt.Printf("node reg complete: \n %v", gateways)
 	impl.ndfData = networkDef
 
 	err = outputToJSON(impl.ndfData, impl.ndfOutputPath)

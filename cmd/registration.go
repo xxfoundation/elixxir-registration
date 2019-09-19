@@ -160,8 +160,6 @@ func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition
 	h.Write(ndfBytes)
 	ndfHash := h.Sum(nil)
 
-	//How to extract the timestamp and cmix, e2e
-
 	//If both the client's ndf hash and the permissioning ndf hash match
 	//  return the same ndf that client passed
 	if bytes.Compare(m.ndfHash, ndfHash) == 0 {
