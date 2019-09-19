@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"bytes"
 	"crypto/x509"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
@@ -323,9 +324,9 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	//Start the other nodes
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 	nodeComm3 := node.StartNode("0.0.0.0:6902", node.NewImplementation(), nodeCert, nodeKey)
+	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
 
-	udbParams.ID = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3}
-
+	udbParams.ID = udbId
 	//Connect to permissioning
 	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
@@ -358,9 +359,9 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 		t.Errorf("failed to update ndf: %v", err)
 	}
 
-	fmt.Printf("\n\n\n\nobservedNDF: %+v", observedNDF)
-	//Sleep so that the permissioning has time to connect to the nodes (
-	// ie impl isn't destroyed)
+	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
+		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v", udbId, observedNDF.UDB.ID)
+	}
 
 	//Disconnect nodeComms
 	nodeComm.Disconnect("Permissioning")
