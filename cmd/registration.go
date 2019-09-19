@@ -150,7 +150,6 @@ func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition
 	//hash the ndf
 	h := sha256.New()
 	h.Reset()
-	fmt.Printf("client ndfFile: %v\n", ndfFile)
 	clientNdf, _, err := ndf.DecodeNDF(ndfFile)
 	if err != nil {
 		errMsg := fmt.Sprintf("Failed to decode ndf from client: %v", err)
@@ -170,9 +169,6 @@ func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition
 	}
 
 	newNdf := m.ndfData
-	fmt.Printf("client ndf: %v\n", clientNdf)
-	fmt.Printf("client ndf timestamp: %v\n", clientNdf.Timestamp)
-	fmt.Printf("client ndf e2e: %v\n", clientNdf.E2E)
 	//Otherwise return the updated ndf along with their timestamp, cmix and e2e vals
 	newNdf.Timestamp = clientNdf.Timestamp
 	newNdf.CMIX = clientNdf.CMIX
