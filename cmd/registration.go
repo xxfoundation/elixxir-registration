@@ -136,7 +136,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 }
 
 //GetUpdatedNDF handles the client polling to an updated NDF
-func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition, error) {
+func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition, bool, error) {
 	//The timestamp will be the same
 	//big question: what the eff is the ndf that gets gen'd in regUser, where does that go?
 	//Other problem, the ndf being passed will carry the sig, need to ignore that
@@ -144,7 +144,7 @@ func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition
 	if bytes.Compare(m.ndfHash, make([]byte, 0)) == 0 {
 		errMsg := fmt.Sprintf("Permissioning server does not have an ndf to give to client")
 		jww.ERROR.Printf(errMsg)
-		return &ndf.NetworkDefinition{}, errors.New(errMsg)
+		return &ndf.NetworkDefinition{}, false, errors.New(errMsg)
 	}
 
 	//hash the ndf
@@ -154,7 +154,7 @@ func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition
 	if err != nil {
 		errMsg := fmt.Sprintf("Failed to decode ndf from client: %v", err)
 		jww.ERROR.Printf(errMsg)
-		return &ndf.NetworkDefinition{}, errors.New(errMsg)
+		return &ndf.NetworkDefinition{}, true, errors.New(errMsg)
 	}
 	ndfBytes := serializeNdf(clientNdf)
 	h.Write(ndfBytes)
@@ -163,7 +163,7 @@ func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition
 	//If both the client's ndf hash and the permissioning ndf hash match
 	//  return the same ndf that client passed
 	if bytes.Compare(m.ndfHash, ndfHash) == 0 {
-		return clientNdf, nil
+		return nil, true, nil
 	}
 
 	newNdf := m.ndfData
@@ -172,7 +172,7 @@ func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition
 	newNdf.CMIX = clientNdf.CMIX
 	newNdf.E2E = clientNdf.E2E
 
-	return m.ndfData, nil
+	return newNdf, true, nil
 
 }
 
