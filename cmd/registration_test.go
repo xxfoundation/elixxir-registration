@@ -13,6 +13,7 @@ import (
 	"gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
 	"gitlab.com/elixxir/registration/testkeys"
@@ -357,11 +358,15 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	//Make a client ndf hash that is not up to date
 	clientNdfHash := make([]byte, 0)
 
-	observedNDF, err := impl.GetUpdatedNDF(clientNdfHash)
+	observedNDFBytes, err := impl.GetUpdatedNDF(clientNdfHash)
 	if err != nil {
 		t.Errorf("failed to update ndf: %v", err)
 	}
 
+	observedNDF, _, err := ndf.DecodeNDF(string(observedNDFBytes))
+	if err != nil {
+		t.Errorf("Could not decode ndf: %v", err)
+	}
 	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
 		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v", udbId, observedNDF.UDB.ID)
 	}

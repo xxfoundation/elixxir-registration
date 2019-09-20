@@ -14,6 +14,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -136,7 +137,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 }
 
 //GetUpdatedNDF handles the client polling to an updated NDF
-func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) (*ndf.NetworkDefinition, error) {
+func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 	//The timestamp will be the same
 	//big question: what the eff is the ndf that gets gen'd in regUser, where does that go?
 	//Other problem, the ndf being passed will carry the sig, need to ignore that
@@ -152,10 +153,15 @@ func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) (*ndf.NetworkDefi
 	if bytes.Compare(m.ndfHash, clientNdfHash) == 0 {
 		return nil, nil
 	}
-	fmt.Printf("")
-	fmt.Printf("ndf hash: %v", m.ndfHash)
-	//
-	return m.ndfData, nil
+
+	//if need to return string
+	data, err := json.MarshalIndent(m.ndfData, "", "\t")
+	if err != nil {
+		fmt.Printf("error: %v", err)
+	}
+	/**/
+	fmt.Printf("ndf: %v", string(data))
+	return data, nil
 
 }
 
