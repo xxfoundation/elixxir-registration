@@ -386,6 +386,62 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	impl.Comms.Shutdown()
 }
 
+//Error  path
+func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
+	//Create database
+	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+
+	//Create reg codes and populate the database
+	strings := make([]string, 0)
+	strings = append(strings, "BBBB", "CCCC")
+	database.PopulateNodeRegistrationCodes(strings)
+	RegistrationCodes = strings
+	RegParams = testParams
+
+	//Start registration server
+	impl := StartRegistration(testParams)
+	go nodeRegistrationCompleter(impl)
+
+	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
+
+	//Start the other nodes
+
+	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
+
+	udbParams.ID = udbId
+	//Connect to permissioning
+	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+
+	//Register 1st node
+	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
+		"0.0.0.0:7900", string(gatewayCert), "BBBB")
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+
+	time.Sleep(5 * time.Second)
+
+	//Make a client ndf hash that is not up to date
+	clientNdfHash := make([]byte, 0)
+
+	_, err = impl.GetUpdatedNDF(clientNdfHash)
+	if err != nil {
+		//Disconnect nodeComms
+		nodeComm.Disconnect("Permissioning")
+
+		//Shutdown registration
+		impl.Comms.Shutdown()
+		return
+	}
+
+	t.Error("Expected error path, should not have an ndf ready")
+	//Disconnect nodeComms
+	nodeComm.Disconnect("Permissioning")
+
+	//Shutdown registration
+	impl.Comms.Shutdown()
+}
+
 func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {
 	impl := StartRegistration(testParams)
 	testVersion := "0.0.0a"

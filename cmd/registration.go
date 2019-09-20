@@ -138,10 +138,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 
 //GetUpdatedNDF handles the client polling to an updated NDF
 func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
-	//The timestamp will be the same
-	//big question: what the eff is the ndf that gets gen'd in regUser, where does that go?
-	//Other problem, the ndf being passed will carry the sig, need to ignore that
-
+	//Check that the registration server has built an ndf
 	if bytes.Compare(m.ndfHash, make([]byte, 0)) == 0 {
 		errMsg := fmt.Sprintf("Permissioning server does not have an ndf to give to client")
 		jww.ERROR.Printf(errMsg)
@@ -154,14 +151,13 @@ func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 		return nil, nil
 	}
 
-	//if need to return string
-	data, err := json.MarshalIndent(m.ndfData, "", "\t")
+	//Marshall the data into a byte for sending back to client
+	ndfData, err := json.MarshalIndent(m.ndfData, "", "\t")
 	if err != nil {
 		fmt.Printf("error: %v", err)
 	}
-	/**/
-	fmt.Printf("ndf: %v", string(data))
-	return data, nil
+
+	return ndfData, nil
 
 }
 
