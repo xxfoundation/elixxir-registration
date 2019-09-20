@@ -366,7 +366,7 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	//Disconnect nodeComms
 	nodeComm.Disconnect("Permissioning")
 	nodeComm2.Disconnect("Permissioning")
-
+	nodeComm3.Disconnect("Permsissioning")
 	//Shutdown node comms
 	nodeComm2.Shutdown()
 	nodeComm3.Shutdown()
@@ -429,7 +429,7 @@ func TestRegistrationImpl_GetUpdatedNDF_HasNDF(t *testing.T) {
 	//Disconnect nodeComms
 	nodeComm.Disconnect("Permissioning")
 	nodeComm2.Disconnect("Permissioning")
-
+	nodeComm3.Disconnect("Permissioning")
 	//Shutdown node comms
 	nodeComm2.Shutdown()
 	nodeComm3.Shutdown()
