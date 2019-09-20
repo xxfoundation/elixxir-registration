@@ -421,7 +421,16 @@ func TestRegistrationImpl_GetUpdatedNDF_HasNDF(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	_, hasNdf, err := impl.GetUpdatedNDF(string(ndfFile))
-	if err != nil && !hasNdf {
+	if err != nil && !hasNdf { //Disconnect nodeComms
+		nodeComm.Disconnect("Permissioning")
+		nodeComm2.Disconnect("Permissioning")
+		nodeComm3.Disconnect("Permissioning")
+		//Shutdown node comms
+		nodeComm2.Shutdown()
+		nodeComm3.Shutdown()
+
+		//Shutdown registration
+		impl.Comms.Shutdown()
 		return
 	}
 	t.Errorf("Expected error path, registration should not have ndf")
