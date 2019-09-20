@@ -136,7 +136,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 }
 
 //GetUpdatedNDF handles the client polling to an updated NDF
-func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition, bool, error) {
+func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) (*ndf.NetworkDefinition, error) {
 	//The timestamp will be the same
 	//big question: what the eff is the ndf that gets gen'd in regUser, where does that go?
 	//Other problem, the ndf being passed will carry the sig, need to ignore that
@@ -144,35 +144,18 @@ func (m *RegistrationImpl) GetUpdatedNDF(ndfFile string) (*ndf.NetworkDefinition
 	if bytes.Compare(m.ndfHash, make([]byte, 0)) == 0 {
 		errMsg := fmt.Sprintf("Permissioning server does not have an ndf to give to client")
 		jww.ERROR.Printf(errMsg)
-		return &ndf.NetworkDefinition{}, false, errors.New(errMsg)
+		return nil, errors.New(errMsg)
 	}
-
-	//hash the ndf
-	h := sha256.New()
-	h.Reset()
-	clientNdf, _, err := ndf.DecodeNDF(ndfFile)
-	if err != nil {
-		errMsg := fmt.Sprintf("Failed to decode ndf from client: %v", err)
-		jww.ERROR.Printf(errMsg)
-		return &ndf.NetworkDefinition{}, true, errors.New(errMsg)
-	}
-	ndfBytes := serializeNdf(clientNdf)
-	h.Write(ndfBytes)
-	ndfHash := h.Sum(nil)
 
 	//If both the client's ndf hash and the permissioning ndf hash match
 	//  return the same ndf that client passed
-	if bytes.Compare(m.ndfHash, ndfHash) == 0 {
-		return nil, true, nil
+	if bytes.Compare(m.ndfHash, clientNdfHash) == 0 {
+		return nil, nil
 	}
-
-	newNdf := m.ndfData
-	//Otherwise return the updated ndf along with their timestamp, cmix and e2e vals
-	newNdf.Timestamp = clientNdf.Timestamp
-	newNdf.CMIX = clientNdf.CMIX
-	newNdf.E2E = clientNdf.E2E
-
-	return newNdf, true, nil
+	fmt.Printf("")
+	fmt.Printf("ndf hash: %v", m.ndfHash)
+	//
+	return m.ndfData, nil
 
 }
 

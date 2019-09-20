@@ -354,7 +354,10 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	}
 	time.Sleep(5 * time.Second)
 
-	observedNDF, _, err := impl.GetUpdatedNDF(string(ndfFile))
+	//Make a client ndf hash that is not up to date
+	clientNdfHash := make([]byte, 0)
+
+	observedNDF, err := impl.GetUpdatedNDF(clientNdfHash)
 	if err != nil {
 		t.Errorf("failed to update ndf: %v", err)
 	}
@@ -362,83 +365,14 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
 		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v", udbId, observedNDF.UDB.ID)
 	}
-
+	expectedHash := []byte{217, 234, 142, 134, 183, 86, 229, 200, 194, 205, 74, 88, 171, 42, 37, 25, 45, 67, 125, 179, 237, 206, 185, 47, 63, 117, 52, 84, 197, 67, 186, 137}
+	if bytes.Compare(expectedHash, impl.ndfHash) != 0 {
+		t.Errorf("Did not create an expected hash: Recieved: %v, Expected: %v", impl.ndfHash, expectedHash)
+	}
 	//Disconnect nodeComms
 	nodeComm.Disconnect("Permissioning")
 	nodeComm2.Disconnect("Permissioning")
 	nodeComm3.Disconnect("Permsissioning")
-	//Shutdown node comms
-	nodeComm2.Shutdown()
-	nodeComm3.Shutdown()
-
-	//Shutdown registration
-	impl.Comms.Shutdown()
-}
-
-//Error path: testing that hasNDF returns false when registration isn't complete
-func TestRegistrationImpl_GetUpdatedNDF_HasNDF(t *testing.T) {
-	//Create database
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
-
-	//Create reg codes and populate the database
-	strings := make([]string, 0)
-	strings = append(strings, "BBBB", "CCCC", "DDDD")
-	database.PopulateNodeRegistrationCodes(strings)
-	RegistrationCodes = strings
-	RegParams = testParams
-
-	//Start registration server
-	impl := StartRegistration(testParams)
-	go nodeRegistrationCompleter(impl)
-
-	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-
-	//Start the other nodes
-	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
-	nodeComm3 := node.StartNode("0.0.0.0:6902", node.NewImplementation(), nodeCert, nodeKey)
-	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-
-	udbParams.ID = udbId
-	//Connect to permissioning
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-	_ = nodeComm3.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-
-	//Register 1st node
-	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
-		"0.0.0.0:7900", string(gatewayCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 2nd node
-	err = impl.RegisterNode([]byte("C"), "0.0.0.0:6901", string(nodeCert),
-		"0.0.0.0:7901", string(gatewayCert), "CCCC")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	time.Sleep(5 * time.Second)
-
-	_, hasNdf, err := impl.GetUpdatedNDF(string(ndfFile))
-	if err != nil && !hasNdf { //Disconnect nodeComms
-		nodeComm.Disconnect("Permissioning")
-		nodeComm2.Disconnect("Permissioning")
-		nodeComm3.Disconnect("Permissioning")
-		//Shutdown node comms
-		nodeComm2.Shutdown()
-		nodeComm3.Shutdown()
-
-		//Shutdown registration
-		impl.Comms.Shutdown()
-		return
-	}
-	t.Errorf("Expected error path, registration should not have ndf")
-
-	//Disconnect nodeComms
-	nodeComm.Disconnect("Permissioning")
-	nodeComm2.Disconnect("Permissioning")
-	nodeComm3.Disconnect("Permissioning")
 	//Shutdown node comms
 	nodeComm2.Shutdown()
 	nodeComm3.Shutdown()
