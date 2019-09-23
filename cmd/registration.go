@@ -139,7 +139,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 //GetUpdatedNDF handles the client polling to an updated NDF
 func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 	//Check that the registration server has built an ndf
-	if if len(m.ndfHash)==0 {
+	if len(m.ndfHash) == 0 {
 		errMsg := fmt.Sprintf("Permissioning server does not have an ndf to give to client")
 		jww.ERROR.Printf(errMsg)
 		return nil, errors.New(errMsg)
