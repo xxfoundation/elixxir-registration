@@ -139,7 +139,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 //GetUpdatedNDF handles the client polling to an updated NDF
 func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 	//Check that the registration server has built an ndf
-	if bytes.Compare(m.ndfHash, make([]byte, 0)) == 0 {
+	if if len(m.ndfHash)==0 {
 		errMsg := fmt.Sprintf("Permissioning server does not have an ndf to give to client")
 		jww.ERROR.Printf(errMsg)
 		return nil, errors.New(errMsg)
@@ -152,9 +152,11 @@ func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 	}
 
 	//Marshall the data into a byte for sending back to client
-	ndfData, err := json.MarshalIndent(m.ndfData, "", "\t")
+	ndfData, err := json.Marshal(m.ndfData)
 	if err != nil {
-		fmt.Printf("error: %v", err)
+		errMsg := fmt.Sprintf("Failed to marshal JSON: %v", err)
+		jww.ERROR.Printf(errMsg)
+		return nil, err
 	}
 
 	return ndfData, nil
