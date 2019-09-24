@@ -37,12 +37,20 @@ type RegistrationImpl struct {
 	ndfData           *ndf.NetworkDefinition
 }
 
+// Contains the cyclic group config params
+type Groups struct {
+	CMix map[string]string `yaml:"cmix"`
+	E2E  map[string]string `yaml:"e2e"`
+}
+
 type Params struct {
 	Address       string
 	CertPath      string
 	KeyPath       string
 	NdfOutputPath string
 	NumNodesInNet int
+	cmix          ndf.Group
+	e2e           ndf.Group
 }
 
 type connectionID string
@@ -51,13 +59,29 @@ func (c connectionID) String() string {
 	return (string)(c)
 }
 
+func toGroup(grp map[string]string) ndf.Group {
+	jww.DEBUG.Printf("group is: %v", grp)
+	pStr, pOk := grp["prime"]
+	qStr, qOk := grp["smallprime"]
+	gStr, gOk := grp["generator"]
+
+	if !gOk || !qOk || !pOk {
+		jww.FATAL.Panicf("Invalid Group Config "+
+			"(prime: %v, smallPrime: %v, generator: %v",
+			pOk, qOk, gOk)
+	}
+
+	return ndf.Group{Prime: pStr, SmallPrime: qStr, Generator: gStr}
+
+}
+
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) *RegistrationImpl {
 	jww.DEBUG.Printf("Starting registration\n")
 	regImpl := &RegistrationImpl{}
-
 	var cert, key []byte
 	var err error
+
 	regImpl.ndfHash = make([]byte, 0)
 	if !noTLS {
 		// Read in TLS keys from files
@@ -134,7 +158,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 	return sig, nil
 }
 
-//GetUpdatedNDF handles the client polling to an updated NDF
+//GetUpdatedNDF handles the client polling for an updated NDF
 func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 	//Check that the registration server has built an ndf
 	if len(m.ndfHash) == 0 {
@@ -144,7 +168,7 @@ func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 	}
 
 	//If both the client's ndf hash and the permissioning ndf hash match
-	//  return the same ndf that client passed
+	//  no need to pass anything through the comm
 	if bytes.Compare(m.ndfHash, clientNdfHash) == 0 {
 		return nil, nil
 	}
@@ -157,34 +181,11 @@ func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	//Send the json of the ndf
 	return ndfData, nil
 
 }
 
-//SerializeNdf serializes all the nodes, gateways and udb of the ndf into bytes
-func serializeNdf(networkDef *ndf.NetworkDefinition) []byte {
-	b := make([]byte, 0)
-
-	// Convert Gateways slice to byte slice
-	for _, val := range networkDef.Gateways {
-		b = append(b, []byte(val.Address)...)
-		b = append(b, []byte(val.TlsCertificate)...)
-	}
-
-	// Convert Nodes slice to byte slice
-	for _, val := range networkDef.Nodes {
-		b = append(b, val.ID...)
-	}
-
-	// Convert Registration to byte slice
-	b = append(b, []byte(networkDef.Registration.Address)...)
-	b = append(b, []byte(networkDef.Registration.TlsCertificate)...)
-
-	// Convert UDB to byte slice
-	b = append(b, []byte(networkDef.UDB.ID)...)
-
-	return b
-}
 
 // This has to be part of RegistrationImpl and has to return an error because
 // of the way our comms are structured

@@ -21,6 +21,7 @@ import (
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/database"
+	"time"
 )
 
 // Handle registration attempt by a Node
@@ -132,9 +133,12 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	//Assemble a different ndf
 	networkDef := &ndf.NetworkDefinition{
 		Registration: registration,
+		Timestamp:    time.Now(),
 		Nodes:        nodes,
 		Gateways:     gateways,
 		UDB:          udbParams,
+		E2E:          RegParams.e2e,
+		CMIX:         RegParams.cmix,
 	}
 	impl.ndfData = networkDef
 
@@ -146,8 +150,8 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	}
 
 	hash := sha256.New()
-
-	ndfBytes := serializeNdf(networkDef)
+	//use ndf.serialize instead? question is if you are gonna send hash here too
+	ndfBytes := networkDef.Serialize()
 	hash.Write(ndfBytes)
 	impl.ndfHash = hash.Sum(nil)
 
@@ -208,12 +212,14 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, []ndf.Gateway,
 func broadcastTopology(impl *RegistrationImpl, topology *mixmessages.NodeTopology) error {
 	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
 	for _, nodeInfo := range topology.Topology {
+		jww.DEBUG.Printf("Sending to node: %v", nodeInfo.Id)
 		err := impl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.Id), topology)
 		if err != nil {
 			return errors.New(fmt.Sprintf(
 				"unable to broadcast node topology: %+v", err))
 		}
 	}
+	jww.DEBUG.Printf("finished broadcasting")
 	return nil
 }
 

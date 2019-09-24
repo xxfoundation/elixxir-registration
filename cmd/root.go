@@ -62,6 +62,12 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
+		cmixMap := viper.GetStringMapString("groups.cmix")
+		e2eMap := viper.GetStringMapString("groups.e2e")
+
+		cmix := toGroup(cmixMap)
+		e2e := toGroup(e2eMap)
+
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
@@ -88,14 +94,20 @@ var rootCmd = &cobra.Command{
 		RegistrationCodes = viper.GetStringSlice("registrationCodes")
 		database.PopulateNodeRegistrationCodes(RegistrationCodes)
 
-		udbParams.ID = []byte(viper.GetString("udbID"))
 
+		//Fixme: HACK HACK hard coded udb value
+		tmpSlice := make([]byte, 32)
+
+		tmpSlice[len(tmpSlice)-1] = byte(viper.GetInt("udbID"))
+		udbParams.ID = tmpSlice
 		// Populate params
 		RegParams = Params{
 			Address:       address,
 			CertPath:      certPath,
 			KeyPath:       keyPath,
 			NdfOutputPath: ndfOutputPath,
+			cmix:          cmix,
+			e2e:           e2e,
 		}
 		jww.INFO.Println("Starting Permissioning")
 		jww.INFO.Println("Starting User Registration")

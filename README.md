@@ -43,5 +43,16 @@ clientVersion: "0.0.0"
 keyPath: ""
 # Path to the permissioning server certificate file
 certPath: ""
+
+# E2E/CMIX Primes
+groups:
+  cmix:
+    prime: "${cmix_prime}"
+    smallprime: "${cmix_small_prime}"
+    generator: "${cmix_generator}"
+  e2e:
+    prime: "${e2e_prime}"
+    smallprime: "${e2e_small_prime}"
+    generator: "${e2e_generator}"
 ```
 
