@@ -88,7 +88,7 @@ var rootCmd = &cobra.Command{
 		RegistrationCodes = viper.GetStringSlice("registrationCodes")
 		database.PopulateNodeRegistrationCodes(RegistrationCodes)
 
-		udbParams.ID = []byte(viper.GetString("udb"))
+		udbParams.ID = []byte(viper.GetString("udbID"))
 
 		// Populate params
 		RegParams = Params{

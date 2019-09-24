@@ -105,7 +105,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		jww.ERROR.Printf("%+v", errMsg)
 		return errMsg
 	}
-
+	jww.DEBUG.Printf("Total number of expected nodes for registration completion: %v", m.NumNodesInNet)
 	m.completedNodes <- struct{}{}
 	return nil
 }
@@ -113,10 +113,10 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 // Wrapper for completed node registration error handling
 func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	// Wait for all Nodes to complete registration
+	jww.INFO.Printf("Registration completer running")
 	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
 		<-impl.completedNodes
 	}
-	//Assemble ndf here as well??
 	// Assemble the completed topology
 	topology, gateways, nodes, err := assembleTopology(RegistrationCodes)
 	if err != nil {
@@ -127,7 +127,8 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	if err != nil {
 		jww.FATAL.Printf("Failed to build registration for ndf: %v", err)
 	}
-
+	jww.DEBUG.Printf("Amount of gateways: %v", len(gateways))
+	jww.DEBUG.Printf("Amount of nodes: %v", len(nodes))
 	//Assemble a different ndf
 	networkDef := &ndf.NetworkDefinition{
 		Registration: registration,

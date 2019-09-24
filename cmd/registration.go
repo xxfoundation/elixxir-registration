@@ -88,14 +88,12 @@ func StartRegistration(params Params) *RegistrationImpl {
 			"PermissioningKey is %+v",
 			err, regImpl.permissioningKey)
 	}
-
 	regImpl.ndfOutputPath = params.NdfOutputPath
 
 	// Start the communication server
 	regImpl.Comms = registration.StartRegistrationServer(params.Address,
 		regImpl, cert, key)
 
-	//TODO: change the buffer length to that set in params..also set in params :)
 	regImpl.completedNodes = make(chan struct{}, regImpl.NumNodesInNet)
 	return regImpl
 }

@@ -17,6 +17,9 @@ logPath: "registration.log"
 # Path to the node topology permissioning info
 ndfOutputPath:
 
+#UDB ID
+udbID: ""
+
 # The listening port of this  server
 port: 11420
 
