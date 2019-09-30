@@ -370,10 +370,20 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
 		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v", udbId, observedNDF.UDB.ID)
 	}
-	expectedHash := []byte{217, 234, 142, 134, 183, 86, 229, 200, 194, 205, 74, 88, 171, 42, 37, 25, 45, 67, 125, 179, 237, 206, 185, 47, 63, 117, 52, 84, 197, 67, 186, 137}
-	if bytes.Compare(expectedHash, impl.ndfHash) != 0 {
-		t.Errorf("Did not create an expected hash: Recieved: %v, Expected: %v", impl.ndfHash, expectedHash)
+
+	if observedNDF.Registration.Address != permAddr {
+		t.Errorf("Failed to set registration address. Expected: %v \n Recieved: %v",
+			observedNDF.Registration.Address, permAddr)
 	}
+	expectedNodeIDs := make([][]byte, 0)
+	expectedNodeIDs = append(expectedNodeIDs, []byte("B"), []byte("C"), []byte("D"))
+	for i := range observedNDF.Nodes {
+		if bytes.Compare(expectedNodeIDs[i], observedNDF.Nodes[i].ID) != 0 {
+			t.Errorf("Could not build node %d's, id: Expected: %v \n Recieved: %v", i,
+				expectedNodeIDs, observedNDF.Nodes[i].ID)
+		}
+	}
+
 	//Disconnect nodeComms
 	nodeComm.Disconnect("Permissioning")
 	nodeComm2.Disconnect("Permissioning")
