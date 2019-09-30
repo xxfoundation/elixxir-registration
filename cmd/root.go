@@ -94,7 +94,6 @@ var rootCmd = &cobra.Command{
 		RegistrationCodes = viper.GetStringSlice("registrationCodes")
 		database.PopulateNodeRegistrationCodes(RegistrationCodes)
 
-
 		//Fixme: HACK HACK hard coded udb value
 		tmpSlice := make([]byte, 32)
 

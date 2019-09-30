@@ -37,12 +37,6 @@ type RegistrationImpl struct {
 	ndfData           *ndf.NetworkDefinition
 }
 
-// Contains the cyclic group config params
-type Groups struct {
-	CMix map[string]string `yaml:"cmix"`
-	E2E  map[string]string `yaml:"e2e"`
-}
-
 type Params struct {
 	Address       string
 	CertPath      string
@@ -161,6 +155,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 //GetUpdatedNDF handles the client polling for an updated NDF
 func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 	//Check that the registration server has built an ndf
+	jww.INFO.Printf("Running get updated")
 	if len(m.ndfHash) == 0 {
 		errMsg := fmt.Sprintf("Permissioning server does not have an ndf to give to client")
 		jww.ERROR.Printf(errMsg)
@@ -175,17 +170,17 @@ func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 
 	//Marshall the data into a byte for sending back to client
 	ndfData, err := json.Marshal(m.ndfData)
+
 	if err != nil {
 		errMsg := fmt.Sprintf("Failed to marshal JSON: %v", err)
 		jww.ERROR.Printf(errMsg)
 		return nil, err
 	}
-
+	jww.DEBUG.Printf("Returning a new NDF to client!")
 	//Send the json of the ndf
 	return ndfData, nil
 
 }
-
 
 // This has to be part of RegistrationImpl and has to return an error because
 // of the way our comms are structured

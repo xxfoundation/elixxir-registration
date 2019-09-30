@@ -106,6 +106,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		jww.ERROR.Printf("%+v", errMsg)
 		return errMsg
 	}
+	jww.INFO.Printf("num of ")
 	jww.DEBUG.Printf("Total number of expected nodes for registration completion: %v", m.NumNodesInNet)
 	m.completedNodes <- struct{}{}
 	return nil
@@ -116,6 +117,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	// Wait for all Nodes to complete registration
 	jww.INFO.Printf("Registration completer running")
 	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
+		jww.DEBUG.Printf("Registered %d node(s)!", numNodes)
 		<-impl.completedNodes
 	}
 	// Assemble the completed topology
@@ -128,9 +130,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	if err != nil {
 		jww.FATAL.Printf("Failed to build registration for ndf: %v", err)
 	}
-	jww.DEBUG.Printf("Amount of gateways: %v", len(gateways))
-	jww.DEBUG.Printf("Amount of nodes: %v", len(nodes))
-	//Assemble a different ndf
+	//Construct an NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: registration,
 		Timestamp:    time.Now(),
@@ -148,9 +148,8 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 			err))
 		jww.FATAL.Printf(errMsg.Error())
 	}
-
+	//Serialize than hash the constructed ndf
 	hash := sha256.New()
-	//use ndf.serialize instead? question is if you are gonna send hash here too
 	ndfBytes := networkDef.Serialize()
 	hash.Write(ndfBytes)
 	impl.ndfHash = hash.Sum(nil)
@@ -204,7 +203,7 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, []ndf.Gateway,
 	nodeTopology := mixmessages.NodeTopology{
 		Topology: topology,
 	}
-	jww.DEBUG.Printf("Assembled the topology")
+	jww.DEBUG.Printf("Assembled the network topology")
 	return &nodeTopology, gateways, nodes, nil
 }
 
@@ -212,14 +211,12 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, []ndf.Gateway,
 func broadcastTopology(impl *RegistrationImpl, topology *mixmessages.NodeTopology) error {
 	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
 	for _, nodeInfo := range topology.Topology {
-		jww.DEBUG.Printf("Sending to node: %v", nodeInfo.Id)
 		err := impl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.Id), topology)
 		if err != nil {
 			return errors.New(fmt.Sprintf(
 				"unable to broadcast node topology: %+v", err))
 		}
 	}
-	jww.DEBUG.Printf("finished broadcasting")
 	return nil
 }
 
@@ -242,7 +239,7 @@ func getNodeInfo(dbNodeInfo *database.NodeInformation, index int) *mixmessages.N
 // marshaling fails or if the JSON file cannot be created.
 func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) error {
 	// Generate JSON from structure
-	data, err := json.MarshalIndent(ndfData, "", "\t")
+	data, err := json.Marshal(ndfData)
 	if err != nil {
 		return err
 	}
