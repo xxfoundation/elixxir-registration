@@ -18,7 +18,7 @@ logPath: "registration.log"
 ndfOutputPath:
 
 #UDB ID
-udbID: ""
+udbID: 1
 
 # The listening port of this  server
 port: 11420
