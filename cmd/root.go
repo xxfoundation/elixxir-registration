@@ -26,16 +26,17 @@ import (
 )
 
 var (
-	cfgFile           string
-	verbose           bool
-	showVer           bool
-	noTLS             bool
-	RegistrationCodes []string
-	RegParams         Params
-	DefaultRegCode    string
-	udbParams         ndf.UDB
-	clientVersion     string
-	clientVersionLock sync.RWMutex
+	cfgFile              string
+	verbose              bool
+	showVer              bool
+	noTLS                bool
+	RegistrationCodes    []string
+	RegParams            Params
+	DefaultRegCode       string
+	udbParams            ndf.UDB
+	clientVersion        string
+	clientVersionLock    sync.RWMutex
+	disablePermissioning bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -157,6 +158,8 @@ func init() {
 	rootCmd.Flags().StringVar(&DefaultRegCode, "InsecureClientRegCode", "",
 		"Specifies a client registration code which will have 1000 uses,"+
 			"only for development, not secure")
+	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
+		false, "Disables interaction with the Permissioning Server")
 }
 
 // initConfig reads in config file and ENV variables if set.

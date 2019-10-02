@@ -106,7 +106,6 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		jww.ERROR.Printf("%+v", errMsg)
 		return errMsg
 	}
-	jww.INFO.Printf("num of ")
 	jww.DEBUG.Printf("Total number of expected nodes for registration completion: %v", m.NumNodesInNet)
 	m.completedNodes <- struct{}{}
 	return nil
@@ -115,7 +114,6 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 // Wrapper for completed node registration error handling
 func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	// Wait for all Nodes to complete registration
-	jww.INFO.Printf("Registration completer running")
 	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
 		jww.DEBUG.Printf("Registered %d node(s)!", numNodes)
 		<-impl.completedNodes
@@ -126,6 +124,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 		jww.FATAL.Printf("unable to assemble topology: %+v", err)
 	}
 
+	//Assemble the registration server information
 	registration, err := assembleRegistration()
 	if err != nil {
 		jww.FATAL.Printf("Failed to build registration for ndf: %v", err)
@@ -142,6 +141,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	}
 	impl.ndfData = networkDef
 
+	// Output the completed topology to a JSON file
 	err = outputToJSON(impl.ndfData, impl.ndfOutputPath)
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
