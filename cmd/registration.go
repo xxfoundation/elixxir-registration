@@ -154,20 +154,20 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 
 //GetUpdatedNDF handles the client polling for an updated NDF
 func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
-	//Check that the registration server has built an ndf
 	jww.INFO.Printf("Running get updated")
-	//If disable permissioning is e
-	if !disablePermissioning {
-		//If both the client's ndf hash and the permissioning ndf hash match
-		//  no need to pass anything through the comm
 
+	notUpdatingResponse := make([]byte, 0)
+
+	//If permissioning is enabled, check the permissioning's hash against the client's ndf
+	if !disablePermissioning {
+		//Check that the registration server has built an NDF
 		if len(m.ndfHash) == 0 {
 			errMsg := fmt.Sprintf("Permissioning server does not have an ndf to give to client")
-			jww.ERROR.Printf(errMsg)
-			return nil, errors.New(errMsg)
+			jww.WARN.Printf(errMsg)
+			return notUpdatingResponse, errors.New(errMsg)
 		}
 
-		//If both the client's ndf hash and the permissioning ndf hash match
+		//If both the client's ndf hash and the permissioning NDF hash match
 		//  no need to pass anything through the comm
 		if bytes.Compare(m.ndfHash, clientNdfHash) == 0 {
 			return nil, nil
@@ -178,16 +178,16 @@ func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 
 		if err != nil {
 			errMsg := fmt.Sprintf("Failed to marshal JSON: %v", err)
-			jww.ERROR.Printf(errMsg)
-			return nil, err
+			jww.WARN.Printf(errMsg)
+			return notUpdatingResponse, err
 		}
 		jww.DEBUG.Printf("Returning a new NDF to client!")
 		//Send the json of the ndf
 		return ndfData, nil
 	}
-
+	jww.DEBUG.Printf("Permissioning disabled, telling client it is up-to-date")
 	//If permissioning is disabled, inform the client that it has the correct ndf
-	return nil, nil
+	return notUpdatingResponse, nil
 
 }
 
