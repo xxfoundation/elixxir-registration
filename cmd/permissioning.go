@@ -125,10 +125,8 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	}
 
 	//Assemble the registration server information
-	registration, err := assembleRegistration()
-	if err != nil {
-		jww.FATAL.Printf("Failed to build registration for ndf: %v", err)
-	}
+	registration := ndf.Registration{Address: RegParams.Address, TlsCertificate: impl.certFromFile}
+
 	//Construct an NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: registration,
@@ -139,10 +137,10 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 		E2E:          RegParams.e2e,
 		CMIX:         RegParams.cmix,
 	}
-	impl.ndfData = networkDef
+	impl.ndf = networkDef
 
-	// Output the completed topology to a JSON file
-	err = outputToJSON(impl.ndfData, impl.ndfOutputPath)
+	// Output the completed topology to a JSON file and save marshall'ed json data
+	impl.ndfJson, err = outputToJSON(impl.ndf, impl.ndfOutputPath)
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
 			err))
@@ -161,19 +159,6 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	}
 
 	jww.INFO.Printf("Node registration complete!")
-}
-
-//Assemble the registration information
-func assembleRegistration() (ndf.Registration, error) {
-	var reg ndf.Registration
-	reg.Address = RegParams.Address
-	certBytes, err := utils.ReadFile(RegParams.CertPath)
-	if err != nil {
-		return ndf.Registration{}, errors.New(fmt.Sprintf("unable to read certificate path: %v", err))
-	}
-	reg.TlsCertificate = string(certBytes)
-
-	return reg, nil
 }
 
 // Assemble the completed topology from the database
@@ -237,17 +222,17 @@ func getNodeInfo(dbNodeInfo *database.NodeInformation, index int) *mixmessages.N
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
 // outputs it to the specified file path. An error is returned if the JSON
 // marshaling fails or if the JSON file cannot be created.
-func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) error {
+func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) ([]byte, error) {
 	// Generate JSON from structure
 	data, err := json.Marshal(ndfData)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// Write JSON to file
 	err = utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
 	if err != nil {
-		return err
+		return data, err
 	}
 
-	return nil
+	return data, nil
 }

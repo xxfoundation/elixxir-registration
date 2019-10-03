@@ -14,7 +14,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
-	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -34,7 +33,9 @@ type RegistrationImpl struct {
 	completedNodes    chan struct{}
 	NumNodesInNet     int
 	ndfHash           []byte
-	ndfData           *ndf.NetworkDefinition
+	ndf               *ndf.NetworkDefinition
+	certFromFile      string
+	ndfJson           []byte
 }
 
 type Params struct {
@@ -86,8 +87,8 @@ func StartRegistration(params Params) *RegistrationImpl {
 		if err != nil {
 			jww.ERROR.Printf("failed to read certificate at %+v: %+v", params.CertPath, err)
 		}
-
 		// Set globals for permissioning server
+		regImpl.certFromFile = string(cert)
 		regImpl.permissioningCert, err = tls.LoadCertificate(string(cert))
 		if err != nil {
 			jww.ERROR.Printf("Failed to parse permissioning server cert: %+v. "+
@@ -174,17 +175,9 @@ func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 			return nil, nil
 		}
 
-		//Marshall the data into a byte for sending back to client
-		ndfData, err := json.Marshal(m.ndfData)
-
-		if err != nil {
-			errMsg := fmt.Sprintf("Failed to marshal JSON: %v", err)
-			jww.WARN.Printf(errMsg)
-			return nil, err
-		}
 		jww.DEBUG.Printf("Returning a new NDF to client!")
 		//Send the json of the ndf
-		return ndfData, nil
+		return m.ndfJson, nil
 	}
 	jww.DEBUG.Printf("Permissioning disabled, telling client it is up-to-date")
 	//If permissioning is disabled, inform the client that it has the correct ndf
