@@ -159,7 +159,7 @@ func init() {
 		"Specifies a client registration code which will have 1000 uses,"+
 			"only for development, not secure")
 	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
-		false, "Disables interaction with the Permissioning Server")
+		false, "Disables registration server checking for ndf updates")
 }
 
 // initConfig reads in config file and ENV variables if set.
