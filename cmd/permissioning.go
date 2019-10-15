@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,9 +17,11 @@ import (
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/database"
+	"time"
 )
 
 // Handle registration attempt by a Node
@@ -103,7 +106,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		jww.ERROR.Printf("%+v", errMsg)
 		return errMsg
 	}
-
+	jww.DEBUG.Printf("Total number of expected nodes for registration completion: %v", m.NumNodesInNet)
 	m.completedNodes <- struct{}{}
 	return nil
 }
@@ -112,22 +115,42 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	// Wait for all Nodes to complete registration
 	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
+		jww.DEBUG.Printf("Registered %d node(s)!", numNodes)
 		<-impl.completedNodes
 	}
-
 	// Assemble the completed topology
-	topology, err := assembleTopology(RegistrationCodes)
+	topology, gateways, nodes, err := assembleTopology(RegistrationCodes)
 	if err != nil {
 		jww.FATAL.Printf("unable to assemble topology: %+v", err)
 	}
 
-	// Output the completed topology to a JSON file
-	err = outputNodeTopologyToJSON(topology, impl.ndfOutputPath)
+	//Assemble the registration server information
+	registration := ndf.Registration{Address: RegParams.Address, TlsCertificate: impl.certFromFile}
+
+	//Construct an NDF
+	networkDef := &ndf.NetworkDefinition{
+		Registration: registration,
+		Timestamp:    time.Now(),
+		Nodes:        nodes,
+		Gateways:     gateways,
+		UDB:          udbParams,
+		E2E:          RegParams.e2e,
+		CMIX:         RegParams.cmix,
+	}
+	impl.ndf = networkDef
+
+	// Output the completed topology to a JSON file and save marshall'ed json data
+	impl.ndfJson, err = outputToJSON(impl.ndf, impl.ndfOutputPath)
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf("unable to output NDF JSON file: %+v",
 			err))
 		jww.FATAL.Printf(errMsg.Error())
 	}
+	//Serialize than hash the constructed ndf
+	hash := sha256.New()
+	ndfBytes := networkDef.Serialize()
+	hash.Write(ndfBytes)
+	impl.ndfHash = hash.Sum(nil)
 
 	// Broadcast completed topology to all nodes
 	err = broadcastTopology(impl, topology)
@@ -139,23 +162,34 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 }
 
 // Assemble the completed topology from the database
-func assembleTopology(codes []string) (*mixmessages.NodeTopology, error) {
+func assembleTopology(codes []string) (*mixmessages.NodeTopology, []ndf.Gateway, []ndf.Node, error) {
 	var topology []*mixmessages.NodeInfo
+	var gateways []ndf.Gateway
+	var nodes []ndf.Node
 	for index, registrationCode := range codes {
 		// Get node information for each registration code
 		dbNodeInfo, err := database.PermissioningDb.GetNode(registrationCode)
 		if err != nil {
-			return nil, errors.New(fmt.Sprintf(
+			return nil, nil, nil, errors.New(fmt.Sprintf(
 				"unable to obtain node for registration"+
 					" code %+v: %+v", registrationCode, err))
 		}
+		var node ndf.Node
+		node.ID = dbNodeInfo.Id
+
+		var gateway ndf.Gateway
+		gateway.TlsCertificate = dbNodeInfo.GatewayCertificate
+		gateway.Address = dbNodeInfo.GatewayAddress
+
 		topology = append(topology, getNodeInfo(dbNodeInfo, index))
+		gateways = append(gateways, gateway)
+		nodes = append(nodes, node)
 	}
 	nodeTopology := mixmessages.NodeTopology{
 		Topology: topology,
 	}
-	jww.DEBUG.Printf("Assembled the topology")
-	return &nodeTopology, nil
+	jww.DEBUG.Printf("Assembled the network topology")
+	return &nodeTopology, gateways, nodes, nil
 }
 
 // Broadcast completed topology to all nodes
@@ -188,18 +222,17 @@ func getNodeInfo(dbNodeInfo *database.NodeInformation, index int) *mixmessages.N
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
 // outputs it to the specified file path. An error is returned if the JSON
 // marshaling fails or if the JSON file cannot be created.
-func outputNodeTopologyToJSON(topology *mixmessages.NodeTopology, filePath string) error {
+func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) ([]byte, error) {
 	// Generate JSON from structure
-	data, err := json.MarshalIndent(topology, "", "\t")
+	data, err := json.Marshal(ndfData)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
 	// Write JSON to file
 	err = utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
 	if err != nil {
-		return err
+		return data, err
 	}
 
-	return nil
+	return data, nil
 }

@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
@@ -19,6 +20,7 @@ import (
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
 )
@@ -30,6 +32,10 @@ type RegistrationImpl struct {
 	ndfOutputPath     string
 	completedNodes    chan struct{}
 	NumNodesInNet     int
+	ndfHash           []byte
+	ndf               *ndf.NetworkDefinition
+	certFromFile      string
+	ndfJson           []byte
 }
 
 type Params struct {
@@ -38,6 +44,8 @@ type Params struct {
 	KeyPath       string
 	NdfOutputPath string
 	NumNodesInNet int
+	cmix          ndf.Group
+	e2e           ndf.Group
 }
 
 type connectionID string
@@ -46,22 +54,41 @@ func (c connectionID) String() string {
 	return (string)(c)
 }
 
+// toGroup takes a group represented by a map of string to string
+// and uses the prime, small prime and generator to  created
+// and returns a an ndf group object.
+func toGroup(grp map[string]string) ndf.Group {
+	jww.DEBUG.Printf("group is: %v", grp)
+	pStr, pOk := grp["prime"]
+	qStr, qOk := grp["smallprime"]
+	gStr, gOk := grp["generator"]
+
+	if !gOk || !qOk || !pOk {
+		jww.FATAL.Panicf("Invalid Group Config "+
+			"(prime: %v, smallPrime: %v, generator: %v",
+			pOk, qOk, gOk)
+	}
+
+	return ndf.Group{Prime: pStr, SmallPrime: qStr, Generator: gStr}
+
+}
+
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) *RegistrationImpl {
 	jww.DEBUG.Printf("Starting registration\n")
 	regImpl := &RegistrationImpl{}
-
 	var cert, key []byte
 	var err error
 
+	regImpl.ndfHash = make([]byte, 0)
 	if !noTLS {
 		// Read in TLS keys from files
 		cert, err = utils.ReadFile(params.CertPath)
 		if err != nil {
 			jww.ERROR.Printf("failed to read certificate at %+v: %+v", params.CertPath, err)
 		}
-
 		// Set globals for permissioning server
+		regImpl.certFromFile = string(cert)
 		regImpl.permissioningCert, err = tls.LoadCertificate(string(cert))
 		if err != nil {
 			jww.ERROR.Printf("Failed to parse permissioning server cert: %+v. "+
@@ -83,14 +110,12 @@ func StartRegistration(params Params) *RegistrationImpl {
 			"PermissioningKey is %+v",
 			err, regImpl.permissioningKey)
 	}
-
 	regImpl.ndfOutputPath = params.NdfOutputPath
 
 	// Start the communication server
 	regImpl.Comms = registration.StartRegistrationServer(params.Address,
 		regImpl, cert, key)
 
-	//TODO: change the buffer length to that set in params..also set in params :)
 	regImpl.completedNodes = make(chan struct{}, regImpl.NumNodesInNet)
 	return regImpl
 }
@@ -129,6 +154,35 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signat
 		registrationCode)
 	// Return signed public key to Client with empty error field
 	return sig, nil
+}
+
+//GetUpdatedNDF handles the client polling for an updated NDF
+func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
+	jww.INFO.Printf("Running get updated")
+
+	//If permissioning is enabled, check the permissioning's hash against the client's ndf
+	if !disablePermissioning {
+		//Check that the registration server has built an NDF
+		if len(m.ndfHash) == 0 {
+			errMsg := fmt.Sprintf("Permissioning server does not have an ndf to give to client")
+			jww.WARN.Printf(errMsg)
+			return nil, errors.New(errMsg)
+		}
+
+		//If both the client's ndf hash and the permissioning NDF hash match
+		//  no need to pass anything through the comm
+		if bytes.Compare(m.ndfHash, clientNdfHash) == 0 {
+			return nil, nil
+		}
+
+		jww.DEBUG.Printf("Returning a new NDF to client!")
+		//Send the json of the ndf
+		return m.ndfJson, nil
+	}
+	jww.DEBUG.Printf("Permissioning disabled, telling client it is up-to-date")
+	//If permissioning is disabled, inform the client that it has the correct ndf
+	return nil, nil
+
 }
 
 // This has to be part of RegistrationImpl and has to return an error because
