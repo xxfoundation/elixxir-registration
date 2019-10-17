@@ -60,16 +60,15 @@ func (c connectionID) String() string {
 func toGroup(grp map[string]string) ndf.Group {
 	jww.DEBUG.Printf("group is: %v", grp)
 	pStr, pOk := grp["prime"]
-	qStr, qOk := grp["smallprime"]
 	gStr, gOk := grp["generator"]
 
-	if !gOk || !qOk || !pOk {
+	if !gOk || !pOk {
 		jww.FATAL.Panicf("Invalid Group Config "+
-			"(prime: %v, smallPrime: %v, generator: %v",
-			pOk, qOk, gOk)
+			"(prime: %v, generator: %v",
+			pOk, gOk)
 	}
 
-	return ndf.Group{Prime: pStr, SmallPrime: qStr, Generator: gStr}
+	return ndf.Group{Prime: pStr, Generator: gStr}
 
 }
 
