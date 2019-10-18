@@ -95,33 +95,58 @@ func StartRegistration(params Params) *RegistrationImpl {
 				"Permissioning cert is %+v",
 				err, regImpl.permissioningCert)
 		}
+		key, err = utils.ReadFile(params.KeyPath)
+		if err != nil {
+			jww.ERROR.Printf("failed to read key at %+v: %+v", params.KeyPath, err)
+		}
+		regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
+		if err != nil {
+			jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
+				"PermissioningKey is %+v",
+				err, regImpl.permissioningKey)
+		}
+
 		jww.DEBUG.Printf("permissioningCert: %+v\n", regImpl.permissioningCert)
 		jww.DEBUG.Printf("permissioning public key: %+v\n", regImpl.permissioningCert.PublicKey)
 		jww.DEBUG.Printf("permissioning private key: %+v\n", regImpl.permissioningKey)
 	}
 	regImpl.NumNodesInNet = len(RegistrationCodes)
-	key, err = utils.ReadFile(params.KeyPath)
-	if err != nil {
-		jww.ERROR.Printf("failed to read key at %+v: %+v", params.KeyPath, err)
-	}
-	regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
-	if err != nil {
-		jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
-			"PermissioningKey is %+v",
-			err, regImpl.permissioningKey)
-	}
 	regImpl.ndfOutputPath = params.NdfOutputPath
+
+	regHandler := NewImplementation(regImpl)
 
 	// Start the communication server
 	regImpl.Comms = registration.StartRegistrationServer(params.Address,
-		regImpl, cert, key)
+		regHandler, cert, key)
 
 	regImpl.completedNodes = make(chan struct{}, regImpl.NumNodesInNet)
 	return regImpl
 }
 
+// NewImplementation returns a registertation server Handler
+func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
+	impl := registration.NewImplementation()
+	impl.Functions.RegisterUser = func(registrationCode, pubKey string) (
+		signature []byte, err error) {
+		return instance.RegisterUser(registrationCode, pubKey)
+	}
+	impl.Functions.GetCurrentClientVersion = func() (version string,
+		err error) {
+		return instance.GetCurrentClientVersion()
+	}
+	impl.Functions.RegisterNode = func(ID []byte, ServerAddr, ServerTlsCert,
+		GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
+		return instance.RegisterNode(ID, ServerAddr,
+			ServerTlsCert, GatewayAddr, GatewayTlsCert,
+			RegistrationCode)
+	}
+
+	return impl
+}
+
 // Handle registration attempt by a Client
-func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (signature []byte, err error) {
+func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
+	signature []byte, err error) {
 	jww.INFO.Printf("Verifying for registration code %+v",
 		registrationCode)
 	// Check database to verify given registration code
