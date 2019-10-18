@@ -139,6 +139,9 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 			ServerTlsCert, GatewayAddr, GatewayTlsCert,
 			RegistrationCode)
 	}
+	impl.Functions.GetUpdatedNDF = func(clientNDFHash []byte) ([]byte, error) {
+		return instance.GetUpdatedNDF(clientNDFHash)
+	}
 
 	return impl
 }
