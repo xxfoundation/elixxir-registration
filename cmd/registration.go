@@ -39,7 +39,7 @@ type RegistrationImpl struct {
 }
 
 type Params struct {
-	Port          string
+	Address       string
 	CertPath      string
 	KeyPath       string
 	NdfOutputPath string
@@ -116,7 +116,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 	regHandler := NewImplementation(regImpl)
 
 	// Start the communication server
-	regImpl.Comms = registration.StartRegistrationServer(params.Port,
+	regImpl.Comms = registration.StartRegistrationServer(params.Address,
 		regHandler, cert, key)
 
 	regImpl.completedNodes = make(chan struct{}, regImpl.NumNodesInNet)

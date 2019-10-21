@@ -105,7 +105,7 @@ var rootCmd = &cobra.Command{
 		udbParams.ID = tmpSlice
 		// Populate params
 		RegParams = Params{
-			Port:          port,
+			Address:       port,
 			CertPath:      certPath,
 			KeyPath:       keyPath,
 			NdfOutputPath: ndfOutputPath,
