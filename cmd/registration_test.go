@@ -68,6 +68,7 @@ func TestMain(m *testing.M) {
 		CertPath:      testkeys.GetCACertPath(),
 		KeyPath:       testkeys.GetCAKeyPath(),
 		NdfOutputPath: testkeys.GetNDFPath(),
+		publicAddress: permAddr,
 	}
 	nodeComm = node.StartNode(nodeAddr, node.NewImplementation(), nodeCert, nodeKey)
 
@@ -373,7 +374,7 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 
 	if observedNDF.Registration.Address != permAddr {
 		t.Errorf("Failed to set registration address. Expected: %v \n Recieved: %v",
-			observedNDF.Registration.Address, permAddr)
+			permAddr, observedNDF.Registration.Address)
 	}
 	expectedNodeIDs := make([][]byte, 0)
 	expectedNodeIDs = append(expectedNodeIDs, []byte("B"), []byte("C"), []byte("D"))

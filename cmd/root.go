@@ -72,12 +72,12 @@ var rootCmd = &cobra.Command{
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
-		port := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
+		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 		ndfOutputPath := viper.GetString("ndfOutputPath")
 		setClientVersion(viper.GetString("clientVersion"))
 		ipAddr := viper.GetString("publicAddress")
 
-		publicAddress := fmt.Sprintf("%s:%s", ipAddr, port)
+		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
 
 		// Set up database connection
 		database.PermissioningDb = database.NewDatabase(
@@ -105,7 +105,7 @@ var rootCmd = &cobra.Command{
 		udbParams.ID = tmpSlice
 		// Populate params
 		RegParams = Params{
-			Address:       port,
+			Address:       localAddress,
 			CertPath:      certPath,
 			KeyPath:       keyPath,
 			NdfOutputPath: ndfOutputPath,
