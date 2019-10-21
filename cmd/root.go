@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/registration/database"
 	"os"
 	"path"
@@ -25,15 +26,17 @@ import (
 )
 
 var (
-	cfgFile           string
-	verbose           bool
-	showVer           bool
-	noTLS             bool
-	RegistrationCodes []string
-	RegParams         Params
-	DefaultRegCode    string
-	clientVersion     string
-	clientVersionLock sync.RWMutex
+	cfgFile              string
+	verbose              bool
+	showVer              bool
+	noTLS                bool
+	RegistrationCodes    []string
+	RegParams            Params
+	DefaultRegCode       string
+	udbParams            ndf.UDB
+	clientVersion        string
+	clientVersionLock    sync.RWMutex
+	disablePermissioning bool
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -60,12 +63,21 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
+		cmixMap := viper.GetStringMapString("groups.cmix")
+		e2eMap := viper.GetStringMapString("groups.e2e")
+
+		cmix := toGroup(cmixMap)
+		e2e := toGroup(e2eMap)
+
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
-		address := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
+		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 		ndfOutputPath := viper.GetString("ndfOutputPath")
 		setClientVersion(viper.GetString("clientVersion"))
+		ipAddr := viper.GetString("publicAddress")
+
+		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
 
 		// Set up database connection
 		database.PermissioningDb = database.NewDatabase(
@@ -86,12 +98,20 @@ var rootCmd = &cobra.Command{
 		RegistrationCodes = viper.GetStringSlice("registrationCodes")
 		database.PopulateNodeRegistrationCodes(RegistrationCodes)
 
+		//Fixme: HACK HACK hard coded udb value
+		tmpSlice := make([]byte, 32)
+
+		tmpSlice[len(tmpSlice)-1] = byte(viper.GetInt("udbID"))
+		udbParams.ID = tmpSlice
 		// Populate params
 		RegParams = Params{
-			Address:       address,
+			Address:       localAddress,
 			CertPath:      certPath,
 			KeyPath:       keyPath,
 			NdfOutputPath: ndfOutputPath,
+			cmix:          cmix,
+			e2e:           e2e,
+			publicAddress: publicAddress,
 		}
 		jww.INFO.Println("Starting Permissioning")
 		jww.INFO.Println("Starting User Registration")
@@ -142,6 +162,8 @@ func init() {
 	rootCmd.Flags().StringVar(&DefaultRegCode, "InsecureClientRegCode", "",
 		"Specifies a client registration code which will have 1000 uses,"+
 			"only for development, not secure")
+	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
+		false, "Disables registration server checking for ndf updates")
 }
 
 // initConfig reads in config file and ENV variables if set.

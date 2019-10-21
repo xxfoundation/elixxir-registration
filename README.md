@@ -17,6 +17,12 @@ logPath: "registration.log"
 # Path to the node topology permissioning info
 ndfOutputPath:
 
+#UDB ID
+udbID: 1
+
+#Public address, used in NDF it gives to client
+publicAdress: "104.26.4.131"
+
 # The listening port of this  server
 port: 11420
 
@@ -40,5 +46,14 @@ clientVersion: "0.0.0"
 keyPath: ""
 # Path to the permissioning server certificate file
 certPath: ""
+
+# E2E/CMIX Primes
+groups:
+  cmix:
+    prime: "${cmix_prime}"
+    generator: "${cmix_generator}"
+  e2e:
+    prime: "${e2e_prime}"
+    generator: "${e2e_generator}"
 ```
 

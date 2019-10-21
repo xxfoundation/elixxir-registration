@@ -58,3 +58,7 @@ func GetNDFPath() string {
 func GetClientPublicKey() string {
 	return filepath.Join(getDirForFile(), "cmix.public_key.pem")
 }
+
+func GetClientNdf() string {
+	return filepath.Join(getDirForFile(), "clientNDF.json")
+}
