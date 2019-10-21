@@ -125,7 +125,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	}
 
 	//Assemble the registration server information
-	registration := ndf.Registration{Address: RegParams.Address, TlsCertificate: impl.certFromFile}
+	registration := ndf.Registration{Address: RegParams.publicAddress, TlsCertificate: impl.certFromFile}
 
 	//Construct an NDF
 	networkDef := &ndf.NetworkDefinition{

@@ -72,9 +72,12 @@ var rootCmd = &cobra.Command{
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
-		address := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
+		port := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 		ndfOutputPath := viper.GetString("ndfOutputPath")
 		setClientVersion(viper.GetString("clientVersion"))
+		ipAddr := viper.GetString("publicAddress")
+
+		publicAddress := fmt.Sprintf("%s:%s", ipAddr, port)
 
 		// Set up database connection
 		database.PermissioningDb = database.NewDatabase(
@@ -102,12 +105,13 @@ var rootCmd = &cobra.Command{
 		udbParams.ID = tmpSlice
 		// Populate params
 		RegParams = Params{
-			Address:       address,
+			Port:          port,
 			CertPath:      certPath,
 			KeyPath:       keyPath,
 			NdfOutputPath: ndfOutputPath,
 			cmix:          cmix,
 			e2e:           e2e,
+			publicAddress: publicAddress,
 		}
 		jww.INFO.Println("Starting Permissioning")
 		jww.INFO.Println("Starting User Registration")
