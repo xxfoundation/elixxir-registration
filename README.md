@@ -20,6 +20,9 @@ ndfOutputPath:
 #UDB ID
 udbID: 1
 
+#Public address, used in NDF it gives to client
+publicAdress: "104.26.4.131"
+
 # The listening port of this  server
 port: 11420
 

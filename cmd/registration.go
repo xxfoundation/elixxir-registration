@@ -46,6 +46,7 @@ type Params struct {
 	NumNodesInNet int
 	cmix          ndf.Group
 	e2e           ndf.Group
+	publicAddress string
 }
 
 type connectionID string
