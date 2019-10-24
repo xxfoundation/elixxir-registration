@@ -38,6 +38,13 @@ registrationCodes:
   - "2"
   - "3"
 
+# List of client codes to be added to the database (for testing)
+clientRegCodes:
+  - "AAAA"
+  - "BBBB"
+  - "CCCC"
+    
+
 # Client version (will allow all versions with major version 0)
 clientVersion: "0.0.0"
 

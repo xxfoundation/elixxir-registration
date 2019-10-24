@@ -32,7 +32,7 @@ var (
 	noTLS                bool
 	RegistrationCodes    []string
 	RegParams            Params
-	DefaultRegCode       string
+	ClientRegCodes       []string
 	udbParams            ndf.UDB
 	clientVersion        string
 	clientVersionLock    sync.RWMutex
@@ -87,18 +87,14 @@ var rootCmd = &cobra.Command{
 			viper.GetString("dbAddress"),
 		)
 
-		// Populate Client registration codes into the database
-		if DefaultRegCode != "" {
-			jww.WARN.Println("Using Insecure Client Registration Codes")
-			database.PopulateClientRegistrationCodes([]string{DefaultRegCode},
-				1000)
-		}
-
 		// Populate Node registration codes into the database
 		RegistrationCodes = viper.GetStringSlice("registrationCodes")
 		database.PopulateNodeRegistrationCodes(RegistrationCodes)
 
-		//Fixme: HACK HACK hard coded udb value
+		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
+		database.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
+
+		//Fixme: Do we want the udbID to be specified in the yaml?
 		tmpSlice := make([]byte, 32)
 
 		tmpSlice[len(tmpSlice)-1] = byte(viper.GetInt("udbID"))
@@ -159,11 +155,10 @@ func init() {
 
 	rootCmd.Flags().BoolVar(&noTLS, "noTLS", false,
 		"Runs without TLS enabled")
-	rootCmd.Flags().StringVar(&DefaultRegCode, "InsecureClientRegCode", "",
-		"Specifies a client registration code which will have 1000 uses,"+
-			"only for development, not secure")
+
 	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
 		false, "Disables registration server checking for ndf updates")
+
 }
 
 // initConfig reads in config file and ENV variables if set.
