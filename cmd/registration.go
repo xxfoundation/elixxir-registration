@@ -26,7 +26,7 @@ import (
 )
 
 type RegistrationImpl struct {
-	Comms             *registration.RegistrationComms
+	Comms             *registration.Comms
 	permissioningCert *x509.Certificate
 	permissioningKey  *rsa.PrivateKey
 	ndfOutputPath     string

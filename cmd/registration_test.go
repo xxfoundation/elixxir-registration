@@ -34,7 +34,7 @@ var ndfFile []byte
 /*
 var testPermissioningKey *rsa.PrivateKey
 var testpermissioningCert *x509.Certificate*/
-var nodeComm *node.NodeComms
+var nodeComm *node.Comms
 
 func TestMain(m *testing.M) {
 	var err error
@@ -189,7 +189,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 	//connect the node to the permissioning server
 	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_, _ = nodeComm.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
 
 	//nodeCert, _ := utils.ReadFile(testkeys.GetNodeCertPath())
 
@@ -202,7 +202,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 	//Kill the connections for the next test
-	nodeComm.Disconnect("Permissioning")
+	nodeComm.DisconnectAll()
 	impl.Comms.Shutdown()
 
 }
@@ -229,8 +229,8 @@ func TestDoubleRegistration(t *testing.T) {
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Connect both nodes to the registration server
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_, _ = nodeComm.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
+	_, _ = nodeComm2.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
@@ -243,8 +243,8 @@ func TestDoubleRegistration(t *testing.T) {
 	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
 		"0.0.0.0:6901", string(nodeCert), "BBBB")
 	//Kill the connections for the next test
-	nodeComm.Disconnect("Permissioning")
-	nodeComm2.Disconnect("Permissioning")
+	nodeComm.DisconnectAll()
+	nodeComm2.DisconnectAll()
 	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
 	time.Sleep(5 * time.Second)
@@ -277,8 +277,8 @@ func TestTopology_MultiNodes(t *testing.T) {
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Connect both nodes to the registration server
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_, _ = nodeComm.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
+	_, _ = nodeComm2.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
@@ -298,8 +298,8 @@ func TestTopology_MultiNodes(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	//Kill the connections for the next test
-	nodeComm.Disconnect("Permissioning")
-	nodeComm2.Disconnect("Permissioning")
+	nodeComm.DisconnectAll()
+	nodeComm2.DisconnectAll()
 	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
 	time.Sleep(5 * time.Second)
@@ -330,9 +330,11 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 
 	udbParams.ID = udbId
 	//Connect to permissioning
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-	_ = nodeComm3.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	//Connect both nodes to the registration server
+	_, _ = nodeComm.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
+	_, _ = nodeComm2.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
+	_, _ = nodeComm3.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
+
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
@@ -386,9 +388,9 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	}
 
 	//Disconnect nodeComms
-	nodeComm.Disconnect("Permissioning")
-	nodeComm2.Disconnect("Permissioning")
-	nodeComm3.Disconnect("Permsissioning")
+	nodeComm.DisconnectAll()
+	nodeComm2.DisconnectAll()
+	nodeComm3.DisconnectAll()
 	//Shutdown node comms
 	nodeComm2.Shutdown()
 	nodeComm3.Shutdown()
@@ -421,7 +423,7 @@ func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
 
 	udbParams.ID = udbId
 	//Connect to permissioning
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
+	_, _ = nodeComm.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
@@ -438,7 +440,7 @@ func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
 	_, err = impl.GetUpdatedNDF(clientNdfHash)
 	if err != nil {
 		//Disconnect nodeComms
-		nodeComm.Disconnect("Permissioning")
+		nodeComm.DisconnectAll()
 
 		//Shutdown registration
 		impl.Comms.Shutdown()
@@ -447,7 +449,7 @@ func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
 
 	t.Error("Expected error path, should not have an ndf ready")
 	//Disconnect nodeComms
-	nodeComm.Disconnect("Permissioning")
+	nodeComm.DisconnectAll()
 
 	//Shutdown registration
 	impl.Comms.Shutdown()

@@ -15,8 +15,11 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
+
+	//"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
@@ -43,9 +46,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errMsg
 	}
 
+	host, err := m.Comms.Manager.AddHost(id.NewNodeFromBytes(ID).String() ,ServerAddr, []byte(ServerTlsCert), false)
 	// Connect back to the Node using the provided certificate
-	err = m.Comms.ConnectToRemote(id.NewNodeFromBytes(ID), ServerAddr,
-		[]byte(ServerTlsCert), false)
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf(
 			"Failed to return connection to Node: %+v", err))
@@ -53,6 +55,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errMsg
 	}
 	jww.INFO.Printf("Connected to node %+v at address %+v", ID, ServerAddr)
+
+
 
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
@@ -193,10 +197,17 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, []ndf.Gateway,
 }
 
 // Broadcast completed topology to all nodes
-func broadcastTopology(impl *RegistrationImpl, topology *mixmessages.NodeTopology) error {
+func broadcastTopology( impl *RegistrationImpl, topology *mixmessages.NodeTopology) error {
 	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
 	for _, nodeInfo := range topology.Topology {
-		err := impl.Comms.SendNodeTopology(id.NewNodeFromBytes(nodeInfo.Id), topology)
+		//TODO: How do I get the host id? or am I suppose to pass in the host, or host id?
+		host, ok := impl.Comms.GetHost(connectionID())
+		if !ok {
+			//FixMe: is this the correct error to throw here.
+			return errors.New(fmt.Sprintf(
+				"unable to get node at nodeid: %+v", "hi"))
+		}
+		err := impl.Comms.SendNodeTopology(host, topology)
 		if err != nil {
 			return errors.New(fmt.Sprintf(
 				"unable to broadcast node topology: %+v", err))
