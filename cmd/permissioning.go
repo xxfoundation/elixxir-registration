@@ -16,7 +16,6 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/tls"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
@@ -43,7 +42,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errMsg
 	}
 
-	_, err = m.Comms.Manager.AddHost(id.NewNodeFromBytes(ID).String(), ServerAddr, []byte(ServerTlsCert), false)
+	_, err = m.Comms.Manager.AddHost(string(ID), ServerAddr, []byte(ServerTlsCert), false)
 	// Connect back to the Node using the provided certificate
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf(
@@ -195,10 +194,10 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, []ndf.Gateway,
 func broadcastTopology(impl *RegistrationImpl, topology *mixmessages.NodeTopology) error {
 	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
 	for _, nodeInfo := range topology.Topology {
-		host, ok := impl.Comms.GetHost(id.NewNodeFromBytes(nodeInfo.Id).String())
+		host, ok := impl.Comms.GetHost(string(nodeInfo.Id))
 		if !ok {
 			return errors.New(fmt.Sprintf(
-				"unable to get node at nodeid: %+v", "hi"))
+				"unable to get node at nodeid: %+v", string(nodeInfo.Id)))
 		}
 		err := impl.Comms.SendNodeTopology(host, topology)
 		if err != nil {
