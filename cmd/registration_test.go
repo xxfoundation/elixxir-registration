@@ -335,7 +335,6 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	_, _ = nodeComm2.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
 	_, _ = nodeComm3.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
 
-
 	//Register 1st node
 	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
 		"0.0.0.0:7900", string(gatewayCert), "BBBB")

@@ -43,7 +43,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errMsg
 	}
 
-	_, err = m.Comms.Manager.AddHost(id.NewNodeFromBytes(ID).String() ,ServerAddr, []byte(ServerTlsCert), false)
+	_, err = m.Comms.Manager.AddHost(id.NewNodeFromBytes(ID).String(), ServerAddr, []byte(ServerTlsCert), false)
 	// Connect back to the Node using the provided certificate
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf(
@@ -52,8 +52,6 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errMsg
 	}
 	jww.INFO.Printf("Connected to node %+v at address %+v", ID, ServerAddr)
-
-
 
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
@@ -194,7 +192,7 @@ func assembleTopology(codes []string) (*mixmessages.NodeTopology, []ndf.Gateway,
 }
 
 // Broadcast completed topology to all nodes
-func broadcastTopology( impl *RegistrationImpl, topology *mixmessages.NodeTopology) error {
+func broadcastTopology(impl *RegistrationImpl, topology *mixmessages.NodeTopology) error {
 	jww.INFO.Printf("Broadcasting node topology: %+v", topology)
 	for _, nodeInfo := range topology.Topology {
 		host, ok := impl.Comms.GetHost(id.NewNodeFromBytes(nodeInfo.Id).String())
