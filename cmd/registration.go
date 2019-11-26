@@ -134,14 +134,14 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 		err error) {
 		return instance.GetCurrentClientVersion()
 	}
-	impl.Functions.RegisterNode = func(ID []byte, ServerAddr, ServerTlsCert,
+	impl.Functions.RegisterNode = func(ID []byte, ServerTlsCert,
 		GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
-		return instance.RegisterNode(ID, ServerAddr,
+		return instance.RegisterNode(ID,
 			ServerTlsCert, GatewayAddr, GatewayTlsCert,
 			RegistrationCode)
 	}
-	impl.Functions.GetUpdatedNDF = func(clientNDFHash []byte) ([]byte, error) {
-		return instance.GetUpdatedNDF(clientNDFHash)
+	impl.Functions.PollNdf = func(theirNdfHash []byte) ([]byte, error) {
+		return instance.PollNdf(theirNdfHash)
 	}
 
 	return impl
@@ -185,16 +185,15 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 }
 
 //GetUpdatedNDF handles the client polling for an updated NDF
-func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
-	jww.INFO.Printf("Running get updated")
+func (m *RegistrationImpl) PollNdf(clientNdfHash []byte) ([]byte, error) {
 
 	//If permissioning is enabled, check the permissioning's hash against the client's ndf
 	if !disablePermissioning {
 		//Check that the registration server has built an NDF
 		if len(m.ndfHash) == 0 {
-			errMsg := fmt.Sprintf("Permissioning server does not have an ndf to give to client")
-			jww.WARN.Printf(errMsg)
-			return nil, errors.New(errMsg)
+			errMsg := errors.Errorf("Permissioning server does not have an ndf to give to client")
+			jww.WARN.Printf(errMsg.Error())
+			return nil, errMsg
 		}
 
 		//If both the client's ndf hash and the permissioning NDF hash match
@@ -207,7 +206,7 @@ func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 		//Send the json of the ndf
 		return m.ndfJson, nil
 	}
-	jww.DEBUG.Printf("Permissioning disabled, telling client it is up-to-date")
+	jww.DEBUG.Printf("Permissioning disabled, telling requester that their ndf is up-to-date")
 	//If permissioning is disabled, inform the client that it has the correct ndf
 	return nil, nil
 
