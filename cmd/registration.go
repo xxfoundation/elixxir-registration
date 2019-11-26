@@ -14,7 +14,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
-	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
@@ -32,7 +31,7 @@ type RegistrationImpl struct {
 	ndfOutputPath     string
 	completedNodes    chan struct{}
 	NumNodesInNet     int
-	ndfHash           []byte
+	regNdfHash        []byte
 	ndf               *ndf.NetworkDefinition
 	certFromFile      string
 	ndfJson           []byte
@@ -80,7 +79,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 	var cert, key []byte
 	var err error
 
-	regImpl.ndfHash = make([]byte, 0)
+	regImpl.regNdfHash = make([]byte, 0)
 	if !noTLS {
 		// Read in TLS keys from files
 		cert, err = utils.ReadFile(params.CertPath)
@@ -156,8 +155,8 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	err = database.PermissioningDb.UseCode(registrationCode)
 	if err != nil {
 		// Invalid registration code, return an error
-		errMsg := errors.New(fmt.Sprintf(
-			"Error validating registration code: %+v", err))
+		errMsg := errors.Errorf(
+			"Error validating registration code: %+v", err)
 		jww.ERROR.Printf("%+v", errMsg)
 		return make([]byte, 0), errMsg
 	}
@@ -171,8 +170,8 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	data := h.Sum(nil)
 	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, sha, data, nil)
 	if err != nil {
-		errMsg := errors.New(fmt.Sprintf(
-			"unable to sign client public key: %+v", err))
+		errMsg := errors.Errorf(
+			"unable to sign client public key: %+v", err)
 		jww.ERROR.Printf("%+v", errMsg)
 		return make([]byte, 0),
 			err
@@ -185,12 +184,12 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 }
 
 //GetUpdatedNDF handles the client polling for an updated NDF
-func (m *RegistrationImpl) PollNdf(clientNdfHash []byte) ([]byte, error) {
+func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) ([]byte, error) {
 
 	//If permissioning is enabled, check the permissioning's hash against the client's ndf
 	if !disablePermissioning {
 		//Check that the registration server has built an NDF
-		if len(m.ndfHash) == 0 {
+		if len(m.regNdfHash) == 0 {
 			errMsg := errors.Errorf("Permissioning server does not have an ndf to give to client")
 			jww.WARN.Printf(errMsg.Error())
 			return nil, errMsg
@@ -198,7 +197,7 @@ func (m *RegistrationImpl) PollNdf(clientNdfHash []byte) ([]byte, error) {
 
 		//If both the client's ndf hash and the permissioning NDF hash match
 		//  no need to pass anything through the comm
-		if bytes.Compare(m.ndfHash, clientNdfHash) == 0 {
+		if bytes.Compare(m.regNdfHash, theirNdfHash) == 0 {
 			return nil, nil
 		}
 
