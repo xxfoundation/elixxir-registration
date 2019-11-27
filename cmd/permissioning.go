@@ -49,8 +49,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	}
 	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCert)
 	if err != nil {
-		errMsg := errors.Errorf(
-			"Failed to load gateway certificate: %v", err)
+		errMsg := errors.Errorf("Failed to load gateway certificate: %v", err)
 		jww.ERROR.Printf("%v", errMsg)
 		return errMsg
 	}
@@ -87,7 +86,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 		return errMsg
 	}
 	jww.DEBUG.Printf("Total number of expected nodes for registration completion: %v", m.NumNodesInNet)
-	m.completedNodes <- struct{}{}
+	m.nodeCompleted <- struct{}{}
 	return nil
 }
 
@@ -96,7 +95,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	// Wait for all Nodes to complete registration
 	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
 		jww.DEBUG.Printf("Registered %d node(s)!", numNodes)
-		<-impl.completedNodes
+		<-impl.nodeCompleted
 	}
 	// Assemble the completed topology
 	gateways, nodes, err := assembleNdf(RegistrationCodes)
@@ -128,8 +127,12 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	hash := sha256.New()
 	ndfBytes := networkDef.Serialize()
 	hash.Write(ndfBytes)
+	//Lock the writing of the ndfHash. Useful for when others are polling for an ndf
+	impl.ndfLock.Lock()
 	impl.regNdfHash = hash.Sum(nil)
-
+	impl.ndfLock.Unlock()
+	// Alert that registration is complete
+	impl.registrationCompleted <- struct{}{}
 	jww.INFO.Printf("Node registration complete!")
 }
 

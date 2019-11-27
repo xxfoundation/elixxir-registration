@@ -37,7 +37,7 @@ type Database interface {
 	// If Client registration code is valid, decrements remaining uses
 	UseCode(code string) error
 	// If Node registration code is valid, add Node information
-	InsertNode(id []byte, code, serverCert,
+	InsertNode(id []byte, code, serverAddress, serverCert,
 		gatewayAddress, gatewayCert string) error
 	// Insert Node registration code into the database
 	InsertNodeRegCode(code string) error
@@ -67,6 +67,8 @@ type NodeInformation struct {
 	Code string `sql:",pk"`
 	// Node ID
 	Id []byte
+	// Server IP address
+	ServerAddress string
 	// Gateway IP address
 	GatewayAddress string
 	// Node TLS public certificate in PEM string format
@@ -82,6 +84,7 @@ func NewDatabase(username, password, database, address string) Database {
 		User:         username,
 		Password:     password,
 		Database:     database,
+		Addr:         address,
 		MaxRetries:   10,
 		MinIdleConns: 1,
 	})
