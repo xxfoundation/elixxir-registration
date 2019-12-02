@@ -190,10 +190,10 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) ([]byte, error) {
 	//If permissioning is enabled, check the permissioning's hash against the client's ndf
 	if !disablePermissioning {
-		if theirNdfHash == nil {
+		if theirNdfHash == nil ||
+			bytes.Compare(theirNdfHash, make([]byte, 0)) == 0 {
 			return m.nodeNdfRequest()
 		}
-
 		return m.clientNdfRequest(theirNdfHash)
 	}
 	jww.DEBUG.Printf("Permissioning disabled, telling requester that their ndf is up-to-date")
@@ -236,7 +236,7 @@ func (m *RegistrationImpl) nodeNdfRequest() ([]byte, error) {
 	// If it's not empty, node registration is complete
 	// and the ndf is ready to hand to the polling node
 	if bytes.Compare(ndfHash, make([]byte, 0)) != 0 {
-		return ndfHash, nil
+		return m.ndfJson, nil
 	}
 	//Otherwise wait for either a registration complete signal or
 	// a timeout signal
