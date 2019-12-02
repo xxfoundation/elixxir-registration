@@ -58,3 +58,19 @@ func (m *MapImpl) UseCode(code string) error {
 	m.mut.Unlock()
 	return nil
 }
+
+// Gets User from the map
+func (m *MapImpl) GetUser(publicKey string) (*User, error) {
+	if ok := m.user[publicKey]; ok {
+		return &User{
+			PublicKey: publicKey,
+		}, nil
+	}
+	return nil, errors.New("user does not exist")
+}
+
+// Inserts User into the map
+func (m *MapImpl) InsertUser(publicKey string) error {
+	m.user[publicKey] = true
+	return nil
+}

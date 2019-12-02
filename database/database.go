@@ -24,6 +24,7 @@ type DatabaseImpl struct {
 type MapImpl struct {
 	client map[string]*RegistrationCode
 	node   map[string]*NodeInformation
+	user   map[string]bool
 	mut    sync.Mutex
 }
 
@@ -36,6 +37,7 @@ type Database interface {
 	InsertClientRegCode(code string, uses int) error
 	// If Client registration code is valid, decrements remaining uses
 	UseCode(code string) error
+
 	// If Node registration code is valid, add Node information
 	InsertNode(id []byte, code, serverAddress, serverCert,
 		gatewayAddress, gatewayCert string) error
@@ -45,6 +47,11 @@ type Database interface {
 	CountRegisteredNodes() (int, error)
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*NodeInformation, error)
+
+	// Gets User from the database
+	GetUser(publicKey string) (*User, error)
+	// Inserts User into the database
+	InsertUser(publicKey string) error
 }
 
 // Struct representing a RegistrationCode table in the database
@@ -77,6 +84,15 @@ type NodeInformation struct {
 	GatewayCertificate string
 }
 
+// Struct representing the User table in the database
+type User struct {
+	// Overwrite table name
+	tableName struct{} `sql:"users,alias:users"`
+
+	// User TLS public certificate in PEM string format
+	PublicKey string `sql:",pk"`
+}
+
 // Initialize the Database interface with database backend
 func NewDatabase(username, password, database, address string) Database {
 	// Create the database connection
@@ -99,6 +115,7 @@ func NewDatabase(username, password, database, address string) Database {
 		return Database(&MapImpl{
 			client: make(map[string]*RegistrationCode),
 			node:   make(map[string]*NodeInformation),
+			user:   make(map[string]bool),
 		})
 	}
 
@@ -118,7 +135,8 @@ func NewDatabase(username, password, database, address string) Database {
 
 // Create the database schema
 func createSchema(db *pg.DB) error {
-	for _, model := range []interface{}{&RegistrationCode{}, &NodeInformation{}} {
+	for _, model := range []interface{}{&RegistrationCode{},
+		&NodeInformation{}, User{}} {
 		err := db.CreateTable(model, &orm.CreateTableOptions{
 			// Ignore create table if already exists?
 			IfNotExists: true,

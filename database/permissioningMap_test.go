@@ -143,3 +143,45 @@ func TestMapImpl_GetNode_Invalid(t *testing.T) {
 		t.Errorf("Expected to not find the node")
 	}
 }
+
+// Happy path
+func TestMapImpl_InsertUser(t *testing.T) {
+	m := &MapImpl{
+		user: make(map[string]bool),
+	}
+
+	testKey := "TEST"
+	_ = m.InsertUser(testKey)
+	if !m.user[testKey] {
+		t.Errorf("Insert failed to add the user!")
+	}
+}
+
+// Happy path
+func TestMapImpl_GetUser(t *testing.T) {
+	m := &MapImpl{
+		user: make(map[string]bool),
+	}
+
+	testKey := "TEST"
+	m.user[testKey] = true
+
+	user, err := m.GetUser(testKey)
+	if err != nil || user.PublicKey != testKey {
+		t.Errorf("Get failed to get user!")
+	}
+}
+
+// Get user that does not exist
+func TestMapImpl_GetUserNotExists(t *testing.T) {
+	m := &MapImpl{
+		user: make(map[string]bool),
+	}
+
+	testKey := "TEST"
+
+	_, err := m.GetUser(testKey)
+	if err == nil {
+		t.Errorf("Get expected to not find user!")
+	}
+}
