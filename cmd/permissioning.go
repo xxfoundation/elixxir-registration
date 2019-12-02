@@ -127,7 +127,8 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	hash := sha256.New()
 	ndfBytes := networkDef.Serialize()
 	hash.Write(ndfBytes)
-	//Lock the writing of the ndfHash. Useful for when others are polling for an ndf
+	//Lock the ndf before writing to it s.t. it's
+	// threadsafe for nodes trying to register
 	impl.ndfLock.Lock()
 	impl.regNdfHash = hash.Sum(nil)
 	impl.ndfLock.Unlock()

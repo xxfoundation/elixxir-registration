@@ -34,8 +34,8 @@ type RegistrationImpl struct {
 	nodeCompleted         chan struct{}
 	registrationCompleted chan struct{}
 	NumNodesInNet         int
-	ndfLock               sync.RWMutex
 	regNdfHash            []byte
+	ndfLock               sync.RWMutex
 	certFromFile          string
 	ndfJson               []byte
 }
@@ -180,7 +180,6 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 		return make([]byte, 0),
 			err
 	}
-
 	jww.INFO.Printf("Verification complete for registration code %+v",
 		registrationCode)
 	// Return signed public key to Client with empty error field
@@ -192,7 +191,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) ([]byte, error) {
 	//If permissioning is enabled, check the permissioning's hash against the client's ndf
 	if !disablePermissioning {
 		if theirNdfHash == nil {
-			return m.serverNdfRequest()
+			return m.nodeNdfRequest()
 		}
 
 		return m.clientNdfRequest(theirNdfHash)
@@ -227,8 +226,20 @@ func (m *RegistrationImpl) clientNdfRequest(theirNdfHash []byte) ([]byte, error)
 	return m.ndfJson, nil
 }
 
-func (m *RegistrationImpl) serverNdfRequest() ([]byte, error) {
+//serverNdfRequest handles when a node requests an ndf from permissioning
+func (m *RegistrationImpl) nodeNdfRequest() ([]byte, error) {
 	timeOut := time.NewTimer(5 * time.Second)
+	// Lock the reading of regNdfHash and check if it's been writen to
+	m.ndfLock.RLock()
+	ndfHash := m.regNdfHash
+	m.ndfLock.RUnlock()
+	// If it's not empty, node registration is complete
+	// and the ndf is ready to hand to the polling node
+	if bytes.Compare(ndfHash, make([]byte, 0)) != 0 {
+		return ndfHash, nil
+	}
+	//Otherwise wait for either a registration complete signal or
+	// a timeout signal
 	for {
 		select {
 		case <-m.registrationCompleted:
