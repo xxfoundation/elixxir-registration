@@ -20,8 +20,6 @@ type DatabaseImpl struct {
 	db *pg.DB // Stored database connection
 }
 
-//Fixme: This the real issue, need to remove this??
-
 // Struct implementing the Database Interface with an underlying Map
 type MapImpl struct {
 	client map[string]*RegistrationCode
@@ -92,8 +90,6 @@ type NodeInformation struct {
 
 // Initialize the Database interface with database backend
 func NewDatabase(username, password, database, address string) Storage {
-	//TODO: Start up regCode database and make a map backend
-
 	// Create the database connection
 	db := pg.Connect(&pg.Options{
 		User:         username,
