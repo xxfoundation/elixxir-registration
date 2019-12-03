@@ -115,6 +115,7 @@ func NewDatabase(username, password, database, address string) Storage {
 		// Return the map-backend interface
 		// in the event there is a database error
 		jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
+		jww.INFO.Println("Map backend initialized successfully!")
 		return Storage{
 			clientRegistration: clientRegistration(&MapImpl{
 				client: make(map[string]*RegistrationCode),
@@ -132,10 +133,10 @@ func NewDatabase(username, password, database, address string) Storage {
 		node: make(map[string]*NodeInformation),
 	})
 
-	jww.INFO.Println("Database/map backend initialized successfully!")
+	jww.INFO.Println("Database backend initialized successfully!")
 	return Storage{
-		regCodeDb,
-		nodeMap,
+		clientRegistration: regCodeDb,
+		nodeRegistration:   nodeMap,
 	}
 
 }
