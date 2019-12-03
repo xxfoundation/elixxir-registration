@@ -109,25 +109,16 @@ func NewDatabase(username, password, database, address string) Storage {
 		MinIdleConns: 1,
 	})
 
-	_ = Storage{
-		clientRegistration: clientRegistration(&MapImpl{
-			client: make(map[string]*RegistrationCode),
-			node:   make(map[string]*NodeInformation),
-			user:   make(map[string]bool),
-		}),
-		nodeRegistration: nodeRegistration(&MapImpl{
-			node: make(map[string]*NodeInformation),
-		})}
 	// Initialize the schema
 	err := createSchema(db)
 	if err != nil {
 		// Return the map-backend interface
 		// in the event there is a database error
 		jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
-		jww.INFO.Println("Using map backend!")
 		return Storage{
 			clientRegistration: clientRegistration(&MapImpl{
 				client: make(map[string]*RegistrationCode),
+				user:   make(map[string]bool),
 			}),
 			nodeRegistration: nodeRegistration(&MapImpl{
 				node: make(map[string]*NodeInformation),
@@ -137,9 +128,9 @@ func NewDatabase(username, password, database, address string) Storage {
 	regCodeDb := &DatabaseImpl{
 		db: db,
 	}
-	nodeMap := &MapImpl{
-		client: make(map[string]*RegistrationCode),
-	}
+	nodeMap := nodeRegistration(&MapImpl{
+		node: make(map[string]*NodeInformation),
+	})
 
 	jww.INFO.Println("Database/map backend initialized successfully!")
 	return Storage{

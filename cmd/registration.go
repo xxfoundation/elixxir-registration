@@ -101,11 +101,8 @@ func StartRegistration(params Params) *RegistrationImpl {
 				"PermissioningKey is %+v",
 				err, regImpl.permissioningKey)
 		}
-
-		jww.DEBUG.Printf("permissioningCert: %+v\n", regImpl.permissioningCert)
-		jww.DEBUG.Printf("permissioning public key: %+v\n", regImpl.permissioningCert.PublicKey)
-		jww.DEBUG.Printf("permissioning private key: %+v\n", regImpl.permissioningKey)
 	}
+
 	regImpl.NumNodesInNet = len(RegistrationCodes)
 	regImpl.ndfOutputPath = params.NdfOutputPath
 
