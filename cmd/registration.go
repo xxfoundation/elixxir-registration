@@ -150,37 +150,40 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 // Handle registration attempt by a Client
 func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	signature []byte, err error) {
-	jww.INFO.Printf("Verifying for registration code %+v",
-		registrationCode)
-	// Check database to verify given registration code
-	err = database.PermissioningDb.UseCode(registrationCode)
-	if err != nil {
-		// Invalid registration code, return an error
-		errMsg := errors.New(fmt.Sprintf(
-			"Error validating registration code: %+v", err))
-		jww.ERROR.Printf("%+v", errMsg)
-		return make([]byte, 0), errMsg
-	}
 
-	sha := crypto.SHA256
+	jww.INFO.Printf("Attempting to use registration code %+v...",
+		registrationCode)
+
+	// Check for pre-existing registration for this public key
+	if user, err := database.PermissioningDb.GetUser(pubKey); err == nil && user != nil {
+		jww.INFO.Printf("Previous registration found for %s", pubKey)
+	} else {
+		// Check database to verify given registration code
+		err = database.PermissioningDb.UseCode(registrationCode)
+		if err != nil {
+			// Invalid registration code, return an error
+			errMsg := errors.New(fmt.Sprintf(
+				"Error validating registration code: %+v", err))
+			jww.ERROR.Printf("%+v", errMsg)
+			return make([]byte, 0), errMsg
+		}
+	}
 
 	// Use hardcoded keypair to sign Client-provided public key
 	//Create a hash, hash the pubKey and then truncate it
 	h := sha256.New()
 	h.Write([]byte(pubKey))
 	data := h.Sum(nil)
-	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, sha, data, nil)
+	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, crypto.SHA256, data, nil)
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf(
 			"unable to sign client public key: %+v", err))
 		jww.ERROR.Printf("%+v", errMsg)
-		return make([]byte, 0),
-			err
+		return make([]byte, 0), err
 	}
 
-	jww.INFO.Printf("Verification complete for registration code %+v",
-		registrationCode)
-	// Return signed public key to Client with empty error field
+	// Return signed public key to Client
+	jww.INFO.Printf("Registration for code %+v complete!", registrationCode)
 	return sig, nil
 }
 
