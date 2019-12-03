@@ -24,12 +24,8 @@ type DatabaseImpl struct {
 type MapImpl struct {
 	client map[string]*RegistrationCode
 	node   map[string]*NodeInformation
+	user   map[string]bool
 	mut    sync.Mutex
-}
-
-type Permissioning struct {
-	nodeRegistration
-	clientRegistration
 }
 
 // Global variable for database interaction
@@ -52,6 +48,10 @@ type clientRegistration interface {
 	InsertClientRegCode(code string, uses int) error
 	// If Client registration code is valid, decrements remaining uses
 	UseCode(code string) error
+	// Gets User from the database
+	GetUser(publicKey string) (*User, error)
+	// Inserts User into the database
+	InsertUser(publicKey string) error
 }
 
 // Interface database storage operations
@@ -88,6 +88,15 @@ type NodeInformation struct {
 	GatewayCertificate string
 }
 
+// Struct representing the User table in the database
+type User struct {
+	// Overwrite table name
+	tableName struct{} `sql:"users,alias:users"`
+
+	// User TLS public certificate in PEM string format
+	PublicKey string `sql:",pk"`
+}
+
 // Initialize the Database interface with database backend
 func NewDatabase(username, password, database, address string) Storage {
 	// Create the database connection
@@ -100,24 +109,17 @@ func NewDatabase(username, password, database, address string) Storage {
 		MinIdleConns: 1,
 	})
 
-	_ = Storage{
-		clientRegistration: clientRegistration(&MapImpl{
-			client: make(map[string]*RegistrationCode),
-		}),
-		nodeRegistration: nodeRegistration(&MapImpl{
-			node: make(map[string]*NodeInformation),
-		})}
 	// Initialize the schema
-	jww.INFO.Println("Using database backend for Permissioning!")
 	err := createSchema(db)
 	if err != nil {
 		// Return the map-backend interface
 		// in the event there is a database error
 		jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
-		jww.INFO.Println("Using map backend for UserRegistry!")
+		jww.INFO.Println("Map backend initialized successfully!")
 		return Storage{
 			clientRegistration: clientRegistration(&MapImpl{
 				client: make(map[string]*RegistrationCode),
+				user:   make(map[string]bool),
 			}),
 			nodeRegistration: nodeRegistration(&MapImpl{
 				node: make(map[string]*NodeInformation),
@@ -127,21 +129,21 @@ func NewDatabase(username, password, database, address string) Storage {
 	regCodeDb := &DatabaseImpl{
 		db: db,
 	}
-	nodeMap := &MapImpl{
-		client: make(map[string]*RegistrationCode),
-	}
+	nodeMap := nodeRegistration(&MapImpl{
+		node: make(map[string]*NodeInformation),
+	})
 
-	jww.INFO.Println("Database/map backend initialized successfully!")
+	jww.INFO.Println("Database backend initialized successfully!")
 	return Storage{
-		regCodeDb,
-		nodeMap,
+		clientRegistration: regCodeDb,
+		nodeRegistration:   nodeMap,
 	}
 
 }
 
 // Create the database schema
 func createSchema(db *pg.DB) error {
-	for _, model := range []interface{}{&RegistrationCode{}} {
+	for _, model := range []interface{}{&RegistrationCode{}, User{}} {
 		err := db.CreateTable(model, &orm.CreateTableOptions{
 			// Ignore create table if already exists?
 			IfNotExists: true,

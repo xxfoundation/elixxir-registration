@@ -101,11 +101,8 @@ func StartRegistration(params Params) *RegistrationImpl {
 				"PermissioningKey is %+v",
 				err, regImpl.permissioningKey)
 		}
-
-		jww.DEBUG.Printf("permissioningCert: %+v\n", regImpl.permissioningCert)
-		jww.DEBUG.Printf("permissioning public key: %+v\n", regImpl.permissioningCert.PublicKey)
-		jww.DEBUG.Printf("permissioning private key: %+v\n", regImpl.permissioningKey)
 	}
+
 	regImpl.NumNodesInNet = len(RegistrationCodes)
 	regImpl.ndfOutputPath = params.NdfOutputPath
 
@@ -147,36 +144,47 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 // Handle registration attempt by a Client
 func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	signature []byte, err error) {
-	jww.INFO.Printf("Verifying for registration code %+v",
-		registrationCode)
-	// Check database to verify given registration code
-	err = database.PermissioningDb.UseCode(registrationCode)
-	if err != nil {
-		// Invalid registration code, return an error
-		errMsg := errors.Errorf(
-			"Error validating registration code: %+v", err)
-		jww.ERROR.Printf("%+v", errMsg)
-		return make([]byte, 0), errMsg
-	}
 
-	sha := crypto.SHA256
+	// Check for pre-existing registration for this public key
+	if user, err := database.PermissioningDb.GetUser(pubKey); err == nil && user != nil {
+		jww.INFO.Printf("Previous registration found for %s", pubKey)
+	} else {
+
+		// Check database to verify given registration code
+		jww.INFO.Printf("Attempting to use registration code %+v...",
+			registrationCode)
+		err = database.PermissioningDb.UseCode(registrationCode)
+		if err != nil {
+			// Invalid registration code, return an error
+			errMsg := errors.Errorf(
+				"Error validating registration code: %+v", err)
+			jww.ERROR.Printf("%+v", errMsg)
+			return make([]byte, 0), errMsg
+		}
+
+		// Record the user public key for duplicate registration support
+		err = database.PermissioningDb.InsertUser(pubKey)
+		if err != nil {
+			jww.WARN.Printf("Unable to store user: %+v",
+				errors.New(err.Error()))
+		}
+	}
 
 	// Use hardcoded keypair to sign Client-provided public key
 	//Create a hash, hash the pubKey and then truncate it
 	h := sha256.New()
 	h.Write([]byte(pubKey))
 	data := h.Sum(nil)
-	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, sha, data, nil)
+	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, crypto.SHA256, data, nil)
 	if err != nil {
 		errMsg := errors.Errorf(
-			"unable to sign client public key: %+v", err)
+			"Unable to sign client public key: %+v", err)
 		jww.ERROR.Printf("%+v", errMsg)
-		return make([]byte, 0),
-			err
+		return make([]byte, 0), err
 	}
-	jww.INFO.Printf("Verification complete for registration code %+v",
-		registrationCode)
-	// Return signed public key to Client with empty error field
+
+	// Return signed public key to Client
+	jww.INFO.Printf("Registration for code %+v complete!", registrationCode)
 	return sig, nil
 }
 

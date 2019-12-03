@@ -50,3 +50,21 @@ func (m *DatabaseImpl) UseCode(code string) error {
 	// Return error, if any
 	return err
 }
+
+// Gets User from the database
+func (m *DatabaseImpl) GetUser(publicKey string) (*User, error) {
+	user := &User{
+		PublicKey: publicKey,
+	}
+	err := m.db.Select(user)
+	return user, err
+}
+
+// Inserts User into the database
+func (m *DatabaseImpl) InsertUser(publicKey string) error {
+	user := &User{
+		PublicKey: publicKey,
+	}
+	err := m.db.Insert(user)
+	return err
+}
