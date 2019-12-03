@@ -51,12 +51,6 @@ type Params struct {
 	publicAddress string
 }
 
-type connectionID string
-
-func (c connectionID) String() string {
-	return (string)(c)
-}
-
 // toGroup takes a group represented by a map of string to string
 // and uses the prime, small prime and generator to  created
 // and returns a an ndf group object.
