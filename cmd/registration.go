@@ -14,7 +14,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
-	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/registration"
@@ -151,21 +150,28 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	signature []byte, err error) {
 
-	jww.INFO.Printf("Attempting to use registration code %+v...",
-		registrationCode)
-
 	// Check for pre-existing registration for this public key
 	if user, err := database.PermissioningDb.GetUser(pubKey); err == nil && user != nil {
 		jww.INFO.Printf("Previous registration found for %s", pubKey)
 	} else {
+
 		// Check database to verify given registration code
+		jww.INFO.Printf("Attempting to use registration code %+v...",
+			registrationCode)
 		err = database.PermissioningDb.UseCode(registrationCode)
 		if err != nil {
 			// Invalid registration code, return an error
-			errMsg := errors.New(fmt.Sprintf(
-				"Error validating registration code: %+v", err))
+			errMsg := errors.Errorf(
+				"Error validating registration code: %+v", err)
 			jww.ERROR.Printf("%+v", errMsg)
 			return make([]byte, 0), errMsg
+		}
+
+		// Record the user public key for duplicate registration support
+		err = database.PermissioningDb.InsertUser(pubKey)
+		if err != nil {
+			jww.WARN.Printf("Unable to store user: %+v",
+				errors.New(err.Error()))
 		}
 	}
 
@@ -176,8 +182,8 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	data := h.Sum(nil)
 	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, crypto.SHA256, data, nil)
 	if err != nil {
-		errMsg := errors.New(fmt.Sprintf(
-			"unable to sign client public key: %+v", err))
+		errMsg := errors.Errorf(
+			"Unable to sign client public key: %+v", err)
 		jww.ERROR.Printf("%+v", errMsg)
 		return make([]byte, 0), err
 	}
@@ -195,9 +201,10 @@ func (m *RegistrationImpl) GetUpdatedNDF(clientNdfHash []byte) ([]byte, error) {
 	if !disablePermissioning {
 		//Check that the registration server has built an NDF
 		if len(m.ndfHash) == 0 {
-			errMsg := fmt.Sprintf("Permissioning server does not have an ndf to give to client")
-			jww.WARN.Printf(errMsg)
-			return nil, errors.New(errMsg)
+			err := errors.Errorf("Permissioning server does not have an ndf to" +
+				" give to client")
+			jww.WARN.Printf("%+v", err)
+			return nil, err
 		}
 
 		//If both the client's ndf hash and the permissioning NDF hash match
