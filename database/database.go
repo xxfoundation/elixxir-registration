@@ -29,17 +29,11 @@ type MapImpl struct {
 }
 
 // Global variable for database interaction
-var PermissioningDb Database
+var PermissioningDb Storage
 
-// Interface database storage operations
-type Database interface {
-	// Inserts Client registration code with given number of uses
-	InsertClientRegCode(code string, uses int) error
-	// If Client registration code is valid, decrements remaining uses
-	UseCode(code string) error
-
+type nodeRegistration interface {
 	// If Node registration code is valid, add Node information
-	InsertNode(id []byte, code, serverAddress, serverCert,
+	InsertNode(id []byte, code, serverCert,
 		gatewayAddress, gatewayCert string) error
 	// Insert Node registration code into the database
 	InsertNodeRegCode(code string) error
@@ -47,11 +41,23 @@ type Database interface {
 	CountRegisteredNodes() (int, error)
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*NodeInformation, error)
+}
 
+type clientRegistration interface {
+	// Inserts Client registration code with given number of uses
+	InsertClientRegCode(code string, uses int) error
+	// If Client registration code is valid, decrements remaining uses
+	UseCode(code string) error
 	// Gets User from the database
 	GetUser(publicKey string) (*User, error)
 	// Inserts User into the database
 	InsertUser(publicKey string) error
+}
+
+// Interface database storage operations
+type Storage struct {
+	clientRegistration
+	nodeRegistration
 }
 
 // Struct representing a RegistrationCode table in the database
@@ -74,8 +80,6 @@ type NodeInformation struct {
 	Code string `sql:",pk"`
 	// Node ID
 	Id []byte
-	// Server IP address
-	ServerAddress string
 	// Gateway IP address
 	GatewayAddress string
 	// Node TLS public certificate in PEM string format
@@ -94,7 +98,7 @@ type User struct {
 }
 
 // Initialize the Database interface with database backend
-func NewDatabase(username, password, database, address string) Database {
+func NewDatabase(username, password, database, address string) Storage {
 	// Create the database connection
 	db := pg.Connect(&pg.Options{
 		User:         username,
@@ -105,38 +109,49 @@ func NewDatabase(username, password, database, address string) Database {
 		MinIdleConns: 1,
 	})
 
-	// Ensure an empty NodeInformation table
-	err := db.DropTable(&NodeInformation{},
-		&orm.DropTableOptions{IfExists: true})
-	if err != nil {
-		// If an error is thrown with the database, run with a map backend
-		jww.ERROR.Printf("Unable to initalize database backend: %+v", err)
-		jww.INFO.Println("Using map backend for UserRegistry!")
-		return Database(&MapImpl{
+	_ = Storage{
+		clientRegistration: clientRegistration(&MapImpl{
 			client: make(map[string]*RegistrationCode),
 			node:   make(map[string]*NodeInformation),
 			user:   make(map[string]bool),
-		})
-	}
-
+		}),
+		nodeRegistration: nodeRegistration(&MapImpl{
+			node: make(map[string]*NodeInformation),
+		})}
 	// Initialize the schema
-	jww.INFO.Println("Using database backend for Permissioning!")
-	err = createSchema(db)
+	err := createSchema(db)
 	if err != nil {
-		jww.FATAL.Panicf("Unable to initialize database backend: %+v", err)
+		// Return the map-backend interface
+		// in the event there is a database error
+		jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
+		jww.INFO.Println("Using map backend!")
+		return Storage{
+			clientRegistration: clientRegistration(&MapImpl{
+				client: make(map[string]*RegistrationCode),
+			}),
+			nodeRegistration: nodeRegistration(&MapImpl{
+				node: make(map[string]*NodeInformation),
+			})}
 	}
 
-	// Return the database-backed Database interface
-	jww.INFO.Println("Database backend initialized successfully!")
-	return Database(&DatabaseImpl{
+	regCodeDb := &DatabaseImpl{
 		db: db,
-	})
+	}
+	nodeMap := &MapImpl{
+		client: make(map[string]*RegistrationCode),
+	}
+
+	jww.INFO.Println("Database/map backend initialized successfully!")
+	return Storage{
+		regCodeDb,
+		nodeMap,
+	}
+
 }
 
 // Create the database schema
 func createSchema(db *pg.DB) error {
-	for _, model := range []interface{}{&RegistrationCode{},
-		&NodeInformation{}, User{}} {
+	for _, model := range []interface{}{&RegistrationCode{}, User{}} {
 		err := db.CreateTable(model, &orm.CreateTableOptions{
 			// Ignore create table if already exists?
 			IfNotExists: true,

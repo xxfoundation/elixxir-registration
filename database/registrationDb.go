@@ -9,8 +9,7 @@
 package database
 
 import (
-	"errors"
-	"fmt"
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 )
 
@@ -38,7 +37,7 @@ func (m *DatabaseImpl) UseCode(code string) error {
 
 	if regCode.RemainingUses < 1 {
 		// Code has no remaining uses, return error
-		return errors.New(fmt.Sprintf("Code %s has no remaining uses", code))
+		return errors.Errorf("Code %s has no remaining uses", code)
 	}
 
 	// Decrement remaining uses by one

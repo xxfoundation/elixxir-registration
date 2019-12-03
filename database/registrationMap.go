@@ -9,8 +9,7 @@
 package database
 
 import (
-	"errors"
-	"fmt"
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 )
 
@@ -21,8 +20,7 @@ func (m *MapImpl) InsertClientRegCode(code string, uses int) error {
 	// Enforce unique registration code
 	if m.client[code] != nil {
 		m.mut.Unlock()
-		return errors.New(fmt.Sprintf(
-			"client registration code %s already exists", code))
+		return errors.Errorf("client registration code %s already exists", code)
 	}
 	m.client[code] = &RegistrationCode{
 		Code:          code,
@@ -41,14 +39,13 @@ func (m *MapImpl) UseCode(code string) error {
 	if reg == nil {
 		// Unable to find code, return error
 		m.mut.Unlock()
-		return errors.New("invalid registration code")
+		return errors.Errorf("invalid registration code")
 	}
 
 	if reg.RemainingUses < 1 {
 		// Code has no remaining uses, return error
 		m.mut.Unlock()
-		return errors.New(fmt.Sprintf(
-			"registration code %s has no remaining uses", code))
+		return errors.Errorf("registration code %s has no remaining uses", code)
 	}
 
 	// Decrement remaining uses by one
