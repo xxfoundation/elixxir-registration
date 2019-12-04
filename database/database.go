@@ -80,6 +80,8 @@ type NodeInformation struct {
 	Code string `sql:",pk"`
 	// Node ID
 	Id []byte
+	// Server IP address
+	ServerAddress string
 	// Gateway IP address
 	GatewayAddress string
 	// Node TLS public certificate in PEM string format

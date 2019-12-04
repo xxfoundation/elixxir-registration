@@ -14,12 +14,13 @@ import (
 )
 
 // If Node registration code is valid, add Node information
-func (m *MapImpl) InsertNode(id []byte, code, serverCert, serverAddr,
+func (m *MapImpl) InsertNode(id []byte, code, serverCert, serverAddress,
 	gatewayAddress, gatewayCert string) error {
 	m.mut.Lock()
 	jww.INFO.Printf("Attempting to register node with code: %s", code)
 	if info := m.node[code]; info != nil {
 		info.Id = id
+		info.ServerAddress = serverAddress
 		info.GatewayCertificate = gatewayCert
 		info.GatewayAddress = gatewayAddress
 		info.NodeCertificate = serverCert

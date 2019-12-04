@@ -143,18 +143,20 @@ func assembleNdf(codes []string) ([]ndf.Gateway, []ndf.Node, error) {
 	var nodes []ndf.Node
 	for _, registrationCode := range codes {
 		// Get node information for each registration code
-		dbNodeInfo, err := database.PermissioningDb.GetNode(registrationCode)
+		nodeInfo, err := database.PermissioningDb.GetNode(registrationCode)
 		if err != nil {
 			return nil, nil, errors.Errorf(
 				"unable to obtain node for registration"+
 					" code %+v: %+v", registrationCode, err)
 		}
 		var node ndf.Node
-		node.ID = dbNodeInfo.Id
+		node.ID = nodeInfo.Id
+		node.TlsCertificate = nodeInfo.NodeCertificate
+		node.Address = nodeInfo.ServerAddress
 
 		var gateway ndf.Gateway
-		gateway.TlsCertificate = dbNodeInfo.GatewayCertificate
-		gateway.Address = dbNodeInfo.GatewayAddress
+		gateway.TlsCertificate = nodeInfo.GatewayCertificate
+		gateway.Address = nodeInfo.GatewayAddress
 
 		gateways = append(gateways, gateway)
 		nodes = append(nodes, node)
