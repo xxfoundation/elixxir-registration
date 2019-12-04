@@ -270,8 +270,8 @@ func TestTopology_MultiNodes(t *testing.T) {
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
-		"0.0.0.0:6901", string(nodeCert), "CCCC")
+	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(gatewayCert),
+		"0.0.0.0:6901", string(gatewayCert), "CCCC")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
