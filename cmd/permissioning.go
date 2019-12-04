@@ -157,7 +157,8 @@ func assembleNdf(codes []string) ([]ndf.Gateway, []ndf.Node, error) {
 		var gateway ndf.Gateway
 		gateway.TlsCertificate = nodeInfo.GatewayCertificate
 		gateway.Address = nodeInfo.GatewayAddress
-
+		//Since we are appending them simultaneously, indexing corresponding
+		// gateway-node is just finding your index (as a gateway or a node)
 		gateways = append(gateways, gateway)
 		nodes = append(nodes, node)
 	}
