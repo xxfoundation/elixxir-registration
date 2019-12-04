@@ -140,6 +140,10 @@ github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
 gitlab.com/elixxir/comms v0.0.0-20191126205329-c760f73d63b9 h1:hlfS8iSWPSTkbKdWN13MlvtE/Ju7qptEEZ8h1M8tJGE=
 gitlab.com/elixxir/comms v0.0.0-20191126205329-c760f73d63b9/go.mod h1:oanQs047BnCFWseo94+VCUCoPwM+Ofue4F8XRsgHw04=
+gitlab.com/elixxir/comms v0.0.0-20191203202335-dd87662807a5 h1:JhNV2BZwthPREACRqqrGlCf+uyyX8jBKePzaX0HII2c=
+gitlab.com/elixxir/comms v0.0.0-20191203202335-dd87662807a5/go.mod h1:oanQs047BnCFWseo94+VCUCoPwM+Ofue4F8XRsgHw04=
+gitlab.com/elixxir/comms v0.0.0-20191203235818-40224cf4d2e0 h1:Cj2uK+cTx27C8pvrKw3fY5lgbpAz2UemKh3sSrWvqnE=
+gitlab.com/elixxir/comms v0.0.0-20191203235818-40224cf4d2e0/go.mod h1:oanQs047BnCFWseo94+VCUCoPwM+Ofue4F8XRsgHw04=
 gitlab.com/elixxir/crypto v0.0.0-20191029164123-324be42ee600 h1:4oexoUT9k0H6W3i1j6T5nCPwCwEijVb/uI5yALJjAE8=
 gitlab.com/elixxir/crypto v0.0.0-20191029164123-324be42ee600/go.mod h1:+46Zj/NE6JEkXExYnzdvvDokPpDbA+fJsRszvrezK9k=
 gitlab.com/elixxir/crypto v0.0.0-20191121235352-86d305a9b253 h1:BqgqJ0mLANRjhAFLvGAcB5AWdgAnFZhsGx0qTk5G+3Y=
@@ -219,6 +223,8 @@ google.golang.org/genproto v0.0.0-20191115221424-83cc0476cb11 h1:51D++eCgOHufw5V
 google.golang.org/genproto v0.0.0-20191115221424-83cc0476cb11/go.mod h1:n3cpQtvxv34hfy77yVDNjmbRyujviMdxYliBSkLhpCc=
 google.golang.org/genproto v0.0.0-20191203145615-049a07e0debe h1:0EkA3qqli9cSQy9bNxscnbYwbEs/z2YKoL0eOsAbcRc=
 google.golang.org/genproto v0.0.0-20191203145615-049a07e0debe/go.mod h1:n3cpQtvxv34hfy77yVDNjmbRyujviMdxYliBSkLhpCc=
+google.golang.org/genproto v0.0.0-20191203220235-3fa9dbf08042 h1:q/wgXlL1G7gx4JkovoCNbg/YcllD+MCeQINQJzCAWSw=
+google.golang.org/genproto v0.0.0-20191203220235-3fa9dbf08042/go.mod h1:n3cpQtvxv34hfy77yVDNjmbRyujviMdxYliBSkLhpCc=
 google.golang.org/grpc v1.19.0/go.mod h1:mqu4LbDTu4XGKhr4mRzUsmM4RtVoemTSY81AxZiDr8c=
 google.golang.org/grpc v1.21.0 h1:G+97AoqBnmZIT91cLG/EkCoK9NSelj64P8bOHHNmGn0=
 google.golang.org/grpc v1.21.0/go.mod h1:oYelfM1adQP15Ek0mdvEgi9Df8B9CZIaU1084ijfRaM=

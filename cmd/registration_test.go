@@ -107,7 +107,7 @@ func TestEmptyDataBase(t *testing.T) {
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
 	//using node cert as gateway cert
-	err := impl.RegisterNode([]byte("test"), string(nodeCert),
+	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "AAA")
 	if err == nil {
 		expectedErr := "Unable to insert node: unable to register node AAA"
@@ -131,7 +131,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 	//Register a node with that regCode
-	err = impl.RegisterNode([]byte("test"), string(nodeCert),
+	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "AAAA")
 	if err != nil {
 		t.Errorf("Registered a node with a known reg code, but recieved the following error: %+v", err)
@@ -187,7 +187,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	RegParams = testParams
 	go nodeRegistrationCompleter(impl)
 
-	err := impl.RegisterNode([]byte("test"), string(nodeCert),
+	err := impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
 		"0.0.0.0:6900", string(nodeCert), "BBBB")
 	//So the impl is not destroyed
 	time.Sleep(5 * time.Second)
@@ -221,14 +221,14 @@ func TestDoubleRegistration(t *testing.T) {
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
-	err := impl.RegisterNode([]byte("test"), string(nodeCert),
+	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode([]byte("B"), string(nodeCert),
+	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
 		"0.0.0.0:6901", string(nodeCert), "BBBB")
 	//Kill the connections for the next test
 	nodeComm.DisconnectAll()
@@ -263,14 +263,14 @@ func TestTopology_MultiNodes(t *testing.T) {
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
-	err := impl.RegisterNode([]byte("A"), string(nodeCert),
+	err := impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode([]byte("B"), string(nodeCert),
+	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
 		"0.0.0.0:6901", string(nodeCert), "CCCC")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
@@ -311,21 +311,21 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	udbParams.ID = udbId
 
 	//Register 1st node
-	err := impl.RegisterNode([]byte("B"), string(nodeCert),
+	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
 		"0.0.0.0:7900", string(gatewayCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode([]byte("C"), string(nodeCert),
+	err = impl.RegisterNode([]byte("C"), "0.0.0.0:6901", string(nodeCert),
 		"0.0.0.0:7901", string(gatewayCert), "CCCC")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
 	//Register 3rd node
-	err = impl.RegisterNode([]byte("D"), string(nodeCert),
+	err = impl.RegisterNode([]byte("D"), "0.0.0.0:6902", string(nodeCert),
 		"0.0.0.0:7902", string(gatewayCert), "DDDD")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
@@ -391,7 +391,7 @@ func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
 	udbParams.ID = udbId
 
 	//Register 1st node
-	err := impl.RegisterNode([]byte("B"), string(nodeCert),
+	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
 		"0.0.0.0:7900", string(gatewayCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)

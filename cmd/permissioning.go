@@ -22,7 +22,7 @@ import (
 )
 
 // Handle registration attempt by a Node
-func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
+func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
 
 	// Check that the node hasn't already been registered
@@ -69,7 +69,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerTlsCert,
 	}
 
 	// Attempt to insert Node into the database
-	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, signedNodeCert, GatewayAddr, signedGatewayCert)
+	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, ServerAddr, signedNodeCert, GatewayAddr, signedGatewayCert)
 	if err != nil {
 		errMsg := errors.Errorf("unable to insert node: %+v", err)
 		jww.ERROR.Printf("%+v", errMsg)

@@ -33,7 +33,7 @@ var PermissioningDb Storage
 
 type nodeRegistration interface {
 	// If Node registration code is valid, add Node information
-	InsertNode(id []byte, code, serverCert,
+	InsertNode(id []byte, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
 	// Insert Node registration code into the database
 	InsertNodeRegCode(code string) error

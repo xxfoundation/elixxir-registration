@@ -128,9 +128,9 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 		err error) {
 		return instance.GetCurrentClientVersion()
 	}
-	impl.Functions.RegisterNode = func(ID []byte, ServerTlsCert,
+	impl.Functions.RegisterNode = func(ID []byte, ServerAddr, ServerTlsCert,
 		GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
-		return instance.RegisterNode(ID,
+		return instance.RegisterNode(ID, ServerAddr,
 			ServerTlsCert, GatewayAddr, GatewayTlsCert,
 			RegistrationCode)
 	}
