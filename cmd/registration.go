@@ -81,6 +81,13 @@ func StartRegistration(params Params) *RegistrationImpl {
 	var err error
 
 	regImpl.ndfHash = make([]byte, 0)
+	key, err = utils.ReadFile(params.KeyPath)
+	if err != nil {
+		jww.ERROR.Printf("failed to read key at %+v: %+v", params.KeyPath, err)
+	}
+	jww.INFO.Println("setting perm key")
+	regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
+
 	if !noTLS {
 		// Read in TLS keys from files
 		cert, err = utils.ReadFile(params.CertPath)
@@ -95,11 +102,6 @@ func StartRegistration(params Params) *RegistrationImpl {
 				"Permissioning cert is %+v",
 				err, regImpl.permissioningCert)
 		}
-		key, err = utils.ReadFile(params.KeyPath)
-		if err != nil {
-			jww.ERROR.Printf("failed to read key at %+v: %+v", params.KeyPath, err)
-		}
-		regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
 		if err != nil {
 			jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
 				"PermissioningKey is %+v",
@@ -169,6 +171,9 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	h := sha256.New()
 	h.Write([]byte(pubKey))
 	data := h.Sum(nil)
+	jww.INFO.Println("hashed data for registerUser is  ", data)
+	jww.INFO.Println("privateKey: ", m.permissioningKey)
+	jww.INFO.Println("sha: ", sha)
 	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, sha, data, nil)
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf(
