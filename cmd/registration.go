@@ -171,9 +171,6 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	h := sha256.New()
 	h.Write([]byte(pubKey))
 	data := h.Sum(nil)
-	jww.INFO.Println("hashed data for registerUser is  ", data)
-	jww.INFO.Println("privateKey: ", m.permissioningKey)
-	jww.INFO.Println("sha: ", sha)
 	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, sha, data, nil)
 	if err != nil {
 		errMsg := errors.New(fmt.Sprintf(
