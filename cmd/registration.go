@@ -75,18 +75,23 @@ func toGroup(grp map[string]string) ndf.Group {
 
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) *RegistrationImpl {
-	jww.DEBUG.Printf("Starting registration\n")
+	jww.INFO.Printf("Starting registration...")
 	regImpl := &RegistrationImpl{}
 	var cert, key []byte
 	var err error
-
 	regImpl.ndfHash = make([]byte, 0)
+
+	// Read in private key
 	key, err = utils.ReadFile(params.KeyPath)
 	if err != nil {
 		jww.ERROR.Printf("failed to read key at %+v: %+v", params.KeyPath, err)
 	}
-	jww.INFO.Println("setting perm key")
 	regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
+	if err != nil {
+		jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
+			"PermissioningKey is %+v",
+			err, regImpl.permissioningKey)
+	}
 
 	if !noTLS {
 		// Read in TLS keys from files
@@ -102,15 +107,6 @@ func StartRegistration(params Params) *RegistrationImpl {
 				"Permissioning cert is %+v",
 				err, regImpl.permissioningCert)
 		}
-		if err != nil {
-			jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
-				"PermissioningKey is %+v",
-				err, regImpl.permissioningKey)
-		}
-
-		jww.DEBUG.Printf("permissioningCert: %+v\n", regImpl.permissioningCert)
-		jww.DEBUG.Printf("permissioning public key: %+v\n", regImpl.permissioningCert.PublicKey)
-		jww.DEBUG.Printf("permissioning private key: %+v\n", regImpl.permissioningKey)
 	}
 	regImpl.NumNodesInNet = len(RegistrationCodes)
 	regImpl.ndfOutputPath = params.NdfOutputPath
