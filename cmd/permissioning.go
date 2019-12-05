@@ -11,7 +11,6 @@ package cmd
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
