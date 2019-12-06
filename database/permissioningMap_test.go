@@ -58,7 +58,7 @@ func TestMapImpl_InsertNode(t *testing.T) {
 
 	// Verify the insert was successful
 	if info := m.node[code]; err != nil || info.NodeCertificate != code ||
-		info.GatewayCertificate != code || info.ServerAddress != code {
+		info.GatewayCertificate != code {
 		t.Errorf("Expected to successfully insert node information: %+v", info)
 	}
 }
@@ -122,11 +122,11 @@ func TestMapImpl_GetNode(t *testing.T) {
 
 	// Load in a registration code
 	code := "TEST"
-	m.node[code] = &NodeInformation{Code: code, ServerAddress: code}
+	m.node[code] = &NodeInformation{Code: code}
 
 	// Check that the correct node is obtained
 	info, err := m.GetNode(code)
-	if err != nil || info.ServerAddress != code {
+	if err != nil || info.Code != code {
 		t.Errorf("Expected to be able to obtain correct node")
 	}
 }
@@ -141,5 +141,47 @@ func TestMapImpl_GetNode_Invalid(t *testing.T) {
 	info, err := m.GetNode("TEST")
 	if err == nil || info != nil {
 		t.Errorf("Expected to not find the node")
+	}
+}
+
+// Happy path
+func TestMapImpl_InsertUser(t *testing.T) {
+	m := &MapImpl{
+		user: make(map[string]bool),
+	}
+
+	testKey := "TEST"
+	_ = m.InsertUser(testKey)
+	if !m.user[testKey] {
+		t.Errorf("Insert failed to add the user!")
+	}
+}
+
+// Happy path
+func TestMapImpl_GetUser(t *testing.T) {
+	m := &MapImpl{
+		user: make(map[string]bool),
+	}
+
+	testKey := "TEST"
+	m.user[testKey] = true
+
+	user, err := m.GetUser(testKey)
+	if err != nil || user.PublicKey != testKey {
+		t.Errorf("Get failed to get user!")
+	}
+}
+
+// Get user that does not exist
+func TestMapImpl_GetUserNotExists(t *testing.T) {
+	m := &MapImpl{
+		user: make(map[string]bool),
+	}
+
+	testKey := "TEST"
+
+	_, err := m.GetUser(testKey)
+	if err == nil {
+		t.Errorf("Get expected to not find user!")
 	}
 }
