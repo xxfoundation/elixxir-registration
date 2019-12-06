@@ -249,6 +249,7 @@ func (m *RegistrationImpl) nodeNdfRequest() ([]byte, error) {
 		case <-m.registrationCompleted:
 			return m.ndfJson, nil
 		case <-timeOut.C:
+			return nil, nil
 		}
 	}
 }
