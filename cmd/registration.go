@@ -194,6 +194,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) ([]byte, error) {
 	//If permissioning is enabled, check the permissioning's hash against the client's ndf
 	if !disablePermissioning {
+		//TODO/Fixme: Conglomerate these two when client supports polling (although stripping may still need to be done)
 		if theirNdfHash == nil ||
 			bytes.Compare(theirNdfHash, make([]byte, 0)) == 0 {
 			return m.nodeNdfRequest()

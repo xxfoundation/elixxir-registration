@@ -288,7 +288,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 }
 
 //Happy path
-func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
+func TestRegistrationImpl_Polldf(t *testing.T) {
 	//Create database
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
@@ -371,7 +371,7 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 }
 
 //Error  path
-func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
+func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Create database
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
@@ -400,7 +400,7 @@ func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	//Make a client ndf hash that is not up to date
-	clientNdfHash := make([]byte, 0)
+	clientNdfHash := []byte("test")
 
 	_, err = impl.PollNdf(clientNdfHash)
 	if err != nil {
