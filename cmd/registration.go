@@ -232,7 +232,6 @@ func (m *RegistrationImpl) clientNdfRequest(theirNdfHash []byte) ([]byte, error)
 
 //serverNdfRequest handles when a node requests an ndf from permissioning
 func (m *RegistrationImpl) nodeNdfRequest() ([]byte, error) {
-	timeOut := time.NewTimer(5 * time.Second)
 	// Lock the reading of regNdfHash and check if it's been writen to
 	m.ndfLock.RLock()
 	ndfHash := m.regNdfHash
@@ -245,11 +244,11 @@ func (m *RegistrationImpl) nodeNdfRequest() ([]byte, error) {
 	//Otherwise wait for either a registration complete signal or
 	// a timeout signal
 	for {
+		timeOut := time.NewTimer(5 * time.Second)
 		select {
 		case <-m.registrationCompleted:
 			return m.ndfJson, nil
 		case <-timeOut.C:
-			return nil, errors.Errorf("Permissioning does not have an ndf to give to node server")
 		}
 	}
 }
