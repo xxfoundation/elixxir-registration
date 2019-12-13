@@ -11,8 +11,8 @@ package cmd
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/tls"
@@ -104,6 +104,14 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		jww.ERROR.Printf("%+v", errMsg)
 		return errMsg
 	}
+
+	_, err = m.Comms.AddHost(string(ID), ServerAddr, []byte(ServerTlsCert), false)
+	if err != nil {
+		errMsg := errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
+		jww.ERROR.Print(errMsg)
+		return errMsg
+	}
+
 	jww.DEBUG.Printf("Total number of expected nodes for registration completion: %v", m.NumNodesInNet)
 	m.completedNodes <- struct{}{}
 	return nil
