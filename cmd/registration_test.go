@@ -123,7 +123,7 @@ func TestEmptyDataBase(t *testing.T) {
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
 
 	impl := StartRegistration(testParams)
-	impl.completedNodes = make(chan struct{}, 1)
+	impl.nodeCompleted = make(chan struct{}, 1)
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	err := database.PermissioningDb.InsertNodeRegCode("AAAA")
@@ -145,7 +145,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 func TestRegCodeExists_RegUser(t *testing.T) {
 	//Initialize an implementation and the permissioning server
 	impl := &RegistrationImpl{}
-	impl.completedNodes = make(chan struct{}, 1)
+	impl.nodeCompleted = make(chan struct{}, 1)
 
 	jww.SetStdoutThreshold(jww.LevelInfo)
 
@@ -187,12 +187,6 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	RegParams = testParams
 	go nodeRegistrationCompleter(impl)
 
-	//connect the node to the permissioning server
-	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-	_, _ = nodeComm.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
-
-	//nodeCert, _ := utils.ReadFile(testkeys.GetNodeCertPath())
-
 	err := impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
 		"0.0.0.0:6900", string(nodeCert), "BBBB")
 	//So the impl is not destroyed
@@ -223,14 +217,8 @@ func TestDoubleRegistration(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-
 	//Create a second node to register
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
-
-	//Connect both nodes to the registration server
-	_, _ = nodeComm.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
-	_, _ = nodeComm2.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
@@ -271,14 +259,8 @@ func TestTopology_MultiNodes(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-
 	//Create a second node to register
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
-
-	//Connect both nodes to the registration server
-	_, _ = nodeComm.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
-	_, _ = nodeComm2.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
@@ -288,8 +270,8 @@ func TestTopology_MultiNodes(t *testing.T) {
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
-		"0.0.0.0:6901", string(nodeCert), "CCCC")
+	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(gatewayCert),
+		"0.0.0.0:6901", string(gatewayCert), "CCCC")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
@@ -306,7 +288,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 }
 
 //Happy path
-func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
+func TestRegistrationImpl_Polldf(t *testing.T) {
 	//Create database
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
@@ -321,19 +303,12 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-
 	//Start the other nodes
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 	nodeComm3 := node.StartNode("0.0.0.0:6902", node.NewImplementation(), nodeCert, nodeKey)
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
 
 	udbParams.ID = udbId
-	//Connect to permissioning
-	//Connect both nodes to the registration server
-	_, _ = nodeComm.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
-	_, _ = nodeComm2.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
-	_, _ = nodeComm3.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
@@ -355,12 +330,9 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
+	//Wait for registration to complete
 	time.Sleep(5 * time.Second)
-
-	//Make a client ndf hash that is not up to date
-	clientNdfHash := make([]byte, 0)
-
-	observedNDFBytes, err := impl.GetUpdatedNDF(clientNdfHash)
+	observedNDFBytes, err := impl.PollNdf(nil)
 	if err != nil {
 		t.Errorf("failed to update ndf: %v", err)
 	}
@@ -399,7 +371,7 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 }
 
 //Error  path
-func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
+func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Create database
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
@@ -414,15 +386,9 @@ func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-
-	//Start the other nodes
-
+	//Setup udb configurations
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-
 	udbParams.ID = udbId
-	//Connect to permissioning
-	_, _ = nodeComm.AddHost(connectionID("Permissioning").String(), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
@@ -434,9 +400,9 @@ func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	//Make a client ndf hash that is not up to date
-	clientNdfHash := make([]byte, 0)
+	clientNdfHash := []byte("test")
 
-	_, err = impl.GetUpdatedNDF(clientNdfHash)
+	_, err = impl.PollNdf(clientNdfHash)
 	if err != nil {
 		//Disconnect nodeComms
 		nodeComm.DisconnectAll()
