@@ -16,6 +16,7 @@ import (
 	"crypto/x509"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
@@ -136,7 +137,7 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 			ServerTlsCert, GatewayAddr, GatewayTlsCert,
 			RegistrationCode)
 	}
-	impl.Functions.PollNdf = func(theirNdfHash []byte) ([]byte, error) {
+	impl.Functions.PollNdf = func(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
 		return instance.PollNdf(theirNdfHash)
 	}
 

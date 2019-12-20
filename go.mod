@@ -35,7 +35,7 @@ require (
 
 	github.com/spf13/viper v1.6.1
 	github.com/stretchr/objx v0.2.0 // indirect
-	gitlab.com/elixxir/comms v0.0.0-20191219222226-c5283bf68152
+	gitlab.com/elixxir/comms v0.0.0-20191220173836-42fe5ead5e5b
 	gitlab.com/elixxir/crypto v0.0.0-20191121235352-86d305a9b253
 	gitlab.com/elixxir/primitives v0.0.0-20191204001459-cef5ed720564
 	go.opencensus.io v0.22.2 // indirect
@@ -43,11 +43,12 @@ require (
 	golang.org/x/image v0.0.0-20191214001246-9130b4cfad52 // indirect
 	golang.org/x/mobile v0.0.0-20191210151939-1a1fef82734d // indirect
 	golang.org/x/oauth2 v0.0.0-20191202225959-858c2ad4c8b6 // indirect
-	golang.org/x/sys v0.0.0-20191219235734-af0d71d358ab // indirect
+	golang.org/x/sys v0.0.0-20191220142924-d4481acd189f // indirect
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 	golang.org/x/tools v0.0.0-20191219230827-5e752206af05 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	google.golang.org/api v0.15.0 // indirect
 	google.golang.org/appengine v1.6.5 // indirect
+	google.golang.org/genproto v0.0.0-20191220162840-803ea799ed88 // indirect
 	mellium.im/sasl v0.0.0-20190815210834-e27ea4901008 // indirect
 )
