@@ -86,7 +86,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errMsg
 	}
 
-	_, err = m.Comms.AddHost(string(ID), ServerAddr, []byte(ServerTlsCert), false)
+	_, err = m.Comms.AddHost(string(ID), ServerAddr, []byte(ServerTlsCert), false, true)
 	if err != nil {
 		errMsg := errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
 		jww.ERROR.Print(errMsg)
