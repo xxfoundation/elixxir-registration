@@ -145,7 +145,7 @@ func NewDatabase(username, password, database, address string) Storage {
 
 // Create the database schema
 func createSchema(db *pg.DB) error {
-	for _, model := range []interface{}{&RegistrationCode{}, User{}} {
+	for _, model := range []interface{}{&RegistrationCode{}, &User{}} {
 		err := db.CreateTable(model, &orm.CreateTableOptions{
 			// Ignore create table if already exists?
 			IfNotExists: true,
