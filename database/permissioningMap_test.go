@@ -58,7 +58,7 @@ func TestMapImpl_InsertNode(t *testing.T) {
 	m.node[code] = &NodeInformation{Code: code}
 
 	// Attempt to insert a node
-	err := m.InsertNode(make([]byte, 0), code, cert, addr, gwCert, gwAddr)
+	err := m.InsertNode(make([]byte, 0), code, cert, addr, gwAddr, gwCert)
 
 	// Verify the insert was successful
 	if info := m.node[code]; err != nil || info.NodeCertificate != cert ||
