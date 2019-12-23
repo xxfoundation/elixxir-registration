@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/registration/database"
 	"os"
@@ -253,6 +254,7 @@ func initLog() {
 		if verbose || viper.GetBool("verbose") {
 			jww.SetLogThreshold(jww.LevelDebug)
 			jww.SetStdoutThreshold(jww.LevelDebug)
+			mixmessages.DebugMode()
 		} else {
 			jww.SetLogThreshold(jww.LevelInfo)
 			jww.SetStdoutThreshold(jww.LevelInfo)
