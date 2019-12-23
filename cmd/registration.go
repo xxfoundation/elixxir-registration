@@ -138,7 +138,7 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 			RegistrationCode)
 	}
 	impl.Functions.PollNdf = func(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
-		return instance.PollNdf(theirNdfHash)
+		return instance.PollNdf(theirNdfHash, auth)
 	}
 
 	return impl
@@ -192,12 +192,10 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 }
 
 //PollNdf handles the client polling for an updated NDF
-func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) ([]byte, error) {
+func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
 	//If permissioning is enabled, check the permissioning's hash against the client's ndf
 	if !disablePermissioning {
-		//TODO/Fixme: Conglomerate these two when client supports polling (although stripping may still need to be done)
-		if theirNdfHash == nil ||
-			bytes.Compare(theirNdfHash, make([]byte, 0)) == 0 {
+		if auth.IsAuthenticated {
 			return m.nodeNdfRequest()
 		}
 		return m.clientNdfRequest(theirNdfHash)
