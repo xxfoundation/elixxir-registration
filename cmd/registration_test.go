@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
@@ -332,7 +333,7 @@ func TestRegistrationImpl_Polldf(t *testing.T) {
 	}
 	//Wait for registration to complete
 	time.Sleep(5 * time.Second)
-	observedNDFBytes, err := impl.PollNdf(nil)
+	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
 	if err != nil {
 		t.Errorf("failed to update ndf: %v", err)
 	}
@@ -402,7 +403,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Make a client ndf hash that is not up to date
 	clientNdfHash := []byte("test")
 
-	_, err = impl.PollNdf(clientNdfHash)
+	_, err = impl.PollNdf(clientNdfHash, &connect.Auth{})
 	if err != nil {
 		//Disconnect nodeComms
 		nodeComm.DisconnectAll()
