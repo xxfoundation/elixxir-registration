@@ -20,6 +20,7 @@ import (
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
@@ -110,9 +111,9 @@ func StartRegistration(params Params) *RegistrationImpl {
 	regImpl.ndfOutputPath = params.NdfOutputPath
 
 	regHandler := NewImplementation(regImpl)
-
 	// Start the communication server
-	regImpl.Comms = registration.StartRegistrationServer(params.Address,
+	regImpl.Comms = registration.StartRegistrationServer(id.PERMISSIONING,
+		params.Address,
 		regHandler, cert, key)
 
 	regImpl.nodeCompleted = make(chan struct{}, regImpl.NumNodesInNet)
