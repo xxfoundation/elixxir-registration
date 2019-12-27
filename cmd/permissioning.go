@@ -76,8 +76,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		jww.ERROR.Printf("%+v", errMsg)
 		return errMsg
 	}
-	jww.DEBUG.Printf("Inserted node %+v into the database with code %+v",
-		ID, RegistrationCode)
+	jww.DEBUG.Printf("Inserted node %s into the database with code %s",
+		string(ID), RegistrationCode)
 
 	// Obtain the number of registered nodes
 	_, err = database.PermissioningDb.CountRegisteredNodes()
