@@ -71,7 +71,7 @@ func TestMain(m *testing.M) {
 		NdfOutputPath: testkeys.GetNDFPath(),
 		publicAddress: permAddr,
 	}
-	nodeComm = node.StartNode(nodeAddr, node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm = node.StartNode("tmp", nodeAddr, node.NewImplementation(), nodeCert, nodeKey)
 
 	runFunc := func() int {
 		code := m.Run()
@@ -219,7 +219,7 @@ func TestDoubleRegistration(t *testing.T) {
 	go nodeRegistrationCompleter(impl)
 
 	//Create a second node to register
-	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
@@ -261,7 +261,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	go nodeRegistrationCompleter(impl)
 
 	//Create a second node to register
-	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
@@ -305,8 +305,8 @@ func TestRegistrationImpl_Polldf(t *testing.T) {
 	go nodeRegistrationCompleter(impl)
 
 	//Start the other nodes
-	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
-	nodeComm3 := node.StartNode("0.0.0.0:6902", node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm3 := node.StartNode("tmp", "0.0.0.0:6902", node.NewImplementation(), nodeCert, nodeKey)
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
 
 	udbParams.ID = udbId
