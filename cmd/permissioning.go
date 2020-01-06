@@ -69,7 +69,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	}
 
 	// Attempt to insert Node into the database
-	err = database.PermissioningDb.InsertNode(ID, RegistrationCode, ServerAddr, signedNodeCert, GatewayAddr, signedGatewayCert)
+	err = database.PermissioningDb.InsertNode(ID, RegistrationCode,
+		signedNodeCert, ServerAddr, GatewayAddr, signedGatewayCert)
 	if err != nil {
 		errMsg := errors.Errorf("unable to insert node: %+v", err)
 		jww.ERROR.Printf("%+v", errMsg)
