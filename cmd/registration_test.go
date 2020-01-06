@@ -34,7 +34,7 @@ var ndfFile []byte
 /*
 var testPermissioningKey *rsa.PrivateKey
 var testpermissioningCert *x509.Certificate*/
-var nodeComm *node.NodeComms
+var nodeComm *node.Comms
 
 func TestMain(m *testing.M) {
 	var err error
@@ -123,7 +123,7 @@ func TestEmptyDataBase(t *testing.T) {
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
 
 	impl := StartRegistration(testParams)
-	impl.completedNodes = make(chan struct{}, 1)
+	impl.nodeCompleted = make(chan struct{}, 1)
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	err := database.PermissioningDb.InsertNodeRegCode("AAAA")
@@ -145,7 +145,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 func TestRegCodeExists_RegUser(t *testing.T) {
 	//Initialize an implementation and the permissioning server
 	impl := &RegistrationImpl{}
-	impl.completedNodes = make(chan struct{}, 1)
+	impl.nodeCompleted = make(chan struct{}, 1)
 
 	jww.SetStdoutThreshold(jww.LevelInfo)
 
@@ -187,12 +187,6 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	RegParams = testParams
 	go nodeRegistrationCompleter(impl)
 
-	//connect the node to the permissioning server
-	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-
-	//nodeCert, _ := utils.ReadFile(testkeys.GetNodeCertPath())
-
 	err := impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
 		"0.0.0.0:6900", string(nodeCert), "BBBB")
 	//So the impl is not destroyed
@@ -202,7 +196,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 	//Kill the connections for the next test
-	nodeComm.Disconnect("Permissioning")
+	nodeComm.DisconnectAll()
 	impl.Comms.Shutdown()
 
 }
@@ -223,14 +217,8 @@ func TestDoubleRegistration(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-
 	//Create a second node to register
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
-
-	//Connect both nodes to the registration server
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
@@ -243,8 +231,8 @@ func TestDoubleRegistration(t *testing.T) {
 	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
 		"0.0.0.0:6901", string(nodeCert), "BBBB")
 	//Kill the connections for the next test
-	nodeComm.Disconnect("Permissioning")
-	nodeComm2.Disconnect("Permissioning")
+	nodeComm.DisconnectAll()
+	nodeComm2.DisconnectAll()
 	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
 	time.Sleep(5 * time.Second)
@@ -271,14 +259,8 @@ func TestTopology_MultiNodes(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-
 	//Create a second node to register
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
-
-	//Connect both nodes to the registration server
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
@@ -288,8 +270,8 @@ func TestTopology_MultiNodes(t *testing.T) {
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
-		"0.0.0.0:6901", string(nodeCert), "CCCC")
+	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(gatewayCert),
+		"0.0.0.0:6901", string(gatewayCert), "CCCC")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
@@ -298,15 +280,15 @@ func TestTopology_MultiNodes(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	//Kill the connections for the next test
-	nodeComm.Disconnect("Permissioning")
-	nodeComm2.Disconnect("Permissioning")
+	nodeComm.DisconnectAll()
+	nodeComm2.DisconnectAll()
 	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
 	time.Sleep(5 * time.Second)
 }
 
 //Happy path
-func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
+func TestRegistrationImpl_Polldf(t *testing.T) {
 	//Create database
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
@@ -321,18 +303,12 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-
 	//Start the other nodes
 	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 	nodeComm3 := node.StartNode("0.0.0.0:6902", node.NewImplementation(), nodeCert, nodeKey)
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
 
 	udbParams.ID = udbId
-	//Connect to permissioning
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-	_ = nodeComm2.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
-	_ = nodeComm3.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
@@ -354,12 +330,9 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
+	//Wait for registration to complete
 	time.Sleep(5 * time.Second)
-
-	//Make a client ndf hash that is not up to date
-	clientNdfHash := make([]byte, 0)
-
-	observedNDFBytes, err := impl.GetUpdatedNDF(clientNdfHash)
+	observedNDFBytes, err := impl.PollNdf(nil)
 	if err != nil {
 		t.Errorf("failed to update ndf: %v", err)
 	}
@@ -386,9 +359,9 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 	}
 
 	//Disconnect nodeComms
-	nodeComm.Disconnect("Permissioning")
-	nodeComm2.Disconnect("Permissioning")
-	nodeComm3.Disconnect("Permsissioning")
+	nodeComm.DisconnectAll()
+	nodeComm2.DisconnectAll()
+	nodeComm3.DisconnectAll()
 	//Shutdown node comms
 	nodeComm2.Shutdown()
 	nodeComm3.Shutdown()
@@ -398,7 +371,7 @@ func TestRegistrationImpl_GetUpdatedNDF(t *testing.T) {
 }
 
 //Error  path
-func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
+func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Create database
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
@@ -413,15 +386,9 @@ func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
 	impl := StartRegistration(testParams)
 	go nodeRegistrationCompleter(impl)
 
-	permCert, _ := utils.ReadFile(testkeys.GetCACertPath())
-
-	//Start the other nodes
-
+	//Setup udb configurations
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-
 	udbParams.ID = udbId
-	//Connect to permissioning
-	_ = nodeComm.ConnectToRemote(connectionID("Permissioning"), permAddr, permCert, false)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
@@ -433,12 +400,12 @@ func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	//Make a client ndf hash that is not up to date
-	clientNdfHash := make([]byte, 0)
+	clientNdfHash := []byte("test")
 
-	_, err = impl.GetUpdatedNDF(clientNdfHash)
+	_, err = impl.PollNdf(clientNdfHash)
 	if err != nil {
 		//Disconnect nodeComms
-		nodeComm.Disconnect("Permissioning")
+		nodeComm.DisconnectAll()
 
 		//Shutdown registration
 		impl.Comms.Shutdown()
@@ -447,7 +414,7 @@ func TestRegistrationImpl_GetUpdatedNDF_NoNDF(t *testing.T) {
 
 	t.Error("Expected error path, should not have an ndf ready")
 	//Disconnect nodeComms
-	nodeComm.Disconnect("Permissioning")
+	nodeComm.DisconnectAll()
 
 	//Shutdown registration
 	impl.Comms.Shutdown()
