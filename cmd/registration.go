@@ -105,6 +105,8 @@ func StartRegistration(params Params) *RegistrationImpl {
 				"Permissioning cert is %+v",
 				err, regImpl.permissioningCert)
 		}
+
+		regImpl.Comms.DisableAuth()
 	}
 
 	regImpl.NumNodesInNet = len(RegistrationCodes)

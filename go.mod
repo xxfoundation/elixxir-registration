@@ -5,10 +5,9 @@ go 1.13
 require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-pg/pg v8.0.6+incompatible
-	github.com/google/go-cmp v0.3.1 // indirect
+	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20191106031601-ce3c9ade29de // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
-	github.com/kr/pretty v0.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.11.0 // indirect
 	github.com/onsi/gomega v1.8.1 // indirect
@@ -22,13 +21,10 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 
 	github.com/spf13/viper v1.6.1
-	gitlab.com/elixxir/comms v0.0.0-20200102213909-03bd846bb526
-	gitlab.com/elixxir/crypto v0.0.0-20191121235352-86d305a9b253
-	gitlab.com/elixxir/primitives v0.0.0-20191204001459-cef5ed720564
-	golang.org/x/crypto v0.0.0-20191227163750-53104e6ec876 // indirect
-	golang.org/x/sys v0.0.0-20200102141924-c96a22e43c9c // indirect
-	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
-	google.golang.org/genproto v0.0.0-20191230161307-f3c370f40bfb // indirect
+	gitlab.com/elixxir/comms v0.0.0-20200108193657-4f85a8e6d454
+	gitlab.com/elixxir/crypto v0.0.0-20200108005412-8159c60663f9
+	gitlab.com/elixxir/primitives v0.0.0-20200108174340-0922447aec92
+	golang.org/x/sys v0.0.0-20200107162124-548cf772de50 // indirect
 	gopkg.in/ini.v1 v1.51.1 // indirect
 	mellium.im/sasl v0.0.0-20190815210834-e27ea4901008 // indirect
 )
