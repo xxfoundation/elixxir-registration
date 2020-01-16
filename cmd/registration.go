@@ -105,6 +105,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 				"Permissioning cert is %+v",
 				err, regImpl.permissioningCert)
 		}
+
 	}
 
 	regImpl.NumNodesInNet = len(RegistrationCodes)
@@ -115,6 +116,11 @@ func StartRegistration(params Params) *RegistrationImpl {
 	regImpl.Comms = registration.StartRegistrationServer(id.PERMISSIONING,
 		params.Address,
 		regHandler, cert, key)
+
+	//In the noTLS pathway, disable authentication
+	if noTLS {
+		regImpl.Comms.DisableAuth()
+	}
 
 	regImpl.nodeCompleted = make(chan struct{}, regImpl.NumNodesInNet)
 	regImpl.registrationCompleted = make(chan struct{}, 1)
