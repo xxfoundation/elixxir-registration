@@ -16,9 +16,11 @@ import (
 	"crypto/x509"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
@@ -103,16 +105,22 @@ func StartRegistration(params Params) *RegistrationImpl {
 				"Permissioning cert is %+v",
 				err, regImpl.permissioningCert)
 		}
+
 	}
 
 	regImpl.NumNodesInNet = len(RegistrationCodes)
 	regImpl.ndfOutputPath = params.NdfOutputPath
 
 	regHandler := NewImplementation(regImpl)
-
 	// Start the communication server
-	regImpl.Comms = registration.StartRegistrationServer(params.Address,
+	regImpl.Comms = registration.StartRegistrationServer(id.PERMISSIONING,
+		params.Address,
 		regHandler, cert, key)
+
+	//In the noTLS pathway, disable authentication
+	if noTLS {
+		regImpl.Comms.DisableAuth()
+	}
 
 	regImpl.nodeCompleted = make(chan struct{}, regImpl.NumNodesInNet)
 	regImpl.registrationCompleted = make(chan struct{}, 1)
@@ -136,8 +144,8 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 			ServerTlsCert, GatewayAddr, GatewayTlsCert,
 			RegistrationCode)
 	}
-	impl.Functions.PollNdf = func(theirNdfHash []byte) ([]byte, error) {
-		return instance.PollNdf(theirNdfHash)
+	impl.Functions.PollNdf = func(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
+		return instance.PollNdf(theirNdfHash, auth)
 	}
 
 	return impl
@@ -191,12 +199,10 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 }
 
 //PollNdf handles the client polling for an updated NDF
-func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) ([]byte, error) {
+func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
 	//If permissioning is enabled, check the permissioning's hash against the client's ndf
 	if !disablePermissioning {
-		//TODO/Fixme: Conglomerate these two when client supports polling (although stripping may still need to be done)
-		if theirNdfHash == nil ||
-			bytes.Compare(theirNdfHash, make([]byte, 0)) == 0 {
+		if auth.IsAuthenticated {
 			return m.nodeNdfRequest()
 		}
 		return m.clientNdfRequest(theirNdfHash)

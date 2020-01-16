@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
@@ -70,7 +71,7 @@ func TestMain(m *testing.M) {
 		NdfOutputPath: testkeys.GetNDFPath(),
 		publicAddress: permAddr,
 	}
-	nodeComm = node.StartNode(nodeAddr, node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm = node.StartNode("tmp", nodeAddr, node.NewImplementation(), nodeCert, nodeKey)
 
 	runFunc := func() int {
 		code := m.Run()
@@ -218,7 +219,7 @@ func TestDoubleRegistration(t *testing.T) {
 	go nodeRegistrationCompleter(impl)
 
 	//Create a second node to register
-	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
@@ -260,7 +261,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	go nodeRegistrationCompleter(impl)
 
 	//Create a second node to register
-	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
 	err := impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
@@ -304,8 +305,8 @@ func TestRegistrationImpl_Polldf(t *testing.T) {
 	go nodeRegistrationCompleter(impl)
 
 	//Start the other nodes
-	nodeComm2 := node.StartNode("0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
-	nodeComm3 := node.StartNode("0.0.0.0:6902", node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm3 := node.StartNode("tmp", "0.0.0.0:6902", node.NewImplementation(), nodeCert, nodeKey)
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
 
 	udbParams.ID = udbId
@@ -332,7 +333,7 @@ func TestRegistrationImpl_Polldf(t *testing.T) {
 	}
 	//Wait for registration to complete
 	time.Sleep(5 * time.Second)
-	observedNDFBytes, err := impl.PollNdf(nil)
+	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
 	if err != nil {
 		t.Errorf("failed to update ndf: %v", err)
 	}
@@ -402,7 +403,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Make a client ndf hash that is not up to date
 	clientNdfHash := []byte("test")
 
-	_, err = impl.PollNdf(clientNdfHash)
+	_, err = impl.PollNdf(clientNdfHash, &connect.Auth{})
 	if err != nil {
 		//Disconnect nodeComms
 		nodeComm.DisconnectAll()

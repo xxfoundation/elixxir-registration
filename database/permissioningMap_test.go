@@ -51,14 +51,19 @@ func TestMapImpl_InsertNode(t *testing.T) {
 
 	// Load in a registration code
 	code := "TEST"
+	cert := "cert"
+	gwCert := "gwcert"
+	addr := "addr"
+	gwAddr := "gwaddr"
 	m.node[code] = &NodeInformation{Code: code}
 
 	// Attempt to insert a node
-	err := m.InsertNode(make([]byte, 0), code, code, code, code, code)
+	err := m.InsertNode(make([]byte, 0), code, cert, addr, gwAddr, gwCert)
 
 	// Verify the insert was successful
-	if info := m.node[code]; err != nil || info.NodeCertificate != code ||
-		info.GatewayCertificate != code {
+	if info := m.node[code]; err != nil || info.NodeCertificate != cert ||
+		info.GatewayCertificate != gwCert || info.ServerAddress != addr ||
+		info.GatewayAddress != gwAddr {
 		t.Errorf("Expected to successfully insert node information: %+v", info)
 	}
 }

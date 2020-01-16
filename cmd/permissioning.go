@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
@@ -24,6 +25,9 @@ import (
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
+
+	// Get proper ID string
+	idString := id.NewNodeFromBytes(ID).String()
 
 	// Check that the node hasn't already been registered
 	nodeInfo, err := database.PermissioningDb.GetNode(RegistrationCode)
@@ -76,8 +80,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		jww.ERROR.Printf("%+v", errMsg)
 		return errMsg
 	}
-	jww.DEBUG.Printf("Inserted node %+v into the database with code %+v",
-		ID, RegistrationCode)
+	jww.DEBUG.Printf("Inserted node %s into the database with code %s",
+		idString, RegistrationCode)
 
 	// Obtain the number of registered nodes
 	_, err = database.PermissioningDb.CountRegisteredNodes()
@@ -86,6 +90,14 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		jww.ERROR.Printf("%+v", errMsg)
 		return errMsg
 	}
+
+	_, err = m.Comms.AddHost(idString, ServerAddr, []byte(ServerTlsCert), false, true)
+	if err != nil {
+		errMsg := errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
+		jww.ERROR.Print(errMsg)
+		return errMsg
+	}
+
 	jww.DEBUG.Printf("Total number of expected nodes for registration completion: %v", m.NumNodesInNet)
 	m.nodeCompleted <- struct{}{}
 	return nil
