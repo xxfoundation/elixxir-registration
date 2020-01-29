@@ -46,6 +46,8 @@ type Params struct {
 	Address       string
 	CertPath      string
 	KeyPath       string
+	NsCertPath    string
+	NsAddress     string
 	NdfOutputPath string
 	NumNodesInNet int
 	cmix          ndf.Group
