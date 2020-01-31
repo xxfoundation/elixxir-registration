@@ -78,8 +78,8 @@ var rootCmd = &cobra.Command{
 		setClientVersion(viper.GetString("clientVersion"))
 		ipAddr := viper.GetString("publicAddress")
 		//Get Notification Server address and cert Path
-		nsCertPath := viper.GetString("ns_cert_path")
-		nsAddress := viper.GetString("ns_address")
+		nsCertPath := viper.GetString("nsCertPath")
+		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
 
 		// Set up database connection
