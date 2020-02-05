@@ -76,6 +76,10 @@ build:
     - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.win64 main.go
     - GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.win32 main.go
     - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.darwin64 main.go
+    - git remote add origin_tags git@gitlab.com:elixxir/registration.gitt || true
+    - git remote set-url origin_tags git@gitlab.com:elixxir/registration.git || true
+    - git tag $(./release/registration.linux64 --version | grep "Elixxir Registration Server v"| cut -d ' ' -f3) -f
+    - git push origin_tags -f --tags
   artifacts:
     paths:
      - release/
