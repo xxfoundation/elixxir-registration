@@ -23,7 +23,6 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
-	"gitlab.com/elixxir/registration/database"
 	"sync"
 	"time"
 )
@@ -155,7 +154,7 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	signature []byte, err error) {
 
-	// Check for pre-existing registration for this public key
+	/*// Check for pre-existing registration for this public key
 	if user, err := database.PermissioningDb.GetUser(pubKey); err == nil && user != nil {
 		jww.INFO.Printf("Previous registration found for %s", pubKey)
 	} else {
@@ -178,7 +177,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 			jww.WARN.Printf("Unable to store user: %+v",
 				errors.New(err.Error()))
 		}
-	}
+	}*/
 
 	// Use hardcoded keypair to sign Client-provided public key
 	//Create a hash, hash the pubKey and then truncate it
