@@ -495,38 +495,38 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	// Attempt to register a user
 	_, err := impl.RegisterUser("b", "B")
 	if err != nil {
-		t.Errorf("Failed to register a node when it should have worked: %+v", err)
+		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
 	_, err = impl.RegisterUser("c", "C")
 	if err != nil {
-		t.Errorf("Failed to register a node when it should have worked: %+v", err)
+		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
 	_, err = impl.RegisterUser("d", "D")
 	if err != nil {
-		t.Errorf("Failed to register a node when it should have worked: %+v", err)
+		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
 	_, err = impl.RegisterUser("e", "E")
 	if err != nil {
-		t.Errorf("Failed to register a node when it should have worked: %+v", err)
+		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
 	_, err = impl.RegisterUser("f", "F")
 	if err == nil {
-		t.Errorf("Did not fail to register a node when it should not have worked: %+v", err)
+		t.Errorf("Did not fail to register a user when it should not have worked: %+v", err)
 	}
 
 	time.Sleep(30 * time.Second)
 	// Attempt to register a user
 	_, err = impl.RegisterUser("g", "G")
 	if err != nil {
-		t.Errorf("Failed to register a node when it should have worked: %+v", err)
+		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 }
