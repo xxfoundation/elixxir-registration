@@ -23,10 +23,10 @@ require (
 	github.com/spf13/viper v1.6.2
 	gitlab.com/elixxir/comms v0.0.0-20200206201144-aa6e356b3770
 	gitlab.com/elixxir/crypto v0.0.0-20200206203107-b8926242da23
-	gitlab.com/elixxir/primitives v0.0.0-20200207195311-ebab568afa5a
-	golang.org/x/crypto v0.0.0-20200206161412-a0c6ece9d31a // indirect
+	gitlab.com/elixxir/primitives v0.0.0-20200207213955-5ca320a16dec
+	golang.org/x/crypto v0.0.0-20200207205829-a95e85b341fd // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
-	google.golang.org/genproto v0.0.0-20200205142000-a86caf926a67 // indirect
+	google.golang.org/genproto v0.0.0-20200207204624-4f3edf09f4f6 // indirect
 	google.golang.org/grpc v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.52.0 // indirect
 	mellium.im/sasl v0.0.0-20190815210834-e27ea4901008 // indirect
