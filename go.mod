@@ -21,14 +21,13 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 
 	github.com/spf13/viper v1.6.2
-	gitlab.com/elixxir/comms v0.0.0-20200130173653-721e14282756
-	gitlab.com/elixxir/crypto v0.0.0-20200108005412-8159c60663f9
-	gitlab.com/elixxir/primitives v0.0.0-20200131183153-e93c6b75019f
-	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72 // indirect
+	gitlab.com/elixxir/comms v0.0.0-20200206201144-aa6e356b3770
+	gitlab.com/elixxir/crypto v0.0.0-20200206203107-b8926242da23
+	gitlab.com/elixxir/primitives v0.0.0-20200207213955-5ca320a16dec
+	golang.org/x/crypto v0.0.0-20200207205829-a95e85b341fd // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
-	golang.org/x/sys v0.0.0-20200202164722-d101bd2416d5 // indirect
-	google.golang.org/genproto v0.0.0-20200204235621-fb4a7afc5178 // indirect
+	google.golang.org/genproto v0.0.0-20200207204624-4f3edf09f4f6 // indirect
+	google.golang.org/grpc v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.52.0 // indirect
-	gopkg.in/yaml.v2 v2.2.8 // indirect
 	mellium.im/sasl v0.0.0-20190815210834-e27ea4901008 // indirect
 )

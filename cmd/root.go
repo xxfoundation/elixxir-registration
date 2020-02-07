@@ -29,7 +29,6 @@ import (
 var (
 	cfgFile              string
 	verbose              bool
-	showVer              bool
 	noTLS                bool
 	RegistrationCodes    []string
 	RegParams            Params
@@ -47,11 +46,6 @@ var rootCmd = &cobra.Command{
 	Long:  `This server provides registration functions on cMix`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		if showVer {
-			printVersion()
-			return
-		}
-
 		if verbose {
 			err := os.Setenv("GRPC_GO_LOG_SEVERITY_LEVEL", "info")
 			if err != nil {
@@ -160,8 +154,6 @@ func init() {
 	// will be global for your application.
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false,
 		"Show verbose logs for debugging")
-	rootCmd.Flags().BoolVarP(&showVer, "version", "V", false,
-		"Show version information")
 
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c",
 		"", "Sets a custom config file path")
