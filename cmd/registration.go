@@ -25,42 +25,32 @@ import (
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
-const (
-	defaultMaxRegistrationAttempts   = uint64(500)
-	defaultRegistrationCountDuration = time.Hour * 24
-)
-
 type RegistrationImpl struct {
-	Comms                   *registration.Comms
-	permissioningCert       *x509.Certificate
-	permissioningKey        *rsa.PrivateKey
-	ndfOutputPath           string
-	nodeCompleted           chan struct{}
-	registrationCompleted   chan struct{}
-	NumNodesInNet           int
-	regNdfHash              []byte
-	ndfLock                 sync.RWMutex
-	certFromFile            string
-	ndfJson                 []byte
-	registrationsRemaining  *uint64
-	maxRegistrationAttempts uint64
+	Comms                 *registration.Comms
+	permissioningCert     *x509.Certificate
+	permissioningKey      *rsa.PrivateKey
+	ndfOutputPath         string
+	nodeCompleted         chan struct{}
+	registrationCompleted chan struct{}
+	NumNodesInNet         int
+	regNdfHash            []byte
+	ndfLock               sync.RWMutex
+	certFromFile          string
+	ndfJson               []byte
 }
 
 type Params struct {
-	Address                   string
-	CertPath                  string
-	KeyPath                   string
-	NdfOutputPath             string
-	NumNodesInNet             int
-	cmix                      ndf.Group
-	e2e                       ndf.Group
-	publicAddress             string
-	maxRegistrationAttempts   uint64
-	registrationCountDuration time.Duration
+	Address       string
+	CertPath      string
+	KeyPath       string
+	NdfOutputPath string
+	NumNodesInNet int
+	cmix          ndf.Group
+	e2e           ndf.Group
+	publicAddress string
 }
 
 // toGroup takes a group represented by a map of string to string
@@ -88,19 +78,6 @@ func StartRegistration(params Params) *RegistrationImpl {
 	var cert, key []byte
 	var err error
 	regImpl.regNdfHash = make([]byte, 0)
-
-	// Setup registration limiting variables
-	regImpl.maxRegistrationAttempts = params.maxRegistrationAttempts
-	maxRegistrationAttempts := uint64(0)
-	regImpl.registrationsRemaining = &maxRegistrationAttempts
-
-	// Create timer and channel to be used by routine that clears the number of
-	// registrations every time the ticker activates
-	done := make(chan bool)
-	go func() {
-		ticker := time.NewTicker(params.registrationCountDuration)
-		regImpl.registrationCapacityRestRunner(ticker, done)
-	}()
 
 	// Read in private key
 	key, err = utils.ReadFile(params.KeyPath)
@@ -188,20 +165,11 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 			registrationCode)
 		err = database.PermissioningDb.UseCode(registrationCode)
 		if err != nil {
-			// Check if the max registration attempts have been reached
-			if atomic.LoadUint64(m.registrationsRemaining) >= m.maxRegistrationAttempts {
-				// Invalid registration code, return an error
-				jww.INFO.Printf("Incremented registration counter to %+v (max %v)",
-					atomic.LoadUint64(m.registrationsRemaining), m.maxRegistrationAttempts)
-				errMsg := errors.Errorf(
-					"Error validating registration code: %+v", err)
-				jww.ERROR.Printf("%+v", errMsg)
-				return make([]byte, 0), errMsg
-			} else {
-				atomic.AddUint64(m.registrationsRemaining, 1)
-				jww.INFO.Printf("Incremented registration counter to %+v (max %v)",
-					atomic.LoadUint64(m.registrationsRemaining), m.maxRegistrationAttempts)
-			}
+			// Invalid registration code, return an error
+			errMsg := errors.Errorf(
+				"Error validating registration code: %+v", err)
+			jww.ERROR.Printf("%+v", errMsg)
+			return make([]byte, 0), errMsg
 		}
 
 		// Record the user public key for duplicate registration support
@@ -298,17 +266,4 @@ func (m *RegistrationImpl) GetCurrentClientVersion() (version string, err error)
 	clientVersionLock.RLock()
 	defer clientVersionLock.RUnlock()
 	return clientVersion, nil
-}
-
-// registrationCapacityRestRunner sets the registrations remaining to zero when
-// a ticker occurs.
-func (m *RegistrationImpl) registrationCapacityRestRunner(ticker *time.Ticker, done chan bool) {
-	for {
-		select {
-		case <-done:
-			return
-		case <-ticker.C:
-			atomic.StoreUint64(m.registrationsRemaining, 0)
-		}
-	}
 }
