@@ -65,13 +65,11 @@ func TestMain(m *testing.M) {
 	}
 
 	testParams = Params{
-		Address:                   permAddr,
-		CertPath:                  testkeys.GetCACertPath(),
-		KeyPath:                   testkeys.GetCAKeyPath(),
-		NdfOutputPath:             testkeys.GetNDFPath(),
-		publicAddress:             permAddr,
-		maxRegistrationAttempts:   5,
-		registrationCountDuration: time.Hour,
+		Address:       permAddr,
+		CertPath:      testkeys.GetCACertPath(),
+		KeyPath:       testkeys.GetCAKeyPath(),
+		NdfOutputPath: testkeys.GetNDFPath(),
+		publicAddress: permAddr,
 	}
 	nodeComm = node.StartNode("tmp", nodeAddr, node.NewImplementation(), nodeCert, nodeKey)
 
@@ -100,10 +98,8 @@ func initPermissioningServerKeys() (*rsa.PrivateKey, *x509.Certificate) {
 func TestEmptyDataBase(t *testing.T) {
 	//Start the registration server
 	testParams := Params{
-		CertPath:                  testkeys.GetCACertPath(),
-		KeyPath:                   testkeys.GetCAKeyPath(),
-		maxRegistrationAttempts:   5,
-		registrationCountDuration: time.Hour,
+		CertPath: testkeys.GetCACertPath(),
+		KeyPath:  testkeys.GetCAKeyPath(),
 	}
 	impl := StartRegistration(testParams)
 	//Set the permissioning keys for testing
@@ -126,6 +122,7 @@ func TestEmptyDataBase(t *testing.T) {
 
 //Happy path: looking for a code that is in the database
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
+
 	impl := StartRegistration(testParams)
 	impl.nodeCompleted = make(chan struct{}, 1)
 	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
@@ -467,66 +464,4 @@ func TestValidateClientVersion_Failure(t *testing.T) {
 	if err == nil {
 		t.Error("Expected error for version string with non-numeric minor version")
 	}
-}
-
-// Happy Path: Inserts users until the max is reached, waits until the timer has
-// cleared the number of allowed registrations and inserts another user.
-func TestRegCodeExists_RegUser_Timer(t *testing.T) {
-
-	testParams2 := Params{
-		Address:                   "0.0.0.0:5905",
-		CertPath:                  testkeys.GetCACertPath(),
-		KeyPath:                   testkeys.GetCAKeyPath(),
-		NdfOutputPath:             testkeys.GetNDFPath(),
-		publicAddress:             "0.0.0.0:5905",
-		maxRegistrationAttempts:   4,
-		registrationCountDuration: 30 * time.Second,
-	}
-
-	// Initialize an implementation and the permissioning server
-	impl := StartRegistration(testParams2)
-
-	jww.SetStdoutThreshold(jww.LevelInfo)
-
-	// Initialize the database
-	database.PermissioningDb = database.NewDatabase(
-		"test", "password", "regCodes", "0.0.0.0:6548")
-
-	// Attempt to register a user
-	_, err := impl.RegisterUser("b", "B")
-	if err != nil {
-		t.Errorf("Failed to register a node when it should have worked: %+v", err)
-	}
-
-	// Attempt to register a user
-	_, err = impl.RegisterUser("c", "C")
-	if err != nil {
-		t.Errorf("Failed to register a node when it should have worked: %+v", err)
-	}
-
-	// Attempt to register a user
-	_, err = impl.RegisterUser("d", "D")
-	if err != nil {
-		t.Errorf("Failed to register a node when it should have worked: %+v", err)
-	}
-
-	// Attempt to register a user
-	_, err = impl.RegisterUser("e", "E")
-	if err != nil {
-		t.Errorf("Failed to register a node when it should have worked: %+v", err)
-	}
-
-	// Attempt to register a user
-	_, err = impl.RegisterUser("f", "F")
-	if err == nil {
-		t.Errorf("Did not fail to register a node when it should not have worked: %+v", err)
-	}
-
-	time.Sleep(30 * time.Second)
-	// Attempt to register a user
-	_, err = impl.RegisterUser("g", "G")
-	if err != nil {
-		t.Errorf("Failed to register a node when it should have worked: %+v", err)
-	}
-
 }
