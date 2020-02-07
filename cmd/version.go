@@ -9,13 +9,14 @@ package cmd
 import (
 	"fmt"
 	"github.com/spf13/cobra"
+	"gitlab.com/elixxir/primitives/utils"
 )
 
 //go:generate go run gen.go
 // The above generates: GITVERSION, DEPENDENCIES, and SEMVER
 
 func main() {
-	GenerateVersionFile()
+	utils.GenerateVersionFile()
 }
 
 func printVersion() {
