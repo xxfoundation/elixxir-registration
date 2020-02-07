@@ -36,14 +36,14 @@ func GenerateGitVersion() string {
 	return "UNKNOWNVERSION"
 }
 
-func ReadGlideLock() string {
-	r, _ := ioutil.ReadFile("../glide.lock")
+func ReadGoMod() string {
+	r, _ := ioutil.ReadFile("../go.mod")
 	return string(r)
 }
 
 func main() {
 	gitversion := GenerateGitVersion()
-	glidedependencies := ReadGlideLock()
+	goMod := ReadGoMod()
 
 	f, err := os.Create("version_vars.go")
 	die(err)
@@ -52,11 +52,11 @@ func main() {
 	packageTemplate.Execute(f, struct {
 		Timestamp time.Time
 		GITVER    string
-		GLIDEDEPS string
+		GOMOD     string
 	}{
 		Timestamp: time.Now(),
 		GITVER:    gitversion,
-		GLIDEDEPS: glidedependencies,
+		GOMOD:     goMod,
 	})
 }
 
@@ -73,4 +73,4 @@ var packageTemplate = template.Must(template.New("").Parse(
 		"package cmd\n\n" +
 		"const GITVERSION = `{{ .GITVER }}`\n" +
 		"const SEMVER = \"1.0.0\"\n" +
-		"const GLIDEDEPS = `{{ .GLIDEDEPS }}`\n"))
+		"const GOMOD = `{{ .GOMOD }}`\n"))

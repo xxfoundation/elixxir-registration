@@ -15,5 +15,5 @@ import (
 
 func printVersion() {
 	fmt.Printf("Elixxir Registration Server v%s -- %s\n\n", SEMVER, GITVERSION)
-	fmt.Printf("Dependencies:\n\n%s\n", GLIDEDEPS)
+	fmt.Printf("Dependencies:\n\n%s\n", GOMOD)
 }
