@@ -14,6 +14,10 @@ import (
 //go:generate go run gen.go
 // The above generates: GITVERSION, DEPENDENCIES, and SEMVER
 
+func main() {
+	GenerateVersionFile()
+}
+
 func printVersion() {
 	fmt.Printf("Elixxir Registration Server v%s -- %s\n\n", SEMVER, GITVERSION)
 	fmt.Printf("Dependencies:\n\n%s\n", DEPENDENCIES)
