@@ -43,20 +43,20 @@ func ReadGoMod() string {
 
 func main() {
 	gitversion := GenerateGitVersion()
-	goMod := ReadGoMod()
+	deps := ReadGoMod()
 
 	f, err := os.Create("version_vars.go")
 	die(err)
 	defer f.Close()
 
 	packageTemplate.Execute(f, struct {
-		Timestamp time.Time
-		GITVER    string
-		GOMOD     string
+		Timestamp    time.Time
+		GITVER       string
+		DEPENDENCIES string
 	}{
-		Timestamp: time.Now(),
-		GITVER:    gitversion,
-		GOMOD:     goMod,
+		Timestamp:    time.Now(),
+		GITVER:       gitversion,
+		DEPENDENCIES: deps,
 	})
 }
 
@@ -73,4 +73,4 @@ var packageTemplate = template.Must(template.New("").Parse(
 		"package cmd\n\n" +
 		"const GITVERSION = `{{ .GITVER }}`\n" +
 		"const SEMVER = \"1.0.0\"\n" +
-		"const GOMOD = `{{ .GOMOD }}`\n"))
+		"const DEPENDENCIES = `{{ .DEPENDENCIES }}`\n"))
