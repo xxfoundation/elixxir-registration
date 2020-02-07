@@ -80,6 +80,16 @@ var rootCmd = &cobra.Command{
 
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
 
+		maxRegistrationAttempts := viper.GetUint64("maxRegistrationAttempts")
+		if maxRegistrationAttempts == 0 {
+			maxRegistrationAttempts = defaultMaxRegistrationAttempts
+		}
+
+		registrationCountDuration := viper.GetDuration("registrationCountDuration")
+		if registrationCountDuration == 0 {
+			registrationCountDuration = defaultRegistrationCountDuration
+		}
+
 		// Set up database connection
 		database.PermissioningDb = database.NewDatabase(
 			viper.GetString("dbUsername"),
@@ -102,13 +112,15 @@ var rootCmd = &cobra.Command{
 		udbParams.ID = tmpSlice
 		// Populate params
 		RegParams = Params{
-			Address:       localAddress,
-			CertPath:      certPath,
-			KeyPath:       keyPath,
-			NdfOutputPath: ndfOutputPath,
-			cmix:          cmix,
-			e2e:           e2e,
-			publicAddress: publicAddress,
+			Address:                   localAddress,
+			CertPath:                  certPath,
+			KeyPath:                   keyPath,
+			NdfOutputPath:             ndfOutputPath,
+			cmix:                      cmix,
+			e2e:                       e2e,
+			publicAddress:             publicAddress,
+			maxRegistrationAttempts:   maxRegistrationAttempts,
+			registrationCountDuration: registrationCountDuration,
 		}
 		jww.INFO.Println("Starting Permissioning")
 		jww.INFO.Println("Starting User Registration")
