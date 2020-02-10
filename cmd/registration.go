@@ -205,7 +205,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 
 	// Lock the reading of regNdfHash and check if it's been writen to
 	m.ndfLock.RLock()
-
+	defer m.ndfLock.RUnlock()
 	ndfHashLen := len(m.regNdfHash)
 	//Check that the registration server has built an NDF
 	if ndfHashLen == 0 {
@@ -219,12 +219,6 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 	if bytes.Compare(m.regNdfHash, theirNdfHash) == 0 {
 		return nil, nil
 	}
-
-	// Once we are ready to give an ndf, make a local copy to return
-	ourLocalNdf := m.backEndNdf
-
-	// Unlock the the mutex
-	m.ndfLock.RUnlock()
 
 	// Handle client request
 	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
@@ -241,7 +235,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 
 	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
 	//Send the json of the ndf
-	return ourLocalNdf, nil
+	return m.backEndNdf, nil
 }
 
 // This has to be part of RegistrationImpl and has to return an error because
