@@ -234,7 +234,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 
 	}
 
-	jww.DEBUG.Printf("Returning a new NDF to client!")
+	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
 	//Send the json of the ndf
 	return m.ndfJson, nil
 }
