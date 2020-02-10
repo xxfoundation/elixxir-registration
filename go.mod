@@ -6,7 +6,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.7
 	github.com/go-pg/pg v8.0.6+incompatible
 	github.com/google/go-cmp v0.4.0 // indirect
-	github.com/gopherjs/gopherjs v0.0.0-20191106031601-ce3c9ade29de // indirect
+	github.com/gopherjs/gopherjs v0.0.0-20200209183636-89e6cbcd0b6d // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.12.0 // indirect
@@ -24,9 +24,9 @@ require (
 	gitlab.com/elixxir/comms v0.0.0-20200206201144-aa6e356b3770
 	gitlab.com/elixxir/crypto v0.0.0-20200206203107-b8926242da23
 	gitlab.com/elixxir/primitives v0.0.0-20200207223255-85ef830ab188
-	golang.org/x/crypto v0.0.0-20200207205829-a95e85b341fd // indirect
+	golang.org/x/crypto v0.0.0-20200208060501-ecb85df21340 // indirect
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
-	google.golang.org/genproto v0.0.0-20200207204624-4f3edf09f4f6 // indirect
+	google.golang.org/genproto v0.0.0-20200210034751-acff78025515 // indirect
 	google.golang.org/grpc v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.52.0 // indirect
 	mellium.im/sasl v0.0.0-20190815210834-e27ea4901008 // indirect

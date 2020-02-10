@@ -77,7 +77,9 @@ var rootCmd = &cobra.Command{
 		ndfOutputPath := viper.GetString("ndfOutputPath")
 		setClientVersion(viper.GetString("clientVersion"))
 		ipAddr := viper.GetString("publicAddress")
-
+		//Get Notification Server address and cert Path
+		nsCertPath := viper.GetString("nsCertPath")
+		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
 
 		// Set up database connection
@@ -109,6 +111,8 @@ var rootCmd = &cobra.Command{
 			cmix:          cmix,
 			e2e:           e2e,
 			publicAddress: publicAddress,
+			NsAddress:     nsAddress,
+			NsCertPath:    nsCertPath,
 		}
 		jww.INFO.Println("Starting Permissioning")
 		jww.INFO.Println("Starting User Registration")
