@@ -201,34 +201,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 
 //PollNdf handles the client polling for an updated NDF
 func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
-	// Handle client request
-	if !auth.IsAuthenticated {
-		// Lock the reading of regNdfHash and check if it's been writen to
-		m.ndfLock.RLock()
-		ndfHashLen := len(m.regNdfHash)
-		m.ndfLock.RUnlock()
-		//Check that the registration server has built an NDF
-		if ndfHashLen == 0 {
-			errMsg := errors.Errorf(ndf.NO_NDF)
-			jww.WARN.Printf(errMsg.Error())
-			return nil, errMsg
-		}
 
-		//If both the sender's ndf hash and the permissioning NDF hash match
-		//  no need to pass anything through the comm
-		if bytes.Compare(m.regNdfHash, theirNdfHash) == 0 {
-			return nil, nil
-		}
-		strippedJson, err := ndf.StripNdf(m.ndfJson)
-		if err != nil {
-			return nil, err
-		}
-		jww.DEBUG.Printf("Returning a new NDF to client!")
-		//Send the json of the ndf
-		return strippedJson, nil
-	}
-
-	//Handle a request not from client
 	// Lock the reading of regNdfHash and check if it's been writen to
 	m.ndfLock.RLock()
 	ndfHashLen := len(m.regNdfHash)
@@ -244,6 +217,21 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 	//  no need to pass anything through the comm
 	if bytes.Compare(m.regNdfHash, theirNdfHash) == 0 {
 		return nil, nil
+	}
+
+	// Handle client request
+	if !auth.IsAuthenticated {
+		// A client doesn't need the full ndf in order to function.
+		// Therefore the ndf gets stripped down to provide only need-to-know information
+		strippedJson, err := ndf.StripNdf(m.ndfJson)
+		if err != nil {
+			return nil, err
+		}
+		jww.DEBUG.Printf("Returning a new NDF to client!")
+
+		//Send the json of the client
+		return strippedJson, nil
+
 	}
 
 	jww.DEBUG.Printf("Returning a new NDF to client!")
