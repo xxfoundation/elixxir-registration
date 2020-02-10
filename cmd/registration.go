@@ -204,7 +204,6 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 
 	// Lock the reading of regNdfHash and check if it's been writen to
 	m.ndfLock.RLock()
-	defer m.ndfLock.RUnlock()
 
 	ndfHashLen := len(m.regNdfHash)
 	//Check that the registration server has built an NDF
@@ -220,13 +219,19 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 		return nil, nil
 	}
 
+	// Once we are ready to give an ndf, make a local copy to return
+	ourLocalNdf := m.ndfJson
+
+	// Unlock the the mutex
+	m.ndfLock.RUnlock()
+
 	// Handle client request
 	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
 		// A client doesn't need the full ndf in order to function.
 		// Therefore the ndf gets stripped down to provide only need-to-know information.
 		// This prevents the clients from  getting the node's ip address and the credentials
 		// so it is is difficult to DDOS the cMix nodes
-		strippedJson, err := ndf.StripNdf(m.ndfJson)
+		strippedJson, err := ndf.StripNdf(ourLocalNdf)
 		if err != nil {
 			return nil, err
 		}
@@ -239,7 +244,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 
 	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
 	//Send the json of the ndf
-	return m.ndfJson, nil
+	return ourLocalNdf, nil
 }
 
 // This has to be part of RegistrationImpl and has to return an error because
