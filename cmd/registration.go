@@ -38,7 +38,8 @@ type RegistrationImpl struct {
 	regNdfHash            []byte
 	ndfLock               sync.RWMutex
 	certFromFile          string
-	ndfJson               []byte
+	backEndNdf            []byte
+	clientNdf             []byte
 }
 
 type Params struct {
@@ -220,7 +221,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 	}
 
 	// Once we are ready to give an ndf, make a local copy to return
-	ourLocalNdf := m.ndfJson
+	ourLocalNdf := m.backEndNdf
 
 	// Unlock the the mutex
 	m.ndfLock.RUnlock()
@@ -231,14 +232,10 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 		// Therefore the ndf gets stripped down to provide only need-to-know information.
 		// This prevents the clients from  getting the node's ip address and the credentials
 		// so it is is difficult to DDOS the cMix nodes
-		strippedJson, err := ndf.StripNdf(ourLocalNdf)
-		if err != nil {
-			return nil, err
-		}
 		jww.DEBUG.Printf("Returning a new NDF to client!")
 
 		//Send the json of the client
-		return strippedJson, nil
+		return m.clientNdf, nil
 
 	}
 
