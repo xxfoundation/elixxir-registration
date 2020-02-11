@@ -149,10 +149,10 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	hash.Write(ndfBytes)
 	impl.regNdfHash = hash.Sum(nil)
 
-	// Strip down the ndf in preparation for clients requesting the ndf
-	// This way we do not need to repeatedly strip the ndf every time a
-	// client makes a request for an ndf.
-	// Nor have to return an error if StripNdf fails
+	// A client doesn't need the full ndf in order to function.
+	// Therefore the ndf gets stripped down to provide only need-to-know information.
+	// This prevents the clients from  getting the node's ip address and the credentials
+	// so it is is difficult to DDOS the cMix nodes
 	strippedNdf, err := ndf.StripNdf(impl.backEndNdf)
 	if err != nil {
 		errMsg := errors.Errorf("Failed to strip down ndf: %+v", err)

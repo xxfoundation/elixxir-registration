@@ -222,10 +222,6 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 
 	// Handle client request
 	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
-		// A client doesn't need the full ndf in order to function.
-		// Therefore the ndf gets stripped down to provide only need-to-know information.
-		// This prevents the clients from  getting the node's ip address and the credentials
-		// so it is is difficult to DDOS the cMix nodes
 		jww.DEBUG.Printf("Returning a new NDF to client!")
 
 		//Send the json of the client
