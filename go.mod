@@ -24,8 +24,8 @@ require (
 	gitlab.com/elixxir/comms v0.0.0-20200210222003-b4b1712bc2f4
 	gitlab.com/elixxir/crypto v0.0.0-20200206203107-b8926242da23
 	gitlab.com/elixxir/primitives v0.0.0-20200210205543-5c55c1f6949f
-	golang.org/x/crypto v0.0.0-20200210191831-6ca56c2f2e2b // indirect
-	google.golang.org/genproto v0.0.0-20200210034751-acff78025515 // indirect
+	golang.org/x/crypto v0.0.0-20200210222208-86ce3cb69678 // indirect
+	google.golang.org/genproto v0.0.0-20200211111953-2dc5924e3898 // indirect
 	gopkg.in/ini.v1 v1.52.0 // indirect
 	mellium.im/sasl v0.0.0-20190815210834-e27ea4901008 // indirect
 )
