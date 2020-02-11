@@ -25,7 +25,6 @@ import (
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
 	"sync"
-	"time"
 )
 
 type RegistrationImpl struct {
@@ -39,7 +38,8 @@ type RegistrationImpl struct {
 	regNdfHash            []byte
 	ndfLock               sync.RWMutex
 	certFromFile          string
-	ndfJson               []byte
+	backEndNdf            []byte
+	clientNdf             []byte
 }
 
 type Params struct {
@@ -202,28 +202,14 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 
 //PollNdf handles the client polling for an updated NDF
 func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
-	//If permissioning is enabled, check the permissioning's hash against the client's ndf
-	if !disablePermissioning {
-		if auth.IsAuthenticated {
-			return m.nodeNdfRequest()
-		}
-		return m.clientNdfRequest(theirNdfHash)
-	}
-	jww.DEBUG.Printf("Permissioning disabled, telling requester that their ndf is up-to-date")
-	//If permissioning is disabled, inform the client that it has the correct ndf
-	return nil, nil
 
-}
-
-//clientNdfRequest handles when a client requests an ndf from permissioning
-func (m *RegistrationImpl) clientNdfRequest(theirNdfHash []byte) ([]byte, error) {
 	// Lock the reading of regNdfHash and check if it's been writen to
 	m.ndfLock.RLock()
+	defer m.ndfLock.RUnlock()
 	ndfHashLen := len(m.regNdfHash)
-	m.ndfLock.RUnlock()
 	//Check that the registration server has built an NDF
 	if ndfHashLen == 0 {
-		errMsg := errors.Errorf("Permissioning server does not have an ndf to give to client")
+		errMsg := errors.Errorf(ndf.NO_NDF)
 		jww.WARN.Printf(errMsg.Error())
 		return nil, errMsg
 	}
@@ -234,32 +220,18 @@ func (m *RegistrationImpl) clientNdfRequest(theirNdfHash []byte) ([]byte, error)
 		return nil, nil
 	}
 
-	jww.DEBUG.Printf("Returning a new NDF to client!")
+	// Handle client request
+	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
+		jww.DEBUG.Printf("Returning a new NDF to client!")
+
+		//Send the json of the client
+		return m.clientNdf, nil
+
+	}
+
+	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
 	//Send the json of the ndf
-	return m.ndfJson, nil
-}
-
-//serverNdfRequest handles when a node requests an ndf from permissioning
-func (m *RegistrationImpl) nodeNdfRequest() ([]byte, error) {
-	// Lock the reading of regNdfHash and check if it's been writen to
-	m.ndfLock.RLock()
-	ndfHash := m.regNdfHash
-	m.ndfLock.RUnlock()
-	// If it's not empty, node registration is complete
-	// and the ndf is ready to hand to the polling node
-	if bytes.Compare(ndfHash, make([]byte, 0)) != 0 {
-		return m.ndfJson, nil
-	}
-	//Otherwise wait for either a registration complete signal or
-	// a timeout signal
-	timeOut := time.NewTimer(5 * time.Second)
-	select {
-	case <-m.registrationCompleted:
-		return m.ndfJson, nil
-	case <-timeOut.C:
-		return nil, nil
-
-	}
+	return m.backEndNdf, nil
 }
 
 // This has to be part of RegistrationImpl and has to return an error because
