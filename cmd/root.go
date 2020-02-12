@@ -29,7 +29,6 @@ import (
 var (
 	cfgFile              string
 	verbose              bool
-	showVer              bool
 	noTLS                bool
 	RegistrationCodes    []string
 	RegParams            Params
@@ -47,11 +46,6 @@ var rootCmd = &cobra.Command{
 	Long:  `This server provides registration functions on cMix`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		if showVer {
-			printVersion()
-			return
-		}
-
 		if verbose {
 			err := os.Setenv("GRPC_GO_LOG_SEVERITY_LEVEL", "info")
 			if err != nil {
@@ -80,6 +74,16 @@ var rootCmd = &cobra.Command{
 
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
 
+		maxRegistrationAttempts := viper.GetUint64("maxRegistrationAttempts")
+		if maxRegistrationAttempts == 0 {
+			maxRegistrationAttempts = defaultMaxRegistrationAttempts
+		}
+
+		registrationCountDuration := viper.GetDuration("registrationCountDuration")
+		if registrationCountDuration == 0 {
+			registrationCountDuration = defaultRegistrationCountDuration
+		}
+
 		// Set up database connection
 		database.PermissioningDb = database.NewDatabase(
 			viper.GetString("dbUsername"),
@@ -102,13 +106,15 @@ var rootCmd = &cobra.Command{
 		udbParams.ID = tmpSlice
 		// Populate params
 		RegParams = Params{
-			Address:       localAddress,
-			CertPath:      certPath,
-			KeyPath:       keyPath,
-			NdfOutputPath: ndfOutputPath,
-			cmix:          cmix,
-			e2e:           e2e,
-			publicAddress: publicAddress,
+			Address:                   localAddress,
+			CertPath:                  certPath,
+			KeyPath:                   keyPath,
+			NdfOutputPath:             ndfOutputPath,
+			cmix:                      cmix,
+			e2e:                       e2e,
+			publicAddress:             publicAddress,
+			maxRegistrationAttempts:   maxRegistrationAttempts,
+			registrationCountDuration: registrationCountDuration,
 		}
 		jww.INFO.Println("Starting Permissioning")
 		jww.INFO.Println("Starting User Registration")
@@ -148,8 +154,6 @@ func init() {
 	// will be global for your application.
 	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false,
 		"Show verbose logs for debugging")
-	rootCmd.Flags().BoolVarP(&showVer, "version", "V", false,
-		"Show version information")
 
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c",
 		"", "Sets a custom config file path")
