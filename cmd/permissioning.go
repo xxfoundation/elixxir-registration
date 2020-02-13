@@ -120,7 +120,11 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	registration := ndf.Registration{Address: RegParams.publicAddress, TlsCertificate: impl.certFromFile}
 
 	// Assemble notification server information
-	notificationServer := ndf.Notification{Address: RegParams.publicAddress, TlsCertificate: impl.certFromFile}
+	nsCert, err := utils.ReadFile(RegParams.NsCertPath)
+	if err != nil {
+		jww.FATAL.Printf("unable to read notification certificate")
+	}
+	notificationServer := ndf.Notification{Address: RegParams.NsAddress, TlsCertificate: string(nsCert)}
 
 	// Construct an NDF
 	networkDef := &ndf.NetworkDefinition{
