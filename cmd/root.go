@@ -61,8 +61,14 @@ var rootCmd = &cobra.Command{
 		cmixMap := viper.GetStringMapString("groups.cmix")
 		e2eMap := viper.GetStringMapString("groups.e2e")
 
-		cmix := toGroup(cmixMap)
-		e2e := toGroup(e2eMap)
+		cmix, err := toGroup(cmixMap)
+		if err != nil {
+			jww.FATAL.Panicf("Failed to create cMix group: %+v", err)
+		}
+		e2e, err := toGroup(e2eMap)
+		if err != nil {
+			jww.FATAL.Panicf("Failed to create E2E group: %+v", err)
+		}
 
 		// Parse config file options
 		certPath := viper.GetString("certPath")
@@ -112,8 +118,8 @@ var rootCmd = &cobra.Command{
 			CertPath:                  certPath,
 			KeyPath:                   keyPath,
 			NdfOutputPath:             ndfOutputPath,
-			cmix:                      cmix,
-			e2e:                       e2e,
+			cmix:                      *cmix,
+			e2e:                       *e2e,
 			publicAddress:             publicAddress,
 			NsAddress:                 nsAddress,
 			NsCertPath:                nsCertPath,

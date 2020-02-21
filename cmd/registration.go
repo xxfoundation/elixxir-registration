@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2018 Privategrity Corporation                                   /
+// Copyright © 2020 Privategrity Corporation                                   /
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
@@ -9,22 +9,13 @@
 package cmd
 
 import (
-	"bytes"
 	"crypto"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/x509"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/connect"
-	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/crypto/tls"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
-	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/database"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -34,149 +25,6 @@ const (
 	defaultRegistrationCountDuration = time.Hour * 24
 )
 
-type RegistrationImpl struct {
-	Comms                   *registration.Comms
-	permissioningCert       *x509.Certificate
-	permissioningKey        *rsa.PrivateKey
-	ndfOutputPath           string
-	nodeCompleted           chan struct{}
-	registrationCompleted   chan struct{}
-	NumNodesInNet           int
-	regNdfHash              []byte
-	ndfLock                 sync.RWMutex
-	certFromFile            string
-	backEndNdf              []byte
-	clientNdf               []byte
-	registrationsRemaining  *uint64
-	maxRegistrationAttempts uint64
-}
-
-type Params struct {
-	Address                   string
-	CertPath                  string
-	KeyPath                   string
-	NdfOutputPath             string
-	NsCertPath                string
-	NsAddress                 string
-	NumNodesInNet             int
-	cmix                      ndf.Group
-	e2e                       ndf.Group
-	publicAddress             string
-	maxRegistrationAttempts   uint64
-	registrationCountDuration time.Duration
-}
-
-// toGroup takes a group represented by a map of string to string
-// and uses the prime, small prime and generator to  created
-// and returns a an ndf group object.
-func toGroup(grp map[string]string) ndf.Group {
-	jww.DEBUG.Printf("group is: %v", grp)
-	pStr, pOk := grp["prime"]
-	gStr, gOk := grp["generator"]
-
-	if !gOk || !pOk {
-		jww.FATAL.Panicf("Invalid Group Config "+
-			"(prime: %v, generator: %v",
-			pOk, gOk)
-	}
-
-	return ndf.Group{Prime: pStr, Generator: gStr}
-
-}
-
-// Configure and start the Permissioning Server
-func StartRegistration(params Params) *RegistrationImpl {
-	jww.INFO.Printf("Starting registration...")
-	regImpl := &RegistrationImpl{}
-	var cert, key []byte
-	var err error
-	regImpl.regNdfHash = make([]byte, 0)
-
-	// Setup registration limiting variables
-	regImpl.maxRegistrationAttempts = params.maxRegistrationAttempts
-	maxRegistrationAttempts := uint64(0)
-	regImpl.registrationsRemaining = &maxRegistrationAttempts
-
-	// Create timer and channel to be used by routine that clears the number of
-	// registrations every time the ticker activates
-	done := make(chan bool)
-	go func() {
-		ticker := time.NewTicker(params.registrationCountDuration)
-		regImpl.registrationCapacityRestRunner(ticker, done)
-	}()
-
-	// Read in private key
-	key, err = utils.ReadFile(params.KeyPath)
-	if err != nil {
-		jww.ERROR.Printf("failed to read key at %+v: %+v", params.KeyPath, err)
-	}
-	regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
-	if err != nil {
-		jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
-			"PermissioningKey is %+v",
-			err, regImpl.permissioningKey)
-	}
-
-	if !noTLS {
-		// Read in TLS keys from files
-		cert, err = utils.ReadFile(params.CertPath)
-		if err != nil {
-			jww.ERROR.Printf("failed to read certificate at %+v: %+v", params.CertPath, err)
-		}
-		// Set globals for permissioning server
-		regImpl.certFromFile = string(cert)
-		regImpl.permissioningCert, err = tls.LoadCertificate(string(cert))
-		if err != nil {
-			jww.ERROR.Printf("Failed to parse permissioning server cert: %+v. "+
-				"Permissioning cert is %+v",
-				err, regImpl.permissioningCert)
-		}
-
-	}
-
-	regImpl.NumNodesInNet = len(RegistrationCodes)
-	regImpl.ndfOutputPath = params.NdfOutputPath
-
-	regHandler := NewImplementation(regImpl)
-	// Start the communication server
-	regImpl.Comms = registration.StartRegistrationServer(id.PERMISSIONING,
-		params.Address,
-		regHandler, cert, key)
-
-	//In the noTLS pathway, disable authentication
-	if noTLS {
-		regImpl.Comms.DisableAuth()
-	}
-
-	regImpl.nodeCompleted = make(chan struct{}, regImpl.NumNodesInNet)
-	regImpl.registrationCompleted = make(chan struct{}, 1)
-	return regImpl
-}
-
-// NewImplementation returns a registertation server Handler
-func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
-	impl := registration.NewImplementation()
-	impl.Functions.RegisterUser = func(registrationCode, pubKey string) (
-		signature []byte, err error) {
-		return instance.RegisterUser(registrationCode, pubKey)
-	}
-	impl.Functions.GetCurrentClientVersion = func() (version string,
-		err error) {
-		return instance.GetCurrentClientVersion()
-	}
-	impl.Functions.RegisterNode = func(ID []byte, ServerAddr, ServerTlsCert,
-		GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
-		return instance.RegisterNode(ID, ServerAddr,
-			ServerTlsCert, GatewayAddr, GatewayTlsCert,
-			RegistrationCode)
-	}
-	impl.Functions.PollNdf = func(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
-		return instance.PollNdf(theirNdfHash, auth)
-	}
-
-	return impl
-}
-
 // Handle registration attempt by a Client
 func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	signature []byte, err error) {
@@ -185,7 +33,6 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	if user, err := database.PermissioningDb.GetUser(pubKey); err == nil && user != nil {
 		jww.INFO.Printf("Previous registration found for %s", pubKey)
 	} else {
-
 		// Check database to verify given registration code
 		jww.INFO.Printf("Attempting to use registration code %+v...",
 			registrationCode)
@@ -194,12 +41,8 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 			// Check if the max registration attempts have been reached
 			if atomic.LoadUint64(m.registrationsRemaining) >= m.maxRegistrationAttempts {
 				// Invalid registration code, return an error
-				jww.INFO.Printf("Incremented registration counter to %+v (max %v)",
-					atomic.LoadUint64(m.registrationsRemaining), m.maxRegistrationAttempts)
-				errMsg := errors.Errorf(
+				return make([]byte, 0), errors.Errorf(
 					"Error validating registration code: %+v", err)
-				jww.ERROR.Printf("%+v", errMsg)
-				return make([]byte, 0), errMsg
 			} else {
 				atomic.AddUint64(m.registrationsRemaining, 1)
 				jww.INFO.Printf("Incremented registration counter to %+v (max %v)",
@@ -222,49 +65,13 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	data := h.Sum(nil)
 	sig, err := rsa.Sign(rand.Reader, m.permissioningKey, crypto.SHA256, data, nil)
 	if err != nil {
-		errMsg := errors.Errorf(
+		return make([]byte, 0), errors.Errorf(
 			"Unable to sign client public key: %+v", err)
-		jww.ERROR.Printf("%+v", errMsg)
-		return make([]byte, 0), err
 	}
 
 	// Return signed public key to Client
 	jww.INFO.Printf("Registration for code %+v complete!", registrationCode)
 	return sig, nil
-}
-
-//PollNdf handles the client polling for an updated NDF
-func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
-
-	// Lock the reading of regNdfHash and check if it's been writen to
-	m.ndfLock.RLock()
-	defer m.ndfLock.RUnlock()
-	ndfHashLen := len(m.regNdfHash)
-	//Check that the registration server has built an NDF
-	if ndfHashLen == 0 {
-		errMsg := errors.Errorf(ndf.NO_NDF)
-		jww.WARN.Printf(errMsg.Error())
-		return nil, errMsg
-	}
-
-	//If both the sender's ndf hash and the permissioning NDF hash match
-	//  no need to pass anything through the comm
-	if bytes.Compare(m.regNdfHash, theirNdfHash) == 0 {
-		return nil, nil
-	}
-
-	// Handle client request
-	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
-		jww.DEBUG.Printf("Returning a new NDF to client!")
-
-		//Send the json of the client
-		return m.clientNdf, nil
-
-	}
-
-	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
-	//Send the json of the ndf
-	return m.backEndNdf, nil
 }
 
 // This has to be part of RegistrationImpl and has to return an error because

@@ -32,16 +32,12 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	// Check that the node hasn't already been registered
 	nodeInfo, err := database.PermissioningDb.GetNode(RegistrationCode)
 	if err != nil {
-		errMsg := errors.Errorf(
+		return errors.Errorf(
 			"Registration code %+v is invalid or not currently enabled: %+v", RegistrationCode, err)
-		jww.ERROR.Printf("%+v", errMsg)
-		return errMsg
 	}
 	if nodeInfo.Id != nil {
-		errMsg := errors.Errorf(
+		return errors.Errorf(
 			"Node with registration code %+v has already been registered", RegistrationCode)
-		jww.ERROR.Printf("%+v", errMsg)
-		return errMsg
 	}
 
 	// Load the node and gateway certs
@@ -53,32 +49,24 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	}
 	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCert)
 	if err != nil {
-		errMsg := errors.Errorf("Failed to load gateway certificate: %v", err)
-		jww.ERROR.Printf("%v", errMsg)
-		return errMsg
+		return errors.Errorf("Failed to load gateway certificate: %v", err)
 	}
 
 	// Sign the node and gateway certs
 	signedNodeCert, err := certAuthority.Sign(nodeCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
 	if err != nil {
-		errMsg := errors.Errorf("failed to sign node certificate: %v", err)
-		jww.ERROR.Printf("%v", errMsg)
-		return errMsg
+		return errors.Errorf("failed to sign node certificate: %v", err)
 	}
 	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
 	if err != nil {
-		errMsg := errors.Errorf("Failed to sign gateway certificate: %v", err)
-		jww.ERROR.Printf("%v", errMsg)
-		return errMsg
+		return errors.Errorf("Failed to sign gateway certificate: %v", err)
 	}
 
 	// Attempt to insert Node into the database
 	err = database.PermissioningDb.InsertNode(ID, RegistrationCode,
 		signedNodeCert, ServerAddr, GatewayAddr, signedGatewayCert)
 	if err != nil {
-		errMsg := errors.Errorf("unable to insert node: %+v", err)
-		jww.ERROR.Printf("%+v", errMsg)
-		return errMsg
+		return errors.Errorf("unable to insert node: %+v", err)
 	}
 	jww.DEBUG.Printf("Inserted node %s into the database with code %s",
 		idString, RegistrationCode)
@@ -86,16 +74,12 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	// Obtain the number of registered nodes
 	_, err = database.PermissioningDb.CountRegisteredNodes()
 	if err != nil {
-		errMsg := errors.Errorf("Unable to count registered Nodes: %+v", err)
-		jww.ERROR.Printf("%+v", errMsg)
-		return errMsg
+		return errors.Errorf("Unable to count registered Nodes: %+v", err)
 	}
 
 	_, err = m.Comms.AddHost(idString, ServerAddr, []byte(ServerTlsCert), false, true)
 	if err != nil {
-		errMsg := errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
-		jww.ERROR.Print(errMsg)
-		return errMsg
+		return errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
 	}
 
 	jww.DEBUG.Printf("Total number of expected nodes for registration completion: %v", m.NumNodesInNet)
