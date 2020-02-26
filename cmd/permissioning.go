@@ -10,7 +10,6 @@ package cmd
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
@@ -209,7 +208,7 @@ func assembleNdf(codes []string) ([]ndf.Gateway, []ndf.Node, error) {
 // marshaling fails or if the JSON file cannot be created.
 func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) ([]byte, error) {
 	// Generate JSON from structure
-	data, err := json.Marshal(ndfData)
+	data, err := ndfData.Marshal()
 	if err != nil {
 		return nil, err
 	}
