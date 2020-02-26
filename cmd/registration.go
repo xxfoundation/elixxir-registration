@@ -42,11 +42,12 @@ type RegistrationImpl struct {
 	nodeCompleted           chan struct{}
 	registrationCompleted   chan struct{}
 	NumNodesInNet           int
-	regNdfHash              []byte
+	fullNdfHash             []byte
+	partialNdfHash          []byte
+	fullNdf                 []byte
+	partialNdf              []byte
 	ndfLock                 sync.RWMutex
 	certFromFile            string
-	backEndNdf              []byte
-	clientNdf               []byte
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
 }
@@ -90,7 +91,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 	regImpl := &RegistrationImpl{}
 	var cert, key []byte
 	var err error
-	regImpl.regNdfHash = make([]byte, 0)
+	regImpl.fullNdfHash = make([]byte, 0)
 
 	// Setup registration limiting variables
 	regImpl.maxRegistrationAttempts = params.maxRegistrationAttempts
@@ -236,10 +237,10 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 //PollNdf handles the client polling for an updated NDF
 func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
 
-	// Lock the reading of regNdfHash and check if it's been writen to
+	// Lock the reading of fullNdfHash and check if it's been writen to
 	m.ndfLock.RLock()
 	defer m.ndfLock.RUnlock()
-	ndfHashLen := len(m.regNdfHash)
+	ndfHashLen := len(m.fullNdfHash)
 	//Check that the registration server has built an NDF
 	if ndfHashLen == 0 {
 		errMsg := errors.Errorf(ndf.NO_NDF)
@@ -247,24 +248,26 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 		return nil, errMsg
 	}
 
-	//If both the sender's ndf hash and the permissioning NDF hash match
-	//  no need to pass anything through the comm
-	if bytes.Compare(m.regNdfHash, theirNdfHash) == 0 {
+	// Handle client request
+	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
+		// Do not return NDF if client hash matches
+		if bytes.Compare(m.partialNdfHash, theirNdfHash) == 0 {
+			return nil, nil
+		}
+
+		// Send the json of the client
+		jww.DEBUG.Printf("Returning a new NDF to client!")
+		return m.partialNdf, nil
+	}
+
+	// Do not return NDF if backend hash matches
+	if bytes.Compare(m.partialNdfHash, theirNdfHash) == 0 {
 		return nil, nil
 	}
 
-	// Handle client request
-	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
-		jww.DEBUG.Printf("Returning a new NDF to client!")
-
-		//Send the json of the client
-		return m.clientNdf, nil
-
-	}
-
-	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
 	//Send the json of the ndf
-	return m.backEndNdf, nil
+	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
+	return m.fullNdf, nil
 }
 
 // This has to be part of RegistrationImpl and has to return an error because
