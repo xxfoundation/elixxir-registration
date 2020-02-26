@@ -125,7 +125,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	}
 	notificationServer := ndf.Notification{Address: RegParams.NsAddress, TlsCertificate: string(nsCert)}
 
-	// Construct an NDF
+	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: registration,
 		Notification: notificationServer,
@@ -146,6 +146,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 		errMsg := errors.Errorf("unable to output NDF JSON file: %+v", err)
 		jww.FATAL.Printf(errMsg.Error())
 	}
+
 	// Serialize then hash the constructed ndf
 	hash := sha256.New()
 	hash.Write(impl.fullNdf)
@@ -155,17 +156,13 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	// Therefore the ndf gets stripped down to provide only need-to-know information.
 	// This prevents the clients from  getting the node's ip address and the credentials
 	// so it is is difficult to DDOS the cMix nodes
-	strippedNdf, err := ndf.StripNdf(impl.fullNdf)
-	if err != nil {
-		errMsg := errors.Errorf("Failed to strip down ndf: %+v", err)
-		jww.FATAL.Printf(errMsg.Error())
-	}
+	strippedNdf := networkDef.StripNdf()
+	impl.partialNdf = strippedNdf.Serialize()
 
 	// Serialize then hash the constructed ndf
 	hash = sha256.New()
-	hash.Write(strippedNdf)
+	hash.Write(impl.partialNdf)
 	impl.partialNdfHash = hash.Sum(nil)
-	impl.partialNdf = strippedNdf
 
 	// Unlock the
 	impl.ndfLock.Unlock()

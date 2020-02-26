@@ -25,7 +25,7 @@ require (
 	github.com/stretchr/testify v1.5.1 // indirect
 	gitlab.com/elixxir/comms v0.0.0-20200218232629-9f5cd47b8798
 	gitlab.com/elixxir/crypto v0.0.0-20200206203107-b8926242da23
-	gitlab.com/elixxir/primitives v0.0.0-20200226184757-992605f821ee
+	gitlab.com/elixxir/primitives v0.0.0-20200226190801-9410780e0a20
 	golang.org/x/crypto v0.0.0-20200221231518-2aa609cf4a9d // indirect
 	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b // indirect
 	golang.org/x/sys v0.0.0-20200223170610-d5e6a3e2c0ae // indirect
