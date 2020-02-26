@@ -157,7 +157,10 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	// This prevents the clients from  getting the node's ip address and the credentials
 	// so it is is difficult to DDOS the cMix nodes
 	strippedNdf := networkDef.StripNdf()
-	impl.partialNdf = strippedNdf.Serialize()
+	impl.partialNdf, err = strippedNdf.Marshal()
+	if err != nil {
+		jww.FATAL.Panicf("Unable to marshal stripped ndf: %+v", err)
+	}
 
 	// Serialize then hash the constructed ndf
 	hash = sha256.New()
