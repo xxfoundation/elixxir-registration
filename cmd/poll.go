@@ -24,34 +24,38 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	return nil, nil
 }
 
-// PollNdf handles the client polling for an updated NDF
+//PollNdf handles the client polling for an updated NDF
 func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
 
-	// Lock the reading of regNdfHash and check if it's been writen to
+	// Lock the reading of fullNdfHash and check if it's been writen to
 	m.ndfLock.RLock()
 	defer m.ndfLock.RUnlock()
-	ndfHashLen := len(m.regNdfHash)
+	ndfHashLen := len(m.fullNdfHash)
 	//Check that the registration server has built an NDF
 	if ndfHashLen == 0 {
-		return nil, errors.Errorf(ndf.NO_NDF)
-	}
-
-	//If both the sender's ndf hash and the permissioning NDF hash match
-	//  no need to pass anything through the comm
-	if bytes.Compare(m.regNdfHash, theirNdfHash) == 0 {
-		return nil, nil
+		errMsg := errors.Errorf(ndf.NO_NDF)
+		jww.WARN.Printf(errMsg.Error())
+		return nil, errMsg
 	}
 
 	// Handle client request
 	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
+		// Do not return NDF if client hash matches
+		if bytes.Compare(m.partialNdfHash, theirNdfHash) == 0 {
+			return nil, nil
+		}
+
+		// Send the json of the client
 		jww.DEBUG.Printf("Returning a new NDF to client!")
-
-		//Send the json of the client
-		return m.clientNdf, nil
-
+		return m.partialNdf, nil
 	}
 
-	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
+	// Do not return NDF if backend hash matches
+	if bytes.Compare(m.partialNdfHash, theirNdfHash) == 0 {
+		return nil, nil
+	}
+
 	//Send the json of the ndf
-	return m.backEndNdf, nil
+	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
+	return m.fullNdf, nil
 }

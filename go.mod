@@ -20,10 +20,9 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 
 	github.com/spf13/viper v1.6.2
-	gitlab.com/elixxir/comms v0.0.0-20200221211520-080ae00a5713
-	gitlab.com/elixxir/crypto v0.0.0-20200206203107-b8926242da23
-	gitlab.com/elixxir/primitives v0.0.0-20200218211222-4193179f359c
-	golang.org/x/crypto v0.0.0-20200221170553-0f24fbd83dfb // indirect
+	gitlab.com/elixxir/comms v0.0.0-20200303231347-82105d0b8f5b
+	gitlab.com/elixxir/crypto v0.0.0-20200229000841-b1ee7117a1d0
+	gitlab.com/elixxir/primitives v0.0.0-20200301205752-350e61bd19b3
 	gopkg.in/ini.v1 v1.52.0 // indirect
 	mellium.im/sasl v0.0.0-20190815210834-e27ea4901008 // indirect
 )

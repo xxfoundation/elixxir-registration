@@ -13,7 +13,6 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
-	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
@@ -32,11 +31,12 @@ type RegistrationImpl struct {
 	nodeCompleted           chan struct{}
 	registrationCompleted   chan struct{}
 	NumNodesInNet           int
-	regNdfHash              []byte
+	fullNdfHash             []byte
+	partialNdfHash          []byte
+	fullNdf                 []byte
+	partialNdf              []byte
 	ndfLock                 sync.RWMutex
 	certFromFile            string
-	backEndNdf              []byte
-	clientNdf               []byte
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
 }
@@ -56,13 +56,28 @@ type Params struct {
 	registrationCountDuration time.Duration
 }
 
+// toGroup takes a group represented by a map of string to string
+// and uses the prime, small prime and generator to  created
+// and returns a an ndf group object.
+func toGroup(grp map[string]string) (*ndf.Group, error) {
+	jww.DEBUG.Printf("Group is: %v", grp)
+	pStr, pOk := grp["prime"]
+	gStr, gOk := grp["generator"]
+
+	if !gOk || !pOk {
+		return nil, errors.Errorf("Invalid Group Config "+
+			"(prime: %v, generator: %v", pOk, gOk)
+	}
+	return &ndf.Group{Prime: pStr, Generator: gStr}, nil
+}
+
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) *RegistrationImpl {
 	jww.INFO.Printf("Starting registration...")
 	regImpl := &RegistrationImpl{}
 	var cert, key []byte
 	var err error
-	regImpl.regNdfHash = make([]byte, 0)
+	regImpl.fullNdfHash = make([]byte, 0)
 
 	// Setup registration limiting variables
 	regImpl.maxRegistrationAttempts = params.maxRegistrationAttempts
@@ -128,58 +143,23 @@ func StartRegistration(params Params) *RegistrationImpl {
 // NewImplementation returns a registertation server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
-	impl.Functions.RegisterUser = func(registrationCode, pubKey string) (signature []byte, err error) {
-		result, err := instance.RegisterUser(registrationCode, pubKey)
-		if err != nil {
-			jww.ERROR.Printf("%+v", err)
-		}
-		return result, err
+	impl.Functions.RegisterUser = func(registrationCode, pubKey string) (
+		signature []byte, err error) {
+		return instance.RegisterUser(registrationCode, pubKey)
 	}
-	impl.Functions.GetCurrentClientVersion = func() (version string, err error) {
-		result, err := instance.GetCurrentClientVersion()
-		if err != nil {
-			jww.ERROR.Printf("%+v", err)
-		}
-		return result, err
+	impl.Functions.GetCurrentClientVersion = func() (version string,
+		err error) {
+		return instance.GetCurrentClientVersion()
 	}
 	impl.Functions.RegisterNode = func(ID []byte, ServerAddr, ServerTlsCert,
 		GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
-		err := instance.RegisterNode(ID, ServerAddr,
-			ServerTlsCert, GatewayAddr, GatewayTlsCert, RegistrationCode)
-		if err != nil {
-			jww.ERROR.Printf("%+v", err)
-		}
-		return err
+		return instance.RegisterNode(ID, ServerAddr,
+			ServerTlsCert, GatewayAddr, GatewayTlsCert,
+			RegistrationCode)
 	}
 	impl.Functions.PollNdf = func(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
-		result, err := instance.PollNdf(theirNdfHash, auth)
-		if err != nil {
-			jww.ERROR.Printf("%+v", err)
-		}
-		return result, err
+		return instance.PollNdf(theirNdfHash, auth)
 	}
-	impl.Functions.Poll = func(msg *pb.PermissioningPoll,
-		auth *connect.Auth) (*pb.PermissionPollResponse, error) {
-		result, err := instance.Poll(msg, auth)
-		if err != nil {
-			jww.ERROR.Printf("%+v", err)
-		}
-		return result, err
-	}
+
 	return impl
-}
-
-// toGroup takes a group represented by a map of string to string
-// and uses the prime, small prime and generator to  created
-// and returns a an ndf group object.
-func toGroup(grp map[string]string) (*ndf.Group, error) {
-	jww.DEBUG.Printf("Group is: %v", grp)
-	pStr, pOk := grp["prime"]
-	gStr, gOk := grp["generator"]
-
-	if !gOk || !pOk {
-		return nil, errors.Errorf("Invalid Group Config "+
-			"(prime: %v, generator: %v", pOk, gOk)
-	}
-	return &ndf.Group{Prime: pStr, Generator: gStr}, nil
 }
