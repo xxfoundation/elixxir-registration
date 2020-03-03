@@ -10,7 +10,6 @@ package cmd
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
@@ -110,7 +109,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	}
 	notificationServer := ndf.Notification{Address: RegParams.NsAddress, TlsCertificate: string(nsCert)}
 
-	// Construct an NDF
+	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: registration,
 		Notification: notificationServer,
@@ -126,28 +125,31 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	impl.ndfLock.Lock()
 
 	// Output the completed topology to a JSON file and save marshall'ed json data
-	impl.backEndNdf, err = outputToJSON(networkDef, impl.ndfOutputPath)
+	impl.fullNdf, err = outputToJSON(networkDef, impl.ndfOutputPath)
 	if err != nil {
 		errMsg := errors.Errorf("unable to output NDF JSON file: %+v", err)
 		jww.FATAL.Printf(errMsg.Error())
 	}
+
 	// Serialize then hash the constructed ndf
 	hash := sha256.New()
-	ndfBytes := networkDef.Serialize()
-	hash.Write(ndfBytes)
-	impl.regNdfHash = hash.Sum(nil)
+	hash.Write(impl.fullNdf)
+	impl.fullNdfHash = hash.Sum(nil)
 
 	// A client doesn't need the full ndf in order to function.
 	// Therefore the ndf gets stripped down to provide only need-to-know information.
 	// This prevents the clients from  getting the node's ip address and the credentials
 	// so it is is difficult to DDOS the cMix nodes
-	strippedNdf, err := ndf.StripNdf(impl.backEndNdf)
+	strippedNdf := networkDef.StripNdf()
+	impl.partialNdf, err = strippedNdf.Marshal()
 	if err != nil {
-		errMsg := errors.Errorf("Failed to strip down ndf: %+v", err)
-		jww.FATAL.Printf(errMsg.Error())
+		jww.FATAL.Panicf("Unable to marshal stripped ndf: %+v", err)
 	}
 
-	impl.clientNdf = strippedNdf
+	// Serialize then hash the constructed ndf
+	hash = sha256.New()
+	hash.Write(impl.partialNdf)
+	impl.partialNdfHash = hash.Sum(nil)
 
 	// Unlock the
 	impl.ndfLock.Unlock()
@@ -190,7 +192,7 @@ func assembleNdf(codes []string) ([]ndf.Gateway, []ndf.Node, error) {
 // marshaling fails or if the JSON file cannot be created.
 func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) ([]byte, error) {
 	// Generate JSON from structure
-	data, err := json.Marshal(ndfData)
+	data, err := ndfData.Marshal()
 	if err != nil {
 		return nil, err
 	}
