@@ -10,7 +10,6 @@ package cmd
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
@@ -103,7 +102,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	return nil
 }
 
-// Wrapper for completed node registration error handling
+// nodeRegistrationCompleter is a wrapper for completed node registration error handling
 func nodeRegistrationCompleter(impl *RegistrationImpl) {
 	// Wait for all Nodes to complete registration
 	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
@@ -116,12 +115,20 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 		jww.FATAL.Printf("unable to assemble topology: %+v", err)
 	}
 
-	//Assemble the registration server information
+	// Assemble the registration server information
 	registration := ndf.Registration{Address: RegParams.publicAddress, TlsCertificate: impl.certFromFile}
 
-	//Construct an NDF
+	// Assemble notification server information
+	nsCert, err := utils.ReadFile(RegParams.NsCertPath)
+	if err != nil {
+		jww.FATAL.Printf("unable to read notification certificate")
+	}
+	notificationServer := ndf.Notification{Address: RegParams.NsAddress, TlsCertificate: string(nsCert)}
+
+	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: registration,
+		Notification: notificationServer,
 		Timestamp:    time.Now(),
 		Nodes:        nodes,
 		Gateways:     gateways,
@@ -129,21 +136,38 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 		E2E:          RegParams.e2e,
 		CMIX:         RegParams.cmix,
 	}
+	// Lock the ndf before writing to it s.t. it's
+	// threadsafe for nodes trying to register
+	impl.ndfLock.Lock()
 
 	// Output the completed topology to a JSON file and save marshall'ed json data
-	impl.ndfJson, err = outputToJSON(networkDef, impl.ndfOutputPath)
+	impl.fullNdf, err = outputToJSON(networkDef, impl.ndfOutputPath)
 	if err != nil {
 		errMsg := errors.Errorf("unable to output NDF JSON file: %+v", err)
 		jww.FATAL.Printf(errMsg.Error())
 	}
-	//Serialize then hash the constructed ndf
+
+	// Serialize then hash the constructed ndf
 	hash := sha256.New()
-	ndfBytes := networkDef.Serialize()
-	hash.Write(ndfBytes)
-	//Lock the ndf before writing to it s.t. it's
-	// threadsafe for nodes trying to register
-	impl.ndfLock.Lock()
-	impl.regNdfHash = hash.Sum(nil)
+	hash.Write(impl.fullNdf)
+	impl.fullNdfHash = hash.Sum(nil)
+
+	// A client doesn't need the full ndf in order to function.
+	// Therefore the ndf gets stripped down to provide only need-to-know information.
+	// This prevents the clients from  getting the node's ip address and the credentials
+	// so it is is difficult to DDOS the cMix nodes
+	strippedNdf := networkDef.StripNdf()
+	impl.partialNdf, err = strippedNdf.Marshal()
+	if err != nil {
+		jww.FATAL.Panicf("Unable to marshal stripped ndf: %+v", err)
+	}
+
+	// Serialize then hash the constructed ndf
+	hash = sha256.New()
+	hash.Write(impl.partialNdf)
+	impl.partialNdfHash = hash.Sum(nil)
+
+	// Unlock the
 	impl.ndfLock.Unlock()
 	// Alert that registration is complete
 	impl.registrationCompleted <- struct{}{}
@@ -184,7 +208,7 @@ func assembleNdf(codes []string) ([]ndf.Gateway, []ndf.Node, error) {
 // marshaling fails or if the JSON file cannot be created.
 func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) ([]byte, error) {
 	// Generate JSON from structure
-	data, err := json.Marshal(ndfData)
+	data, err := ndfData.Marshal()
 	if err != nil {
 		return nil, err
 	}

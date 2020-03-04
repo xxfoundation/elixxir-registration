@@ -42,10 +42,12 @@ type RegistrationImpl struct {
 	nodeCompleted           chan struct{}
 	registrationCompleted   chan struct{}
 	NumNodesInNet           int
-	regNdfHash              []byte
+	fullNdfHash             []byte
+	partialNdfHash          []byte
+	fullNdf                 []byte
+	partialNdf              []byte
 	ndfLock                 sync.RWMutex
 	certFromFile            string
-	ndfJson                 []byte
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
 }
@@ -55,6 +57,8 @@ type Params struct {
 	CertPath                  string
 	KeyPath                   string
 	NdfOutputPath             string
+	NsCertPath                string
+	NsAddress                 string
 	NumNodesInNet             int
 	cmix                      ndf.Group
 	e2e                       ndf.Group
@@ -87,7 +91,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 	regImpl := &RegistrationImpl{}
 	var cert, key []byte
 	var err error
-	regImpl.regNdfHash = make([]byte, 0)
+	regImpl.fullNdfHash = make([]byte, 0)
 
 	// Setup registration limiting variables
 	regImpl.maxRegistrationAttempts = params.maxRegistrationAttempts
@@ -228,69 +232,42 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	// Return signed public key to Client
 	jww.INFO.Printf("Registration for code %+v complete!", registrationCode)
 	return sig, nil
-
 }
 
 //PollNdf handles the client polling for an updated NDF
 func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
-	//If permissioning is enabled, check the permissioning's hash against the client's ndf
-	if !disablePermissioning {
-		if auth.IsAuthenticated {
-			return m.nodeNdfRequest()
-		}
-		return m.clientNdfRequest(theirNdfHash)
-	}
-	jww.DEBUG.Printf("Permissioning disabled, telling requester that their ndf is up-to-date")
-	//If permissioning is disabled, inform the client that it has the correct ndf
-	return nil, nil
 
-}
-
-//clientNdfRequest handles when a client requests an ndf from permissioning
-func (m *RegistrationImpl) clientNdfRequest(theirNdfHash []byte) ([]byte, error) {
-	// Lock the reading of regNdfHash and check if it's been writen to
+	// Lock the reading of fullNdfHash and check if it's been writen to
 	m.ndfLock.RLock()
-	ndfHashLen := len(m.regNdfHash)
-	m.ndfLock.RUnlock()
+	defer m.ndfLock.RUnlock()
+	ndfHashLen := len(m.fullNdfHash)
 	//Check that the registration server has built an NDF
 	if ndfHashLen == 0 {
-		errMsg := errors.Errorf("Permissioning server does not have an ndf to give to client")
+		errMsg := errors.Errorf(ndf.NO_NDF)
 		jww.WARN.Printf(errMsg.Error())
 		return nil, errMsg
 	}
 
-	//If both the sender's ndf hash and the permissioning NDF hash match
-	//  no need to pass anything through the comm
-	if bytes.Compare(m.regNdfHash, theirNdfHash) == 0 {
+	// Handle client request
+	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
+		// Do not return NDF if client hash matches
+		if bytes.Compare(m.partialNdfHash, theirNdfHash) == 0 {
+			return nil, nil
+		}
+
+		// Send the json of the client
+		jww.DEBUG.Printf("Returning a new NDF to client!")
+		return m.partialNdf, nil
+	}
+
+	// Do not return NDF if backend hash matches
+	if bytes.Compare(m.partialNdfHash, theirNdfHash) == 0 {
 		return nil, nil
 	}
 
-	jww.DEBUG.Printf("Returning a new NDF to client!")
 	//Send the json of the ndf
-	return m.ndfJson, nil
-}
-
-//serverNdfRequest handles when a node requests an ndf from permissioning
-func (m *RegistrationImpl) nodeNdfRequest() ([]byte, error) {
-	// Lock the reading of regNdfHash and check if it's been writen to
-	m.ndfLock.RLock()
-	ndfHash := m.regNdfHash
-	m.ndfLock.RUnlock()
-	// If it's not empty, node registration is complete
-	// and the ndf is ready to hand to the polling node
-	if bytes.Compare(ndfHash, make([]byte, 0)) != 0 {
-		return m.ndfJson, nil
-	}
-	//Otherwise wait for either a registration complete signal or
-	// a timeout signal
-	timeOut := time.NewTimer(5 * time.Second)
-	select {
-	case <-m.registrationCompleted:
-		return m.ndfJson, nil
-	case <-timeOut.C:
-		return nil, nil
-
-	}
+	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
+	return m.fullNdf, nil
 }
 
 // This has to be part of RegistrationImpl and has to return an error because
