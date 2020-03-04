@@ -19,23 +19,19 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
-	"sync"
+	"gitlab.com/elixxir/registration/storage"
 	"time"
 )
 
 type RegistrationImpl struct {
 	Comms                   *registration.Comms
+	State                   *storage.State
 	permissioningCert       *x509.Certificate
 	permissioningKey        *rsa.PrivateKey
 	ndfOutputPath           string
 	nodeCompleted           chan struct{}
 	registrationCompleted   chan struct{}
 	NumNodesInNet           int
-	fullNdfHash             []byte
-	partialNdfHash          []byte
-	fullNdf                 []byte
-	partialNdf              []byte
-	ndfLock                 sync.RWMutex
 	certFromFile            string
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
@@ -72,12 +68,10 @@ func toGroup(grp map[string]string) (*ndf.Group, error) {
 }
 
 // Configure and start the Permissioning Server
-func StartRegistration(params Params) *RegistrationImpl {
+func StartRegistration(params Params) (*RegistrationImpl, error) {
 	jww.INFO.Printf("Starting registration...")
 	regImpl := &RegistrationImpl{}
 	var cert, key []byte
-	var err error
-	regImpl.fullNdfHash = make([]byte, 0)
 
 	// Setup registration limiting variables
 	regImpl.maxRegistrationAttempts = params.maxRegistrationAttempts
@@ -93,32 +87,30 @@ func StartRegistration(params Params) *RegistrationImpl {
 	}()
 
 	// Read in private key
-	key, err = utils.ReadFile(params.KeyPath)
+	key, err := utils.ReadFile(params.KeyPath)
 	if err != nil {
-		jww.ERROR.Printf("failed to read key at %+v: %+v", params.KeyPath, err)
+		return nil, errors.Errorf("failed to read key at %+v: %+v",
+			params.KeyPath, err)
 	}
 	regImpl.permissioningKey, err = rsa.LoadPrivateKeyFromPem(key)
 	if err != nil {
-		jww.ERROR.Printf("Failed to parse permissioning server key: %+v. "+
-			"PermissioningKey is %+v",
-			err, regImpl.permissioningKey)
+		return nil, errors.Errorf("Failed to parse permissioning server key: %+v. "+
+			"PermissioningKey is %+v", err, regImpl.permissioningKey)
 	}
 
 	if !noTLS {
 		// Read in TLS keys from files
 		cert, err = utils.ReadFile(params.CertPath)
 		if err != nil {
-			jww.ERROR.Printf("failed to read certificate at %+v: %+v", params.CertPath, err)
+			return nil, errors.Errorf("failed to read certificate at %+v: %+v", params.CertPath, err)
 		}
 		// Set globals for permissioning server
 		regImpl.certFromFile = string(cert)
 		regImpl.permissioningCert, err = tls.LoadCertificate(string(cert))
 		if err != nil {
-			jww.ERROR.Printf("Failed to parse permissioning server cert: %+v. "+
-				"Permissioning cert is %+v",
-				err, regImpl.permissioningCert)
+			return nil, errors.Errorf("Failed to parse permissioning server cert: %+v. "+
+				"Permissioning cert is %+v", err, regImpl.permissioningCert)
 		}
-
 	}
 
 	regImpl.NumNodesInNet = len(RegistrationCodes)
@@ -137,7 +129,7 @@ func StartRegistration(params Params) *RegistrationImpl {
 
 	regImpl.nodeCompleted = make(chan struct{}, regImpl.NumNodesInNet)
 	regImpl.registrationCompleted = make(chan struct{}, 1)
-	return regImpl
+	return regImpl, nil
 }
 
 // NewImplementation returns a registertation server Handler

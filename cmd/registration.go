@@ -15,7 +15,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/registration/database"
+	"gitlab.com/elixxir/registration/storage"
 	"sync/atomic"
 	"time"
 )
@@ -30,13 +30,13 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	signature []byte, err error) {
 
 	// Check for pre-existing registration for this public key
-	if user, err := database.PermissioningDb.GetUser(pubKey); err == nil && user != nil {
+	if user, err := storage.PermissioningDb.GetUser(pubKey); err == nil && user != nil {
 		jww.INFO.Printf("Previous registration found for %s", pubKey)
 	} else {
 		// Check database to verify given registration code
 		jww.INFO.Printf("Attempting to use registration code %+v...",
 			registrationCode)
-		err = database.PermissioningDb.UseCode(registrationCode)
+		err = storage.PermissioningDb.UseCode(registrationCode)
 		if err != nil {
 			// Check if the max registration attempts have been reached
 			if atomic.LoadUint64(m.registrationsRemaining) >= m.maxRegistrationAttempts {
@@ -51,7 +51,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 		}
 
 		// Record the user public key for duplicate registration support
-		err = database.PermissioningDb.InsertUser(pubKey)
+		err = storage.PermissioningDb.InsertUser(pubKey)
 		if err != nil {
 			jww.WARN.Printf("Unable to store user: %+v",
 				errors.New(err.Error()))

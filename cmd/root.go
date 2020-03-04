@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/ndf"
-	"gitlab.com/elixxir/registration/database"
+	"gitlab.com/elixxir/registration/storage"
 	"os"
 	"path"
 	"strconv"
@@ -93,7 +93,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Set up database connection
-		database.PermissioningDb = database.NewDatabase(
+		storage.PermissioningDb = storage.NewDatabase(
 			viper.GetString("dbUsername"),
 			viper.GetString("dbPassword"),
 			viper.GetString("dbName"),
@@ -102,10 +102,10 @@ var rootCmd = &cobra.Command{
 
 		// Populate Node registration codes into the database
 		RegistrationCodes = viper.GetStringSlice("registrationCodes")
-		database.PopulateNodeRegistrationCodes(RegistrationCodes)
+		storage.PopulateNodeRegistrationCodes(RegistrationCodes)
 
 		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
-		database.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
+		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
 		//Fixme: Do we want the udbID to be specified in the yaml?
 		tmpSlice := make([]byte, 32)
@@ -126,13 +126,21 @@ var rootCmd = &cobra.Command{
 			maxRegistrationAttempts:   maxRegistrationAttempts,
 			registrationCountDuration: registrationCountDuration,
 		}
-		jww.INFO.Println("Starting Permissioning")
-		jww.INFO.Println("Starting User Registration")
+
+		jww.INFO.Println("Starting Permissioning Server...")
+
 		// Start registration server
-		impl := StartRegistration(RegParams)
+		impl, err := StartRegistration(RegParams)
+		if err != nil {
+			jww.FATAL.Panicf(err.Error())
+		}
 
 		// Begin the thread which handles the completion of node registration
-		go nodeRegistrationCompleter(impl)
+		err = nodeRegistrationCompleter(impl)
+		if err != nil {
+			jww.FATAL.Panicf("Failed to complete node registration: %+v", err)
+		}
+		jww.INFO.Printf("Node registration complete!")
 
 		// Wait forever to prevent process from ending
 		select {}
