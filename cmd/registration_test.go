@@ -32,12 +32,10 @@ var gatewayKey []byte
 var gatewayCert []byte
 var ndfFile []byte
 
-/*
-var testPermissioningKey *rsa.PrivateKey
-var testpermissioningCert *x509.Certificate*/
 var nodeComm *node.Comms
 
 func TestMain(m *testing.M) {
+	jww.SetStdoutThreshold(jww.LevelDebug)
 	var err error
 	nodeCert, err = utils.ReadFile(testkeys.GetNodeCertPath())
 	if err != nil {
@@ -197,13 +195,15 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	go nodeRegistrationCompleter(impl)
 	RegParams = testParams
 
 	err = impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
 		"0.0.0.0:6900", string(nodeCert), "BBBB")
-	//So the impl is not destroyed
-	time.Sleep(5 * time.Second)
+
+	err = nodeRegistrationCompleter(impl)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
@@ -276,7 +276,6 @@ func TestTopology_MultiNodes(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	go nodeRegistrationCompleter(impl)
 
 	//Create a second node to register
 	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
@@ -294,16 +293,17 @@ func TestTopology_MultiNodes(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-	//Sleep so that the permissioning has time to connect to the nodes (
-	// ie impl isn't destroyed)
-	time.Sleep(5 * time.Second)
+
+	err = nodeRegistrationCompleter(impl)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	//Kill the connections for the next test
 	nodeComm.DisconnectAll()
 	nodeComm2.DisconnectAll()
 	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
-	time.Sleep(5 * time.Second)
 }
 
 //Happy path
@@ -323,7 +323,6 @@ func TestRegistrationImpl_Polldf(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	go nodeRegistrationCompleter(impl)
 
 	//Start the other nodes
 	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
@@ -352,8 +351,12 @@ func TestRegistrationImpl_Polldf(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-	//Wait for registration to complete
-	time.Sleep(5 * time.Second)
+
+	err = nodeRegistrationCompleter(impl)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
 	if err != nil {
 		t.Errorf("failed to update ndf: %v", err)
@@ -361,7 +364,8 @@ func TestRegistrationImpl_Polldf(t *testing.T) {
 
 	observedNDF, _, err := ndf.DecodeNDF(string(observedNDFBytes))
 	if err != nil {
-		t.Errorf("Could not decode ndf: %v", err)
+		t.Errorf("Could not decode ndf: %v\nNdf output: %s", err,
+			string(observedNDFBytes))
 	}
 	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
 		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v", udbId, observedNDF.UDB.ID)
@@ -409,7 +413,6 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	go nodeRegistrationCompleter(impl)
 
 	//Setup udb configurations
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
@@ -422,7 +425,10 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
-	time.Sleep(5 * time.Second)
+	err = nodeRegistrationCompleter(impl)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	//Make a client ndf hash that is not up to date
 	clientNdfHash := []byte("test")
@@ -504,7 +510,7 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 		NdfOutputPath:             testkeys.GetNDFPath(),
 		publicAddress:             "0.0.0.0:5905",
 		maxRegistrationAttempts:   4,
-		registrationCountDuration: 30 * time.Second,
+		registrationCountDuration: 3 * time.Second,
 	}
 
 	// Start registration server
@@ -513,8 +519,6 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 	go nodeRegistrationCompleter(impl)
-
-	jww.SetStdoutThreshold(jww.LevelInfo)
 
 	// Initialize the database
 	storage.PermissioningDb = storage.NewDatabase(
@@ -550,7 +554,7 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 		t.Errorf("Did not fail to register a user when it should not have worked: %+v", err)
 	}
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(testParams2.registrationCountDuration)
 	// Attempt to register a user
 	_, err = impl.RegisterUser("g", "G")
 	if err != nil {

@@ -69,14 +69,20 @@ func toGroup(grp map[string]string) (*ndf.Group, error) {
 
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) (*RegistrationImpl, error) {
-	jww.INFO.Printf("Starting registration...")
-	regImpl := &RegistrationImpl{}
-	var cert, key []byte
 
-	// Setup registration limiting variables
-	regImpl.maxRegistrationAttempts = params.maxRegistrationAttempts
-	maxRegistrationAttempts := uint64(0)
-	regImpl.registrationsRemaining = &maxRegistrationAttempts
+	// Initialize variables
+	regRemaining := uint64(0)
+
+	// Build default parameters
+	regImpl := &RegistrationImpl{
+		State:                   &storage.State{},
+		maxRegistrationAttempts: params.maxRegistrationAttempts,
+		registrationsRemaining:  &regRemaining,
+		ndfOutputPath:           params.NdfOutputPath,
+		NumNodesInNet:           len(RegistrationCodes),
+		nodeCompleted:           make(chan struct{}, len(RegistrationCodes)),
+		registrationCompleted:   make(chan struct{}, 1),
+	}
 
 	// Create timer and channel to be used by routine that clears the number of
 	// registrations every time the ticker activates
@@ -100,10 +106,11 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	if !noTLS {
 		// Read in TLS keys from files
-		cert, err = utils.ReadFile(params.CertPath)
+		cert, err := utils.ReadFile(params.CertPath)
 		if err != nil {
 			return nil, errors.Errorf("failed to read certificate at %+v: %+v", params.CertPath, err)
 		}
+
 		// Set globals for permissioning server
 		regImpl.certFromFile = string(cert)
 		regImpl.permissioningCert, err = tls.LoadCertificate(string(cert))
@@ -113,26 +120,20 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		}
 	}
 
-	regImpl.NumNodesInNet = len(RegistrationCodes)
-	regImpl.ndfOutputPath = params.NdfOutputPath
-
-	regHandler := NewImplementation(regImpl)
 	// Start the communication server
 	regImpl.Comms = registration.StartRegistrationServer(id.PERMISSIONING,
-		params.Address,
-		regHandler, cert, key)
+		params.Address, NewImplementation(regImpl),
+		[]byte(regImpl.certFromFile), key)
 
-	//In the noTLS pathway, disable authentication
+	// In the noTLS pathway, disable authentication
 	if noTLS {
 		regImpl.Comms.DisableAuth()
 	}
 
-	regImpl.nodeCompleted = make(chan struct{}, regImpl.NumNodesInNet)
-	regImpl.registrationCompleted = make(chan struct{}, 1)
 	return regImpl, nil
 }
 
-// NewImplementation returns a registertation server Handler
+// NewImplementation returns a registration server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
 	impl.Functions.RegisterUser = func(registrationCode, pubKey string) (

@@ -34,23 +34,21 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 	// Handle client request
 	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
 		// Do not return NDF if client hash matches
-		isSame := m.State.GetPartiallNdf().CompareHash(theirNdfHash)
-		if !isSame {
+		if isSame := m.State.GetPartiallNdf().CompareHash(theirNdfHash); isSame {
 			return nil, nil
 		}
 
 		// Send the json of the client
 		jww.DEBUG.Printf("Returning a new NDF to client!")
-		return m.State.GetPartiallNdf().Get().Serialize(), nil
+		return m.State.GetPartiallNdf().Get().Marshal()
 	}
 
 	// Do not return NDF if backend hash matches
-	isSame := m.State.GetFullNdf().CompareHash(theirNdfHash)
-	if !isSame {
+	if isSame := m.State.GetFullNdf().CompareHash(theirNdfHash); isSame {
 		return nil, nil
 	}
 
 	//Send the json of the ndf
 	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
-	return m.State.GetFullNdf().Get().Serialize(), nil
+	return m.State.GetFullNdf().Get().Marshal()
 }

@@ -87,7 +87,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 func nodeRegistrationCompleter(impl *RegistrationImpl) error {
 	// Wait for all Nodes to complete registration
 	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
-		jww.DEBUG.Printf("Registered %d node(s)!", numNodes)
+		jww.INFO.Printf("Registered %d node(s)!", numNodes)
 		<-impl.nodeCompleted
 	}
 	// Assemble the completed topology
@@ -99,23 +99,26 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) error {
 	// Assemble the registration server information
 	registration := ndf.Registration{Address: RegParams.publicAddress, TlsCertificate: impl.certFromFile}
 
-	// Assemble notification server information
-	nsCert, err := utils.ReadFile(RegParams.NsCertPath)
-	if err != nil {
-		return errors.Errorf("unable to read notification certificate")
-	}
-	notificationServer := ndf.Notification{Address: RegParams.NsAddress, TlsCertificate: string(nsCert)}
-
 	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: registration,
-		Notification: notificationServer,
 		Timestamp:    time.Now(),
 		Nodes:        nodes,
 		Gateways:     gateways,
 		UDB:          udbParams,
 		E2E:          RegParams.e2e,
 		CMIX:         RegParams.cmix,
+	}
+
+	// Assemble notification server information if configured
+	if RegParams.NsCertPath != "" && RegParams.NsAddress != "" {
+		nsCert, err := utils.ReadFile(RegParams.NsCertPath)
+		if err != nil {
+			return errors.Errorf("unable to read notification certificate")
+		}
+		networkDef.Notification = ndf.Notification{Address: RegParams.NsAddress, TlsCertificate: string(nsCert)}
+	} else {
+		jww.WARN.Printf("Configured to run without notifications bot!")
 	}
 
 	// Update the internal state with the newly-formed NDF
