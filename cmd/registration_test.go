@@ -413,6 +413,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
+	go nodeRegistrationCompleter(impl)
 
 	//Setup udb configurations
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
@@ -425,25 +426,17 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
-	err = nodeRegistrationCompleter(impl)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
 	//Make a client ndf hash that is not up to date
 	clientNdfHash := []byte("test")
 
 	_, err = impl.PollNdf(clientNdfHash, &connect.Auth{})
-	if err != nil {
-		//Disconnect nodeComms
-		nodeComm.DisconnectAll()
-
-		//Shutdown registration
-		impl.Comms.Shutdown()
-		return
+	if err == nil {
+		t.Error("Expected error path, should not have an ndf ready")
+	}
+	if err != nil && err.Error() != ndf.NO_NDF {
+		t.Errorf("Expected correct error message: %+v", err)
 	}
 
-	t.Error("Expected error path, should not have an ndf ready")
 	//Disconnect nodeComms
 	nodeComm.DisconnectAll()
 
