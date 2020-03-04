@@ -197,10 +197,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	err = nodeRegistrationCompleter(impl)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	go nodeRegistrationCompleter(impl)
 	RegParams = testParams
 
 	err = impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
@@ -234,10 +231,7 @@ func TestDoubleRegistration(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	err = nodeRegistrationCompleter(impl)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	go nodeRegistrationCompleter(impl)
 
 	//Create a second node to register
 	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
@@ -282,10 +276,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	err = nodeRegistrationCompleter(impl)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	go nodeRegistrationCompleter(impl)
 
 	//Create a second node to register
 	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
@@ -332,10 +323,7 @@ func TestRegistrationImpl_Polldf(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	err = nodeRegistrationCompleter(impl)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	go nodeRegistrationCompleter(impl)
 
 	//Start the other nodes
 	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
@@ -421,10 +409,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	err = nodeRegistrationCompleter(impl)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	go nodeRegistrationCompleter(impl)
 
 	//Setup udb configurations
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
@@ -527,10 +512,7 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	err = nodeRegistrationCompleter(impl)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	go nodeRegistrationCompleter(impl)
 
 	jww.SetStdoutThreshold(jww.LevelInfo)
 
