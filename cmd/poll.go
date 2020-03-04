@@ -9,9 +9,11 @@
 package cmd
 
 import (
+	"errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/primitives/ndf"
 )
 
 // Server->Permissioning unified poll function
@@ -21,15 +23,20 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	return nil, nil
 }
 
-//PollNdf handles the client polling for an updated NDF
+// PollNdf handles the client polling for an updated NDF
 func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
+
+	// Ensure the NDF is ready to be returned
+	if m.State.GetFullNdf() == nil || m.State.GetPartiallNdf() == nil {
+		return nil, errors.New(ndf.NO_NDF)
+	}
 
 	// Handle client request
 	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
 		// Do not return NDF if client hash matches
-		isSame, err := m.State.GetPartiallNdf().CompareHash(theirNdfHash)
-		if err != nil || !isSame {
-			return nil, err
+		isSame := m.State.GetPartiallNdf().CompareHash(theirNdfHash)
+		if !isSame {
+			return nil, nil
 		}
 
 		// Send the json of the client
@@ -38,9 +45,9 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 	}
 
 	// Do not return NDF if backend hash matches
-	isSame, err := m.State.GetFullNdf().CompareHash(theirNdfHash)
-	if err != nil || !isSame {
-		return nil, err
+	isSame := m.State.GetFullNdf().CompareHash(theirNdfHash)
+	if !isSame {
+		return nil, nil
 	}
 
 	//Send the json of the ndf
