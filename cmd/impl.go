@@ -13,6 +13,8 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
+	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/comms/network/dataStructures"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
@@ -75,7 +77,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		State:                   &storage.State{},
+		State: &storage.State{
+			RoundUpdates: &dataStructures.Updates{},
+			RoundData:    &dataStructures.Data{},
+		},
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
@@ -136,22 +141,54 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 // NewImplementation returns a registration server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
-	impl.Functions.RegisterUser = func(registrationCode, pubKey string) (
-		signature []byte, err error) {
-		return instance.RegisterUser(registrationCode, pubKey)
+	impl.Functions.RegisterUser = func(
+		registrationCode, pubKey string) (signature []byte, err error) {
+
+		response, err := instance.RegisterUser(registrationCode, pubKey)
+		if err != nil {
+			jww.ERROR.Printf("RegisterUser error: %+v", err)
+		}
+
+		return response, err
 	}
-	impl.Functions.GetCurrentClientVersion = func() (version string,
-		err error) {
-		return instance.GetCurrentClientVersion()
+	impl.Functions.GetCurrentClientVersion = func() (version string, err error) {
+
+		response, err := instance.GetCurrentClientVersion()
+		if err != nil {
+			jww.ERROR.Printf("GetCurrentClientVersion error: %+v", err)
+		}
+
+		return response, err
 	}
 	impl.Functions.RegisterNode = func(ID []byte, ServerAddr, ServerTlsCert,
 		GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
-		return instance.RegisterNode(ID, ServerAddr,
-			ServerTlsCert, GatewayAddr, GatewayTlsCert,
-			RegistrationCode)
+
+		err := instance.RegisterNode(ID, ServerAddr,
+			ServerTlsCert, GatewayAddr, GatewayTlsCert, RegistrationCode)
+		if err != nil {
+			jww.ERROR.Printf("RegisterNode error: %+v", err)
+		}
+
+		return err
 	}
 	impl.Functions.PollNdf = func(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
-		return instance.PollNdf(theirNdfHash, auth)
+
+		response, err := instance.PollNdf(theirNdfHash, auth)
+		if err != nil {
+			jww.ERROR.Printf("PollNdf error: %+v", err)
+		}
+
+		return response, err
+	}
+
+	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
+
+		response, err := instance.Poll(msg, auth)
+		if err != nil {
+			jww.ERROR.Printf("Poll error: %+v", err)
+		}
+
+		return response, err
 	}
 
 	return impl

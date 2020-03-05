@@ -13,15 +13,15 @@ import (
 	"gitlab.com/elixxir/primitives/ndf"
 )
 
-//
+// Used for keeping track of NDF and Round state
 type State struct {
 	partialNdf   *dataStructures.Ndf
 	fullNdf      *dataStructures.Ndf
-	roundUpdates *dataStructures.Updates
-	roundData    *dataStructures.Data
+	RoundUpdates *dataStructures.Updates
+	RoundData    *dataStructures.Data
 }
 
-//
+// Given a full NDF, updates both of the internal NDF structures
 func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	s.fullNdf, err = dataStructures.NewNdf(newNdf)
 	if err != nil {
@@ -32,12 +32,12 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	return
 }
 
-//
+// Returns the full NDF
 func (s *State) GetFullNdf() *dataStructures.Ndf {
 	return s.fullNdf
 }
 
-//
+// Returns the partial NDF
 func (s *State) GetPartiallNdf() *dataStructures.Ndf {
 	return s.partialNdf
 }

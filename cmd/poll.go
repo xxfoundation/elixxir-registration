@@ -18,9 +18,43 @@ import (
 
 // Server->Permissioning unified poll function
 func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
-	auth *connect.Auth) (*pb.PermissionPollResponse, error) {
+	auth *connect.Auth) (response *pb.PermissionPollResponse, err error) {
 
-	return nil, nil
+	// Initialize the response
+	response = &pb.PermissionPollResponse{}
+
+	// Ensure the NDF is ready to be returned
+	if m.State.GetFullNdf() == nil || m.State.GetPartiallNdf() == nil {
+		return response, errors.New(ndf.NO_NDF)
+	}
+
+	// Ensure client is properly authenticated
+	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
+		return response, connect.AuthError(auth.Sender.GetId())
+	}
+
+	// Return updated NDF if provided hash does not match current NDF hash
+	if isSame := m.State.GetFullNdf().CompareHash(msg.Full.Hash); !isSame {
+		jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
+
+		// Return the updated NDFs
+		response.FullNDF.Ndf, err = m.State.GetFullNdf().Get().Marshal()
+		if err != nil {
+			return
+		}
+		response.PartialNDF.Ndf, err = m.State.GetPartiallNdf().Get().Marshal()
+		if err != nil {
+			return
+		}
+
+		// TODO: Sign the updated NDFs
+		response.FullNDF.Signature.Signature = nil
+		response.FullNDF.Signature.Nonce = nil
+		response.PartialNDF.Signature.Signature = nil
+		response.PartialNDF.Signature.Nonce = nil
+	}
+
+	return
 }
 
 // PollNdf handles the client polling for an updated NDF
