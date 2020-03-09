@@ -12,8 +12,10 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
+	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/storage"
@@ -78,7 +80,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
 	}
 
-	jww.DEBUG.Printf("Total number of expected nodes for registration completion: %v", m.NumNodesInNet)
+	jww.DEBUG.Printf("Total number of expected nodes for registration"+
+		" completion: %v", m.State.NumNodes)
 	m.nodeCompleted <- struct{}{}
 	return nil
 }
@@ -86,7 +89,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 // nodeRegistrationCompleter is a wrapper for completed node registration error handling
 func nodeRegistrationCompleter(impl *RegistrationImpl) error {
 	// Wait for all Nodes to complete registration
-	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
+	for numNodes := uint32(0); numNodes < impl.State.NumNodes; numNodes++ {
 		jww.INFO.Printf("Registered %d node(s)!", numNodes)
 		<-impl.nodeCompleted
 	}
@@ -175,4 +178,35 @@ func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) error {
 	}
 	// Write JSON to file
 	return utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
+}
+
+// Attempt to update the internal state after a node polling operation
+func (m *RegistrationImpl) UpdateState(id *id.Node, activity *current.Activity) error {
+	// Convert node activity to round state
+	roundState, err := activity.ConvertToRoundState()
+	if err != nil {
+		return err
+	}
+
+	// Update node state
+	m.State.UpdateNodeState(id, roundState)
+
+	// Handle completion of a round
+	if m.State.GetCurrentRoundState() == states.COMPLETED {
+		// Build a topology (currently consisting of all nodes in network)
+		var topology []string
+		for _, node := range m.State.GetPartialNdf().Get().Nodes {
+			topology = append(topology, string(node.ID))
+		}
+
+		// Progress to the next round
+		err = m.State.CreateNextRoundInfo(0, topology, m.permissioningKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Round not yet complete, attempt to increment the round state
+	err = m.State.IncrementRoundState(m.permissioningKey)
+	return err
 }

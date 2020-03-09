@@ -14,7 +14,6 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/comms/network/dataStructures"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
@@ -33,7 +32,6 @@ type RegistrationImpl struct {
 	ndfOutputPath           string
 	nodeCompleted           chan struct{}
 	registrationCompleted   chan struct{}
-	NumNodesInNet           int
 	certFromFile            string
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
@@ -77,14 +75,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		State: &storage.State{
-			RoundUpdates: &dataStructures.Updates{},
-			RoundData:    &dataStructures.Data{},
-		},
+		State:                   storage.NewState(uint32(len(RegistrationCodes))),
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
-		NumNodesInNet:           len(RegistrationCodes),
 		nodeCompleted:           make(chan struct{}, len(RegistrationCodes)),
 		registrationCompleted:   make(chan struct{}, 1),
 	}

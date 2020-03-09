@@ -13,6 +13,9 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/signature"
+	"gitlab.com/elixxir/primitives/current"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 )
 
@@ -24,7 +27,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	response = &pb.PermissionPollResponse{}
 
 	// Ensure the NDF is ready to be returned
-	if m.State.GetFullNdf() == nil || m.State.GetPartiallNdf() == nil {
+	if m.State.GetFullNdf() == nil || m.State.GetPartialNdf() == nil {
 		return response, errors.New(ndf.NO_NDF)
 	}
 
@@ -42,16 +45,30 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		if err != nil {
 			return
 		}
-		response.PartialNDF.Ndf, err = m.State.GetPartiallNdf().Get().Marshal()
+		response.PartialNDF.Ndf, err = m.State.GetPartialNdf().Get().Marshal()
 		if err != nil {
 			return
 		}
 
-		// TODO: Sign the updated NDFs
-		response.FullNDF.Signature.Signature = nil
-		response.FullNDF.Signature.Nonce = nil
-		response.PartialNDF.Signature.Signature = nil
-		response.PartialNDF.Signature.Nonce = nil
+		// Sign the updated NDFs
+		err = signature.Sign(response.FullNDF, m.permissioningKey)
+		err = signature.Sign(response.PartialNDF, m.permissioningKey)
+	}
+
+	// Commit updates reported by the node if node involved in the current round
+	if m.State.IsRoundNode(auth.Sender.GetId()) {
+		err = m.UpdateState(
+			id.NewNodeFromBytes([]byte(auth.Sender.GetId())),
+			(*current.Activity)(&msg.Activity))
+		if err != nil {
+			return
+		}
+	}
+
+	// Fetch latest round updates
+	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
+	if err != nil {
+		return
 	}
 
 	return
@@ -61,20 +78,20 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
 
 	// Ensure the NDF is ready to be returned
-	if m.State.GetFullNdf() == nil || m.State.GetPartiallNdf() == nil {
+	if m.State.GetFullNdf() == nil || m.State.GetPartialNdf() == nil {
 		return nil, errors.New(ndf.NO_NDF)
 	}
 
 	// Handle client request
 	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
 		// Do not return NDF if client hash matches
-		if isSame := m.State.GetPartiallNdf().CompareHash(theirNdfHash); isSame {
+		if isSame := m.State.GetPartialNdf().CompareHash(theirNdfHash); isSame {
 			return nil, nil
 		}
 
 		// Send the json of the client
 		jww.DEBUG.Printf("Returning a new NDF to client!")
-		return m.State.GetPartiallNdf().Get().Marshal()
+		return m.State.GetPartialNdf().Get().Marshal()
 	}
 
 	// Do not return NDF if backend hash matches
