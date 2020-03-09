@@ -99,6 +99,10 @@ func (s *State) addRoundUpdate(round *pb.RoundInfo) error {
 		BatchSize:  round.GetBatchSize(),
 		Topology:   round.GetTopology(),
 		Timestamps: round.GetTimestamps(),
+		Signature: &pb.RSASignature{
+			Nonce:     round.GetNonce(),
+			Signature: round.GetSig(),
+		},
 	}
 
 	return s.roundUpdates.AddRound(roundCopy)
