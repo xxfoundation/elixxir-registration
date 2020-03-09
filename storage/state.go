@@ -9,6 +9,7 @@
 package storage
 
 import (
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/network/dataStructures"
@@ -69,6 +70,7 @@ func (s *State) CreateNextRoundInfo(batchSize uint32, topology []string, privKey
 			Timestamps: []uint64{uint64(time.Now().Unix())},
 		},
 	}
+	jww.DEBUG.Printf("Initializing round %d...", s.currentRound.ID)
 
 	// Initialize node states based on given topology
 	for _, nodeId := range topology {
@@ -134,6 +136,8 @@ func (s *State) IncrementRoundState(privKey *rsa.PrivateKey) error {
 		s.currentRound.State += 1
 	}
 	s.currentRound.State += 1
+	jww.DEBUG.Printf("Round state incremented to %s",
+		states.Round(s.currentRound.State))
 
 	// Handle timestamp edge case with realtime
 	if s.currentRound.State == uint32(states.REALTIME) {
@@ -181,6 +185,10 @@ func (s *State) IsRoundNode(id string) bool {
 
 // Returns the state of the current round
 func (s *State) GetCurrentRoundState() states.Round {
+	// If no round has been started, set to COMPLETE
+	if s.currentRound == nil {
+		return states.COMPLETED
+	}
 	return states.Round(s.currentRound.State)
 }
 

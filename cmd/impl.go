@@ -24,6 +24,7 @@ import (
 	"time"
 )
 
+// The main registration instance object
 type RegistrationImpl struct {
 	Comms                   *registration.Comms
 	State                   *storage.State
@@ -37,6 +38,7 @@ type RegistrationImpl struct {
 	maxRegistrationAttempts uint64
 }
 
+// Params object for reading in configuration data
 type Params struct {
 	Address                   string
 	CertPath                  string
