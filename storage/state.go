@@ -18,6 +18,7 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -38,9 +39,11 @@ type State struct {
 type RoundState struct {
 	// Tracks round information
 	*pb.RoundInfo
+	// Mutex associated with roundInfo
+	mux sync.RWMutex
 
 	// Keeps track of the state of each node
-	nodeStatuses map[*id.Node]states.Round
+	nodeStatuses map[*id.Node]*uint32
 
 	// Keeps track of the real state of the network
 	// as described by the cumulative states of nodes
@@ -59,6 +62,8 @@ func NewState(numNodes uint32) *State {
 
 // Builds and inserts the next RoundInfo object into the internal state
 func (s *State) CreateNextRoundInfo(batchSize uint32, topology []string) error {
+	s.currentRound.mux.Lock()
+	defer s.currentRound.mux.Unlock()
 
 	// Build the new current round object
 	s.currentRound = &RoundState{
@@ -75,8 +80,9 @@ func (s *State) CreateNextRoundInfo(batchSize uint32, topology []string) error {
 
 	// Initialize node states based on given topology
 	for _, nodeId := range topology {
+		newState := uint32(states.PENDING)
 		s.currentRound.nodeStatuses[id.NewNodeFromBytes([]byte(
-			nodeId))] = states.PENDING
+			nodeId))] = &newState
 	}
 
 	// Sign the new round object
@@ -124,38 +130,37 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 
 // Increments the state of the current round if needed
 func (s *State) incrementRoundState(state states.Round) error {
+	s.currentRound.mux.Lock()
+	defer s.currentRound.mux.Unlock()
 
 	// Handle state transitions
 	switch state {
 	case states.PENDING:
 		s.currentRound.State = uint32(states.PRECOMPUTING)
+		s.currentRound.Timestamps = append(s.currentRound.Timestamps,
+			uint64(time.Now().Unix()))
 	case states.STANDBY:
 		s.currentRound.State = uint32(states.REALTIME)
+		// Handle timestamp edge case with realtime
+		s.currentRound.Timestamps = append(s.currentRound.Timestamps,
+			uint64(time.Now().Add(2*time.Second).Unix()))
 	case states.COMPLETED:
 		s.currentRound.State = uint32(states.COMPLETED)
+		s.currentRound.Timestamps = append(s.currentRound.Timestamps,
+			uint64(time.Now().Unix()))
 	default:
 		return nil
 	}
 	// Update current round state
 	s.currentRound.UpdateID += 1
 
-	jww.DEBUG.Printf("Round state incremented to %s",
-		states.Round(s.currentRound.State))
-
-	// Handle timestamp edge case with realtime
-	if s.currentRound.State == uint32(states.REALTIME) {
-		s.currentRound.Timestamps = append(s.currentRound.Timestamps,
-			uint64(time.Now().Add(2*time.Second).Unix()))
-	} else {
-		s.currentRound.Timestamps = append(s.currentRound.Timestamps,
-			uint64(time.Now().Unix()))
-	}
-
 	// Sign the new round object
 	err := signature.Sign(s.currentRound.RoundInfo, s.PrivateKey)
 	if err != nil {
 		return err
 	}
+	jww.DEBUG.Printf("Round state incremented to %s",
+		states.Round(s.currentRound.State))
 
 	// Insert update into the state tracker
 	return s.addRoundUpdate(s.currentRound.RoundInfo)
@@ -178,6 +183,9 @@ func (s *State) GetUpdates(id int) ([]*pb.RoundInfo, error) {
 
 // Returns true if given node ID is participating in the current round
 func (s *State) IsRoundNode(id string) bool {
+	s.currentRound.mux.RLock()
+	defer s.currentRound.mux.RUnlock()
+
 	for _, nodeId := range s.currentRound.Topology {
 		if nodeId == id {
 			return true
@@ -188,6 +196,9 @@ func (s *State) IsRoundNode(id string) bool {
 
 // Returns the state of the current round
 func (s *State) GetCurrentRoundState() states.Round {
+	s.currentRound.mux.RLock()
+	defer s.currentRound.mux.RUnlock()
+
 	// If no round has been started, set to COMPLETE
 	if s.currentRound == nil {
 		return states.COMPLETED
@@ -197,9 +208,11 @@ func (s *State) GetCurrentRoundState() states.Round {
 
 // Updates the state of the given node with the new state provided
 func (s *State) UpdateNodeState(id *id.Node, newState states.Round) error {
-	// If node state has changed, increment
-	if s.currentRound.nodeStatuses[id] != newState {
-		s.currentRound.nodeStatuses[id] = newState
+	// Attempt to update node state atomically
+	// If an update occurred, continue, else nothing will happen
+	if old := atomic.SwapUint32(
+		s.currentRound.nodeStatuses[id], uint32(newState)); old != uint32(newState) {
+
 		result := atomic.AddUint32(s.currentRound.networkStatus[newState], 1)
 
 		// Check whether the round state is ready to increment
