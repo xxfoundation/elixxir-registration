@@ -50,6 +50,7 @@ type Params struct {
 	publicAddress             string
 	maxRegistrationAttempts   uint64
 	registrationCountDuration time.Duration
+	batchSize                 uint32
 }
 
 // toGroup takes a group represented by a map of string to string
@@ -75,7 +76,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		State:                   storage.NewState(uint32(len(RegistrationCodes))),
+		State:                   storage.NewState(uint32(len(RegistrationCodes)), params.batchSize),
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,

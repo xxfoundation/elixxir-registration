@@ -15,13 +15,15 @@ verbose: "true"
 # Path to log file
 logPath: "registration.log"
 # Path to the node topology permissioning info
-ndfOutputPath:
+ndfOutputPath: "ndf.json"
+# Batch size of each round
+batchSize: 8
 
-#UDB ID
+# UDB ID
 udbID: 1
 
-#Public address, used in NDF it gives to client
-publicAdress: "104.26.4.131"
+# Public address, used in NDF it gives to client
+publicAdress: "0.0.0.0:11420"
 
 # The listening port of this  server
 port: 11420

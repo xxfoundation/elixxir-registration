@@ -205,7 +205,7 @@ func (m *RegistrationImpl) UpdateState(id *id.Node, activity *current.Activity) 
 		}
 
 		// Progress to the next round
-		err = m.State.CreateNextRoundInfo(0, topology)
+		err = m.State.CreateNextRoundInfo(topology)
 		if err != nil {
 			return err
 		}

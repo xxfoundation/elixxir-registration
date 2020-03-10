@@ -27,12 +27,18 @@ import (
 type State struct {
 	NumNodes   uint32
 	PrivateKey *rsa.PrivateKey
+	batchSize  uint32
 
+	// Round state
 	currentRound *RoundState
-	partialNdf   *dataStructures.Ndf
-	fullNdf      *dataStructures.Ndf
 	roundUpdates *dataStructures.Updates
 	roundData    *dataStructures.Data
+
+	// NDF state
+	partialNdf    *dataStructures.Ndf
+	fullNdf       *dataStructures.Ndf
+	PartialNdfMsg *pb.NDF
+	FullNdfMsg    *pb.NDF
 }
 
 // Tracks the current global state of a round
@@ -52,16 +58,17 @@ type RoundState struct {
 }
 
 // Returns a new State object
-func NewState(numNodes uint32) *State {
+func NewState(numNodes, batchSize uint32) *State {
 	return &State{
 		NumNodes:     numNodes,
+		batchSize:    batchSize,
 		roundUpdates: dataStructures.NewUpdates(),
 		roundData:    dataStructures.NewData(),
 	}
 }
 
 // Builds and inserts the next RoundInfo object into the internal state
-func (s *State) CreateNextRoundInfo(batchSize uint32, topology []string) error {
+func (s *State) CreateNextRoundInfo(topology []string) error {
 	s.currentRound.mux.Lock()
 	defer s.currentRound.mux.Unlock()
 
@@ -71,7 +78,7 @@ func (s *State) CreateNextRoundInfo(batchSize uint32, topology []string) error {
 			ID:         uint64(s.roundData.GetLastRoundID() + 1),
 			UpdateID:   uint64(s.roundUpdates.GetLastUpdateID() + 1),
 			State:      uint32(states.PENDING),
-			BatchSize:  batchSize,
+			BatchSize:  s.batchSize,
 			Topology:   topology,
 			Timestamps: []uint64{uint64(time.Now().Unix())},
 		},
@@ -117,15 +124,33 @@ func (s *State) addRoundUpdate(round *pb.RoundInfo) error {
 	return s.roundUpdates.AddRound(roundCopy)
 }
 
-// Given a full NDF, updates both of the internal NDF structures
+// Given a full NDF, updates internal NDF structures
 func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	s.fullNdf, err = dataStructures.NewNdf(newNdf)
 	if err != nil {
 		return
 	}
-
 	s.partialNdf, err = dataStructures.NewNdf(newNdf.StripNdf())
-	return
+	if err != nil {
+		return
+	}
+
+	// Build NDF comms messages
+	s.FullNdfMsg.Ndf, err = s.GetFullNdf().Get().Marshal()
+	if err != nil {
+		return
+	}
+	s.PartialNdfMsg.Ndf, err = s.GetPartialNdf().Get().Marshal()
+	if err != nil {
+		return
+	}
+
+	// Sign NDF comms messages
+	err = signature.Sign(s.FullNdfMsg, s.PrivateKey)
+	if err != nil {
+		return
+	}
+	return signature.Sign(s.PartialNdfMsg, s.PrivateKey)
 }
 
 // Increments the state of the current round if needed
@@ -213,6 +238,7 @@ func (s *State) UpdateNodeState(id *id.Node, newState states.Round) error {
 	if old := atomic.SwapUint32(
 		s.currentRound.nodeStatuses[id], uint32(newState)); old != uint32(newState) {
 
+		// Node state was updated, increment state counter
 		result := atomic.AddUint32(s.currentRound.networkStatus[newState], 1)
 
 		// Check whether the round state is ready to increment

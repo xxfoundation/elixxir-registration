@@ -13,7 +13,6 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
@@ -41,18 +40,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
 
 		// Return the updated NDFs
-		response.FullNDF.Ndf, err = m.State.GetFullNdf().Get().Marshal()
-		if err != nil {
-			return
-		}
-		response.PartialNDF.Ndf, err = m.State.GetPartialNdf().Get().Marshal()
-		if err != nil {
-			return
-		}
-
-		// Sign the updated NDFs
-		err = signature.Sign(response.FullNDF, m.State.PrivateKey)
-		err = signature.Sign(response.PartialNDF, m.State.PrivateKey)
+		response.FullNDF = m.State.FullNdfMsg
+		response.PartialNDF = m.State.PartialNdfMsg
 	}
 
 	// Commit updates reported by the node if node involved in the current round
