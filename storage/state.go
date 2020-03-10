@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2018 Privategrity Corporation                                   /
+// Copyright © 2020 Privategrity Corporation                                   /
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
@@ -10,7 +10,6 @@ package storage
 
 import (
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/mixmessages"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/network/dataStructures"
 	"gitlab.com/elixxir/crypto/signature"
@@ -49,7 +48,7 @@ type RoundState struct {
 	mux sync.RWMutex
 
 	// Keeps track of the state of each node
-	nodeStatuses map[*id.Node]*uint32
+	nodeStatuses map[id.Node]*uint32
 
 	// Keeps track of the real state of the network
 	// as described by the cumulative states of nodes
@@ -62,19 +61,60 @@ func NewState(numNodes, batchSize uint32) *State {
 	return &State{
 		NumNodes:     numNodes,
 		batchSize:    batchSize,
+		currentRound: &RoundState{},
 		roundUpdates: dataStructures.NewUpdates(),
 		roundData:    dataStructures.NewData(),
 	}
 }
 
+// Returns the full NDF
+func (s *State) GetFullNdf() *dataStructures.Ndf {
+	return s.fullNdf
+}
+
+// Returns the partial NDF
+func (s *State) GetPartialNdf() *dataStructures.Ndf {
+	return s.partialNdf
+}
+
+// Returns all updates after the given ID
+func (s *State) GetUpdates(id int) ([]*pb.RoundInfo, error) {
+	return s.roundUpdates.GetUpdates(id)
+}
+
+// Returns true if given node ID is participating in the current round
+func (s *State) IsRoundNode(id string) bool {
+	s.currentRound.mux.RLock()
+	defer s.currentRound.mux.RUnlock()
+
+	for _, nodeId := range s.currentRound.Topology {
+		if nodeId == id {
+			return true
+		}
+	}
+	return false
+}
+
+// Returns the state of the current round
+func (s *State) GetCurrentRoundState() states.Round {
+	// If no round has been started, set to COMPLETE
+	if s.currentRound.RoundInfo == nil {
+		return states.COMPLETED
+	}
+
+	s.currentRound.mux.RLock()
+	defer s.currentRound.mux.RUnlock()
+	return states.Round(s.currentRound.State)
+}
+
 // Builds and inserts the next RoundInfo object into the internal state
-func (s *State) CreateNextRoundInfo(topology []string) error {
+func (s *State) CreateNextRound(topology []string) error {
 	s.currentRound.mux.Lock()
 	defer s.currentRound.mux.Unlock()
 
 	// Build the new current round object
 	s.currentRound = &RoundState{
-		RoundInfo: &mixmessages.RoundInfo{
+		RoundInfo: &pb.RoundInfo{
 			ID:         uint64(s.roundData.GetLastRoundID() + 1),
 			UpdateID:   uint64(s.roundUpdates.GetLastUpdateID() + 1),
 			State:      uint32(states.PENDING),
@@ -82,13 +122,20 @@ func (s *State) CreateNextRoundInfo(topology []string) error {
 			Topology:   topology,
 			Timestamps: []uint64{uint64(time.Now().Unix())},
 		},
+		nodeStatuses: make(map[id.Node]*uint32),
 	}
 	jww.DEBUG.Printf("Initializing round %d...", s.currentRound.ID)
+
+	// Initialize network status
+	for i, _ := range s.currentRound.networkStatus {
+		val := uint32(0)
+		s.currentRound.networkStatus[i] = &val
+	}
 
 	// Initialize node states based on given topology
 	for _, nodeId := range topology {
 		newState := uint32(states.PENDING)
-		s.currentRound.nodeStatuses[id.NewNodeFromBytes([]byte(
+		s.currentRound.nodeStatuses[*id.NewNodeFromBytes([]byte(
 			nodeId))] = &newState
 	}
 
@@ -108,7 +155,7 @@ func (s *State) CreateNextRoundInfo(topology []string) error {
 
 // Makes a copy of the round before inserting into roundUpdates
 func (s *State) addRoundUpdate(round *pb.RoundInfo) error {
-	roundCopy := &mixmessages.RoundInfo{
+	roundCopy := &pb.RoundInfo{
 		ID:         round.GetID(),
 		UpdateID:   round.GetUpdateID(),
 		State:      round.GetState(),
@@ -193,52 +240,12 @@ func (s *State) incrementRoundState(state states.Round) error {
 	return s.addRoundUpdate(s.currentRound.RoundInfo)
 }
 
-// Returns the full NDF
-func (s *State) GetFullNdf() *dataStructures.Ndf {
-	return s.fullNdf
-}
-
-// Returns the partial NDF
-func (s *State) GetPartialNdf() *dataStructures.Ndf {
-	return s.partialNdf
-}
-
-// Returns all updates after the given ID
-func (s *State) GetUpdates(id int) ([]*pb.RoundInfo, error) {
-	return s.roundUpdates.GetUpdates(id)
-}
-
-// Returns true if given node ID is participating in the current round
-func (s *State) IsRoundNode(id string) bool {
-	s.currentRound.mux.RLock()
-	defer s.currentRound.mux.RUnlock()
-
-	for _, nodeId := range s.currentRound.Topology {
-		if nodeId == id {
-			return true
-		}
-	}
-	return false
-}
-
-// Returns the state of the current round
-func (s *State) GetCurrentRoundState() states.Round {
-	s.currentRound.mux.RLock()
-	defer s.currentRound.mux.RUnlock()
-
-	// If no round has been started, set to COMPLETE
-	if s.currentRound == nil {
-		return states.COMPLETED
-	}
-	return states.Round(s.currentRound.State)
-}
-
 // Updates the state of the given node with the new state provided
 func (s *State) UpdateNodeState(id *id.Node, newState states.Round) error {
 	// Attempt to update node state atomically
 	// If an update occurred, continue, else nothing will happen
 	if old := atomic.SwapUint32(
-		s.currentRound.nodeStatuses[id], uint32(newState)); old != uint32(newState) {
+		s.currentRound.nodeStatuses[*id], uint32(newState)); old != uint32(newState) {
 
 		// Node state was updated, increment state counter
 		result := atomic.AddUint32(s.currentRound.networkStatus[newState], 1)
