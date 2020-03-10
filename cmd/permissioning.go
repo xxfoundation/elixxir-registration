@@ -52,7 +52,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 
 	// Sign the node and gateway certs
 	signedNodeCert, err := certAuthority.Sign(nodeCertificate,
-		m.permissioningCert, &(m.State.PrivateKey))
+		m.permissioningCert, &(m.State.PrivateKey.PrivateKey))
 	if err != nil {
 		return errors.Errorf("failed to sign node certificate: %v", err)
 	}

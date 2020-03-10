@@ -136,10 +136,12 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	}
 
 	// Build NDF comms messages
+	s.FullNdfMsg = &pb.NDF{}
 	s.FullNdfMsg.Ndf, err = s.GetFullNdf().Get().Marshal()
 	if err != nil {
 		return
 	}
+	s.PartialNdfMsg = &pb.NDF{}
 	s.PartialNdfMsg.Ndf, err = s.GetPartialNdf().Get().Marshal()
 	if err != nil {
 		return

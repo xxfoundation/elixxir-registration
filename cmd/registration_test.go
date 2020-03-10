@@ -152,17 +152,15 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 //Happy Path:  Insert a reg code along with a node
 func TestRegCodeExists_RegUser(t *testing.T) {
 	//Initialize an implementation and the permissioning server
-	impl := &RegistrationImpl{}
-	impl.nodeCompleted = make(chan struct{}, 1)
-
-	jww.SetStdoutThreshold(jww.LevelInfo)
-
-	impl.permissioningKey, impl.permissioningCert = initPermissioningServerKeys()
+	impl, err := StartRegistration(testParams)
+	if err != nil {
+		t.Errorf("Unable to start: %+v", err)
+	}
 
 	//Inialiaze the database
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
 	//Insert regcodes into it
-	err := storage.PermissioningDb.InsertClientRegCode("AAAA", 100)
+	err = storage.PermissioningDb.InsertClientRegCode("AAAA", 100)
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
@@ -177,7 +175,7 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 	if sig == nil {
 		t.Errorf("Failed to sign public key, recieved %+v as a signature", sig)
 	}
-
+	impl.Comms.Shutdown()
 }
 
 //Attempt to register a node after the
@@ -199,19 +197,18 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 	err = impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
 		"0.0.0.0:6900", string(nodeCert), "BBBB")
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+		return
+	}
 
 	err = nodeRegistrationCompleter(impl)
 	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-	//Kill the connections for the next test
-	nodeComm.DisconnectAll()
-	impl.Comms.Shutdown()
 
+	//Kill the connections for the next test
+	impl.Comms.Shutdown()
 }
 
 //Error path: test that trying to register with the same reg code fails
@@ -247,11 +244,8 @@ func TestDoubleRegistration(t *testing.T) {
 	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
 		"0.0.0.0:6901", string(nodeCert), "BBBB")
 	//Kill the connections for the next test
-	nodeComm.DisconnectAll()
-	nodeComm2.DisconnectAll()
 	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
-	time.Sleep(5 * time.Second)
 	if err != nil {
 		return
 	}
@@ -300,8 +294,6 @@ func TestTopology_MultiNodes(t *testing.T) {
 	}
 
 	//Kill the connections for the next test
-	nodeComm.DisconnectAll()
-	nodeComm2.DisconnectAll()
 	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
 }
@@ -384,15 +376,9 @@ func TestRegistrationImpl_Polldf(t *testing.T) {
 		}
 	}
 
-	//Disconnect nodeComms
-	nodeComm.DisconnectAll()
-	nodeComm2.DisconnectAll()
-	nodeComm3.DisconnectAll()
 	//Shutdown node comms
 	nodeComm2.Shutdown()
 	nodeComm3.Shutdown()
-
-	//Shutdown registration
 	impl.Comms.Shutdown()
 }
 
@@ -436,9 +422,6 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	if err != nil && err.Error() != ndf.NO_NDF {
 		t.Errorf("Expected correct error message: %+v", err)
 	}
-
-	//Disconnect nodeComms
-	nodeComm.DisconnectAll()
 
 	//Shutdown registration
 	impl.Comms.Shutdown()
@@ -553,5 +536,4 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
-
 }

@@ -15,6 +15,7 @@ import (
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
+	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
@@ -97,6 +98,11 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	if err != nil {
 		return nil, errors.Errorf("failed to read key at %+v: %+v",
 			params.KeyPath, err)
+	}
+	regImpl.State.PrivateKey, err = rsa.LoadPrivateKeyFromPem(key)
+	if err != nil {
+		return nil, errors.Errorf("Failed to parse permissioning server key: %+v. "+
+			"PermissioningKey is %+v", err, regImpl.State.PrivateKey)
 	}
 
 	if !noTLS {
