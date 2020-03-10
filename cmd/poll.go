@@ -51,8 +51,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		}
 
 		// Sign the updated NDFs
-		err = signature.Sign(response.FullNDF, m.permissioningKey)
-		err = signature.Sign(response.PartialNDF, m.permissioningKey)
+		err = signature.Sign(response.FullNDF, m.State.PrivateKey)
+		err = signature.Sign(response.PartialNDF, m.State.PrivateKey)
 	}
 
 	// Commit updates reported by the node if node involved in the current round

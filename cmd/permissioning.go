@@ -51,11 +51,13 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	}
 
 	// Sign the node and gateway certs
-	signedNodeCert, err := certAuthority.Sign(nodeCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
+	signedNodeCert, err := certAuthority.Sign(nodeCertificate,
+		m.permissioningCert, &(m.State.PrivateKey))
 	if err != nil {
 		return errors.Errorf("failed to sign node certificate: %v", err)
 	}
-	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
+	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate,
+		m.permissioningCert, &(m.State.PrivateKey.PrivateKey))
 	if err != nil {
 		return errors.Errorf("Failed to sign gateway certificate: %v", err)
 	}
@@ -189,7 +191,10 @@ func (m *RegistrationImpl) UpdateState(id *id.Node, activity *current.Activity) 
 	}
 
 	// Update node state
-	m.State.UpdateNodeState(id, roundState)
+	err = m.State.UpdateNodeState(id, roundState)
+	if err != nil {
+		return err
+	}
 
 	// Handle completion of a round
 	if m.State.GetCurrentRoundState() == states.COMPLETED {
@@ -200,13 +205,11 @@ func (m *RegistrationImpl) UpdateState(id *id.Node, activity *current.Activity) 
 		}
 
 		// Progress to the next round
-		err = m.State.CreateNextRoundInfo(0, topology, m.permissioningKey)
+		err = m.State.CreateNextRoundInfo(0, topology)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Round not yet complete, attempt to increment the round state
-	err = m.State.IncrementRoundState(m.permissioningKey)
 	return err
 }

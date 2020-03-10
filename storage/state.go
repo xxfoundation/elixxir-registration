@@ -24,7 +24,8 @@ import (
 
 // Used for keeping track of NDF and Round state
 type State struct {
-	NumNodes uint32
+	NumNodes   uint32
+	PrivateKey *rsa.PrivateKey
 
 	currentRound *RoundState
 	partialNdf   *dataStructures.Ndf
@@ -57,7 +58,7 @@ func NewState(numNodes uint32) *State {
 }
 
 // Builds and inserts the next RoundInfo object into the internal state
-func (s *State) CreateNextRoundInfo(batchSize uint32, topology []string, privKey *rsa.PrivateKey) error {
+func (s *State) CreateNextRoundInfo(batchSize uint32, topology []string) error {
 
 	// Build the new current round object
 	s.currentRound = &RoundState{
@@ -79,7 +80,7 @@ func (s *State) CreateNextRoundInfo(batchSize uint32, topology []string, privKey
 	}
 
 	// Sign the new round object
-	err := signature.Sign(s.currentRound.RoundInfo, privKey)
+	err := signature.Sign(s.currentRound.RoundInfo, s.PrivateKey)
 	if err != nil {
 		return err
 	}
@@ -122,20 +123,22 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 }
 
 // Increments the state of the current round if needed
-func (s *State) IncrementRoundState(privKey *rsa.PrivateKey) error {
-	// Check whether the round state is ready to update
-	if s.currentRound.networkStatus[s.GetCurrentRoundState()] != &s.NumNodes {
-		// If not, do nothing
+func (s *State) incrementRoundState(state states.Round) error {
+
+	// Handle state transitions
+	switch state {
+	case states.PENDING:
+		s.currentRound.State = uint32(states.PRECOMPUTING)
+	case states.STANDBY:
+		s.currentRound.State = uint32(states.REALTIME)
+	case states.COMPLETED:
+		s.currentRound.State = uint32(states.COMPLETED)
+	default:
 		return nil
 	}
-
 	// Update current round state
 	s.currentRound.UpdateID += 1
-	if s.currentRound.State == uint32(states.PRECOMPUTING) {
-		// Handle needing to skip STANDBY straight into REALTIME
-		s.currentRound.State += 1
-	}
-	s.currentRound.State += 1
+
 	jww.DEBUG.Printf("Round state incremented to %s",
 		states.Round(s.currentRound.State))
 
@@ -149,7 +152,7 @@ func (s *State) IncrementRoundState(privKey *rsa.PrivateKey) error {
 	}
 
 	// Sign the new round object
-	err := signature.Sign(s.currentRound.RoundInfo, privKey)
+	err := signature.Sign(s.currentRound.RoundInfo, s.PrivateKey)
 	if err != nil {
 		return err
 	}
@@ -193,11 +196,18 @@ func (s *State) GetCurrentRoundState() states.Round {
 }
 
 // Updates the state of the given node with the new state provided
-func (s *State) UpdateNodeState(id *id.Node, newState states.Round) {
-	if s.currentRound.nodeStatuses[id] == newState {
-		return
+func (s *State) UpdateNodeState(id *id.Node, newState states.Round) error {
+	// If node state has changed, increment
+	if s.currentRound.nodeStatuses[id] != newState {
+		s.currentRound.nodeStatuses[id] = newState
+		result := atomic.AddUint32(s.currentRound.networkStatus[newState], 1)
+
+		// Check whether the round state is ready to increment
+		if result == s.NumNodes {
+			return s.incrementRoundState(newState)
+		}
 	}
 
-	s.currentRound.nodeStatuses[id] = newState
-	atomic.AddUint32(s.currentRound.networkStatus[newState], 1)
+	// If node state hasn't changed, do nothing
+	return nil
 }
