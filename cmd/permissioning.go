@@ -83,7 +83,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	}
 
 	jww.DEBUG.Printf("Total number of expected nodes for registration"+
-		" completion: %v", m.State.NumNodes)
+		" completion: %d", len(RegistrationCodes))
 	m.nodeCompleted <- struct{}{}
 	return nil
 }
@@ -91,7 +91,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 // nodeRegistrationCompleter is a wrapper for completed node registration error handling
 func nodeRegistrationCompleter(impl *RegistrationImpl) error {
 	// Wait for all Nodes to complete registration
-	for numNodes := uint32(0); numNodes < impl.State.NumNodes; numNodes++ {
+	for numNodes := uint32(0); numNodes < uint32(len(RegistrationCodes)); numNodes++ {
 		jww.INFO.Printf("Registered %d node(s)!", numNodes)
 		<-impl.nodeCompleted
 	}

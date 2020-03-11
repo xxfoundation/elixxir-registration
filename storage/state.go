@@ -24,16 +24,17 @@ import (
 
 // Used for keeping track of NDF and Round state
 type State struct {
-	NumNodes   uint32
+	// State parameters ---
 	PrivateKey *rsa.PrivateKey
 	batchSize  uint32
 
-	// Round state
-	currentRound *RoundState
-	roundUpdates *dataStructures.Updates
-	roundData    *dataStructures.Data
+	// Round state ---
+	currentRound  *RoundState
+	currentUpdate int // Round update counter
+	roundUpdates  *dataStructures.Updates
+	roundData     *dataStructures.Data
 
-	// NDF state
+	// NDF state ---
 	partialNdf    *dataStructures.Ndf
 	fullNdf       *dataStructures.Ndf
 	PartialNdfMsg *pb.NDF
@@ -57,13 +58,13 @@ type RoundState struct {
 }
 
 // Returns a new State object
-func NewState(numNodes, batchSize uint32) *State {
+func NewState(batchSize uint32) *State {
 	return &State{
-		NumNodes:     numNodes,
-		batchSize:    batchSize,
-		currentRound: &RoundState{},
-		roundUpdates: dataStructures.NewUpdates(),
-		roundData:    dataStructures.NewData(),
+		batchSize:     batchSize,
+		currentRound:  &RoundState{},
+		currentUpdate: -1,
+		roundUpdates:  dataStructures.NewUpdates(),
+		roundData:     dataStructures.NewData(),
 	}
 }
 
@@ -113,11 +114,12 @@ func (s *State) CreateNextRound(topology []string) error {
 	defer s.currentRound.mux.Unlock()
 
 	// Build the new current round object
+	s.currentUpdate += 1
 	s.currentRound = &RoundState{
 		RoundInfo: &pb.RoundInfo{
 			ID:         uint64(s.roundData.GetLastRoundID() + 1),
-			UpdateID:   uint64(s.roundUpdates.GetLastUpdateID() + 1),
-			State:      uint32(states.PENDING),
+			UpdateID:   uint64(s.currentUpdate),
+			State:      uint32(states.PRECOMPUTING),
 			BatchSize:  s.batchSize,
 			Topology:   topology,
 			Timestamps: []uint64{uint64(time.Now().Unix())},
@@ -209,10 +211,6 @@ func (s *State) incrementRoundState(state states.Round) error {
 
 	// Handle state transitions
 	switch state {
-	case states.PENDING:
-		s.currentRound.State = uint32(states.PRECOMPUTING)
-		s.currentRound.Timestamps = append(s.currentRound.Timestamps,
-			uint64(time.Now().Unix()))
 	case states.STANDBY:
 		s.currentRound.State = uint32(states.REALTIME)
 		// Handle timestamp edge case with realtime
@@ -226,7 +224,8 @@ func (s *State) incrementRoundState(state states.Round) error {
 		return nil
 	}
 	// Update current round state
-	s.currentRound.UpdateID += 1
+	s.currentUpdate += 1
+	s.currentRound.UpdateID = uint64(s.currentUpdate)
 
 	// Sign the new round object
 	err := signature.Sign(s.currentRound.RoundInfo, s.PrivateKey)
@@ -251,7 +250,7 @@ func (s *State) UpdateNodeState(id *id.Node, newState states.Round) error {
 		result := atomic.AddUint32(s.currentRound.networkStatus[newState], 1)
 
 		// Check whether the round state is ready to increment
-		if result == s.NumNodes {
+		if result == uint32(len(s.currentRound.Topology)) {
 			return s.incrementRoundState(newState)
 		}
 	}

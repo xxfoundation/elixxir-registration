@@ -77,7 +77,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		State:                   storage.NewState(uint32(len(RegistrationCodes)), params.batchSize),
+		State:                   storage.NewState(params.batchSize),
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
