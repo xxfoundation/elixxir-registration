@@ -54,9 +54,8 @@ type Params struct {
 	batchSize                 uint32
 }
 
-// toGroup takes a group represented by a map of string to string
-// and uses the prime, small prime and generator to  created
-// and returns a an ndf group object.
+// toGroup takes a group represented by a map of string to string,
+// then uses the prime and generator to create an ndf group object.
 func toGroup(grp map[string]string) (*ndf.Group, error) {
 	jww.DEBUG.Printf("Group is: %v", grp)
 	pStr, pOk := grp["prime"]
