@@ -35,7 +35,6 @@ func getTestKey() *rsa.PrivateKey {
 
 	testPermissioningKey, _ := rsa.LoadPrivateKeyFromPem(permKeyBytes)
 	return testPermissioningKey
-
 }
 
 // Full test
@@ -96,7 +95,7 @@ func TestState_CreateNextRound(t *testing.T) {
 	if s.currentRound.GetID() != 0 {
 		t.Errorf("Incorrect round ID")
 	}
-	if s.currentRound.GetUpdateID() != 0 {
+	if s.currentRound.GetUpdateID() != 1 {
 		t.Errorf("Incorrect update ID!")
 	}
 	if s.currentRound.GetState() != uint32(states.PRECOMPUTING) {
@@ -210,35 +209,35 @@ func TestState_incrementRoundState(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error incrementing round state: %+v", err)
 	}
-	if s.currentUpdate != 0 {
+	if s.currentUpdate != 1 {
 		t.Errorf("Unexpected round update occurred!")
 	}
 	err = s.incrementRoundState(states.PRECOMPUTING)
 	if err != nil {
 		t.Errorf("Unexpected error incrementing round state: %+v", err)
 	}
-	if s.currentUpdate != 0 {
+	if s.currentUpdate != 1 {
 		t.Errorf("Unexpected round update occurred!")
 	}
 	err = s.incrementRoundState(states.STANDBY)
 	if err != nil {
 		t.Errorf("Unexpected error incrementing round state: %+v", err)
 	}
-	if s.currentUpdate != 1 {
+	if s.currentUpdate != 2 {
 		t.Errorf("Round update failed to occur!")
 	}
 	err = s.incrementRoundState(states.REALTIME)
 	if err != nil {
 		t.Errorf("Unexpected error incrementing round state: %+v", err)
 	}
-	if s.currentUpdate != 1 {
+	if s.currentUpdate != 2 {
 		t.Errorf("Unexpected round update occurred!")
 	}
 	err = s.incrementRoundState(states.COMPLETED)
 	if err != nil {
 		t.Errorf("Unexpected error incrementing round state: %+v", err)
 	}
-	if s.currentUpdate != 2 {
+	if s.currentUpdate != 3 {
 		t.Errorf("Round update failed to occur!")
 	}
 }

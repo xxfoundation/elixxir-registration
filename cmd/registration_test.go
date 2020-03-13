@@ -6,15 +6,9 @@
 package cmd
 
 import (
-	"bytes"
-	"crypto/x509"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/comms/node"
-	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/crypto/tls"
-	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/testkeys"
@@ -28,9 +22,7 @@ var nodeCert []byte
 var nodeKey []byte
 var permAddr = "0.0.0.0:5900"
 var testParams Params
-var gatewayKey []byte
 var gatewayCert []byte
-var ndfFile []byte
 
 var nodeComm *node.Comms
 
@@ -47,19 +39,9 @@ func TestMain(m *testing.M) {
 		fmt.Printf("Could not get node key: %+v\n", err)
 	}
 
-	gatewayKey, err = utils.ReadFile(testkeys.GetCAKeyPath())
-	if err != nil {
-		fmt.Printf("Could not get gateway key: %+v\n", err)
-	}
-
 	gatewayCert, err = utils.ReadFile(testkeys.GetCACertPath())
 	if err != nil {
 		fmt.Printf("Could not get gateway cert: %+v\n", err)
-	}
-
-	ndfFile, err = utils.ReadFile(testkeys.GetClientNdf())
-	if err != nil {
-		fmt.Printf("Could not get ndf: %+v\n", err)
 	}
 
 	testParams = Params{
@@ -80,18 +62,6 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(runFunc())
-}
-
-//Helper function that initailizes the permisssioning server's globals
-//Todo: throw in the permDB??
-func initPermissioningServerKeys() (*rsa.PrivateKey, *x509.Certificate) {
-	permKeyBytes, _ := utils.ReadFile(testkeys.GetCAKeyPath())
-	permCertBytes, _ := utils.ReadFile(testkeys.GetCACertPath())
-
-	testPermissioningKey, _ := rsa.LoadPrivateKeyFromPem(permKeyBytes)
-	testpermissioningCert, _ := tls.LoadCertificate(string(permCertBytes))
-	return testPermissioningKey, testpermissioningCert
-
 }
 
 //Error path: Test an insertion on an empty database
@@ -295,135 +265,6 @@ func TestTopology_MultiNodes(t *testing.T) {
 
 	//Kill the connections for the next test
 	nodeComm2.Shutdown()
-	impl.Comms.Shutdown()
-}
-
-//Happy path
-func TestRegistrationImpl_Polldf(t *testing.T) {
-	//Create database
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
-
-	//Create reg codes and populate the database
-	strings := make([]string, 0)
-	strings = append(strings, "BBBB", "CCCC", "DDDD")
-	storage.PopulateNodeRegistrationCodes(strings)
-	RegistrationCodes = strings
-	RegParams = testParams
-
-	// Start registration server
-	impl, err := StartRegistration(testParams)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	//Start the other nodes
-	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
-	nodeComm3 := node.StartNode("tmp", "0.0.0.0:6902", node.NewImplementation(), nodeCert, nodeKey)
-	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-
-	udbParams.ID = udbId
-
-	//Register 1st node
-	err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
-		"0.0.0.0:7900", string(gatewayCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 2nd node
-	err = impl.RegisterNode([]byte("C"), "0.0.0.0:6901", string(nodeCert),
-		"0.0.0.0:7901", string(gatewayCert), "CCCC")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 3rd node
-	err = impl.RegisterNode([]byte("D"), "0.0.0.0:6902", string(nodeCert),
-		"0.0.0.0:7902", string(gatewayCert), "DDDD")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	err = nodeRegistrationCompleter(impl)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
-	if err != nil {
-		t.Errorf("failed to update ndf: %v", err)
-	}
-
-	observedNDF, _, err := ndf.DecodeNDF(string(observedNDFBytes))
-	if err != nil {
-		t.Errorf("Could not decode ndf: %v\nNdf output: %s", err,
-			string(observedNDFBytes))
-	}
-	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
-		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v", udbId, observedNDF.UDB.ID)
-	}
-
-	if observedNDF.Registration.Address != permAddr {
-		t.Errorf("Failed to set registration address. Expected: %v \n Recieved: %v",
-			permAddr, observedNDF.Registration.Address)
-	}
-	expectedNodeIDs := make([][]byte, 0)
-	expectedNodeIDs = append(expectedNodeIDs, []byte("B"), []byte("C"), []byte("D"))
-	for i := range observedNDF.Nodes {
-		if bytes.Compare(expectedNodeIDs[i], observedNDF.Nodes[i].ID) != 0 {
-			t.Errorf("Could not build node %d's, id: Expected: %v \n Recieved: %v", i,
-				expectedNodeIDs, observedNDF.Nodes[i].ID)
-		}
-	}
-
-	//Shutdown node comms
-	nodeComm2.Shutdown()
-	nodeComm3.Shutdown()
-	impl.Comms.Shutdown()
-}
-
-//Error  path
-func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
-	//Create database
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
-
-	//Create reg codes and populate the database
-	strings := make([]string, 0)
-	strings = append(strings, "BBBB", "CCCC")
-	storage.PopulateNodeRegistrationCodes(strings)
-	RegistrationCodes = strings
-	RegParams = testParams
-
-	// Start registration server
-	impl, err := StartRegistration(testParams)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	go nodeRegistrationCompleter(impl)
-
-	//Setup udb configurations
-	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-	udbParams.ID = udbId
-
-	//Register 1st node
-	err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
-		"0.0.0.0:7900", string(gatewayCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Make a client ndf hash that is not up to date
-	clientNdfHash := []byte("test")
-
-	_, err = impl.PollNdf(clientNdfHash, &connect.Auth{})
-	if err == nil {
-		t.Error("Expected error path, should not have an ndf ready")
-	}
-	if err != nil && err.Error() != ndf.NO_NDF {
-		t.Errorf("Expected correct error message: %+v", err)
-	}
-
-	//Shutdown registration
 	impl.Comms.Shutdown()
 }
 

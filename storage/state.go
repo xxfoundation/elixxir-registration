@@ -62,7 +62,7 @@ func NewState(batchSize uint32) *State {
 	return &State{
 		batchSize:     batchSize,
 		currentRound:  &RoundState{},
-		currentUpdate: -1,
+		currentUpdate: 0,
 		roundUpdates:  dataStructures.NewUpdates(),
 		roundData:     dataStructures.NewData(),
 	}
@@ -113,6 +113,12 @@ func (s *State) CreateNextRound(topology []string) error {
 	s.currentRound.mux.Lock()
 	defer s.currentRound.mux.Unlock()
 
+	// Insert dummy update
+	err := s.addRoundUpdate(&pb.RoundInfo{})
+	if err != nil {
+		return err
+	}
+
 	// Build the new current round object
 	s.currentUpdate += 1
 	s.currentRound = &RoundState{
@@ -142,7 +148,7 @@ func (s *State) CreateNextRound(topology []string) error {
 	}
 
 	// Sign the new round object
-	err := signature.Sign(s.currentRound.RoundInfo, s.PrivateKey)
+	err = signature.Sign(s.currentRound.RoundInfo, s.PrivateKey)
 	if err != nil {
 		return err
 	}
