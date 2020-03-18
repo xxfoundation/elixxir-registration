@@ -85,6 +85,12 @@ func (s *State) GetUpdates(id int) ([]*pb.RoundInfo, error) {
 
 // Returns true if given node ID is participating in the current round
 func (s *State) IsRoundNode(id string) bool {
+
+	// Handle polling before a round is ready
+	if s.currentRound == nil {
+		return false
+	}
+
 	s.currentRound.mux.RLock()
 	defer s.currentRound.mux.RUnlock()
 
