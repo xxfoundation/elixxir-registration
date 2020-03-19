@@ -129,6 +129,10 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) error {
 
 	// Update the internal state with the newly-formed NDF
 	err = impl.State.UpdateNdf(networkDef)
+	err = impl.CreateNextRound()
+	if err != nil {
+		return err
+	}
 
 	// Output the completed topology to a JSON file and save marshall'ed json data
 	err = outputToJSON(networkDef, impl.ndfOutputPath)
@@ -199,18 +203,20 @@ func (m *RegistrationImpl) UpdateState(id *id.Node, activity *current.Activity) 
 
 	// Handle completion of a round
 	if m.State.GetCurrentRoundState() == states.COMPLETED {
-		// Build a topology (currently consisting of all nodes in network)
-		var topology []string
-		for _, node := range m.State.GetPartialNdf().Get().Nodes {
-			topology = append(topology, string(node.ID))
-		}
-
-		// Progress to the next round
-		err = m.State.CreateNextRound(topology)
-		if err != nil {
-			return err
-		}
+		return m.CreateNextRound()
 	}
 
-	return err
+	return nil
+}
+
+// Initiate the next round with a selection of nodes
+func (m *RegistrationImpl) CreateNextRound() error {
+	// Build a topology (currently consisting of all nodes in network)
+	var topology []string
+	for _, node := range m.State.GetPartialNdf().Get().Nodes {
+		topology = append(topology, node.GetNodeId().String())
+	}
+
+	// Progress to the next round
+	return m.State.CreateNextRound(topology)
 }
