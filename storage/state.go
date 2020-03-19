@@ -60,8 +60,12 @@ type RoundState struct {
 // Returns a new State object
 func NewState(batchSize uint32) *State {
 	return &State{
-		batchSize:     batchSize,
-		currentRound:  &RoundState{},
+		batchSize: batchSize,
+		currentRound: &RoundState{
+			RoundInfo: &pb.RoundInfo{
+				Topology: make([]string, 0),
+			},
+		},
 		currentUpdate: 0,
 		roundUpdates:  dataStructures.NewUpdates(),
 		roundData:     dataStructures.NewData(),
@@ -87,11 +91,6 @@ func (s *State) GetUpdates(id int) ([]*pb.RoundInfo, error) {
 func (s *State) IsRoundNode(id string) bool {
 	s.currentRound.mux.RLock()
 	defer s.currentRound.mux.RUnlock()
-
-	// Handle polling before a round is ready
-	if s.currentRound.Topology == nil {
-		return false
-	}
 
 	for _, nodeId := range s.currentRound.Topology {
 		if nodeId == id {
