@@ -74,10 +74,14 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Initialize variables
 	regRemaining := uint64(0)
 	ndfReady := uint32(0)
+	state, err := storage.NewState(params.batchSize)
+	if err != nil {
+		return nil, err
+	}
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		State:                   storage.NewState(params.batchSize),
+		State:                   state,
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,

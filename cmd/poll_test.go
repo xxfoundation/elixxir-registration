@@ -92,12 +92,16 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	// Start registration server
 	ndfReady := uint32(0)
+	state, err := storage.NewState(0)
+	if err != nil {
+		t.Errorf("Unable to create state: %+v", err)
+	}
 	impl := &RegistrationImpl{
-		State:    storage.NewState(0),
+		State:    state,
 		NdfReady: &ndfReady,
 	}
 
-	_, err := impl.Poll(nil, nil)
+	_, err = impl.Poll(nil, nil)
 	if err == nil || err.Error() != ndf.NO_NDF {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -109,12 +113,16 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
+	state, err := storage.NewState(0)
+	if err != nil {
+		t.Errorf("Unable to create state: %+v", err)
+	}
 	impl := RegistrationImpl{
-		State:    storage.NewState(0),
+		State:    state,
 		NdfReady: &ndfReady,
 	}
 	impl.State.PrivateKey = getTestKey()
-	err := impl.State.UpdateNdf(&ndf.NetworkDefinition{
+	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
 			TlsCertificate: "",

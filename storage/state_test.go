@@ -39,7 +39,10 @@ func getTestKey() *rsa.PrivateKey {
 
 // Full test
 func TestState_IsRoundNode(t *testing.T) {
-	s := NewState(1)
+	s, err := NewState(1)
+	if err != nil {
+		t.Errorf("Unable to create state: %+v", err)
+	}
 	s.currentRound = &RoundState{
 		RoundInfo: &pb.RoundInfo{},
 	}
@@ -59,7 +62,10 @@ func TestState_IsRoundNode(t *testing.T) {
 
 // Full test
 func TestState_GetCurrentRoundState(t *testing.T) {
-	s := NewState(1)
+	s, err := NewState(1)
+	if err != nil {
+		t.Errorf("Unable to create state: %+v", err)
+	}
 
 	// Test nil case
 	if s.GetCurrentRoundState() != states.COMPLETED {
@@ -84,10 +90,13 @@ func TestState_CreateNextRound(t *testing.T) {
 	batchSize := uint32(1)
 	topology := []string{"test", "test2"}
 
-	s := NewState(batchSize)
+	s, err := NewState(batchSize)
+	if err != nil {
+		t.Errorf("Unable to create state: %+v", err)
+	}
 	s.PrivateKey = getTestKey()
 
-	err := s.CreateNextRound(topology)
+	err = s.CreateNextRound(topology)
 	if err != nil {
 		t.Errorf("Unexpected error creating round: %+v", err)
 	}
@@ -137,10 +146,13 @@ func TestState_CreateNextRound(t *testing.T) {
 func TestState_UpdateNodeState(t *testing.T) {
 	topology := []string{"test", "test2"}
 
-	s := NewState(1)
+	s, err := NewState(1)
+	if err != nil {
+		t.Errorf("Unable to create state: %+v", err)
+	}
 	s.PrivateKey = getTestKey()
 
-	err := s.CreateNextRound(topology)
+	err = s.CreateNextRound(topology)
 	if err != nil {
 		t.Errorf("Unexpected error creating round: %+v", err)
 	}
@@ -197,10 +209,13 @@ func TestState_UpdateNodeState(t *testing.T) {
 func TestState_incrementRoundState(t *testing.T) {
 	topology := []string{"test", "test2"}
 
-	s := NewState(1)
+	s, err := NewState(1)
+	if err != nil {
+		t.Errorf("Unable to create state: %+v", err)
+	}
 	s.PrivateKey = getTestKey()
 
-	err := s.CreateNextRound(topology)
+	err = s.CreateNextRound(topology)
 	if err != nil {
 		t.Errorf("Unexpected error creating round: %+v", err)
 	}

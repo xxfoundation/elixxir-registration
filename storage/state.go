@@ -58,8 +58,8 @@ type RoundState struct {
 }
 
 // Returns a new State object
-func NewState(batchSize uint32) *State {
-	return &State{
+func NewState(batchSize uint32) (*State, error) {
+	state := &State{
 		batchSize: batchSize,
 		currentRound: &RoundState{
 			RoundInfo: &pb.RoundInfo{
@@ -71,6 +71,14 @@ func NewState(batchSize uint32) *State {
 		roundUpdates:  dataStructures.NewUpdates(),
 		roundData:     dataStructures.NewData(),
 	}
+
+	// Insert dummy update
+	err := state.addRoundUpdate(&pb.RoundInfo{})
+	if err != nil {
+		return nil, err
+	}
+	state.currentUpdate += 1
+	return state, nil
 }
 
 // Returns the full NDF
@@ -114,14 +122,7 @@ func (s *State) CreateNextRound(topology []string) error {
 	s.currentRound.mux.Lock()
 	defer s.currentRound.mux.Unlock()
 
-	// Insert dummy update
-	err := s.addRoundUpdate(&pb.RoundInfo{})
-	if err != nil {
-		return err
-	}
-
 	// Build the new current round object
-	s.currentUpdate += 1
 	s.currentRound = &RoundState{
 		RoundInfo: &pb.RoundInfo{
 			ID:         uint64(s.roundData.GetLastRoundID() + 1),
@@ -149,7 +150,7 @@ func (s *State) CreateNextRound(topology []string) error {
 	}
 
 	// Sign the new round object
-	err = signature.Sign(s.currentRound.RoundInfo, s.PrivateKey)
+	err := signature.Sign(s.currentRound.RoundInfo, s.PrivateKey)
 	if err != nil {
 		return err
 	}
