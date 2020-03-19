@@ -63,7 +63,8 @@ func TestState_GetCurrentRoundState(t *testing.T) {
 
 	// Test nil case
 	if s.GetCurrentRoundState() != states.COMPLETED {
-		t.Errorf("Expected nil round to return completed state!")
+		t.Errorf("Expected nil round to return completed state! Got %+v",
+			s.GetCurrentRoundState())
 	}
 
 	s.currentRound = &RoundState{

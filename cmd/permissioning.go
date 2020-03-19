@@ -19,6 +19,7 @@ import (
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/storage"
+	"sync/atomic"
 	"time"
 )
 
@@ -136,7 +137,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) error {
 	}
 
 	// Alert that registration is complete
-	impl.registrationCompleted <- struct{}{}
+	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 	return nil
 }
 

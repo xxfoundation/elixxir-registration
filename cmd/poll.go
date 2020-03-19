@@ -16,6 +16,7 @@ import (
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
+	"sync/atomic"
 )
 
 // Server->Permissioning unified poll function
@@ -26,7 +27,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	response = &pb.PermissionPollResponse{}
 
 	// Ensure the NDF is ready to be returned
-	if m.State.GetFullNdf() == nil || m.State.GetPartialNdf() == nil {
+	regComplete := atomic.LoadUint32(m.NdfReady)
+	if regComplete != 1 {
 		return response, errors.New(ndf.NO_NDF)
 	}
 

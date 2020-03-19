@@ -17,6 +17,7 @@ import (
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/testkeys"
+	"sync/atomic"
 	"testing"
 )
 
@@ -36,6 +37,8 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
+	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
+
 	impl.State.PrivateKey = getTestKey()
 	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
@@ -88,8 +91,10 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 // Error path: Ndf not ready
 func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	// Start registration server
-	impl := RegistrationImpl{
-		State: storage.NewState(0),
+	ndfReady := uint32(0)
+	impl := &RegistrationImpl{
+		State:    storage.NewState(0),
+		NdfReady: &ndfReady,
 	}
 
 	_, err := impl.Poll(nil, nil)
@@ -103,8 +108,10 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 	testString := "test"
 
 	// Start registration server
+	ndfReady := uint32(1)
 	impl := RegistrationImpl{
-		State: storage.NewState(0),
+		State:    storage.NewState(0),
+		NdfReady: &ndfReady,
 	}
 	impl.State.PrivateKey = getTestKey()
 	err := impl.State.UpdateNdf(&ndf.NetworkDefinition{

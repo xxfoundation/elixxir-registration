@@ -31,7 +31,7 @@ type RegistrationImpl struct {
 	permissioningCert       *x509.Certificate
 	ndfOutputPath           string
 	nodeCompleted           chan struct{}
-	registrationCompleted   chan struct{}
+	NdfReady                *uint32
 	certFromFile            string
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
@@ -73,6 +73,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Initialize variables
 	regRemaining := uint64(0)
+	ndfReady := uint32(0)
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
@@ -81,7 +82,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
 		nodeCompleted:           make(chan struct{}, len(RegistrationCodes)),
-		registrationCompleted:   make(chan struct{}, 1),
+		NdfReady:                &ndfReady,
 	}
 
 	// Create timer and channel to be used by routine that clears the number of

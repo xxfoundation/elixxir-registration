@@ -63,7 +63,8 @@ func NewState(batchSize uint32) *State {
 		batchSize: batchSize,
 		currentRound: &RoundState{
 			RoundInfo: &pb.RoundInfo{
-				Topology: make([]string, 0),
+				Topology: make([]string, 0),        // Set this to avoid segfault
+				State:    uint32(states.COMPLETED), // Set this to start rounds
 			},
 		},
 		currentUpdate: 0,
@@ -102,13 +103,9 @@ func (s *State) IsRoundNode(id string) bool {
 
 // Returns the state of the current round
 func (s *State) GetCurrentRoundState() states.Round {
-	// If no round has been started, set to COMPLETE
-	if s.currentRound.RoundInfo == nil {
-		return states.COMPLETED
-	}
-
 	s.currentRound.mux.RLock()
 	defer s.currentRound.mux.RUnlock()
+
 	return states.Round(s.currentRound.State)
 }
 
