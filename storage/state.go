@@ -130,10 +130,11 @@ func (s *State) CreateNextRound(topology []string) error {
 			State:      uint32(states.PRECOMPUTING),
 			BatchSize:  s.batchSize,
 			Topology:   topology,
-			Timestamps: []uint64{uint64(time.Now().Unix())},
+			Timestamps: make([]uint64, states.NUM_STATES),
 		},
 		nodeStatuses: make(map[id.Node]*uint32),
 	}
+	s.currentRound.Timestamps[states.PRECOMPUTING] = uint64(time.Now().Unix())
 	jww.DEBUG.Printf("Initializing round %d...", s.currentRound.ID)
 
 	// Initialize network status
@@ -222,12 +223,10 @@ func (s *State) incrementRoundState(state states.Round) error {
 	case states.STANDBY:
 		s.currentRound.State = uint32(states.REALTIME)
 		// Handle timestamp edge case with realtime
-		s.currentRound.Timestamps = append(s.currentRound.Timestamps,
-			uint64(time.Now().Add(2*time.Second).Unix()))
+		s.currentRound.Timestamps[states.REALTIME] = uint64(time.Now().Add(2 * time.Second).Unix())
 	case states.COMPLETED:
 		s.currentRound.State = uint32(states.COMPLETED)
-		s.currentRound.Timestamps = append(s.currentRound.Timestamps,
-			uint64(time.Now().Unix()))
+		s.currentRound.Timestamps[states.COMPLETED] = uint64(time.Now().Unix())
 	default:
 		return nil
 	}
