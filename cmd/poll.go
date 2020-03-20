@@ -46,9 +46,13 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		response.PartialNDF = m.State.PartialNdfMsg
 	}
 
+	// Do not attempt to update or report state to unprepared nodes
+	if msg.Activity == uint32(current.NOT_STARTED) {
+		return
+	}
+
 	// Commit updates reported by the node if node involved in the current round
-	if m.State.IsRoundNode(auth.Sender.GetId()) &&
-		msg.Activity != uint32(current.NOT_STARTED) {
+	if m.State.IsRoundNode(auth.Sender.GetId()) {
 		jww.DEBUG.Printf("Updating state for node %s: %+v",
 			auth.Sender.GetId(), msg)
 		err = m.UpdateState(
