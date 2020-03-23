@@ -178,6 +178,8 @@ func (s *State) addRoundUpdate(round *pb.RoundInfo) error {
 			Signature: round.GetSig(),
 		},
 	}
+	jww.DEBUG.Printf("Round state updated to %s",
+		states.Round(roundCopy.State))
 
 	return s.roundUpdates.AddRound(roundCopy)
 }
@@ -239,8 +241,6 @@ func (s *State) incrementRoundState(state states.Round) error {
 	if err != nil {
 		return err
 	}
-	jww.DEBUG.Printf("Round state incremented to %s",
-		states.Round(s.currentRound.State))
 
 	// Insert update into the state tracker
 	return s.addRoundUpdate(s.currentRound.RoundInfo)
