@@ -77,7 +77,6 @@ func NewState(batchSize uint32) (*State, error) {
 	if err != nil {
 		return nil, err
 	}
-	state.currentUpdate += 1
 	return state, nil
 }
 
@@ -123,6 +122,7 @@ func (s *State) CreateNextRound(topology []string) error {
 	defer s.currentRound.mux.Unlock()
 
 	// Build the new current round object
+	s.currentUpdate += 1
 	s.currentRound = &RoundState{
 		RoundInfo: &pb.RoundInfo{
 			ID:         uint64(s.roundData.GetLastRoundID() + 1),
