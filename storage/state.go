@@ -123,17 +123,15 @@ func (s *State) CreateNextRound(topology []string) error {
 
 	// Build the new current round object
 	s.currentUpdate += 1
-	s.currentRound = &RoundState{
-		RoundInfo: &pb.RoundInfo{
-			ID:         uint64(s.roundData.GetLastRoundID() + 1),
-			UpdateID:   uint64(s.currentUpdate),
-			State:      uint32(states.PRECOMPUTING),
-			BatchSize:  s.batchSize,
-			Topology:   topology,
-			Timestamps: make([]uint64, states.NUM_STATES),
-		},
-		nodeStatuses: make(map[id.Node]*uint32),
+	s.currentRound.RoundInfo = &pb.RoundInfo{
+		ID:         uint64(s.roundData.GetLastRoundID() + 1),
+		UpdateID:   uint64(s.currentUpdate),
+		State:      uint32(states.PRECOMPUTING),
+		BatchSize:  s.batchSize,
+		Topology:   topology,
+		Timestamps: make([]uint64, states.NUM_STATES),
 	}
+	s.currentRound.nodeStatuses = make(map[id.Node]*uint32)
 	s.currentRound.Timestamps[states.PRECOMPUTING] = uint64(time.Now().Unix())
 	jww.DEBUG.Printf("Initializing round %d...", s.currentRound.ID)
 
