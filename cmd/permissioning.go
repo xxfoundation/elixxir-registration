@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
-	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
@@ -184,17 +183,4 @@ func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) error {
 	}
 	// Write JSON to file
 	return utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
-}
-
-// Attempt to update the internal state after a node polling operation
-func (m *RegistrationImpl) UpdateState(id *id.Node, activity *current.Activity) error {
-	// Convert node activity to round state
-	roundState, err := activity.ConvertToRoundState()
-	if err != nil {
-		return err
-	}
-
-	// Update node state
-	m.State.UpdateNodeState(id, roundState)
-	return nil
 }

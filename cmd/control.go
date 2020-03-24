@@ -12,10 +12,40 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature"
+	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"time"
 )
+
+// Control thread for advancement of network state
+func (m *RegistrationImpl) StateControl() {
+	s := m.State
+	for range s.Update {
+
+		// Check whether the round state is ready to increment
+		nextState := states.Round(s.CurrentRound.State + 1)
+		numNodesInRound := uint32(len(s.CurrentRound.Topology))
+		if *s.CurrentRound.NetworkStatus[nextState] == numNodesInRound {
+			// Increment the round state
+			err := m.incrementRoundState(nextState)
+			if err != nil {
+				// TODO: Error handling
+				jww.FATAL.Panicf("Unable to create next round: %+v", err)
+			}
+		}
+
+		// Handle completion of a round
+		if s.GetCurrentRoundState() == states.COMPLETED {
+			// Create the new round
+			err := m.createNextRound(s.CurrentRound.GetTopology(), m.params.batchSize)
+			if err != nil {
+				// TODO: Error handling
+				jww.FATAL.Panicf("Unable to create next round: %+v", err)
+			}
+		}
+	}
+}
 
 // Initiate the next round with a selection of nodes
 func (m *RegistrationImpl) CreateNextRound() error {
@@ -103,31 +133,15 @@ func (m *RegistrationImpl) createNextRound(topology []string, batchSize uint32) 
 	return s.AddRoundUpdate(s.CurrentRound.RoundInfo)
 }
 
-// Control thread for advancement of network state
-func (m *RegistrationImpl) StateControl() {
-	s := m.State
-	for range s.Update {
-
-		// Check whether the round state is ready to increment
-		nextState := states.Round(s.CurrentRound.State + 1)
-		numNodesInRound := uint32(len(s.CurrentRound.Topology))
-		if *s.CurrentRound.NetworkStatus[nextState] == numNodesInRound {
-			// Increment the round state
-			err := m.incrementRoundState(nextState)
-			if err != nil {
-				// TODO: Error handling
-				jww.FATAL.Panicf("Unable to create next round: %+v", err)
-			}
-		}
-
-		// Handle completion of a round
-		if s.GetCurrentRoundState() == states.COMPLETED {
-			// Create the new round
-			err := m.createNextRound(s.CurrentRound.GetTopology(), m.params.batchSize)
-			if err != nil {
-				// TODO: Error handling
-				jww.FATAL.Panicf("Unable to create next round: %+v", err)
-			}
-		}
+// Attempt to update the internal state after a node polling operation
+func (m *RegistrationImpl) UpdateState(id *id.Node, activity *current.Activity) error {
+	// Convert node activity to round state
+	roundState, err := activity.ConvertToRoundState()
+	if err != nil {
+		return err
 	}
+
+	// Update node state
+	m.State.UpdateNodeState(id, roundState)
+	return nil
 }
