@@ -144,9 +144,8 @@ var rootCmd = &cobra.Command{
 		}
 		jww.INFO.Printf("Node registration complete!")
 
-		// Wait forever to prevent process from ending
-		select {}
-
+		// Begin state control (loops forever)
+		impl.StateControl()
 	},
 }
 
