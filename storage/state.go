@@ -66,6 +66,7 @@ func NewState(batchSize uint32) (*State, error) {
 				Topology: make([]string, 0),        // Set this to avoid segfault
 				State:    uint32(states.COMPLETED), // Set this to start rounds
 			},
+			nodeStatuses: make(map[id.Node]*uint32),
 		},
 		currentUpdate: 0,
 		roundUpdates:  dataStructures.NewUpdates(),
@@ -131,7 +132,6 @@ func (s *State) CreateNextRound(topology []string) error {
 		Topology:   topology,
 		Timestamps: make([]uint64, states.NUM_STATES),
 	}
-	s.currentRound.nodeStatuses = make(map[id.Node]*uint32)
 	s.currentRound.Timestamps[states.PRECOMPUTING] = uint64(time.Now().Unix())
 	jww.DEBUG.Printf("Initializing round %d...", s.currentRound.ID)
 
@@ -248,8 +248,8 @@ func (s *State) incrementRoundState(state states.Round) error {
 func (s *State) UpdateNodeState(id *id.Node, newState states.Round) error {
 	// Attempt to update node state atomically
 	// If an update occurred, continue, else nothing will happen
-	if old := atomic.SwapUint32(
-		s.currentRound.nodeStatuses[*id], uint32(newState)); old != uint32(newState) {
+	old := atomic.SwapUint32(s.currentRound.nodeStatuses[*id], uint32(newState))
+	if old != uint32(newState) {
 
 		// Node state was updated, increment state counter
 		result := atomic.AddUint32(s.currentRound.networkStatus[newState], 1)
