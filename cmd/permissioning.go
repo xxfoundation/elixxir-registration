@@ -127,7 +127,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) error {
 
 	// Update the internal state with the newly-formed NDF
 	err = impl.State.UpdateNdf(networkDef)
-	err = impl.CreateNextRound()
+	err = impl.createNextRound()
 	if err != nil {
 		return err
 	}

@@ -38,7 +38,7 @@ func (m *RegistrationImpl) StateControl() {
 		// Handle completion of a round
 		if s.GetCurrentRoundState() == states.COMPLETED {
 			// Create the new round
-			err := m.createNextRound(s.CurrentRound.GetTopology(), m.params.batchSize)
+			err := m.newRound(s.CurrentRound.GetTopology(), m.params.batchSize)
 			if err != nil {
 				// TODO: Error handling
 				jww.FATAL.Panicf("Unable to create next round: %+v", err)
@@ -48,7 +48,7 @@ func (m *RegistrationImpl) StateControl() {
 }
 
 // Initiate the next round with a selection of nodes
-func (m *RegistrationImpl) CreateNextRound() error {
+func (m *RegistrationImpl) createNextRound() error {
 	// Build a topology (currently consisting of all nodes in network)
 	var topology []string
 	for _, node := range m.State.GetPartialNdf().Get().Nodes {
@@ -56,7 +56,7 @@ func (m *RegistrationImpl) CreateNextRound() error {
 	}
 
 	// Progress to the next round
-	return m.createNextRound(topology, m.params.batchSize)
+	return m.newRound(topology, m.params.batchSize)
 }
 
 // Increments the state of the current round if needed
@@ -90,7 +90,7 @@ func (m *RegistrationImpl) incrementRoundState(state states.Round) error {
 }
 
 // Builds and inserts the next RoundInfo object into the internal state
-func (m *RegistrationImpl) createNextRound(topology []string, batchSize uint32) error {
+func (m *RegistrationImpl) newRound(topology []string, batchSize uint32) error {
 	s := m.State
 
 	// Build the new current round object
@@ -134,7 +134,7 @@ func (m *RegistrationImpl) createNextRound(topology []string, batchSize uint32) 
 }
 
 // Attempt to update the internal state after a node polling operation
-func (m *RegistrationImpl) UpdateState(id *id.Node, activity *current.Activity) error {
+func (m *RegistrationImpl) updateState(id *id.Node, activity *current.Activity) error {
 	// Convert node activity to round state
 	roundState, err := activity.ConvertToRoundState()
 	if err != nil {
