@@ -50,7 +50,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		t.Errorf("Unable to update ndf: %+v", err)
 		return
 	}
-	err = impl.State.CreateNextRound([]string{testString})
+	err = impl.newRound([]string{testString}, 1)
 	if err != nil {
 		t.Errorf("Unexpected error creating round: %+v", err)
 	}
@@ -92,7 +92,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(0)
+	state, err := storage.NewState()
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -113,7 +113,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
-	state, err := storage.NewState(0)
+	state, err := storage.NewState()
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}

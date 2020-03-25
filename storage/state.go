@@ -17,22 +17,20 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
-	"sync"
 	"sync/atomic"
-	"time"
 )
 
 // Used for keeping track of NDF and Round state
 type State struct {
 	// State parameters ---
 	PrivateKey *rsa.PrivateKey
-	batchSize  uint32
 
 	// Round state ---
-	currentRound  *RoundState
-	currentUpdate int // Round update counter
-	roundUpdates  *dataStructures.Updates
-	roundData     *dataStructures.Data
+	CurrentRound  *RoundState
+	CurrentUpdate int // Round update counter
+	RoundUpdates  *dataStructures.Updates
+	RoundData     *dataStructures.Data
+	Update        chan struct{} // For triggering updates to top level
 
 	// NDF state ---
 	partialNdf    *dataStructures.Ndf
@@ -45,36 +43,34 @@ type State struct {
 type RoundState struct {
 	// Tracks round information
 	*pb.RoundInfo
-	// Mutex associated with roundInfo
-	mux sync.RWMutex
 
 	// Keeps track of the state of each node
-	nodeStatuses map[id.Node]*uint32
+	NodeStatuses map[id.Node]*uint32
 
 	// Keeps track of the real state of the network
 	// as described by the cumulative states of nodes
 	// In other words, counts the number of nodes currently in each state
-	networkStatus [states.NUM_STATES]*uint32
+	NetworkStatus [states.NUM_STATES]*uint32
 }
 
 // Returns a new State object
-func NewState(batchSize uint32) (*State, error) {
+func NewState() (*State, error) {
 	state := &State{
-		batchSize: batchSize,
-		currentRound: &RoundState{
+		CurrentRound: &RoundState{
 			RoundInfo: &pb.RoundInfo{
 				Topology: make([]string, 0),        // Set this to avoid segfault
 				State:    uint32(states.COMPLETED), // Set this to start rounds
 			},
-			nodeStatuses: make(map[id.Node]*uint32),
+			NodeStatuses: make(map[id.Node]*uint32),
 		},
-		currentUpdate: 0,
-		roundUpdates:  dataStructures.NewUpdates(),
-		roundData:     dataStructures.NewData(),
+		CurrentUpdate: 0,
+		RoundUpdates:  dataStructures.NewUpdates(),
+		RoundData:     dataStructures.NewData(),
+		Update:        make(chan struct{}),
 	}
 
 	// Insert dummy update
-	err := state.addRoundUpdate(&pb.RoundInfo{})
+	err := state.AddRoundUpdate(&pb.RoundInfo{})
 	if err != nil {
 		return nil, err
 	}
@@ -93,15 +89,12 @@ func (s *State) GetPartialNdf() *dataStructures.Ndf {
 
 // Returns all updates after the given ID
 func (s *State) GetUpdates(id int) ([]*pb.RoundInfo, error) {
-	return s.roundUpdates.GetUpdates(id)
+	return s.RoundUpdates.GetUpdates(id)
 }
 
 // Returns true if given node ID is participating in the current round
 func (s *State) IsRoundNode(id string) bool {
-	s.currentRound.mux.RLock()
-	defer s.currentRound.mux.RUnlock()
-
-	for _, nodeId := range s.currentRound.Topology {
+	for _, nodeId := range s.CurrentRound.Topology {
 		if nodeId == id {
 			return true
 		}
@@ -111,59 +104,11 @@ func (s *State) IsRoundNode(id string) bool {
 
 // Returns the state of the current round
 func (s *State) GetCurrentRoundState() states.Round {
-	s.currentRound.mux.RLock()
-	defer s.currentRound.mux.RUnlock()
-
-	return states.Round(s.currentRound.State)
+	return states.Round(s.CurrentRound.State)
 }
 
-// Builds and inserts the next RoundInfo object into the internal state
-func (s *State) CreateNextRound(topology []string) error {
-	s.currentRound.mux.Lock()
-	defer s.currentRound.mux.Unlock()
-
-	// Build the new current round object
-	s.currentUpdate += 1
-	s.currentRound.RoundInfo = &pb.RoundInfo{
-		ID:         uint64(s.roundData.GetLastRoundID() + 1),
-		UpdateID:   uint64(s.currentUpdate),
-		State:      uint32(states.PRECOMPUTING),
-		BatchSize:  s.batchSize,
-		Topology:   topology,
-		Timestamps: make([]uint64, states.NUM_STATES),
-	}
-	s.currentRound.Timestamps[states.PRECOMPUTING] = uint64(time.Now().Unix())
-	jww.DEBUG.Printf("Initializing round %d...", s.currentRound.ID)
-
-	// Initialize network status
-	for i := range s.currentRound.networkStatus {
-		val := uint32(0)
-		s.currentRound.networkStatus[i] = &val
-	}
-
-	// Initialize node states based on given topology
-	for _, nodeId := range topology {
-		newState := uint32(states.PENDING)
-		s.currentRound.nodeStatuses[*id.NewNodeFromBytes([]byte(
-			nodeId))] = &newState
-	}
-
-	// Sign the new round object
-	err := signature.Sign(s.currentRound.RoundInfo, s.PrivateKey)
-	if err != nil {
-		return err
-	}
-
-	// Insert the new round object into the state tracker
-	err = s.roundData.UpsertRound(s.currentRound.RoundInfo)
-	if err != nil {
-		return err
-	}
-	return s.addRoundUpdate(s.currentRound.RoundInfo)
-}
-
-// Makes a copy of the round before inserting into roundUpdates
-func (s *State) addRoundUpdate(round *pb.RoundInfo) error {
+// Makes a copy of the round before inserting into RoundUpdates
+func (s *State) AddRoundUpdate(round *pb.RoundInfo) error {
 	roundCopy := &pb.RoundInfo{
 		ID:         round.GetID(),
 		UpdateID:   round.GetUpdateID(),
@@ -179,7 +124,7 @@ func (s *State) addRoundUpdate(round *pb.RoundInfo) error {
 	jww.DEBUG.Printf("Round state updated to %s",
 		states.Round(roundCopy.State))
 
-	return s.roundUpdates.AddRound(roundCopy)
+	return s.RoundUpdates.AddRound(roundCopy)
 }
 
 // Given a full NDF, updates internal NDF structures
@@ -213,53 +158,16 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	return signature.Sign(s.PartialNdfMsg, s.PrivateKey)
 }
 
-// Increments the state of the current round if needed
-func (s *State) incrementRoundState(state states.Round) error {
-	s.currentRound.mux.Lock()
-	defer s.currentRound.mux.Unlock()
-
-	// Handle state transitions
-	switch state {
-	case states.STANDBY:
-		s.currentRound.State = uint32(states.REALTIME)
-		// Handle timestamp edge case with realtime
-		s.currentRound.Timestamps[states.REALTIME] = uint64(time.Now().Add(2 * time.Second).Unix())
-	case states.COMPLETED:
-		s.currentRound.State = uint32(states.COMPLETED)
-		s.currentRound.Timestamps[states.COMPLETED] = uint64(time.Now().Unix())
-	default:
-		return nil
-	}
-	// Update current round state
-	s.currentUpdate += 1
-	s.currentRound.UpdateID = uint64(s.currentUpdate)
-
-	// Sign the new round object
-	err := signature.Sign(s.currentRound.RoundInfo, s.PrivateKey)
-	if err != nil {
-		return err
-	}
-
-	// Insert update into the state tracker
-	return s.addRoundUpdate(s.currentRound.RoundInfo)
-}
-
 // Updates the state of the given node with the new state provided
-func (s *State) UpdateNodeState(id *id.Node, newState states.Round) error {
+func (s *State) UpdateNodeState(id *id.Node, newState states.Round) {
 	// Attempt to update node state atomically
 	// If an update occurred, continue, else nothing will happen
-	old := atomic.SwapUint32(s.currentRound.nodeStatuses[*id], uint32(newState))
+	old := atomic.SwapUint32(s.CurrentRound.NodeStatuses[*id], uint32(newState))
 	if old != uint32(newState) {
-
 		// Node state was updated, increment state counter
-		result := atomic.AddUint32(s.currentRound.networkStatus[newState], 1)
+		atomic.AddUint32(s.CurrentRound.NetworkStatus[newState], 1)
 
-		// Check whether the round state is ready to increment
-		if result == uint32(len(s.currentRound.Topology)) {
-			return s.incrementRoundState(newState)
-		}
+		// Cue an update
+		s.Update <- struct{}{}
 	}
-
-	// If node state hasn't changed, do nothing
-	return nil
 }

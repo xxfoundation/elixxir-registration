@@ -27,6 +27,7 @@ import (
 // The main registration instance object
 type RegistrationImpl struct {
 	Comms                   *registration.Comms
+	params                  *Params
 	State                   *storage.State
 	permissioningCert       *x509.Certificate
 	ndfOutputPath           string
@@ -74,7 +75,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Initialize variables
 	regRemaining := uint64(0)
 	ndfReady := uint32(0)
-	state, err := storage.NewState(params.batchSize)
+	state, err := storage.NewState()
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +83,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Build default parameters
 	regImpl := &RegistrationImpl{
 		State:                   state,
+		params:                  &params,
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,

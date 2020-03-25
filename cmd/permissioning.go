@@ -12,10 +12,8 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
-	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
-	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/storage"
@@ -129,7 +127,7 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) error {
 
 	// Update the internal state with the newly-formed NDF
 	err = impl.State.UpdateNdf(networkDef)
-	err = impl.CreateNextRound()
+	err = impl.createNextRound()
 	if err != nil {
 		return err
 	}
@@ -185,38 +183,4 @@ func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) error {
 	}
 	// Write JSON to file
 	return utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
-}
-
-// Attempt to update the internal state after a node polling operation
-func (m *RegistrationImpl) UpdateState(id *id.Node, activity *current.Activity) error {
-	// Convert node activity to round state
-	roundState, err := activity.ConvertToRoundState()
-	if err != nil {
-		return err
-	}
-
-	// Update node state
-	err = m.State.UpdateNodeState(id, roundState)
-	if err != nil {
-		return err
-	}
-
-	// Handle completion of a round
-	if m.State.GetCurrentRoundState() == states.COMPLETED {
-		return m.CreateNextRound()
-	}
-
-	return nil
-}
-
-// Initiate the next round with a selection of nodes
-func (m *RegistrationImpl) CreateNextRound() error {
-	// Build a topology (currently consisting of all nodes in network)
-	var topology []string
-	for _, node := range m.State.GetPartialNdf().Get().Nodes {
-		topology = append(topology, node.GetNodeId().String())
-	}
-
-	// Progress to the next round
-	return m.State.CreateNextRound(topology)
 }
