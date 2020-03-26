@@ -142,17 +142,18 @@ func assembleNdf(code string) (*ndf.Gateway, *ndf.Node, error) {
 			"unable to obtain node for registration"+
 				" code %+v: %+v", code, err)
 	}
-	var node ndf.Node
-	node.ID = nodeInfo.Id
-	node.TlsCertificate = nodeInfo.NodeCertificate
-	node.Address = nodeInfo.ServerAddress
 
-	var gateway ndf.Gateway
-	gateway.TlsCertificate = nodeInfo.GatewayCertificate
-	gateway.Address = nodeInfo.GatewayAddress
+	node := &ndf.Node{
+		ID:             nodeInfo.Id,
+		Address:        nodeInfo.ServerAddress,
+		TlsCertificate: nodeInfo.NodeCertificate,
+	}
+	gateway := &ndf.Gateway{
+		Address:        nodeInfo.GatewayAddress,
+		TlsCertificate: nodeInfo.GatewayCertificate,
+	}
 
-	jww.DEBUG.Printf("Assembled the network topology")
-	return &gateway, &node, nil
+	return gateway, node, nil
 }
 
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
