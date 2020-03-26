@@ -139,13 +139,13 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	}
 
 	// Build NDF comms messages
-	s.FullNdfMsg = &pb.NDF{}
-	s.FullNdfMsg.Ndf, err = s.GetFullNdf().Get().Marshal()
+	fullNdfMsg := &pb.NDF{}
+	fullNdfMsg.Ndf, err = s.GetFullNdf().Get().Marshal()
 	if err != nil {
 		return
 	}
-	s.PartialNdfMsg = &pb.NDF{}
-	s.PartialNdfMsg.Ndf, err = s.GetPartialNdf().Get().Marshal()
+	partialNdfMsg := &pb.NDF{}
+	partialNdfMsg.Ndf, err = s.GetPartialNdf().Get().Marshal()
 	if err != nil {
 		return
 	}
@@ -155,7 +155,15 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	if err != nil {
 		return
 	}
-	return signature.Sign(s.PartialNdfMsg, s.PrivateKey)
+	err = signature.Sign(s.PartialNdfMsg, s.PrivateKey)
+	if err != nil {
+		return
+	}
+
+	// Assign NDF comms messages
+	s.FullNdfMsg = fullNdfMsg
+	s.PartialNdfMsg = partialNdfMsg
+	return nil
 }
 
 // Updates the state of the given node with the new state provided
