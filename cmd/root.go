@@ -147,6 +147,9 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Failed to complete node registration: %+v", err)
 		}
 		jww.INFO.Printf("Node registration complete!")
+
+		// Block forever to prevent the program ending
+		select {}
 	},
 }
 
