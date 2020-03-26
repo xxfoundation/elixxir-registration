@@ -31,7 +31,7 @@ type RegistrationImpl struct {
 	State                   *storage.State
 	permissioningCert       *x509.Certificate
 	ndfOutputPath           string
-	nodeCompleted           chan struct{}
+	nodeCompleted           chan string
 	NdfReady                *uint32
 	certFromFile            string
 	registrationsRemaining  *uint64
@@ -53,6 +53,7 @@ type Params struct {
 	maxRegistrationAttempts   uint64
 	registrationCountDuration time.Duration
 	batchSize                 uint32
+	minimumNodes              uint32
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -87,7 +88,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
-		nodeCompleted:           make(chan struct{}, len(RegistrationCodes)),
+		nodeCompleted:           make(chan string, len(RegistrationCodes)),
 		NdfReady:                &ndfReady,
 	}
 
@@ -125,6 +126,38 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			return nil, errors.Errorf("Failed to parse permissioning server cert: %+v. "+
 				"Permissioning cert is %+v", err, regImpl.permissioningCert)
 		}
+	}
+
+	// Construct the NDF
+	networkDef := &ndf.NetworkDefinition{
+		Registration: ndf.Registration{
+			Address:        RegParams.publicAddress,
+			TlsCertificate: regImpl.certFromFile,
+		},
+		Timestamp: time.Now(),
+		UDB:       udbParams,
+		E2E:       RegParams.e2e,
+		CMIX:      RegParams.cmix,
+	}
+
+	// Assemble notification server information if configured
+	if RegParams.NsCertPath != "" && RegParams.NsAddress != "" {
+		nsCert, err := utils.ReadFile(RegParams.NsCertPath)
+		if err != nil {
+			return nil, errors.Errorf("unable to read notification certificate")
+		}
+		networkDef.Notification = ndf.Notification{
+			Address:        RegParams.NsAddress,
+			TlsCertificate: string(nsCert),
+		}
+	} else {
+		jww.WARN.Printf("Configured to run without notifications bot!")
+	}
+
+	// Update the internal state with the newly-formed NDF
+	err = regImpl.State.UpdateNdf(networkDef)
+	if err != nil {
+		return nil, err
 	}
 
 	// Start the communication server

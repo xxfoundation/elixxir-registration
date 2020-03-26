@@ -74,7 +74,7 @@ var rootCmd = &cobra.Command{
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
 		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
-		batchSize := viper.GetInt("batchSize")
+		batchSize := viper.GetUint32("batchSize")
 		ndfOutputPath := viper.GetString("ndfOutputPath")
 		setClientVersion(viper.GetString("clientVersion"))
 		ipAddr := viper.GetString("publicAddress")
@@ -126,7 +126,8 @@ var rootCmd = &cobra.Command{
 			NsCertPath:                nsCertPath,
 			maxRegistrationAttempts:   maxRegistrationAttempts,
 			registrationCountDuration: registrationCountDuration,
-			batchSize:                 uint32(batchSize),
+			batchSize:                 batchSize,
+			minimumNodes:              viper.GetUint32("minimumNodes"),
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -137,15 +138,15 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
+		// Begin state control (loops forever)
+		go impl.StateControl()
+
 		// Begin the thread which handles the completion of node registration
-		err = nodeRegistrationCompleter(impl)
+		err = impl.nodeRegistrationCompleter()
 		if err != nil {
 			jww.FATAL.Panicf("Failed to complete node registration: %+v", err)
 		}
 		jww.INFO.Printf("Node registration complete!")
-
-		// Begin state control (loops forever)
-		impl.StateControl()
 	},
 }
 

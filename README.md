@@ -18,6 +18,8 @@ logPath: "registration.log"
 ndfOutputPath: "ndf.json"
 # Batch size of each round
 batchSize: 8
+# Minimum number of nodes to begin running rounds
+minimumNodes: 3
 
 # UDB ID
 udbID: 1

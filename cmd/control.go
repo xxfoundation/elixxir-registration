@@ -38,7 +38,7 @@ func (m *RegistrationImpl) StateControl() {
 		// Handle completion of a round
 		if s.GetCurrentRoundState() == states.COMPLETED {
 			// Create the new round
-			err := m.newRound(s.CurrentRound.GetTopology(), m.params.batchSize)
+			err := m.createNextRound()
 			if err != nil {
 				// TODO: Error handling
 				jww.FATAL.Panicf("Unable to create next round: %+v", err)
