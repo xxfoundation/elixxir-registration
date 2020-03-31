@@ -54,6 +54,7 @@ type Params struct {
 	registrationCountDuration time.Duration
 	batchSize                 uint32
 	minimumNodes              uint32
+	udbId                     []byte
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -135,7 +136,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			TlsCertificate: regImpl.certFromFile,
 		},
 		Timestamp: time.Now(),
-		UDB:       udbParams,
+		UDB:       ndf.UDB{ID: RegParams.udbId},
 		E2E:       RegParams.e2e,
 		CMIX:      RegParams.cmix,
 	}

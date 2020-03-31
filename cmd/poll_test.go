@@ -33,6 +33,7 @@ func getTestKey() *rsa.PrivateKey {
 func TestRegistrationImpl_Poll(t *testing.T) {
 	testString := "test"
 	// Start registration server
+	testParams.KeyPath = testkeys.GetCAKeyPath()
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
@@ -154,17 +155,15 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	storage.PopulateNodeRegistrationCodes(strings)
 	RegistrationCodes = strings
 	RegParams = testParams
+	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
+	RegParams.udbId = udbId
+	RegParams.minimumNodes = 3
 
 	// Start registration server
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(RegParams)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-
-	//Start the other nodes
-	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-
-	udbParams.ID = udbId
 
 	//Register 1st node
 	err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
@@ -187,7 +186,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
-	err = nodeRegistrationCompleter(impl)
+	err = impl.nodeRegistrationCompleter()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -203,7 +202,8 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 			string(observedNDFBytes))
 	}
 	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
-		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v", udbId, observedNDF.UDB.ID)
+		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v, \nNdf: %+v",
+			udbId, observedNDF.UDB.ID, observedNDF)
 	}
 
 	if observedNDF.Registration.Address != permAddr {
@@ -234,17 +234,17 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	storage.PopulateNodeRegistrationCodes(strings)
 	RegistrationCodes = strings
 	RegParams = testParams
+	//Setup udb configurations
+	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
+	RegParams.udbId = udbId
+	RegParams.minimumNodes = 3
 
 	// Start registration server
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	go nodeRegistrationCompleter(impl)
-
-	//Setup udb configurations
-	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-	udbParams.ID = udbId
+	go impl.nodeRegistrationCompleter()
 
 	//Register 1st node
 	err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),

@@ -17,7 +17,6 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/registration/storage"
 	"os"
 	"path"
@@ -33,7 +32,6 @@ var (
 	RegistrationCodes    []string
 	RegParams            Params
 	ClientRegCodes       []string
-	udbParams            ndf.UDB
 	clientVersion        string
 	clientVersionLock    sync.RWMutex
 	disablePermissioning bool
@@ -108,11 +106,9 @@ var rootCmd = &cobra.Command{
 		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
 		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
-		//Fixme: Do we want the udbID to be specified in the yaml?
-		tmpSlice := make([]byte, 32)
+		udbId := make([]byte, 32)
+		udbId[len(udbId)-1] = byte(viper.GetInt("udbID"))
 
-		tmpSlice[len(tmpSlice)-1] = byte(viper.GetInt("udbID"))
-		udbParams.ID = tmpSlice
 		// Populate params
 		RegParams = Params{
 			Address:                   localAddress,
@@ -127,6 +123,7 @@ var rootCmd = &cobra.Command{
 			maxRegistrationAttempts:   maxRegistrationAttempts,
 			registrationCountDuration: registrationCountDuration,
 			batchSize:                 batchSize,
+			udbId:                     udbId,
 			minimumNodes:              viper.GetUint32("minimumNodes"),
 		}
 

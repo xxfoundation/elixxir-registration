@@ -151,11 +151,11 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	}
 
 	// Sign NDF comms messages
-	err = signature.Sign(s.FullNdfMsg, s.PrivateKey)
+	err = signature.Sign(fullNdfMsg, s.PrivateKey)
 	if err != nil {
 		return
 	}
-	err = signature.Sign(s.PartialNdfMsg, s.PrivateKey)
+	err = signature.Sign(partialNdfMsg, s.PrivateKey)
 	if err != nil {
 		return
 	}

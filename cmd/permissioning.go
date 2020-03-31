@@ -80,8 +80,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
 	}
 
-	jww.DEBUG.Printf("Total number of expected nodes for registration"+
-		" completion: %d", len(RegistrationCodes))
+	jww.DEBUG.Printf("Minimum number of expected nodes for registration"+
+		" completion: %d", m.params.minimumNodes)
 	m.nodeCompleted <- RegistrationCode
 	return nil
 }
@@ -90,9 +90,9 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 func (m *RegistrationImpl) nodeRegistrationCompleter() error {
 
 	// Wait for Nodes to complete registration
-	for numNodes := 0; numNodes < len(RegistrationCodes); numNodes++ {
-		jww.INFO.Printf("Registered %d node(s)!", numNodes)
+	for numNodes := 1; numNodes < len(RegistrationCodes)+1; numNodes++ {
 		regCode := <-m.nodeCompleted
+		jww.INFO.Printf("Registered %d node(s)! %s", numNodes, regCode)
 
 		// Add the new node to the topology
 		networkDef := m.State.GetFullNdf().Get()
@@ -116,8 +116,8 @@ func (m *RegistrationImpl) nodeRegistrationCompleter() error {
 		}
 
 		// Kick off the network if the minimum number of nodes has been met
-		if uint32(numNodes) == m.params.minimumNodes-1 {
-			jww.INFO.Printf("Minimum number of nodes registered!")
+		if uint32(numNodes) == m.params.minimumNodes {
+			jww.INFO.Printf("Minimum number of nodes %d registered!", numNodes)
 
 			// Create the first round
 			err = m.createNextRound()
