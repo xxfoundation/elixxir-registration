@@ -17,6 +17,7 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
+	"sync"
 	"sync/atomic"
 )
 
@@ -33,6 +34,7 @@ type State struct {
 	Update        chan struct{} // For triggering updates to top level
 
 	// NDF state ---
+	ndfMux        sync.RWMutex
 	partialNdf    *dataStructures.Ndf
 	fullNdf       *dataStructures.Ndf
 	PartialNdfMsg *pb.NDF
@@ -79,11 +81,17 @@ func NewState() (*State, error) {
 
 // Returns the full NDF
 func (s *State) GetFullNdf() *dataStructures.Ndf {
+	s.ndfMux.RLock()
+	defer s.ndfMux.RUnlock()
+
 	return s.fullNdf
 }
 
 // Returns the partial NDF
 func (s *State) GetPartialNdf() *dataStructures.Ndf {
+	s.ndfMux.RLock()
+	defer s.ndfMux.RUnlock()
+
 	return s.partialNdf
 }
 
@@ -161,8 +169,10 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	}
 
 	// Assign NDF comms messages
+	s.ndfMux.Lock()
 	s.FullNdfMsg = fullNdfMsg
 	s.PartialNdfMsg = partialNdfMsg
+	s.ndfMux.Unlock()
 	return nil
 }
 
