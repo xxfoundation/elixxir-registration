@@ -17,7 +17,6 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
-	"sync"
 	"sync/atomic"
 )
 
@@ -34,11 +33,8 @@ type State struct {
 	Update        chan struct{} // For triggering updates to top level
 
 	// NDF state ---
-	ndfMux        sync.RWMutex
-	partialNdf    *dataStructures.Ndf
-	fullNdf       *dataStructures.Ndf
-	PartialNdfMsg *pb.NDF
-	FullNdfMsg    *pb.NDF
+	partialNdf *dataStructures.Ndf
+	fullNdf    *dataStructures.Ndf
 }
 
 // Tracks the current global state of a round
@@ -57,6 +53,15 @@ type RoundState struct {
 
 // Returns a new State object
 func NewState() (*State, error) {
+	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
+	if err != nil {
+		return nil, err
+	}
+	partialNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
+	if err != nil {
+		return nil, err
+	}
+
 	state := &State{
 		CurrentRound: &RoundState{
 			RoundInfo: &pb.RoundInfo{
@@ -69,10 +74,12 @@ func NewState() (*State, error) {
 		RoundUpdates:  dataStructures.NewUpdates(),
 		RoundData:     dataStructures.NewData(),
 		Update:        make(chan struct{}),
+		fullNdf:       fullNdf,
+		partialNdf:    partialNdf,
 	}
 
 	// Insert dummy update
-	err := state.AddRoundUpdate(&pb.RoundInfo{})
+	err = state.AddRoundUpdate(&pb.RoundInfo{})
 	if err != nil {
 		return nil, err
 	}
@@ -81,17 +88,11 @@ func NewState() (*State, error) {
 
 // Returns the full NDF
 func (s *State) GetFullNdf() *dataStructures.Ndf {
-	s.ndfMux.RLock()
-	defer s.ndfMux.RUnlock()
-
 	return s.fullNdf
 }
 
 // Returns the partial NDF
 func (s *State) GetPartialNdf() *dataStructures.Ndf {
-	s.ndfMux.RLock()
-	defer s.ndfMux.RUnlock()
-
 	return s.partialNdf
 }
 
@@ -137,23 +138,14 @@ func (s *State) AddRoundUpdate(round *pb.RoundInfo) error {
 
 // Given a full NDF, updates internal NDF structures
 func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
-	s.fullNdf, err = dataStructures.NewNdf(newNdf)
-	if err != nil {
-		return
-	}
-	s.partialNdf, err = dataStructures.NewNdf(newNdf.StripNdf())
-	if err != nil {
-		return
-	}
-
 	// Build NDF comms messages
 	fullNdfMsg := &pb.NDF{}
-	fullNdfMsg.Ndf, err = s.GetFullNdf().Get().Marshal()
+	fullNdfMsg.Ndf, err = newNdf.Marshal()
 	if err != nil {
 		return
 	}
 	partialNdfMsg := &pb.NDF{}
-	partialNdfMsg.Ndf, err = s.GetPartialNdf().Get().Marshal()
+	partialNdfMsg.Ndf, err = newNdf.StripNdf().Marshal()
 	if err != nil {
 		return
 	}
@@ -169,11 +161,11 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	}
 
 	// Assign NDF comms messages
-	s.ndfMux.Lock()
-	s.FullNdfMsg = fullNdfMsg
-	s.PartialNdfMsg = partialNdfMsg
-	s.ndfMux.Unlock()
-	return nil
+	err = s.fullNdf.Update(fullNdfMsg)
+	if err != nil {
+		return err
+	}
+	return s.partialNdf.Update(partialNdfMsg)
 }
 
 // Updates the state of the given node with the new state provided

@@ -42,8 +42,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
 
 		// Return the updated NDFs
-		response.FullNDF = m.State.FullNdfMsg
-		response.PartialNDF = m.State.PartialNdfMsg
+		response.FullNDF = m.State.GetFullNdf().GetPb()
+		response.PartialNDF = m.State.GetPartialNdf().GetPb()
 	}
 
 	// Do not attempt to update or report state to unprepared nodes
