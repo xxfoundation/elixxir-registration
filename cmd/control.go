@@ -56,6 +56,7 @@ func (m *RegistrationImpl) createNextRound() error {
 	}
 
 	// Progress to the next round
+	jww.DEBUG.Printf("Round topology: %+v", topology)
 	return m.newRound(topology, m.params.batchSize)
 }
 

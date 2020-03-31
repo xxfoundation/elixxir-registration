@@ -80,8 +80,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
 	}
 
-	jww.DEBUG.Printf("Minimum number of expected nodes for registration"+
-		" completion: %d", m.params.minimumNodes)
+	// Notify registration thread
 	m.nodeCompleted <- RegistrationCode
 	return nil
 }
@@ -90,7 +89,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 func (m *RegistrationImpl) nodeRegistrationCompleter() error {
 
 	// Wait for Nodes to complete registration
-	for numNodes := 1; numNodes < len(RegistrationCodes)+1; numNodes++ {
+	maxNodes := len(RegistrationCodes)
+	for numNodes := 1; numNodes <= maxNodes; numNodes++ {
 		regCode := <-m.nodeCompleted
 		jww.INFO.Printf("Registered %d node(s)! %s", numNodes, regCode)
 
@@ -129,6 +129,8 @@ func (m *RegistrationImpl) nodeRegistrationCompleter() error {
 			atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
 		}
 	}
+
+	jww.INFO.Printf("All %d nodes registered! Ending registration...", maxNodes)
 	return nil
 }
 
