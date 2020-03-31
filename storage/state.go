@@ -33,10 +33,8 @@ type State struct {
 	Update        chan struct{} // For triggering updates to top level
 
 	// NDF state ---
-	partialNdf    *dataStructures.Ndf
-	fullNdf       *dataStructures.Ndf
-	PartialNdfMsg *pb.NDF
-	FullNdfMsg    *pb.NDF
+	partialNdf *dataStructures.Ndf
+	fullNdf    *dataStructures.Ndf
 }
 
 // Tracks the current global state of a round
@@ -55,6 +53,15 @@ type RoundState struct {
 
 // Returns a new State object
 func NewState() (*State, error) {
+	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
+	if err != nil {
+		return nil, err
+	}
+	partialNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
+	if err != nil {
+		return nil, err
+	}
+
 	state := &State{
 		CurrentRound: &RoundState{
 			RoundInfo: &pb.RoundInfo{
@@ -67,10 +74,12 @@ func NewState() (*State, error) {
 		RoundUpdates:  dataStructures.NewUpdates(),
 		RoundData:     dataStructures.NewData(),
 		Update:        make(chan struct{}),
+		fullNdf:       fullNdf,
+		partialNdf:    partialNdf,
 	}
 
 	// Insert dummy update
-	err := state.AddRoundUpdate(&pb.RoundInfo{})
+	err = state.AddRoundUpdate(&pb.RoundInfo{})
 	if err != nil {
 		return nil, err
 	}
@@ -129,33 +138,34 @@ func (s *State) AddRoundUpdate(round *pb.RoundInfo) error {
 
 // Given a full NDF, updates internal NDF structures
 func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
-	s.fullNdf, err = dataStructures.NewNdf(newNdf)
-	if err != nil {
-		return
-	}
-	s.partialNdf, err = dataStructures.NewNdf(newNdf.StripNdf())
-	if err != nil {
-		return
-	}
-
 	// Build NDF comms messages
-	s.FullNdfMsg = &pb.NDF{}
-	s.FullNdfMsg.Ndf, err = s.GetFullNdf().Get().Marshal()
+	fullNdfMsg := &pb.NDF{}
+	fullNdfMsg.Ndf, err = newNdf.Marshal()
 	if err != nil {
 		return
 	}
-	s.PartialNdfMsg = &pb.NDF{}
-	s.PartialNdfMsg.Ndf, err = s.GetPartialNdf().Get().Marshal()
+	partialNdfMsg := &pb.NDF{}
+	partialNdfMsg.Ndf, err = newNdf.StripNdf().Marshal()
 	if err != nil {
 		return
 	}
 
 	// Sign NDF comms messages
-	err = signature.Sign(s.FullNdfMsg, s.PrivateKey)
+	err = signature.Sign(fullNdfMsg, s.PrivateKey)
 	if err != nil {
 		return
 	}
-	return signature.Sign(s.PartialNdfMsg, s.PrivateKey)
+	err = signature.Sign(partialNdfMsg, s.PrivateKey)
+	if err != nil {
+		return
+	}
+
+	// Assign NDF comms messages
+	err = s.fullNdf.Update(fullNdfMsg)
+	if err != nil {
+		return err
+	}
+	return s.partialNdf.Update(partialNdfMsg)
 }
 
 // Updates the state of the given node with the new state provided

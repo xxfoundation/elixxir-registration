@@ -101,7 +101,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	impl.nodeCompleted = make(chan struct{}, 1)
+	impl.nodeCompleted = make(chan string, 1)
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	err = storage.PermissioningDb.InsertNodeRegCode("AAAA")
@@ -172,7 +172,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 		return
 	}
 
-	err = nodeRegistrationCompleter(impl)
+	err = impl.nodeRegistrationCompleter()
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
@@ -198,7 +198,7 @@ func TestDoubleRegistration(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	go nodeRegistrationCompleter(impl)
+	go impl.nodeRegistrationCompleter()
 
 	//Create a second node to register
 	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
@@ -258,7 +258,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
-	err = nodeRegistrationCompleter(impl)
+	err = impl.nodeRegistrationCompleter()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -335,7 +335,7 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	go nodeRegistrationCompleter(impl)
+	go impl.nodeRegistrationCompleter()
 
 	// Initialize the database
 	storage.PermissioningDb = storage.NewDatabase(

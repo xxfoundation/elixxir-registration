@@ -17,7 +17,6 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/registration/storage"
 	"os"
 	"path"
@@ -33,7 +32,6 @@ var (
 	RegistrationCodes    []string
 	RegParams            Params
 	ClientRegCodes       []string
-	udbParams            ndf.UDB
 	clientVersion        string
 	clientVersionLock    sync.RWMutex
 	disablePermissioning bool
@@ -74,7 +72,7 @@ var rootCmd = &cobra.Command{
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
 		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
-		batchSize := viper.GetInt("batchSize")
+		batchSize := viper.GetUint32("batchSize")
 		ndfOutputPath := viper.GetString("ndfOutputPath")
 		setClientVersion(viper.GetString("clientVersion"))
 		ipAddr := viper.GetString("publicAddress")
@@ -108,11 +106,9 @@ var rootCmd = &cobra.Command{
 		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
 		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
-		//Fixme: Do we want the udbID to be specified in the yaml?
-		tmpSlice := make([]byte, 32)
+		udbId := make([]byte, 32)
+		udbId[len(udbId)-1] = byte(viper.GetInt("udbID"))
 
-		tmpSlice[len(tmpSlice)-1] = byte(viper.GetInt("udbID"))
-		udbParams.ID = tmpSlice
 		// Populate params
 		RegParams = Params{
 			Address:                   localAddress,
@@ -126,7 +122,9 @@ var rootCmd = &cobra.Command{
 			NsCertPath:                nsCertPath,
 			maxRegistrationAttempts:   maxRegistrationAttempts,
 			registrationCountDuration: registrationCountDuration,
-			batchSize:                 uint32(batchSize),
+			batchSize:                 batchSize,
+			udbId:                     udbId,
+			minimumNodes:              viper.GetUint32("minimumNodes"),
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -137,15 +135,18 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
+		// Begin state control (loops forever)
+		go impl.StateControl()
+
 		// Begin the thread which handles the completion of node registration
-		err = nodeRegistrationCompleter(impl)
+		err = impl.nodeRegistrationCompleter()
 		if err != nil {
 			jww.FATAL.Panicf("Failed to complete node registration: %+v", err)
 		}
 		jww.INFO.Printf("Node registration complete!")
 
-		// Begin state control (loops forever)
-		impl.StateControl()
+		// Block forever to prevent the program ending
+		select {}
 	},
 }
 
