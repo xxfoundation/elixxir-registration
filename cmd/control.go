@@ -115,12 +115,8 @@ func (m *RegistrationImpl) newRound(topology []string, batchSize uint32) error {
 	// Initialize node states based on given topology
 	for _, nodeId := range topology {
 		newState := uint32(states.PENDING)
-		//encodedId := base64.StdEncoding.EncodeToString([]byte(nodeId))
-		jww.ERROR.Printf("\n\n\n\nKOKO Node ID %v \n\n\n ", nodeId)
 		newId, err := id.NewNodeFromString(nodeId)
-		jww.ERROR.Printf("\n\n\n\nKOKO NEW ID %v \n\n\n ", nodeId)
 		if err != nil {
-			jww.ERROR.Printf("FAILED TO CREAT NEW ID FROM STR %v", err)
 			return err
 		}
 		s.CurrentRound.NodeStatuses[*newId] = &newState

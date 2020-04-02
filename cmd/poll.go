@@ -55,18 +55,22 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	if m.State.IsRoundNode(auth.Sender.GetId()) {
 		jww.DEBUG.Printf("Updating state for node %s: %+v",
 			auth.Sender.GetId(), msg)
+		nodeId, err := id.NewNodeFromString(auth.Sender.GetId())
+		if err != nil {
+			return nil, err
+		}
 		err = m.updateState(
-			id.NewNodeFromBytes([]byte(auth.Sender.GetId())),
+			nodeId,
 			(*current.Activity)(&msg.Activity))
 		if err != nil {
-			return
+			return nil, err
 		}
 	}
 
 	// Fetch latest round updates
 	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	return
