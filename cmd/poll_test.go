@@ -47,6 +47,8 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 			TlsCertificate: "",
 		},
 	})
+
+	go impl.StateControl()
 	if err != nil {
 		t.Errorf("Unable to update ndf: %+v", err)
 		return

@@ -12,6 +12,7 @@ import (
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"testing"
+	"time"
 )
 
 // Happy path
@@ -51,8 +52,8 @@ func Test_createNextRound(t *testing.T) {
 	}
 
 	// Check node statuses
-	for _, status := range s.CurrentRound.NodeStatuses {
-		if *status != uint32(states.PENDING) {
+	for _, node := range s.NodeStatuses {
+		if node.Activity != current.WAITING {
 			t.Errorf("Incorrect node status!")
 		}
 	}
@@ -90,7 +91,6 @@ func Test_updateState(t *testing.T) {
 		},
 	}
 	s.PrivateKey = getTestKey()
-
 	go impl.StateControl()
 
 	err = impl.newRound(topology, impl.params.batchSize)
@@ -100,46 +100,48 @@ func Test_updateState(t *testing.T) {
 
 	// Test update without change in status
 	state := current.WAITING
-	err = impl.updateState(id.NewNodeFromBytes([]byte(topology[0])), &state)
+	err = s.UpdateNodeState(*id.NewNodeFromBytes([]byte(topology[0])), state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	if *s.CurrentRound.NodeStatuses[*id.NewNodeFromBytes([]byte(
-		topology[0]))] != uint32(states.PENDING) {
+	if s.NodeStatuses[*id.NewNodeFromBytes([]byte(
+		topology[0]))].Activity != state {
 		t.Errorf("Expected node status not to change!")
 	}
 
 	// Test updating node statuses
 	state = current.PRECOMPUTING
-	err = impl.updateState(id.NewNodeFromBytes([]byte(topology[0])), &state)
+	err = s.UpdateNodeState(*id.NewNodeFromBytes([]byte(topology[0])), state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	if *s.CurrentRound.NodeStatuses[*id.NewNodeFromBytes([]byte(
-		topology[0]))] != uint32(states.PRECOMPUTING) {
+	if s.NodeStatuses[*id.NewNodeFromBytes([]byte(
+		topology[0]))].Activity != state {
 		t.Errorf("Expected node status not to change!")
 	}
-	err = impl.updateState(id.NewNodeFromBytes([]byte(topology[1])), &state)
+	err = s.UpdateNodeState(*id.NewNodeFromBytes([]byte(topology[1])), state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	if *s.CurrentRound.NodeStatuses[*id.NewNodeFromBytes([]byte(
-		topology[1]))] != uint32(states.PRECOMPUTING) {
+	if s.NodeStatuses[*id.NewNodeFromBytes([]byte(
+		topology[1]))].Activity != state {
 		t.Errorf("Expected node status not to change!")
 	}
 
 	// Test updating node statuses that trigger an incrementation
 	state = current.STANDBY
-	err = impl.updateState(id.NewNodeFromBytes([]byte(topology[0])),
-		&state)
+	err = s.UpdateNodeState(*id.NewNodeFromBytes([]byte(topology[0])),
+		state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	err = impl.updateState(id.NewNodeFromBytes([]byte(topology[1])),
-		&state)
+	err = s.UpdateNodeState(*id.NewNodeFromBytes([]byte(topology[1])),
+		state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
+
+	time.Sleep(1 * time.Second)
 	if s.CurrentRound.State != uint32(states.REALTIME) {
 		t.Errorf("Expected round to increment! Got %s",
 			states.Round(s.CurrentRound.State))
