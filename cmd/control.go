@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"encoding/base64"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature"
@@ -115,7 +116,8 @@ func (m *RegistrationImpl) newRound(topology []string, batchSize uint32) error {
 	// Initialize node states based on given topology
 	for _, nodeId := range topology {
 		newState := uint32(states.PENDING)
-		newId, err := id.NewNodeFromString(nodeId)
+		encodedId := base64.StdEncoding.EncodeToString([]byte(nodeId))
+		newId, err := id.NewNodeFromString(encodedId)
 		if err != nil {
 			return err
 		}

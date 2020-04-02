@@ -7,6 +7,7 @@
 package cmd
 
 import (
+	"encoding/base64"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
@@ -17,7 +18,9 @@ import (
 // Happy path
 func Test_createNextRound(t *testing.T) {
 	batchSize := uint32(1)
-	topology := []string{"test", "test2"}
+	node1 := base64.StdEncoding.EncodeToString([]byte("TESTSTRING"))
+
+	topology := []string{node1, node1}
 
 	s, err := storage.NewState()
 	if err != nil {
@@ -76,19 +79,37 @@ func Test_createNextRound(t *testing.T) {
 
 // Full test
 func Test_updateState(t *testing.T) {
-	topology := []string{"test", "test2"}
+	// Create some node ids to be used for testing
+	node1Str := "TEST_STRING_111111111111"
+	node2Str := "TEST_STRING_888888888888"
+	node1 := base64.StdEncoding.EncodeToString([]byte(node1Str))
+	node2 := base64.StdEncoding.EncodeToString([]byte(node2Str))
+	topology := []string{node1Str,  node2Str}
+
+	newNodeId, err := id.NewNodeFromString(node1)
+	if err != nil {
+		t.Errorf("Failed to create new node id from string: %v", err)
+		t.Fail()
+	}
+
+	newNodeId2, err := id.NewNodeFromString(node2)
+	if err != nil {
+		t.Errorf("Failed to create new node id from string: %v", err)
+		t.Fail()
+	}
 
 	s, err := storage.NewState()
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
-
+	t.Logf("HERE OK")
 	impl := &RegistrationImpl{
 		State: s,
 		params: &Params{
 			batchSize: 1,
 		},
 	}
+
 	s.PrivateKey = getTestKey()
 
 	go impl.StateControl()
@@ -100,46 +121,47 @@ func Test_updateState(t *testing.T) {
 
 	// Test update without change in status
 	state := current.WAITING
-	err = impl.updateState(id.NewNodeFromBytes([]byte(topology[0])), &state)
+
+	err = impl.updateState(newNodeId, &state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	if *s.CurrentRound.NodeStatuses[*id.NewNodeFromBytes([]byte(
-		topology[0]))] != uint32(states.PENDING) {
+
+	if *s.CurrentRound.NodeStatuses[*newNodeId] != uint32(states.PENDING) {
 		t.Errorf("Expected node status not to change!")
 	}
 
 	// Test updating node statuses
 	state = current.PRECOMPUTING
-	err = impl.updateState(id.NewNodeFromBytes([]byte(topology[0])), &state)
+	err = impl.updateState(newNodeId, &state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	if *s.CurrentRound.NodeStatuses[*id.NewNodeFromBytes([]byte(
-		topology[0]))] != uint32(states.PRECOMPUTING) {
-		t.Errorf("Expected node status not to change!")
-	}
-	err = impl.updateState(id.NewNodeFromBytes([]byte(topology[1])), &state)
-	if err != nil {
-		t.Errorf("Unexpected error updating node state: %+v", err)
-	}
-	if *s.CurrentRound.NodeStatuses[*id.NewNodeFromBytes([]byte(
-		topology[1]))] != uint32(states.PRECOMPUTING) {
+
+	if *s.CurrentRound.NodeStatuses[*newNodeId] != uint32(states.PRECOMPUTING) {
 		t.Errorf("Expected node status not to change!")
 	}
 
+	err = impl.updateState(newNodeId2, &state)
+	if err != nil {
+		t.Errorf("Unexpected error updating node state: %+v", err)
+	}
+
+	if *s.CurrentRound.NodeStatuses[*newNodeId2] != uint32(states.PRECOMPUTING) {
+		t.Errorf("Expected node status not to change!")
+	}
 	// Test updating node statuses that trigger an incrementation
 	state = current.STANDBY
-	err = impl.updateState(id.NewNodeFromBytes([]byte(topology[0])),
-		&state)
+	err = impl.updateState(newNodeId, &state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	err = impl.updateState(id.NewNodeFromBytes([]byte(topology[1])),
-		&state)
+
+	err = impl.updateState(newNodeId2, &state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
+
 	if s.CurrentRound.State != uint32(states.REALTIME) {
 		t.Errorf("Expected round to increment! Got %s",
 			states.Round(s.CurrentRound.State))
