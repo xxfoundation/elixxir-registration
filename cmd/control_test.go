@@ -84,7 +84,7 @@ func Test_updateState(t *testing.T) {
 	node2Str := "TEST_STRING_888888888888"
 	node1 := base64.StdEncoding.EncodeToString([]byte(node1Str))
 	node2 := base64.StdEncoding.EncodeToString([]byte(node2Str))
-	topology := []string{node1,  node2}
+	topology := []string{node1, node2}
 
 	newNodeId, err := id.NewNodeFromString(node1)
 	if err != nil {
@@ -175,7 +175,7 @@ func Test_incrementRoundState(t *testing.T) {
 	node2Str := "TEST_STRING_888888888888"
 	node1 := base64.StdEncoding.EncodeToString([]byte(node1Str))
 	node2 := base64.StdEncoding.EncodeToString([]byte(node2Str))
-	topology := []string{node1,  node2}
+	topology := []string{node1, node2}
 
 	s, err := storage.NewState()
 	if err != nil {
