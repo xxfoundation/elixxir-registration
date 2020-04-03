@@ -9,10 +9,7 @@ package storage
 import (
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/states"
-	"gitlab.com/elixxir/primitives/utils"
-	"gitlab.com/elixxir/registration/testkeys"
 	"os"
 	"testing"
 )
@@ -26,14 +23,6 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(runFunc())
-}
-
-// TestFunc: Gets permissioning server test key
-func getTestKey() *rsa.PrivateKey {
-	permKeyBytes, _ := utils.ReadFile(testkeys.GetCAKeyPath())
-
-	testPermissioningKey, _ := rsa.LoadPrivateKeyFromPem(permKeyBytes)
-	return testPermissioningKey
 }
 
 // Full test

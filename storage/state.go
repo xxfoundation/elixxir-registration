@@ -14,10 +14,13 @@ import (
 	"gitlab.com/elixxir/comms/network/dataStructures"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
+	"sync"
 	"sync/atomic"
+	"time"
 )
 
 // Used for keeping track of NDF and Round state
@@ -32,6 +35,9 @@ type State struct {
 	RoundData     *dataStructures.Data
 	Update        chan struct{} // For triggering updates to top level
 
+	// Node State ---
+	NodeStates map[id.Node]*NodeState
+
 	// NDF state ---
 	partialNdf *dataStructures.Ndf
 	fullNdf    *dataStructures.Ndf
@@ -42,13 +48,21 @@ type RoundState struct {
 	// Tracks round information
 	*pb.RoundInfo
 
-	// Keeps track of the state of each node
-	NodeStatuses map[id.Node]*uint32
-
 	// Keeps track of the real state of the network
 	// as described by the cumulative states of nodes
 	// In other words, counts the number of nodes currently in each state
 	NetworkStatus [states.NUM_STATES]*uint32
+}
+
+// Tracks state of an individual Node in the network
+type NodeState struct {
+	mux sync.RWMutex
+
+	// Current activity as reported by the Node
+	Activity current.Activity
+
+	// Timestamp of the last time this Node polled
+	LastPoll time.Time
 }
 
 // Returns a new State object
@@ -68,12 +82,12 @@ func NewState() (*State, error) {
 				Topology: make([]string, 0),        // Set this to avoid segfault
 				State:    uint32(states.COMPLETED), // Set this to start rounds
 			},
-			NodeStatuses: make(map[id.Node]*uint32),
 		},
 		CurrentUpdate: 0,
 		RoundUpdates:  dataStructures.NewUpdates(),
 		RoundData:     dataStructures.NewData(),
 		Update:        make(chan struct{}),
+		NodeStates:    make(map[id.Node]*NodeState),
 		fullNdf:       fullNdf,
 		partialNdf:    partialNdf,
 	}
@@ -99,6 +113,16 @@ func (s *State) GetPartialNdf() *dataStructures.Ndf {
 // Returns all updates after the given ID
 func (s *State) GetUpdates(id int) ([]*pb.RoundInfo, error) {
 	return s.RoundUpdates.GetUpdates(id)
+}
+
+// Returns the NodeState object for the given id if it exists
+// Otherwise, it will safely create and return a new NodeState
+func (s *State) GetNodeState(id id.Node) *NodeState {
+	// Create the node state entry if it doesn't already exist
+	if s.NodeStates[id] == nil {
+		s.NodeStates[id] = &NodeState{}
+	}
+	return s.NodeStates[id]
 }
 
 // Returns true if given node ID is participating in the current round
@@ -169,15 +193,33 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 }
 
 // Updates the state of the given node with the new state provided
-func (s *State) UpdateNodeState(id *id.Node, newState states.Round) {
-	// Attempt to update node state atomically
-	// If an update occurred, continue, else nothing will happen
-	old := atomic.SwapUint32(s.CurrentRound.NodeStatuses[*id], uint32(newState))
-	if old != uint32(newState) {
-		// Node state was updated, increment state counter
-		atomic.AddUint32(s.CurrentRound.NetworkStatus[newState], 1)
+func (s *State) UpdateNodeState(id id.Node, newActivity current.Activity) error {
+
+	// Get and lock node state
+	node := s.GetNodeState(id)
+	node.mux.Lock()
+	defer node.mux.Unlock()
+
+	// Update node poll timestamp
+	node.LastPoll = time.Now()
+
+	// Check whether node state requires an update
+	if node.Activity != newActivity {
+		// Node state was updated, convert node activity to round state
+		roundState, err := newActivity.ConvertToRoundState()
+		if err != nil {
+			return err
+		}
+
+		// Update node state tracker
+		node.Activity = newActivity
+
+		// Increment network state counter
+		atomic.AddUint32(s.CurrentRound.NetworkStatus[roundState], 1)
 
 		// Cue an update
 		s.Update <- struct{}{}
 	}
+
+	return nil
 }

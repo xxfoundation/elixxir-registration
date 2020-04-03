@@ -115,9 +115,8 @@ func (m *RegistrationImpl) newRound(topology []string, batchSize uint32) error {
 
 	// Initialize node states based on given topology
 	for _, nodeId := range topology {
-		newState := uint32(states.PENDING)
-		s.CurrentRound.NodeStatuses[*id.NewNodeFromBytes([]byte(
-			nodeId))] = &newState
+		node := s.GetNodeState(*id.NewNodeFromBytes([]byte(nodeId)))
+		node.Activity = current.WAITING
 	}
 
 	// Sign the new round object
@@ -132,17 +131,4 @@ func (m *RegistrationImpl) newRound(topology []string, batchSize uint32) error {
 		return err
 	}
 	return s.AddRoundUpdate(s.CurrentRound.RoundInfo)
-}
-
-// Attempt to update the internal state after a node polling operation
-func (m *RegistrationImpl) updateState(id *id.Node, activity *current.Activity) error {
-	// Convert node activity to round state
-	roundState, err := activity.ConvertToRoundState()
-	if err != nil {
-		return err
-	}
-
-	// Update node state
-	m.State.UpdateNodeState(id, roundState)
-	return nil
 }
