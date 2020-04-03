@@ -52,7 +52,7 @@ func Test_createNextRound(t *testing.T) {
 	}
 
 	// Check node statuses
-	for _, node := range s.NodeStatuses {
+	for _, node := range s.NodeStates {
 		if node.Activity != current.WAITING {
 			t.Errorf("Incorrect node status!")
 		}
@@ -104,7 +104,7 @@ func Test_updateState(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	if s.NodeStatuses[*id.NewNodeFromBytes([]byte(
+	if s.NodeStates[*id.NewNodeFromBytes([]byte(
 		topology[0]))].Activity != state {
 		t.Errorf("Expected node status not to change!")
 	}
@@ -115,7 +115,7 @@ func Test_updateState(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	if s.NodeStatuses[*id.NewNodeFromBytes([]byte(
+	if s.NodeStates[*id.NewNodeFromBytes([]byte(
 		topology[0]))].Activity != state {
 		t.Errorf("Expected node status not to change!")
 	}
@@ -123,7 +123,7 @@ func Test_updateState(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	if s.NodeStatuses[*id.NewNodeFromBytes([]byte(
+	if s.NodeStates[*id.NewNodeFromBytes([]byte(
 		topology[1]))].Activity != state {
 		t.Errorf("Expected node status not to change!")
 	}

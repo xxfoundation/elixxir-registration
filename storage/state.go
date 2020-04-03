@@ -36,7 +36,7 @@ type State struct {
 	Update        chan struct{} // For triggering updates to top level
 
 	// Node State ---
-	NodeStatuses map[id.Node]*NodeState
+	NodeStates map[id.Node]*NodeState
 
 	// NDF state ---
 	partialNdf *dataStructures.Ndf
@@ -87,7 +87,7 @@ func NewState() (*State, error) {
 		RoundUpdates:  dataStructures.NewUpdates(),
 		RoundData:     dataStructures.NewData(),
 		Update:        make(chan struct{}),
-		NodeStatuses:  make(map[id.Node]*NodeState),
+		NodeStates:    make(map[id.Node]*NodeState),
 		fullNdf:       fullNdf,
 		partialNdf:    partialNdf,
 	}
@@ -113,6 +113,16 @@ func (s *State) GetPartialNdf() *dataStructures.Ndf {
 // Returns all updates after the given ID
 func (s *State) GetUpdates(id int) ([]*pb.RoundInfo, error) {
 	return s.RoundUpdates.GetUpdates(id)
+}
+
+// Returns the NodeState object for the given id if it exists
+// Otherwise, it will safely create and return a new NodeState
+func (s *State) GetNodeState(id id.Node) *NodeState {
+	// Create the node state entry if it doesn't already exist
+	if s.NodeStates[id] == nil {
+		s.NodeStates[id] = &NodeState{}
+	}
+	return s.NodeStates[id]
 }
 
 // Returns true if given node ID is participating in the current round
@@ -184,13 +194,9 @@ func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 
 // Updates the state of the given node with the new state provided
 func (s *State) UpdateNodeState(id id.Node, newActivity current.Activity) error {
-	// Create the node state entry if it doesn't already exist
-	if s.NodeStatuses[id] == nil {
-		s.NodeStatuses[id] = &NodeState{}
-	}
 
 	// Get and lock node state
-	node := s.NodeStatuses[id]
+	node := s.GetNodeState(id)
 	node.mux.Lock()
 	defer node.mux.Unlock()
 

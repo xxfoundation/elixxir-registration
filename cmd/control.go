@@ -15,7 +15,6 @@ import (
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
-	"gitlab.com/elixxir/registration/storage"
 	"time"
 )
 
@@ -116,10 +115,7 @@ func (m *RegistrationImpl) newRound(topology []string, batchSize uint32) error {
 
 	// Initialize node states based on given topology
 	for _, nodeId := range topology {
-		node := s.NodeStatuses[*id.NewNodeFromBytes([]byte(nodeId))]
-		if node == nil {
-			node = &storage.NodeState{}
-		}
+		node := s.GetNodeState(*id.NewNodeFromBytes([]byte(nodeId)))
 		node.Activity = current.WAITING
 	}
 
