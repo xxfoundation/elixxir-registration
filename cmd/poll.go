@@ -53,7 +53,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 
 	// Commit updates reported by the node if node involved in the current round
 	if m.State.IsRoundNode(auth.Sender.GetId()) {
-		jww.DEBUG.Printf("Updating state for node %s: %+v",
+		jww.TRACE.Printf("Updating state for node %s: %+v",
 			auth.Sender.GetId(), msg)
 		nodeId, err := id.NewNodeFromString(auth.Sender.GetId())
 		if err != nil {
