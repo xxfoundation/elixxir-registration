@@ -88,7 +88,7 @@ func (s *State) GetPartialNdf() *dataStructures.Ndf {
 }
 
 // Returns all updates after the given ID
-func (s *State) GetUpdates(id int) ([]*pb.RoundInfo, error) {
+func (s *State) GetUpdates(id int) []*pb.RoundInfo {
 	return s.RoundUpdates.GetUpdates(id)
 }
 
