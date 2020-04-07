@@ -102,7 +102,7 @@ func Test_updateState(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
-	t.Logf("HERE OK")
+
 	impl := &RegistrationImpl{
 		State: s,
 		params: &Params{
