@@ -68,10 +68,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	}
 
 	// Fetch latest round updates
-	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
-	if err != nil {
-		return nil, err
-	}
+	response.Updates = m.State.GetUpdates(int(msg.LastUpdate))
 
 	return
 }

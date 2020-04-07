@@ -88,8 +88,8 @@ func (s *State) GetPartialNdf() *dataStructures.Ndf {
 }
 
 // Returns all updates after the given ID
-func (s *State) GetUpdates(id int) ([]*pb.RoundInfo, error) {
-	return s.RoundUpdates.GetUpdates(id), nil
+func (s *State) GetUpdates(id int) []*pb.RoundInfo {
+	return s.RoundUpdates.GetUpdates(id)
 }
 
 // Returns true if given node ID is participating in the current round
