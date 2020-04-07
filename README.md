@@ -10,8 +10,8 @@ cMix
 # Permissioning Server Configuration
 # ==================================
 
-# Verbose logging
-verbose: "true"
+# Log message level
+logLevel: 1
 # Path to log file
 logPath: "registration.log"
 # Path to the node topology permissioning info
