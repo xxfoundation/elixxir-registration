@@ -180,9 +180,9 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 }
 
 // Adds Node registration codes to the database
-func PopulateNodeRegistrationCodes(codes []string) {
-	for _, code := range codes {
-		err := PermissioningDb.InsertNodeRegCode(code)
+func PopulateNodeRegistrationCodes(infos []node.Info) {
+	for _, info := range infos {
+		err := PermissioningDb.InsertNodeRegCode(info)
 		if err != nil {
 			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
 				err)
