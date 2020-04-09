@@ -11,6 +11,7 @@ package storage
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/registration/storage/node"
 )
 
 // If Node registration code is valid, add Node information
@@ -33,7 +34,7 @@ func (m *MapImpl) InsertNode(id []byte, code, serverCert, serverAddress,
 }
 
 // Insert Node registration code into the database
-func (m *MapImpl) InsertNodeRegCode(code string) error {
+func (m *MapImpl) InsertNodeRegCode(info []node.Info) error {
 	m.mut.Lock()
 	jww.INFO.Printf("Adding node registration code: %s", code)
 
