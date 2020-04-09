@@ -12,6 +12,7 @@ import (
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/registration/storage/node"
 	"sync"
 )
 
@@ -36,7 +37,7 @@ type nodeRegistration interface {
 	InsertNode(id []byte, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
 	// Insert Node registration code into the database
-	InsertNodeRegCode(code string) error
+	InsertNodeRegCode(info node.Info) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*NodeInformation, error)
 }
@@ -76,6 +77,8 @@ type NodeInformation struct {
 
 	// Registration code acts as the primary key
 	Code string `sql:",pk"`
+	// Node ordering string
+	Ordering string
 	// Node ID
 	Id []byte
 	// Server IP address

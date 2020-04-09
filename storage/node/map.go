@@ -22,7 +22,7 @@ func NewStateMap()*StateMap {
 }
 
 // Adds a new node state to the structure. Will not overwrite an existing one.
-func (nsm *StateMap) AddNode(id *id.Node) error{
+func (nsm *StateMap) AddNode(id *id.Node, ordering string) error{
 	nsm.mux.Lock()
 	defer nsm.mux.Unlock()
 
@@ -35,6 +35,7 @@ func (nsm *StateMap) AddNode(id *id.Node) error{
 			activity:     current.NOT_STARTED,
 			currentRound: nil,
 			lastPoll:     time.Now(),
+			ordering: ordering,
 		}
 
 	return nil
@@ -45,4 +46,15 @@ func (nsm *StateMap) GetNode(id *id.Node) *State {
 	nsm.mux.RLock()
 	defer nsm.mux.RUnlock()
 	return nsm.nodeStates[*id]
+}
+
+// Returns the number of elements in the NodeMapo
+func (nsm *StateMap) Len() int {
+	nsm.mux.RLock()
+	defer nsm.mux.RUnlock()
+	num := 0
+	for range nsm.nodeStates{
+		num++
+	}
+	return num
 }

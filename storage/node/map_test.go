@@ -3,6 +3,7 @@ package node
 import (
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
+	"math/rand"
 	"strings"
 	"testing"
 	"time"
@@ -25,7 +26,7 @@ func TestStateMap_AddNode_Happy(t *testing.T) {
 
 	nid := id.NewNodeFromUInt(2, t)
 
-	err := sm.AddNode(nid)
+	err := sm.AddNode(nid, "")
 
 	if err!=nil{
 		t.Errorf("Error returned on valid addition of node: %s", err)
@@ -66,7 +67,7 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 
 	time.Sleep(1*time.Millisecond)
 
-	err := sm.AddNode(nid)
+	err := sm.AddNode(nid, "")
 
 	if err==nil{
 		t.Errorf("Error not returned on invalid addition of node: %s", err)
@@ -135,7 +136,7 @@ func TestStateMap_GetNode_Valid(t *testing.T) {
 
 }
 
-//Tests a not is not returned when no node exists
+//Tests a node not is not returned when no node exists
 func TestStateMap_GetNode_invalid(t *testing.T) {
 	sm := &StateMap{
 		nodeStates: make(map[id.Node]*State),
@@ -148,5 +149,31 @@ func TestStateMap_GetNode_invalid(t *testing.T) {
 
 	if n!=nil{
 		t.Errorf("Nnode returned when node does not exist")
+	}
+}
+
+//Tests that len returns the correct value
+func TestStateMap_Len(t *testing.T) {
+	rng := rand.New(rand.NewSource(42))
+
+	for i:=0;i<20;i++{
+		l := int(rng.Uint64()%100)
+
+		if i==0{
+			l=0
+		}
+
+		sm := &StateMap{
+			nodeStates: make(map[id.Node]*State),
+		}
+
+		for j:=0;j<l;j++{
+			sm.nodeStates[*id.NewNodeFromUInt(uint64(5*j+1), t)] = &State{}
+		}
+
+		if sm.Len()!=l{
+			t.Errorf("Len returned a length of %v when it should be %v",
+				sm.Len(), l)
+		}
 	}
 }

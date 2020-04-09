@@ -22,13 +22,16 @@ type State struct {
 	// Timestamp of the last time this Node polled
 	lastPoll time.Time
 
+	// Ordering string to be used in team configuration
+	ordering string
+
 	//holds valid state transitions
 	stateMap *[][]bool
 }
 
 // updates to the passed in activity if it is different from the known activity
 // returns true if the state changed and the state was it was reguardless
-func (n *State) Update(newActivity current.Activity)(bool, current.Activity, error){
+func (n *State) Update(newActivity current.Activity)(bool, current.Activity){
 	// Get and lock n state
 	n.mux.Lock()
 	defer n.mux.Unlock()
@@ -47,7 +50,7 @@ func (n *State) Update(newActivity current.Activity)(bool, current.Activity, err
 		n.activity = newActivity
 	}
 
-	return updated, oldActivity, nil
+	return updated, oldActivity
 }
 
 // gets the current activity of the node
@@ -62,6 +65,11 @@ func (n *State) GetLastPoll()time.Time{
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	return n.lastPoll
+}
+
+// gets the ordering string for use in team formation
+func (n *State) GetOrdering()string{
+	return n.ordering
 }
 
 // returns true and the round id if the node is assigned to a round,

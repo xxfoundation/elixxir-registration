@@ -6,7 +6,10 @@
 
 package storage
 
-import "testing"
+import (
+	"gitlab.com/elixxir/registration/storage/node"
+	"testing"
+)
 
 // Happy path
 func TestMapImpl_InsertNodeRegCode(t *testing.T) {
@@ -16,11 +19,21 @@ func TestMapImpl_InsertNodeRegCode(t *testing.T) {
 
 	// Attempt to load in a valid code
 	code := "TEST"
-	err := m.InsertNodeRegCode(code)
+	Order := "BLARG"
+	err := m.InsertNodeRegCode(node.Info{
+		RegCode: code,
+		Order:   Order,
+	})
 
 	// Verify the insert was successful
 	if err != nil || m.node[code] == nil {
 		t.Errorf("Expected to successfully insert node registration code")
+	}
+
+
+	if m.node[code].Ordering!=Order{
+		t.Errorf("Ordering string incorret; Expected: %s, Recieved: %s",
+			Order, m.node[code].Ordering)
 	}
 }
 
@@ -35,7 +48,10 @@ func TestMapImpl_InsertNodeRegCode_Duplicate(t *testing.T) {
 	m.node[code] = &NodeInformation{Code: code}
 
 	// Attempt to load in a duplicate code
-	err := m.InsertNodeRegCode(code)
+	err := m.InsertNodeRegCode(node.Info{
+		RegCode: code,
+		Order:   "",
+	})
 
 	// Verify the insert failed
 	if err == nil {
