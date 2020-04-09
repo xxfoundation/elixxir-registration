@@ -25,7 +25,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
 
 	// Get proper ID string
-	idString := id.NewNodeFromBytes(ID).String()
+	nid:=id.NewNodeFromBytes(ID)
+	idString := nid.String()
 
 	// Check that the node hasn't already been registered
 	nodeInfo, err := storage.PermissioningDb.GetNode(RegistrationCode)
@@ -50,12 +51,12 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 
 	// Sign the node and gateway certs
 	signedNodeCert, err := certAuthority.Sign(nodeCertificate,
-		m.permissioningCert, &(m.State.PrivateKey.PrivateKey))
+		m.permissioningCert, m.State.GetPrivateKey())
 	if err != nil {
 		return errors.Errorf("failed to sign node certificate: %v", err)
 	}
 	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate,
-		m.permissioningCert, &(m.State.PrivateKey.PrivateKey))
+		m.permissioningCert, m.State.GetPrivateKey())
 	if err != nil {
 		return errors.Errorf("Failed to sign gateway certificate: %v", err)
 	}
@@ -69,15 +70,17 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	jww.DEBUG.Printf("Inserted node %s into the database with code %s",
 		idString, RegistrationCode)
 
-	// Obtain the number of registered nodes
-	_, err = storage.PermissioningDb.CountRegisteredNodes()
-	if err != nil {
-		return errors.Errorf("Unable to count registered Nodes: %+v", err)
-	}
-
+	//add the node to the host object for authenticated communications
 	_, err = m.Comms.AddHost(idString, ServerAddr, []byte(ServerTlsCert), false, true)
 	if err != nil {
 		return errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
+	}
+
+	//add the node to the node map to track its state
+	err = m.State.GetNodeMap().AddNode(nid)
+	if err!=nil{
+		return errors.WithMessage(err,"Could not register node with "+
+		"state tracker")
 	}
 
 	// Notify registration thread
@@ -103,7 +106,7 @@ func (m *RegistrationImpl) nodeRegistrationCompleter() error {
 		networkDef.Gateways = append(networkDef.Gateways, *gateway)
 		networkDef.Nodes = append(networkDef.Nodes, *node)
 
-		// Update the internal state with the newly-updated ndf
+		// update the internal state with the newly-updated ndf
 		err = m.State.UpdateNdf(networkDef)
 		if err != nil {
 			return err

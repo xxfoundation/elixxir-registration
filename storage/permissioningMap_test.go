@@ -87,38 +87,6 @@ func TestMapImpl_InsertNode_Invalid(t *testing.T) {
 	}
 }
 
-// Full happy path
-func TestMapImpl_CountRegisteredNodes(t *testing.T) {
-	m := &MapImpl{
-		node: make(map[string]*NodeInformation),
-	}
-
-	// Check that there are zero registered nodes
-	count, err := m.CountRegisteredNodes()
-	if err != nil || count != 0 {
-		t.Errorf("Expected no registered nodes")
-	}
-
-	// Load in a registration code
-	code := "TEST"
-	m.node[code] = &NodeInformation{Code: code}
-
-	// Check that adding an unregistered node still returns zero
-	count, err = m.CountRegisteredNodes()
-	if err != nil || count != 0 {
-		t.Errorf("Still expected no registered nodes")
-	}
-
-	// Load in a node
-	m.node[code].Id = make([]byte, 0)
-
-	// Check that adding a registered node increases the count
-	count, err = m.CountRegisteredNodes()
-	if err != nil || count != 1 {
-		t.Errorf("Expected a registered node")
-	}
-}
-
 // Happy path
 func TestMapImpl_GetNode(t *testing.T) {
 	m := &MapImpl{

@@ -40,7 +40,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	}
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
-	impl.State.PrivateKey = getTestKey()
+	impl.State.privateKey = getTestKey()
 	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
@@ -124,7 +124,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 		State:    state,
 		NdfReady: &ndfReady,
 	}
-	impl.State.PrivateKey = getTestKey()
+	impl.State.privateKey = getTestKey()
 	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",

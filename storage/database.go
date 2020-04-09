@@ -37,8 +37,6 @@ type nodeRegistration interface {
 		gatewayAddress, gatewayCert string) error
 	// Insert Node registration code into the database
 	InsertNodeRegCode(code string) error
-	// Count the number of Nodes currently registered
-	CountRegisteredNodes() (int, error)
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*NodeInformation, error)
 }

@@ -20,31 +20,14 @@ import (
 
 // Control thread for advancement of network state
 func (m *RegistrationImpl) StateControl() {
-	s := m.State
-	for range s.Update {
-
-		// Check whether the round state is ready to increment
-		nextState := states.Round(s.CurrentRound.State + 1)
-		numNodesInRound := uint32(len(s.CurrentRound.Topology))
-		if *s.CurrentRound.NetworkStatus[nextState] == numNodesInRound {
-			// Increment the round state
-			err := m.incrementRoundState(nextState)
-			if err != nil {
-				// TODO: Error handling
-				jww.FATAL.Panicf("Unable to create next round: %+v", err)
-			}
+		s := m.State
+		var face interface{}
+		for range s.update {
+			face = m.TeamingAlgo(s, face)
 		}
 
-		// Handle completion of a round
-		if s.GetCurrentRoundState() == states.COMPLETED {
-			// Create the new round
-			err := m.createNextRound()
-			if err != nil {
-				// TODO: Error handling
-				jww.FATAL.Panicf("Unable to create next round: %+v", err)
-			}
-		}
-	}
+
+		m.TeamingAlgo(m.State)
 }
 
 // Initiate the next round with a selection of nodes
@@ -76,12 +59,12 @@ func (m *RegistrationImpl) incrementRoundState(state states.Round) error {
 	default:
 		return nil
 	}
-	// Update current round state
-	s.CurrentUpdate += 1
-	s.CurrentRound.UpdateID = uint64(s.CurrentUpdate)
+	// update current round state
+	s.currentUpdate += 1
+	s.CurrentRound.UpdateID = uint64(s.currentUpdate)
 
 	// Sign the new round object
-	err := signature.Sign(s.CurrentRound.RoundInfo, s.PrivateKey)
+	err := signature.Sign(s.CurrentRound.RoundInfo, s.privateKey)
 	if err != nil {
 		return err
 	}
@@ -95,10 +78,10 @@ func (m *RegistrationImpl) newRound(topology []string, batchSize uint32) error {
 	s := m.State
 
 	// Build the new current round object
-	s.CurrentUpdate += 1
+	s.currentUpdate += 1
 	s.CurrentRound.RoundInfo = &pb.RoundInfo{
-		ID:         uint64(s.RoundData.GetLastRoundID() + 1),
-		UpdateID:   uint64(s.CurrentUpdate),
+		ID:         uint64(s.roundData.GetLastRoundID() + 1),
+		UpdateID:   uint64(s.currentUpdate),
 		State:      uint32(states.PRECOMPUTING),
 		BatchSize:  batchSize,
 		Topology:   topology,
@@ -115,18 +98,18 @@ func (m *RegistrationImpl) newRound(topology []string, batchSize uint32) error {
 
 	// Initialize node states based on given topology
 	for _, nodeId := range topology {
-		node := s.GetNodeState(*id.NewNodeFromBytes([]byte(nodeId)))
+		node := s.GetOrCreateNodeState(*id.NewNodeFromBytes([]byte(nodeId)))
 		node.Activity = current.WAITING
 	}
 
 	// Sign the new round object
-	err := signature.Sign(s.CurrentRound.RoundInfo, s.PrivateKey)
+	err := signature.Sign(s.CurrentRound.RoundInfo, s.privateKey)
 	if err != nil {
 		return err
 	}
 
 	// Insert the new round object into the state tracker
-	err = s.RoundData.UpsertRound(s.CurrentRound.RoundInfo)
+	err = s.roundData.UpsertRound(s.CurrentRound.RoundInfo)
 	if err != nil {
 		return err
 	}

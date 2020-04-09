@@ -27,7 +27,7 @@ func Test_createNextRound(t *testing.T) {
 	impl := &RegistrationImpl{
 		State: s,
 	}
-	s.PrivateKey = getTestKey()
+	s.privateKey = getTestKey()
 
 	err = impl.newRound(topology, batchSize)
 	if err != nil {
@@ -52,8 +52,8 @@ func Test_createNextRound(t *testing.T) {
 	}
 
 	// Check node statuses
-	for _, node := range s.NodeStates {
-		if node.Activity != current.WAITING {
+	for _, node := range s.nodeStates {
+		if node.activity != current.WAITING {
 			t.Errorf("Incorrect node status!")
 		}
 	}
@@ -65,12 +65,12 @@ func Test_createNextRound(t *testing.T) {
 	}
 
 	// Check state data
-	if _, err := s.RoundData.GetRound(0); err != nil {
+	if _, err := s.roundData.GetRound(0); err != nil {
 		t.Errorf("Incorrect round data: %+v", err)
 	}
 
 	// Check state updates
-	if _, err := s.RoundUpdates.GetUpdate(0); err != nil {
+	if _, err := s.roundUpdates.GetUpdate(0); err != nil {
 		t.Errorf("Incorrect round update data: %+v", err)
 	}
 }
@@ -90,7 +90,7 @@ func Test_updateState(t *testing.T) {
 			batchSize: 1,
 		},
 	}
-	s.PrivateKey = getTestKey()
+	s.privateKey = getTestKey()
 	go impl.StateControl()
 
 	err = impl.newRound(topology, impl.params.batchSize)
@@ -100,42 +100,42 @@ func Test_updateState(t *testing.T) {
 
 	// Test update without change in status
 	state := current.WAITING
-	err = s.UpdateNodeState(*id.NewNodeFromBytes([]byte(topology[0])), state)
+	err = s.UpdateAndSignalNodeState(*id.NewNodeFromBytes([]byte(topology[0])), state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	if s.NodeStates[*id.NewNodeFromBytes([]byte(
-		topology[0]))].Activity != state {
+	if s.nodeStates[*id.NewNodeFromBytes([]byte(
+		topology[0]))].activity != state {
 		t.Errorf("Expected node status not to change!")
 	}
 
 	// Test updating node statuses
 	state = current.PRECOMPUTING
-	err = s.UpdateNodeState(*id.NewNodeFromBytes([]byte(topology[0])), state)
+	err = s.UpdateAndSignalNodeState(*id.NewNodeFromBytes([]byte(topology[0])), state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	if s.NodeStates[*id.NewNodeFromBytes([]byte(
-		topology[0]))].Activity != state {
+	if s.nodeStates[*id.NewNodeFromBytes([]byte(
+		topology[0]))].activity != state {
 		t.Errorf("Expected node status not to change!")
 	}
-	err = s.UpdateNodeState(*id.NewNodeFromBytes([]byte(topology[1])), state)
+	err = s.UpdateAndSignalNodeState(*id.NewNodeFromBytes([]byte(topology[1])), state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	if s.NodeStates[*id.NewNodeFromBytes([]byte(
-		topology[1]))].Activity != state {
+	if s.nodeStates[*id.NewNodeFromBytes([]byte(
+		topology[1]))].activity != state {
 		t.Errorf("Expected node status not to change!")
 	}
 
 	// Test updating node statuses that trigger an incrementation
 	state = current.STANDBY
-	err = s.UpdateNodeState(*id.NewNodeFromBytes([]byte(topology[0])),
+	err = s.UpdateAndSignalNodeState(*id.NewNodeFromBytes([]byte(topology[0])),
 		state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
 	}
-	err = s.UpdateNodeState(*id.NewNodeFromBytes([]byte(topology[1])),
+	err = s.UpdateAndSignalNodeState(*id.NewNodeFromBytes([]byte(topology[1])),
 		state)
 	if err != nil {
 		t.Errorf("Unexpected error updating node state: %+v", err)
@@ -163,7 +163,7 @@ func Test_incrementRoundState(t *testing.T) {
 			batchSize: 1,
 		},
 	}
-	s.PrivateKey = getTestKey()
+	s.privateKey = getTestKey()
 
 	err = impl.newRound(topology, impl.params.batchSize)
 	if err != nil {
@@ -175,35 +175,35 @@ func Test_incrementRoundState(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error incrementing round state: %+v", err)
 	}
-	if s.CurrentUpdate != 1 {
+	if s.currentUpdate != 1 {
 		t.Errorf("Unexpected round update occurred!")
 	}
 	err = impl.incrementRoundState(states.PRECOMPUTING)
 	if err != nil {
 		t.Errorf("Unexpected error incrementing round state: %+v", err)
 	}
-	if s.CurrentUpdate != 1 {
+	if s.currentUpdate != 1 {
 		t.Errorf("Unexpected round update occurred!")
 	}
 	err = impl.incrementRoundState(states.STANDBY)
 	if err != nil {
 		t.Errorf("Unexpected error incrementing round state: %+v", err)
 	}
-	if s.CurrentUpdate != 2 {
+	if s.currentUpdate != 2 {
 		t.Errorf("Round update failed to occur!")
 	}
 	err = impl.incrementRoundState(states.REALTIME)
 	if err != nil {
 		t.Errorf("Unexpected error incrementing round state: %+v", err)
 	}
-	if s.CurrentUpdate != 2 {
+	if s.currentUpdate != 2 {
 		t.Errorf("Unexpected round update occurred!")
 	}
 	err = impl.incrementRoundState(states.COMPLETED)
 	if err != nil {
 		t.Errorf("Unexpected error incrementing round state: %+v", err)
 	}
-	if s.CurrentUpdate != 3 {
+	if s.currentUpdate != 3 {
 		t.Errorf("Round update failed to occur!")
 	}
 }

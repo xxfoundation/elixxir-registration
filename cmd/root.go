@@ -135,8 +135,11 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
-		// Begin state control (loops forever)
-		go impl.StateControl()
+		// Begin schedueling algorithem
+		go func(){
+			err := impl.schedulingAlgorithm(impl.State)
+			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
+		}()
 
 		// Begin the thread which handles the completion of node registration
 		err = impl.nodeRegistrationCompleter()

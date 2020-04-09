@@ -48,19 +48,6 @@ func (m *MapImpl) InsertNodeRegCode(code string) error {
 	return nil
 }
 
-// Count the number of Nodes currently registered
-func (m *MapImpl) CountRegisteredNodes() (int, error) {
-	m.mut.Lock()
-	counter := 0
-	for _, v := range m.node {
-		if v.Id != nil {
-			counter += 1
-		}
-	}
-	m.mut.Unlock()
-	return counter, nil
-}
-
 // Get Node information for the given Node registration code
 func (m *MapImpl) GetNode(code string) (*NodeInformation, error) {
 	m.mut.Lock()

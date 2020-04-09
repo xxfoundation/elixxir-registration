@@ -46,27 +46,25 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		response.PartialNDF = m.State.GetPartialNdf().GetPb()
 	}
 
-	// Do not attempt to update or report state to unprepared nodes
-	if msg.Activity == uint32(current.NOT_STARTED) {
-		return
-	}
-
-	// Commit updates reported by the node if node involved in the current round
-	if m.State.IsRoundNode(auth.Sender.GetId()) {
-		jww.DEBUG.Printf("Updating state for node %s: %+v",
-			auth.Sender.GetId(), msg)
-		err = m.State.UpdateNodeState(
-			*id.NewNodeFromBytes([]byte(auth.Sender.GetId())),
-			current.Activity(msg.Activity))
-		if err != nil {
-			return
-		}
-	}
-
 	// Fetch latest round updates
 	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
 	if err != nil {
 		return
+	}
+
+	// Commit updates reported by the node if node involved in the current round
+	jww.DEBUG.Printf("Updating state for node %s: %+v",
+		auth.Sender.GetId(), msg)
+
+	//get the nodeState and update
+	nid := id.NewNodeFromBytes([]byte(auth.Sender.GetId()))
+	n := m.State.GetNodeMap().GetNode(nid)
+
+	update, oldActivity:= n.Update(current.Activity(msg.Activity))
+
+	//if an update ocured, report it to the control thread
+	if update{
+		err = m.State.NodeUpdateNotification(nid, oldActivity, current.Activity(msg.Activity))
 	}
 
 	return
