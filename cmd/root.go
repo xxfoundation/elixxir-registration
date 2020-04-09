@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"os"
 	"path"
 	"strconv"
@@ -29,7 +30,7 @@ var (
 	cfgFile              string
 	verbose              bool
 	noTLS                bool
-	RegistrationCodes    []string
+	RegCodesFilePath     string
 	RegParams            Params
 	ClientRegCodes       []string
 	clientVersion        string
@@ -100,8 +101,13 @@ var rootCmd = &cobra.Command{
 		)
 
 		// Populate Node registration codes into the database
-		RegistrationCodes = viper.GetStringSlice("registrationCodes")
-		storage.PopulateNodeRegistrationCodes(RegistrationCodes)
+		RegCodesFilePath = viper.GetString("regCodesFilePath")
+		regCodeInfos, err := node.LoadInfo(RegCodesFilePath)
+		if err != nil {
+			jww.FATAL.Panicf("Failed to load registration codes from the "+
+				"file %s: %+v", RegCodesFilePath, err)
+		}
+		storage.PopulateNodeRegistrationCodes(regCodeInfos)
 
 		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
 		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
@@ -136,7 +142,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Begin schedueling algorithem
-		go func(){
+		go func() {
 			err := impl.schedulingAlgorithm(impl.State)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
 		}()
