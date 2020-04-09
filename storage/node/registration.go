@@ -21,15 +21,13 @@ func LoadInfo(filePath string) ([]Info, error) {
 	// Open file and get the JSON data
 	jsonData, err := utils.ReadFile(filePath)
 	if err != nil {
-		return nil, errors.Errorf("Could not load JSON file %s: %v",
-			filePath, err)
+		return nil, errors.Errorf("Could not load JSON file: %v", err)
 	}
 
 	// Unmarshal the JSON data
-	err = json.Unmarshal(jsonData, infos)
+	err = json.Unmarshal(jsonData, &infos)
 	if err != nil {
-		return nil, errors.Errorf("Could not unmarshal JSON from file %s: %v",
-			filePath, err)
+		return nil, errors.Errorf("Could not unmarshal JSON: %v", err)
 	}
 
 	return infos, nil
