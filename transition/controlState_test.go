@@ -20,9 +20,9 @@ func TestTransitions_IsValidTransition(t *testing.T) {
 
 	expectedTransition[current.NOT_STARTED] = []bool{false, false, false, false, false, false, false, false}
 	expectedTransition[current.WAITING] = []bool{true, false, false, false, false, true, true, false}
-	expectedTransition[current.PRECOMPUTING] =  []bool{false, true, false, false, false, false, false, false}
+	expectedTransition[current.PRECOMPUTING] = []bool{false, true, false, false, false, false, false, false}
 	expectedTransition[current.STANDBY] = []bool{false, false, true, false, false, false, false, false}
-	expectedTransition[current.REALTIME] =  []bool{false, false, false, true, false, false, false, false}
+	expectedTransition[current.REALTIME] = []bool{false, false, false, true, false, false, false, false}
 	expectedTransition[current.COMPLETED] = []bool{false, false, false, false, true, false, false, false}
 	expectedTransition[current.ERROR] = []bool{true, true, true, true, true, true, false, false}
 	expectedTransition[current.CRASH] = make([]bool, current.NUM_STATES)
@@ -50,7 +50,7 @@ func TestTransitions_NeedsRound(t *testing.T) {
 	testTransition := newTransitions()
 
 	expectedNeedsRound := []int{0, 0, 1, 1, 1, 1, 2}
-	receivedNeedsRound := make([]int,len(expectedNeedsRound))
+	receivedNeedsRound := make([]int, len(expectedNeedsRound))
 	for i := uint32(0); i < uint32(current.CRASH); i++ {
 		receivedNeedsRound[i] = testTransition.NeedsRound(current.Activity(i))
 	}
@@ -66,7 +66,7 @@ func TestTransitions_RequiredRoundState(t *testing.T) {
 	testTransition := newTransitions()
 
 	expectedRoundState := []states.Round{nilRoundState, nilRoundState, 1, 1, 3, 3, nilRoundState}
-	receivedRoundState := make([]states.Round,len(expectedRoundState))
+	receivedRoundState := make([]states.Round, len(expectedRoundState))
 
 	for i := uint32(0); i < uint32(current.CRASH); i++ {
 		receivedRoundState[i] = testTransition.RequiredRoundState(current.Activity(i))
@@ -76,6 +76,5 @@ func TestTransitions_RequiredRoundState(t *testing.T) {
 		t.Errorf("NeedsRound did not match expected.\n\tExpected: %v\n\tReceived: %v",
 			expectedRoundState, receivedRoundState)
 	}
-
 
 }

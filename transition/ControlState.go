@@ -11,17 +11,22 @@ import (
 	"math"
 )
 
-const(
-	No           = 0
-	Yes          = 1
-	Maybe  = 2
+// ControlState.go contains the state transition information for nodes.
+
+const (
+	No            = 0
+	Yes           = 1
+	Maybe         = 2
 	nilRoundState = math.MaxUint32
 )
 
+// Node is a global variable used as bookkeping for state transition information
 var Node = newTransitions()
 
 type Transitions [current.NUM_STATES]transitionValidation
 
+// newTransition creates a transition table containing necessary information
+// on state transitions
 func newTransitions() Transitions {
 	t := Transitions{}
 	t[current.NOT_STARTED] = NewTransitionValidation(No, nilRoundState)
@@ -37,27 +42,34 @@ func newTransitions() Transitions {
 	return t
 }
 
-func (t Transitions)IsValidTransition(to, from current.Activity)bool{
-	//fmt.Println("from ", from, " to ", to)
+// IsValidTransition checks the transitionValidation to see if
+//  the attempted transition is valid
+func (t Transitions) IsValidTransition(to, from current.Activity) bool {
 	return t[to].from[from]
 }
 
-func (t Transitions)NeedsRound(to current.Activity)int{
+// NeedsRound checks if the state being transitioned to
+//  will need round updates
+func (t Transitions) NeedsRound(to current.Activity) int {
 	return t[to].needsRound
 }
 
-func (t Transitions)RequiredRoundState(to current.Activity)states.Round{
+// RequiredRoundState looks up the required round needed prior to transition
+func (t Transitions) RequiredRoundState(to current.Activity) states.Round {
 	return t[to].roundState
 }
 
-type transitionValidation struct{
+// Transitional information used for each state
+type transitionValidation struct {
 	from       [current.NUM_STATES]bool
 	needsRound int
 	roundState states.Round
 }
 
-
-func NewTransitionValidation(needsRound int, roundState states.Round, from ...current.Activity)transitionValidation{
+// NewTransitionValidation sets the from attribute,
+//  denoting whether going from that to the objects current state
+//  is valid
+func NewTransitionValidation(needsRound int, roundState states.Round, from ...current.Activity) transitionValidation {
 	tv := transitionValidation{}
 
 	tv.needsRound = needsRound
@@ -69,5 +81,3 @@ func NewTransitionValidation(needsRound int, roundState states.Round, from ...cu
 
 	return tv
 }
-
-
