@@ -1,6 +1,12 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright © 2020 Privategrity Corporation                                   /
+//                                                                             /
+// All rights reserved.                                                        /
+////////////////////////////////////////////////////////////////////////////////
 package transition
 
 import (
+	"fmt"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
 )
@@ -13,15 +19,19 @@ const(
 
 var Node = newTransitions()
 
-type Transitions [current.NUM_STATES]transitionValidation
+type Transitions [current.NUM_STATES]*transitionValidation
 
 func newTransitions() Transitions {
 	t := Transitions{}
-	t[current.NOT_STARTED].setStateTransition(current.WAITING, current.STANDBY, current.COMPLETED, current.ERROR)
-	t[current.WAITING].setStateTransition(current.STANDBY, current.COMPLETED, current.ERROR)
+	for i := current.Activity(0); i < current.NUM_STATES; i++ {
+		t[current.Activity(i)] = &transitionValidation{}
+	}
+	t[current.NOT_STARTED].setStateTransition()
+	t[current.WAITING].setStateTransition(current.NOT_STARTED, current.COMPLETED, current.ERROR)
 	t[current.PRECOMPUTING].setStateTransition(current.WAITING)
-	t[current.STANDBY].setStateTransition(current.PRECOMPUTING)
+
 	t[current.REALTIME].setStateTransition(current.STANDBY)
+
 	t[current.COMPLETED].setStateTransition(current.REALTIME)
 	t[current.ERROR].setStateTransition(current.NOT_STARTED, current.WAITING,
 		current.PRECOMPUTING, current.STANDBY, current.REALTIME,
@@ -42,6 +52,7 @@ func newTransitions() Transitions {
 }
 
 func (t Transitions)IsValidTransition(from, to current.Activity)bool{
+	//fmt.Println("from ", from, " to ", to)
 	return t[to].from[from]
 }
 
@@ -60,10 +71,12 @@ type transitionValidation struct{
 }
 
 // adds a state transition from the state object
-func (tv transitionValidation) setStateTransition(from ...current.Activity) {
+func (tv *transitionValidation) setStateTransition(from ...current.Activity) {
 	for _, f := range from {
 		tv.from[f] = true
 	}
+	fmt.Printf("tv.from: %v\n", tv.from)
+
 }
 
 
