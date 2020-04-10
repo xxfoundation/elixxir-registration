@@ -6,7 +6,7 @@
 
 // Handles the database ORM for registration codes
 
-package database
+package storage
 
 import (
 	"github.com/pkg/errors"
