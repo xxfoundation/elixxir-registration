@@ -6,52 +6,38 @@
 package transition
 
 import (
-	"fmt"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
+	"math"
 )
 
 const(
 	No           = 0
 	Yes          = 1
-	DoesntMatter = 2
+	Maybe  = 2
+	nilRoundState = math.MaxUint32
 )
 
 var Node = newTransitions()
 
-type Transitions [current.NUM_STATES]*transitionValidation
+type Transitions [current.NUM_STATES]transitionValidation
 
 func newTransitions() Transitions {
 	t := Transitions{}
-	for i := current.Activity(0); i < current.NUM_STATES; i++ {
-		t[current.Activity(i)] = &transitionValidation{}
-	}
-	t[current.NOT_STARTED].setStateTransition()
-	t[current.WAITING].setStateTransition(current.NOT_STARTED, current.COMPLETED, current.ERROR)
-	t[current.PRECOMPUTING].setStateTransition(current.WAITING)
-
-	t[current.REALTIME].setStateTransition(current.STANDBY)
-
-	t[current.COMPLETED].setStateTransition(current.REALTIME)
-	t[current.ERROR].setStateTransition(current.NOT_STARTED, current.WAITING,
-		current.PRECOMPUTING, current.STANDBY, current.REALTIME,
+	t[current.NOT_STARTED] = NewTransitionValidation(No, nilRoundState)
+	t[current.WAITING] = NewTransitionValidation(No, nilRoundState, current.NOT_STARTED, current.COMPLETED, current.ERROR)
+	t[current.PRECOMPUTING] = NewTransitionValidation(Yes, states.PRECOMPUTING, current.WAITING)
+	t[current.STANDBY] = NewTransitionValidation(Yes, states.PRECOMPUTING, current.PRECOMPUTING)
+	t[current.REALTIME] = NewTransitionValidation(Yes, states.REALTIME, current.STANDBY)
+	t[current.COMPLETED] = NewTransitionValidation(Yes, states.REALTIME, current.REALTIME)
+	t[current.ERROR] = NewTransitionValidation(Maybe, nilRoundState, current.NOT_STARTED,
+		current.WAITING, current.PRECOMPUTING, current.STANDBY, current.REALTIME,
 		current.COMPLETED)
 
-	t[current.NOT_STARTED].needsRound = No
-	t[current.WAITING].needsRound = No
-	t[current.PRECOMPUTING].needsRound = Yes
-	t[current.PRECOMPUTING].roundState = states.PRECOMPUTING
-	t[current.STANDBY].needsRound = Yes
-	t[current.STANDBY].roundState = states.PRECOMPUTING
-	t[current.REALTIME].needsRound = Yes
-	t[current.REALTIME].roundState = states.REALTIME
-	t[current.COMPLETED].needsRound = Yes
-	t[current.COMPLETED].roundState = states.REALTIME
-	t[current.ERROR].needsRound = DoesntMatter
 	return t
 }
 
-func (t Transitions)IsValidTransition(from, to current.Activity)bool{
+func (t Transitions)IsValidTransition(to, from current.Activity)bool{
 	//fmt.Println("from ", from, " to ", to)
 	return t[to].from[from]
 }
@@ -70,13 +56,18 @@ type transitionValidation struct{
 	roundState states.Round
 }
 
-// adds a state transition from the state object
-func (tv *transitionValidation) setStateTransition(from ...current.Activity) {
+
+func NewTransitionValidation(needsRound int, roundState states.Round, from ...current.Activity)transitionValidation{
+	tv := transitionValidation{}
+
+	tv.needsRound = needsRound
+	tv.roundState = roundState
+
 	for _, f := range from {
 		tv.from[f] = true
 	}
-	fmt.Printf("tv.from: %v\n", tv.from)
 
+	return tv
 }
 
 

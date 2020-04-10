@@ -17,7 +17,7 @@ func TestTransitions_IsValidTransition(t *testing.T) {
 	t.Log(Node)
 
 	// -------------- NOT_STARTED ------------------
-	expectedTransition := []bool{false, true, false, true, false, false, true, false}
+	expectedTransition := []bool{false, false, false, false, false, false, false, false}
 	receivedTransitions := make([]bool, len(expectedTransition))
 
 	for i := uint32(0); i < uint32(current.NUM_STATES); i++ {
