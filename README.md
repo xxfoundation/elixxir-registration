@@ -36,11 +36,9 @@ dbPassword: ""
 dbName: "cmix_server"
 dbAddress: ""
 
-# List of Node registration codes (in order of network placement)
-registrationCodes:
-  - "1"
-  - "2"
-  - "3"
+# Path to JSON file with list of Node registration codes (in order of network 
+# placement)
+RegCodesFilePath: "regCodes.json"
 
 # List of client codes to be added to the database (for testing)
 clientRegCodes:
