@@ -111,6 +111,11 @@ func (s *State)GetTopology()*connect.Circuit{
 	return s.topology
 }
 
+//returns the id of the round
+func (s *State)GetRoundID()*id.Round{
+	rid:=id.Round(s.base.ID)
+	return &rid
+}
 
 
 

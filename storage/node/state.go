@@ -1,10 +1,10 @@
 package node
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
-	"math"
+	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/elixxir/registration/transition"
 	"sync"
 	"time"
 )
@@ -17,12 +17,12 @@ type State struct {
 	activity current.Activity
 
 	//nil if not in a round, otherwise holds the round the node is in
-	currentRound *id.Round
+	currentRound *round.State
 
 	// Timestamp of the last time this Node polled
 	lastPoll time.Time
 
-	// Ordering string to be used in team configuration
+	// Order string to be used in team configuration
 	ordering string
 
 	//holds valid state transitions
@@ -31,7 +31,7 @@ type State struct {
 
 // updates to the passed in activity if it is different from the known activity
 // returns true if the state changed and the state was it was reguardless
-func (n *State) Update(newActivity current.Activity)(bool, current.Activity){
+func (n *State) Update(newActivity current.Activity)(bool, current.Activity, error){
 	// Get and lock n state
 	n.mux.Lock()
 	defer n.mux.Unlock()
@@ -39,18 +39,54 @@ func (n *State) Update(newActivity current.Activity)(bool, current.Activity){
 	// update n poll timestamp
 	n.lastPoll = time.Now()
 
-	updated := false
 	oldActivity := n.activity
 
-	// change the state if the new differs from the old
-	if n.activity != newActivity {
-
-		updated = true
-
-		n.activity = newActivity
+	//if the activity is the one that the node is already in, do nothing
+	if oldActivity==n.activity{
+		return false, oldActivity, nil
 	}
 
-	return updated, oldActivity
+	//check that teh activity transition is valid
+	valid := transition.Node.IsValidTransition(oldActivity, newActivity)
+
+	if !valid{
+		return false, oldActivity,
+		errors.Errorf("node update from %s to %s failed, " +
+			"invalid transition", oldActivity, newActivity)
+	}
+
+	// check that the state of the round the node is assoceated with is correct
+	// for the transition
+	if transition.Node.NeedsRound(oldActivity) == transition.Yes{
+		if n.currentRound==nil{
+			return false, oldActivity,
+				errors.Errorf("node update from %s to %s failed, " +
+					"requires the node be assigned a round", oldActivity,
+					newActivity)
+		}
+
+		if n.currentRound.GetRoundState() != transition.Node.RequiredRoundState(oldActivity){
+			return false, oldActivity,
+				errors.Errorf("node update from %s to %s failed, " +
+					"requires the node's be assigned a round to be in the "+
+					"correct state; Assigned: %s, Expected: %s", oldActivity,
+					newActivity, n.currentRound.GetRoundState(),
+					transition.Node.RequiredRoundState(oldActivity))
+		}
+	}
+
+	//check that the node doesnt have a round if it shouldnt
+	if transition.Node.NeedsRound(oldActivity) == transition.No && n.currentRound!=nil{
+		return false, oldActivity,
+			errors.Errorf("node update from %s to %s failed, " +
+				"requires the node not be assigned a round", oldActivity,
+				newActivity)
+	}
+
+	// change the node's activity
+	n.activity = newActivity
+
+	return true, oldActivity, nil
 }
 
 // gets the current activity of the node
@@ -73,14 +109,14 @@ func (n *State) GetOrdering()string{
 }
 
 // returns true and the round id if the node is assigned to a round,
-// return false and Uint64Max if it is not
-func (n *State) GetCurrentRound()(bool, id.Round){
+// return false and nil if it is not
+func (n *State) GetCurrentRound()(bool, *round.State){
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	if n.currentRound==nil{
-		return false, math.MaxUint64
+		return false, nil
 	}else{
-		return true, *n.currentRound
+		return true, n.currentRound
 	}
 }
 
@@ -93,7 +129,7 @@ func (n *State) ClearRound(){
 
 // sets the node's round to the passed in round unless one is already set,
 // in which case it errors
-func (n *State) SetRound(r id.Round)error{
+func (n *State) SetRound(r *round.State)error{
 	n.mux.Lock()
 	defer n.mux.Unlock()
 	if n.currentRound!=nil{
@@ -101,7 +137,7 @@ func (n *State) SetRound(r id.Round)error{
 			"already set")
 	}
 
-	n.currentRound = &r
+	n.currentRound = r
 	return nil
 }
 

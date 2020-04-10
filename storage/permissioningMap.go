@@ -36,7 +36,7 @@ func (m *MapImpl) InsertNode(id []byte, code, serverCert, serverAddress,
 // Insert Node registration code into the database
 func (m *MapImpl) InsertNodeRegCode(info node.Info) error {
 	m.mut.Lock()
-	jww.INFO.Printf("Adding node registration code: %s with Ordering Info: %s",
+	jww.INFO.Printf("Adding node registration code: %s with Order Info: %s",
 		info.RegCode, info.Order)
 
 	// Enforce unique registration code
@@ -47,7 +47,7 @@ func (m *MapImpl) InsertNodeRegCode(info node.Info) error {
 	}
 
 	m.node[info.RegCode] =
-		&NodeInformation{Code: info.RegCode, Ordering: info.Order}
+		&NodeInformation{Code: info.RegCode, Order: info.Order}
 	m.mut.Unlock()
 	return nil
 }

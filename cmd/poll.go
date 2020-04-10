@@ -60,7 +60,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	nid := id.NewNodeFromBytes([]byte(auth.Sender.GetId()))
 	n := m.State.GetNodeMap().GetNode(nid)
 
-	update, oldActivity:= n.Update(current.Activity(msg.Activity))
+	update, oldActivity, err := n.Update(current.Activity(msg.Activity))
 
 	//if an update ocured, report it to the control thread
 	if update{

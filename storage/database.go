@@ -77,8 +77,8 @@ type NodeInformation struct {
 
 	// Registration code acts as the primary key
 	Code string `sql:",pk"`
-	// Node ordering string
-	Ordering string
+	// Node order string, this is a tag used by the algorithem
+	Order string
 	// Node ID
 	Id []byte
 	// Server IP address

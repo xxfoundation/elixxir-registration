@@ -31,9 +31,9 @@ func TestMapImpl_InsertNodeRegCode(t *testing.T) {
 	}
 
 
-	if m.node[code].Ordering!=Order{
-		t.Errorf("Ordering string incorret; Expected: %s, Recieved: %s",
-			Order, m.node[code].Ordering)
+	if m.node[code].Order !=Order{
+		t.Errorf("Order string incorret; Expected: %s, Recieved: %s",
+			Order, m.node[code].Order)
 	}
 }
 
