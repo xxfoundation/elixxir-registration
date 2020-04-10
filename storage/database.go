@@ -6,7 +6,7 @@
 
 // Handles high level database control
 
-package database
+package storage
 
 import (
 	"github.com/go-pg/pg"

@@ -6,17 +6,11 @@
 package cmd
 
 import (
-	"bytes"
-	"crypto/x509"
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/comms/node"
-	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/crypto/tls"
-	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
-	"gitlab.com/elixxir/registration/database"
+	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/testkeys"
 	"os"
 	"testing"
@@ -28,16 +22,12 @@ var nodeCert []byte
 var nodeKey []byte
 var permAddr = "0.0.0.0:5900"
 var testParams Params
-var gatewayKey []byte
 var gatewayCert []byte
-var ndfFile []byte
 
-/*
-var testPermissioningKey *rsa.PrivateKey
-var testpermissioningCert *x509.Certificate*/
 var nodeComm *node.Comms
 
 func TestMain(m *testing.M) {
+	jww.SetStdoutThreshold(jww.LevelDebug)
 	var err error
 	nodeCert, err = utils.ReadFile(testkeys.GetNodeCertPath())
 	if err != nil {
@@ -49,19 +39,9 @@ func TestMain(m *testing.M) {
 		fmt.Printf("Could not get node key: %+v\n", err)
 	}
 
-	gatewayKey, err = utils.ReadFile(testkeys.GetCAKeyPath())
-	if err != nil {
-		fmt.Printf("Could not get gateway key: %+v\n", err)
-	}
-
 	gatewayCert, err = utils.ReadFile(testkeys.GetCACertPath())
 	if err != nil {
 		fmt.Printf("Could not get gateway cert: %+v\n", err)
-	}
-
-	ndfFile, err = utils.ReadFile(testkeys.GetClientNdf())
-	if err != nil {
-		fmt.Printf("Could not get ndf: %+v\n", err)
 	}
 
 	testParams = Params{
@@ -84,18 +64,6 @@ func TestMain(m *testing.M) {
 	os.Exit(runFunc())
 }
 
-//Helper function that initailizes the permisssioning server's globals
-//Todo: throw in the permDB??
-func initPermissioningServerKeys() (*rsa.PrivateKey, *x509.Certificate) {
-	permKeyBytes, _ := utils.ReadFile(testkeys.GetCAKeyPath())
-	permCertBytes, _ := utils.ReadFile(testkeys.GetCACertPath())
-
-	testPermissioningKey, _ := rsa.LoadPrivateKeyFromPem(permKeyBytes)
-	testpermissioningCert, _ := tls.LoadCertificate(string(permCertBytes))
-	return testPermissioningKey, testpermissioningCert
-
-}
-
 //Error path: Test an insertion on an empty database
 func TestEmptyDataBase(t *testing.T) {
 	//Start the registration server
@@ -105,14 +73,16 @@ func TestEmptyDataBase(t *testing.T) {
 		maxRegistrationAttempts:   5,
 		registrationCountDuration: time.Hour,
 	}
-	impl := StartRegistration(testParams)
-	//Set the permissioning keys for testing
-	//initPermissioningServerKeys()
+	// Start registration server
+	impl, err := StartRegistration(testParams)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
 	//using node cert as gateway cert
-	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "AAA")
 	if err == nil {
 		expectedErr := "Unable to insert node: unable to register node AAA"
@@ -126,11 +96,15 @@ func TestEmptyDataBase(t *testing.T) {
 
 //Happy path: looking for a code that is in the database
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
-	impl := StartRegistration(testParams)
+	// Start registration server
+	impl, err := StartRegistration(testParams)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 	impl.nodeCompleted = make(chan struct{}, 1)
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
-	err := database.PermissioningDb.InsertNodeRegCode("AAAA")
+	err = storage.PermissioningDb.InsertNodeRegCode("AAAA")
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
@@ -148,17 +122,15 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 //Happy Path:  Insert a reg code along with a node
 func TestRegCodeExists_RegUser(t *testing.T) {
 	//Initialize an implementation and the permissioning server
-	impl := &RegistrationImpl{}
-	impl.nodeCompleted = make(chan struct{}, 1)
-
-	jww.SetStdoutThreshold(jww.LevelInfo)
-
-	impl.permissioningKey, impl.permissioningCert = initPermissioningServerKeys()
+	impl, err := StartRegistration(testParams)
+	if err != nil {
+		t.Errorf("Unable to start: %+v", err)
+	}
 
 	//Inialiaze the database
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
+	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
 	//Insert regcodes into it
-	err := database.PermissioningDb.InsertClientRegCode("AAAA", 100)
+	err = storage.PermissioningDb.InsertClientRegCode("AAAA", 100)
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
@@ -173,59 +145,66 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 	if sig == nil {
 		t.Errorf("Failed to sign public key, recieved %+v as a signature", sig)
 	}
-
+	impl.Comms.Shutdown()
 }
 
 //Attempt to register a node after the
 func TestCompleteRegistration_HappyPath(t *testing.T) {
 	//Crate database
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	strings := make([]string, 0)
 	strings = append(strings, "BBBB")
-	database.PopulateNodeRegistrationCodes(strings)
+	storage.PopulateNodeRegistrationCodes(strings)
 	RegistrationCodes = strings
 
-	//Start the registration server
-	impl := StartRegistration(testParams)
+	// Start registration server
+	impl, err := StartRegistration(testParams)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 	RegParams = testParams
-	go nodeRegistrationCompleter(impl)
 
-	err := impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
+	err = impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
 		"0.0.0.0:6900", string(nodeCert), "BBBB")
-	//So the impl is not destroyed
-	time.Sleep(5 * time.Second)
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+		return
+	}
 
+	err = nodeRegistrationCompleter(impl)
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-	//Kill the connections for the next test
-	nodeComm.DisconnectAll()
-	impl.Comms.Shutdown()
 
+	//Kill the connections for the next test
+	impl.Comms.Shutdown()
 }
 
 //Error path: test that trying to register with the same reg code fails
 func TestDoubleRegistration(t *testing.T) {
 	//Create database
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
 	//Create reg codes and populate the database
 	strings := make([]string, 0)
 	strings = append(strings, "AAAA", "BBBB", "CCCC")
-	database.PopulateNodeRegistrationCodes(strings)
+	storage.PopulateNodeRegistrationCodes(strings)
 	RegistrationCodes = strings
 	RegParams = testParams
 
-	//Start registration server
-	impl := StartRegistration(testParams)
+	// Start registration server
+	impl, err := StartRegistration(testParams)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 	go nodeRegistrationCompleter(impl)
 
 	//Create a second node to register
 	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
-	err := impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
@@ -235,11 +214,8 @@ func TestDoubleRegistration(t *testing.T) {
 	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
 		"0.0.0.0:6901", string(nodeCert), "BBBB")
 	//Kill the connections for the next test
-	nodeComm.DisconnectAll()
-	nodeComm2.DisconnectAll()
 	nodeComm2.Shutdown()
 	impl.Comms.Shutdown()
-	time.Sleep(5 * time.Second)
 	if err != nil {
 		return
 	}
@@ -250,24 +226,26 @@ func TestDoubleRegistration(t *testing.T) {
 //Happy path: attempt to register 2 nodes
 func TestTopology_MultiNodes(t *testing.T) {
 	//Create database
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
 	//Create reg codes and populate the database
 	strings := make([]string, 0)
 	strings = append(strings, "BBBB", "CCCC")
-	database.PopulateNodeRegistrationCodes(strings)
+	storage.PopulateNodeRegistrationCodes(strings)
 	RegistrationCodes = strings
 	RegParams = testParams
 
-	//Start registration server
-	impl := StartRegistration(testParams)
-	go nodeRegistrationCompleter(impl)
+	// Start registration server
+	impl, err := StartRegistration(testParams)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	//Create a second node to register
 	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
-	err := impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
@@ -279,153 +257,22 @@ func TestTopology_MultiNodes(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-	//Sleep so that the permissioning has time to connect to the nodes (
-	// ie impl isn't destroyed)
-	time.Sleep(5 * time.Second)
+
+	err = nodeRegistrationCompleter(impl)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	//Kill the connections for the next test
-	nodeComm.DisconnectAll()
-	nodeComm2.DisconnectAll()
 	nodeComm2.Shutdown()
-	impl.Comms.Shutdown()
-	time.Sleep(5 * time.Second)
-}
-
-//Happy path
-func TestRegistrationImpl_Polldf(t *testing.T) {
-	//Create database
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
-
-	//Create reg codes and populate the database
-	strings := make([]string, 0)
-	strings = append(strings, "BBBB", "CCCC", "DDDD")
-	database.PopulateNodeRegistrationCodes(strings)
-	RegistrationCodes = strings
-	RegParams = testParams
-
-	//Start registration server
-	impl := StartRegistration(testParams)
-	go nodeRegistrationCompleter(impl)
-
-	//Start the other nodes
-	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
-	nodeComm3 := node.StartNode("tmp", "0.0.0.0:6902", node.NewImplementation(), nodeCert, nodeKey)
-	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-
-	udbParams.ID = udbId
-
-	//Register 1st node
-	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
-		"0.0.0.0:7900", string(gatewayCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 2nd node
-	err = impl.RegisterNode([]byte("C"), "0.0.0.0:6901", string(nodeCert),
-		"0.0.0.0:7901", string(gatewayCert), "CCCC")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 3rd node
-	err = impl.RegisterNode([]byte("D"), "0.0.0.0:6902", string(nodeCert),
-		"0.0.0.0:7902", string(gatewayCert), "DDDD")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-	//Wait for registration to complete
-	time.Sleep(5 * time.Second)
-	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
-	if err != nil {
-		t.Errorf("failed to update ndf: %v", err)
-	}
-
-	observedNDF, _, err := ndf.DecodeNDF(string(observedNDFBytes))
-	if err != nil {
-		t.Errorf("Could not decode ndf: %v", err)
-	}
-	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
-		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v", udbId, observedNDF.UDB.ID)
-	}
-
-	if observedNDF.Registration.Address != permAddr {
-		t.Errorf("Failed to set registration address. Expected: %v \n Recieved: %v",
-			permAddr, observedNDF.Registration.Address)
-	}
-	expectedNodeIDs := make([][]byte, 0)
-	expectedNodeIDs = append(expectedNodeIDs, []byte("B"), []byte("C"), []byte("D"))
-	for i := range observedNDF.Nodes {
-		if bytes.Compare(expectedNodeIDs[i], observedNDF.Nodes[i].ID) != 0 {
-			t.Errorf("Could not build node %d's, id: Expected: %v \n Recieved: %v", i,
-				expectedNodeIDs, observedNDF.Nodes[i].ID)
-		}
-	}
-
-	//Disconnect nodeComms
-	nodeComm.DisconnectAll()
-	nodeComm2.DisconnectAll()
-	nodeComm3.DisconnectAll()
-	//Shutdown node comms
-	nodeComm2.Shutdown()
-	nodeComm3.Shutdown()
-
-	//Shutdown registration
-	impl.Comms.Shutdown()
-}
-
-//Error  path
-func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
-	//Create database
-	database.PermissioningDb = database.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
-
-	//Create reg codes and populate the database
-	strings := make([]string, 0)
-	strings = append(strings, "BBBB", "CCCC")
-	database.PopulateNodeRegistrationCodes(strings)
-	RegistrationCodes = strings
-	RegParams = testParams
-
-	//Start registration server
-	impl := StartRegistration(testParams)
-	go nodeRegistrationCompleter(impl)
-
-	//Setup udb configurations
-	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-	udbParams.ID = udbId
-
-	//Register 1st node
-	err := impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
-		"0.0.0.0:7900", string(gatewayCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	time.Sleep(5 * time.Second)
-
-	//Make a client ndf hash that is not up to date
-	clientNdfHash := []byte("test")
-
-	_, err = impl.PollNdf(clientNdfHash, &connect.Auth{})
-	if err != nil {
-		//Disconnect nodeComms
-		nodeComm.DisconnectAll()
-
-		//Shutdown registration
-		impl.Comms.Shutdown()
-		return
-	}
-
-	t.Error("Expected error path, should not have an ndf ready")
-	//Disconnect nodeComms
-	nodeComm.DisconnectAll()
-
-	//Shutdown registration
 	impl.Comms.Shutdown()
 }
 
 func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {
-	impl := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 	testVersion := "0.0.0a"
 	setClientVersion(testVersion)
 	version, err := impl.GetCurrentClientVersion()
@@ -480,20 +327,22 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 		NdfOutputPath:             testkeys.GetNDFPath(),
 		publicAddress:             "0.0.0.0:5905",
 		maxRegistrationAttempts:   4,
-		registrationCountDuration: 30 * time.Second,
+		registrationCountDuration: 3 * time.Second,
 	}
 
-	// Initialize an implementation and the permissioning server
-	impl := StartRegistration(testParams2)
-
-	jww.SetStdoutThreshold(jww.LevelInfo)
+	// Start registration server
+	impl, err := StartRegistration(testParams2)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	go nodeRegistrationCompleter(impl)
 
 	// Initialize the database
-	database.PermissioningDb = database.NewDatabase(
+	storage.PermissioningDb = storage.NewDatabase(
 		"test", "password", "regCodes", "0.0.0.0:6548")
 
 	// Attempt to register a user
-	_, err := impl.RegisterUser("b", "B")
+	_, err = impl.RegisterUser("b", "B")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
@@ -522,11 +371,10 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 		t.Errorf("Did not fail to register a user when it should not have worked: %+v", err)
 	}
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(testParams2.registrationCountDuration)
 	// Attempt to register a user
 	_, err = impl.RegisterUser("g", "G")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
-
 }

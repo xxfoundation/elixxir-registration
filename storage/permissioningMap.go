@@ -6,7 +6,7 @@
 
 // Handles the Map backend for the permissioning server
 
-package database
+package storage
 
 import (
 	"github.com/pkg/errors"

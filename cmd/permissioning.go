@@ -9,7 +9,6 @@
 package cmd
 
 import (
-	"crypto/sha256"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
@@ -17,7 +16,8 @@ import (
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
-	"gitlab.com/elixxir/registration/database"
+	"gitlab.com/elixxir/registration/storage"
+	"sync/atomic"
 	"time"
 )
 
@@ -29,106 +29,83 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	idString := id.NewNodeFromBytes(ID).String()
 
 	// Check that the node hasn't already been registered
-	nodeInfo, err := database.PermissioningDb.GetNode(RegistrationCode)
+	nodeInfo, err := storage.PermissioningDb.GetNode(RegistrationCode)
 	if err != nil {
-		errMsg := errors.Errorf(
+		return errors.Errorf(
 			"Registration code %+v is invalid or not currently enabled: %+v", RegistrationCode, err)
-		jww.ERROR.Printf("%+v", errMsg)
-		return errMsg
 	}
 	if nodeInfo.Id != nil {
-		errMsg := errors.Errorf(
+		return errors.Errorf(
 			"Node with registration code %+v has already been registered", RegistrationCode)
-		jww.ERROR.Printf("%+v", errMsg)
-		return errMsg
 	}
 
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
-		errMsg := errors.Errorf("Failed to load node certificate: %v", err)
-		jww.ERROR.Printf("%v", errMsg)
-		return errMsg
+		return errors.Errorf("Failed to load node certificate: %v", err)
 	}
 	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCert)
 	if err != nil {
-		errMsg := errors.Errorf("Failed to load gateway certificate: %v", err)
-		jww.ERROR.Printf("%v", errMsg)
-		return errMsg
+		return errors.Errorf("Failed to load gateway certificate: %v", err)
 	}
 
 	// Sign the node and gateway certs
-	signedNodeCert, err := certAuthority.Sign(nodeCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
+	signedNodeCert, err := certAuthority.Sign(nodeCertificate,
+		m.permissioningCert, &(m.State.PrivateKey.PrivateKey))
 	if err != nil {
-		errMsg := errors.Errorf("failed to sign node certificate: %v", err)
-		jww.ERROR.Printf("%v", errMsg)
-		return errMsg
+		return errors.Errorf("failed to sign node certificate: %v", err)
 	}
-	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate, m.permissioningCert, &(m.permissioningKey.PrivateKey))
+	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate,
+		m.permissioningCert, &(m.State.PrivateKey.PrivateKey))
 	if err != nil {
-		errMsg := errors.Errorf("Failed to sign gateway certificate: %v", err)
-		jww.ERROR.Printf("%v", errMsg)
-		return errMsg
+		return errors.Errorf("Failed to sign gateway certificate: %v", err)
 	}
 
 	// Attempt to insert Node into the database
-	err = database.PermissioningDb.InsertNode(ID, RegistrationCode,
+	err = storage.PermissioningDb.InsertNode(ID, RegistrationCode,
 		signedNodeCert, ServerAddr, GatewayAddr, signedGatewayCert)
 	if err != nil {
-		errMsg := errors.Errorf("unable to insert node: %+v", err)
-		jww.ERROR.Printf("%+v", errMsg)
-		return errMsg
+		return errors.Errorf("unable to insert node: %+v", err)
 	}
 	jww.DEBUG.Printf("Inserted node %s into the database with code %s",
 		idString, RegistrationCode)
 
 	// Obtain the number of registered nodes
-	_, err = database.PermissioningDb.CountRegisteredNodes()
+	_, err = storage.PermissioningDb.CountRegisteredNodes()
 	if err != nil {
-		errMsg := errors.Errorf("Unable to count registered Nodes: %+v", err)
-		jww.ERROR.Printf("%+v", errMsg)
-		return errMsg
+		return errors.Errorf("Unable to count registered Nodes: %+v", err)
 	}
 
 	_, err = m.Comms.AddHost(idString, ServerAddr, []byte(ServerTlsCert), false, true)
 	if err != nil {
-		errMsg := errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
-		jww.ERROR.Print(errMsg)
-		return errMsg
+		return errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
 	}
 
-	jww.DEBUG.Printf("Total number of expected nodes for registration completion: %v", m.NumNodesInNet)
+	jww.DEBUG.Printf("Total number of expected nodes for registration"+
+		" completion: %d", len(RegistrationCodes))
 	m.nodeCompleted <- struct{}{}
 	return nil
 }
 
 // nodeRegistrationCompleter is a wrapper for completed node registration error handling
-func nodeRegistrationCompleter(impl *RegistrationImpl) {
+func nodeRegistrationCompleter(impl *RegistrationImpl) error {
 	// Wait for all Nodes to complete registration
-	for numNodes := 0; numNodes < impl.NumNodesInNet; numNodes++ {
-		jww.DEBUG.Printf("Registered %d node(s)!", numNodes)
+	for numNodes := uint32(0); numNodes < uint32(len(RegistrationCodes)); numNodes++ {
+		jww.INFO.Printf("Registered %d node(s)!", numNodes)
 		<-impl.nodeCompleted
 	}
 	// Assemble the completed topology
 	gateways, nodes, err := assembleNdf(RegistrationCodes)
 	if err != nil {
-		jww.FATAL.Printf("unable to assemble topology: %+v", err)
+		return errors.Errorf("unable to assemble topology: %+v", err)
 	}
 
 	// Assemble the registration server information
 	registration := ndf.Registration{Address: RegParams.publicAddress, TlsCertificate: impl.certFromFile}
 
-	// Assemble notification server information
-	nsCert, err := utils.ReadFile(RegParams.NsCertPath)
-	if err != nil {
-		jww.FATAL.Printf("unable to read notification certificate")
-	}
-	notificationServer := ndf.Notification{Address: RegParams.NsAddress, TlsCertificate: string(nsCert)}
-
 	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: registration,
-		Notification: notificationServer,
 		Timestamp:    time.Now(),
 		Nodes:        nodes,
 		Gateways:     gateways,
@@ -136,42 +113,34 @@ func nodeRegistrationCompleter(impl *RegistrationImpl) {
 		E2E:          RegParams.e2e,
 		CMIX:         RegParams.cmix,
 	}
-	// Lock the ndf before writing to it s.t. it's
-	// threadsafe for nodes trying to register
-	impl.ndfLock.Lock()
+
+	// Assemble notification server information if configured
+	if RegParams.NsCertPath != "" && RegParams.NsAddress != "" {
+		nsCert, err := utils.ReadFile(RegParams.NsCertPath)
+		if err != nil {
+			return errors.Errorf("unable to read notification certificate")
+		}
+		networkDef.Notification = ndf.Notification{Address: RegParams.NsAddress, TlsCertificate: string(nsCert)}
+	} else {
+		jww.WARN.Printf("Configured to run without notifications bot!")
+	}
+
+	// Update the internal state with the newly-formed NDF
+	err = impl.State.UpdateNdf(networkDef)
+	err = impl.createNextRound()
+	if err != nil {
+		return err
+	}
 
 	// Output the completed topology to a JSON file and save marshall'ed json data
-	impl.fullNdf, err = outputToJSON(networkDef, impl.ndfOutputPath)
+	err = outputToJSON(networkDef, impl.ndfOutputPath)
 	if err != nil {
-		errMsg := errors.Errorf("unable to output NDF JSON file: %+v", err)
-		jww.FATAL.Printf(errMsg.Error())
+		return errors.Errorf("unable to output NDF JSON file: %+v", err)
 	}
 
-	// Serialize then hash the constructed ndf
-	hash := sha256.New()
-	hash.Write(impl.fullNdf)
-	impl.fullNdfHash = hash.Sum(nil)
-
-	// A client doesn't need the full ndf in order to function.
-	// Therefore the ndf gets stripped down to provide only need-to-know information.
-	// This prevents the clients from  getting the node's ip address and the credentials
-	// so it is is difficult to DDOS the cMix nodes
-	strippedNdf := networkDef.StripNdf()
-	impl.partialNdf, err = strippedNdf.Marshal()
-	if err != nil {
-		jww.FATAL.Panicf("Unable to marshal stripped ndf: %+v", err)
-	}
-
-	// Serialize then hash the constructed ndf
-	hash = sha256.New()
-	hash.Write(impl.partialNdf)
-	impl.partialNdfHash = hash.Sum(nil)
-
-	// Unlock the
-	impl.ndfLock.Unlock()
 	// Alert that registration is complete
-	impl.registrationCompleted <- struct{}{}
-	jww.INFO.Printf("Node registration complete!")
+	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
+	return nil
 }
 
 // Assemble the completed topology from the database
@@ -180,7 +149,7 @@ func assembleNdf(codes []string) ([]ndf.Gateway, []ndf.Node, error) {
 	var nodes []ndf.Node
 	for _, registrationCode := range codes {
 		// Get node information for each registration code
-		nodeInfo, err := database.PermissioningDb.GetNode(registrationCode)
+		nodeInfo, err := storage.PermissioningDb.GetNode(registrationCode)
 		if err != nil {
 			return nil, nil, errors.Errorf(
 				"unable to obtain node for registration"+
@@ -206,17 +175,12 @@ func assembleNdf(codes []string) ([]ndf.Gateway, []ndf.Node, error) {
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
 // outputs it to the specified file path. An error is returned if the JSON
 // marshaling fails or if the JSON file cannot be created.
-func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) ([]byte, error) {
+func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) error {
 	// Generate JSON from structure
 	data, err := ndfData.Marshal()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// Write JSON to file
-	err = utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
-	if err != nil {
-		return data, err
-	}
-
-	return data, nil
+	return utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
 }
