@@ -25,7 +25,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
 
 	// Get proper ID string
-	nid:=id.NewNodeFromBytes(ID)
+	nid := id.NewNodeFromBytes(ID)
 	idString := nid.String()
 
 	// Check that the node hasn't already been registered
@@ -78,9 +78,9 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 
 	//add the node to the node map to track its state
 	err = m.State.GetNodeMap().AddNode(nid, nodeInfo.Order)
-	if err!=nil{
-		return errors.WithMessage(err,"Could not register node with "+
-		"state tracker")
+	if err != nil {
+		return errors.WithMessage(err, "Could not register node with "+
+			"state tracker")
 	}
 
 	// Notify registration thread
@@ -93,7 +93,7 @@ func (m *RegistrationImpl) nodeRegistrationCompleter(beginScheduling chan<- stru
 
 	numRegistered := 0
 	// Wait for Nodes to complete registration
-	for regCode := range m.nodeCompleted{
+	for regCode := range m.nodeCompleted {
 		numRegistered++
 		jww.INFO.Printf("Registered %d node(s)! %s", numRegistered, regCode)
 
@@ -125,7 +125,7 @@ func (m *RegistrationImpl) nodeRegistrationCompleter(beginScheduling chan<- stru
 			atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
 
 			//signal that scheduling should begin
-			beginScheduling<-struct{}{}
+			beginScheduling <- struct{}{}
 		}
 	}
 	return errors.New("Node registration completer should never exit")

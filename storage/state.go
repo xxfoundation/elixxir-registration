@@ -46,7 +46,7 @@ type NetworkState struct {
 type NodeUpdateNotification struct {
 	Node *id.Node
 	From current.Activity
-	To current.Activity
+	To   current.Activity
 }
 
 // Returns a new NetworkState object
@@ -68,10 +68,11 @@ func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 		nodes:        node.NewStateMap(),
 		fullNdf:      fullNdf,
 		partialNdf:   partialNdf,
+		privateKey:   pk,
 	}
 
 	// Insert dummy update
-	err = state.AddRoundUpdate(&pb.RoundInfo{})
+	err = state.AddRoundUpdate(0, &pb.RoundInfo{})
 	if err != nil {
 		return nil, err
 	}
@@ -90,14 +91,14 @@ func (s *NetworkState) GetPartialNdf() *dataStructures.Ndf {
 
 // Returns all updates after the given ID
 func (s *NetworkState) GetUpdates(id int) ([]*pb.RoundInfo, error) {
-	return s.roundUpdates.GetUpdates(id)
+	return s.roundUpdates.GetUpdates(id), nil
 }
 
 // Makes a copy of the round before inserting into roundUpdates
 func (s *NetworkState) AddRoundUpdate(updateID uint64, round *pb.RoundInfo) error {
 	roundCopy := &pb.RoundInfo{
 		ID:         round.GetID(),
-		UpdateID: updateID,
+		UpdateID:   updateID,
 		State:      round.GetState(),
 		BatchSize:  round.GetBatchSize(),
 		Topology:   round.GetTopology(),
@@ -106,7 +107,7 @@ func (s *NetworkState) AddRoundUpdate(updateID uint64, round *pb.RoundInfo) erro
 
 	err := signature.Sign(roundCopy, s.privateKey)
 	if err != nil {
-		return errors.WithMessagef(err, "Could not add round update %v " +
+		return errors.WithMessagef(err, "Could not add round update %v "+
 			"due to failed signature", roundCopy.UpdateID)
 	}
 
@@ -149,30 +150,30 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 }
 
 //returns the server's private key
-func (s *NetworkState)GetPrivateKey()*rsa.PrivateKey{
+func (s *NetworkState) GetPrivateKey() *rsa.PrivateKey {
 	return s.privateKey
 }
 
 //returns the map of rounds
-func (s *NetworkState)GetRoundMap()*round.StateMap{
+func (s *NetworkState) GetRoundMap() *round.StateMap {
 	return s.rounds
 }
 
 //returns the map of nodes
-func (s*NetworkState)GetNodeMap()*node.StateMap{
+func (s *NetworkState) GetNodeMap() *node.StateMap {
 	return s.nodes
 }
 
 //sends a notification to the copntrol thread of an update to a nodes state
-func (s *NetworkState)NodeUpdateNotification(node *id.Node, from, to current.Activity)error{
+func (s *NetworkState) NodeUpdateNotification(node *id.Node, from, to current.Activity) error {
 	nun := NodeUpdateNotification{
 		Node: node,
 		From: from,
 		To:   to,
 	}
 
-	select{
-	case s.update<-&nun:
+	select {
+	case s.update <- &nun:
 		return nil
 	default:
 		return errors.New("Could not send update notification")
@@ -180,11 +181,6 @@ func (s *NetworkState)NodeUpdateNotification(node *id.Node, from, to current.Act
 }
 
 //returns a channel to receive node updates on
-func (s *NetworkState)GetNodeUpdateChannel()<-chan *NodeUpdateNotification{
+func (s *NetworkState) GetNodeUpdateChannel() <-chan *NodeUpdateNotification {
 	return s.update
 }
-
-
-
-
-

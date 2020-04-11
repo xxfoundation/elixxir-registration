@@ -30,8 +30,7 @@ func TestMapImpl_InsertNodeRegCode(t *testing.T) {
 		t.Errorf("Expected to successfully insert node registration code")
 	}
 
-
-	if m.node[code].Order !=Order{
+	if m.node[code].Order != Order {
 		t.Errorf("Order string incorret; Expected: %s, Recieved: %s",
 			Order, m.node[code].Order)
 	}

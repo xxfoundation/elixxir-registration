@@ -31,7 +31,7 @@ type State struct {
 
 // updates to the passed in activity if it is different from the known activity
 // returns true if the state changed and the state was it was reguardless
-func (n *State) Update(newActivity current.Activity)(bool, current.Activity, error){
+func (n *State) Update(newActivity current.Activity) (bool, current.Activity, error) {
 	// Get and lock n state
 	n.mux.Lock()
 	defer n.mux.Unlock()
@@ -42,32 +42,32 @@ func (n *State) Update(newActivity current.Activity)(bool, current.Activity, err
 	oldActivity := n.activity
 
 	//if the activity is the one that the node is already in, do nothing
-	if oldActivity==newActivity{
+	if oldActivity == newActivity {
 		return false, oldActivity, nil
 	}
 
 	//check that teh activity transition is valid
 	valid := transition.Node.IsValidTransition(newActivity, oldActivity)
 
-	if !valid{
+	if !valid {
 		return false, oldActivity,
-		errors.Errorf("node update from %s to %s failed, " +
-			"invalid transition", oldActivity, newActivity)
+			errors.Errorf("node update from %s to %s failed, "+
+				"invalid transition", oldActivity, newActivity)
 	}
 
 	// check that the state of the round the node is assoceated with is correct
 	// for the transition
-	if transition.Node.NeedsRound(newActivity) == transition.Yes{
-		if n.currentRound==nil{
+	if transition.Node.NeedsRound(newActivity) == transition.Yes {
+		if n.currentRound == nil {
 			return false, oldActivity,
-				errors.Errorf("node update from %s to %s failed, " +
+				errors.Errorf("node update from %s to %s failed, "+
 					"requires the node be assigned a round", oldActivity,
 					newActivity)
 		}
 
-		if n.currentRound.GetRoundState() != transition.Node.RequiredRoundState(newActivity){
+		if n.currentRound.GetRoundState() != transition.Node.RequiredRoundState(newActivity) {
 			return false, oldActivity,
-				errors.Errorf("node update from %s to %s failed, " +
+				errors.Errorf("node update from %s to %s failed, "+
 					"requires the node's be assigned a round to be in the "+
 					"correct state; Assigned: %s, Expected: %s", oldActivity,
 					newActivity, n.currentRound.GetRoundState(),
@@ -76,9 +76,9 @@ func (n *State) Update(newActivity current.Activity)(bool, current.Activity, err
 	}
 
 	//check that the node doesnt have a round if it shouldn't
-	if transition.Node.NeedsRound(newActivity) == transition.No && n.currentRound!=nil{
+	if transition.Node.NeedsRound(newActivity) == transition.No && n.currentRound != nil {
 		return false, oldActivity,
-			errors.Errorf("node update from %s to %s failed, " +
+			errors.Errorf("node update from %s to %s failed, "+
 				"requires the node not be assigned a round", oldActivity,
 				newActivity)
 	}
@@ -90,38 +90,38 @@ func (n *State) Update(newActivity current.Activity)(bool, current.Activity, err
 }
 
 // gets the current activity of the node
-func (n *State) GetActivity()current.Activity{
+func (n *State) GetActivity() current.Activity {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	return n.activity
 }
 
 // gets the timestap of the last time the node polled
-func (n *State) GetLastPoll()time.Time{
+func (n *State) GetLastPoll() time.Time {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	return n.lastPoll
 }
 
 // gets the ordering string for use in team formation
-func (n *State) GetOrdering()string{
+func (n *State) GetOrdering() string {
 	return n.ordering
 }
 
 // returns true and the round id if the node is assigned to a round,
 // return false and nil if it is not
-func (n *State) GetCurrentRound()(bool, *round.State){
+func (n *State) GetCurrentRound() (bool, *round.State) {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
-	if n.currentRound==nil{
+	if n.currentRound == nil {
 		return false, nil
-	}else{
+	} else {
 		return true, n.currentRound
 	}
 }
 
 // sets the node to not be in a round
-func (n *State) ClearRound(){
+func (n *State) ClearRound() {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 	n.currentRound = nil
@@ -129,10 +129,10 @@ func (n *State) ClearRound(){
 
 // sets the node's round to the passed in round unless one is already set,
 // in which case it errors
-func (n *State) SetRound(r *round.State)error{
+func (n *State) SetRound(r *round.State) error {
 	n.mux.Lock()
 	defer n.mux.Unlock()
-	if n.currentRound!=nil{
+	if n.currentRound != nil {
 		return errors.New("could not set the Node's round when it is " +
 			"already set")
 	}
@@ -140,7 +140,3 @@ func (n *State) SetRound(r *round.State)error{
 	n.currentRound = r
 	return nil
 }
-
-
-
-

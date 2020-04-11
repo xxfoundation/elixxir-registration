@@ -20,14 +20,13 @@ import (
 
 // Control thread for advancement of network state
 func (m *RegistrationImpl) StateControl() {
-		s := m.State
-		var face interface{}
-		for range s.update {
-			face = m.TeamingAlgo(s, face)
-		}
+	s := m.State
+	var face interface{}
+	for range s.update {
+		face = m.TeamingAlgo(s, face)
+	}
 
-
-		m.TeamingAlgo(m.State)
+	m.TeamingAlgo(m.State)
 }
 
 // Initiate the next round with a selection of nodes

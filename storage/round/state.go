@@ -31,25 +31,25 @@ type State struct {
 }
 
 //creates a round state object
-func newState(id id.Round, batchsize uint32, topology *connect.Circuit, pendingTs time.Time)*State{
+func newState(id id.Round, batchsize uint32, topology *connect.Circuit, pendingTs time.Time) *State {
 	strTopology := make([]string, topology.Len())
-	for i:=0;i<topology.Len();i++{
+	for i := 0; i < topology.Len(); i++ {
 		strTopology[i] = topology.GetNodeAtIndex(i).String()
 	}
 
 	//create the timestamps and populate the first one
-	timestamps := make([]uint64,states.NUM_STATES)
+	timestamps := make([]uint64, states.NUM_STATES)
 	timestamps[states.PENDING] = uint64(pendingTs.Unix())
 
 	//build and return the round state object
 	return &State{
-		base:              	&pb.RoundInfo{
-			ID:                   uint64(id),
-			UpdateID:             math.MaxUint64,
-			State:                0,
-			BatchSize:            batchsize,
-			Topology:             strTopology,
-			Timestamps:           timestamps,
+		base: &pb.RoundInfo{
+			ID:         uint64(id),
+			UpdateID:   math.MaxUint64,
+			State:      0,
+			BatchSize:  batchsize,
+			Topology:   strTopology,
+			Timestamps: timestamps,
 		},
 		topology:           topology,
 		state:              states.PENDING,
@@ -59,14 +59,14 @@ func newState(id id.Round, batchsize uint32, topology *connect.Circuit, pendingT
 }
 
 //creates a round state object
-func NewState_Testing(id id.Round, state states.Round, t *testing.T)*State{
-	if t==nil{
+func NewState_Testing(id id.Round, state states.Round, t *testing.T) *State {
+	if t == nil {
 		jww.FATAL.Panic("Only for testing")
 	}
 	//build and return the round state object
 	return &State{
-		base:              	&pb.RoundInfo{
-			ID:                   uint64(id),
+		base: &pb.RoundInfo{
+			ID: uint64(id),
 		},
 		state:              state,
 		readyForTransition: 0,
@@ -76,12 +76,12 @@ func NewState_Testing(id id.Round, state states.Round, t *testing.T)*State{
 
 // Increments that another node is ready for a transition.
 // and returns true and clears if the transition is ready
-func (s *State)NodeIsReadyForTransition()bool{
+func (s *State) NodeIsReadyForTransition() bool {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
 	s.readyForTransition++
-	if int(s.readyForTransition)==s.topology.Len(){
+	if int(s.readyForTransition) == s.topology.Len() {
 		s.readyForTransition = 0
 		return true
 	}
@@ -90,11 +90,11 @@ func (s *State)NodeIsReadyForTransition()bool{
 
 // updates the round to a new state. states can only move forward, they cannot
 // go in reverse or replace the same state
-func (s *State)Update(state states.Round, stamp time.Time)error{
+func (s *State) Update(state states.Round, stamp time.Time) error {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 
-	if state<=s.state{
+	if state <= s.state {
 		return errors.New("round state must always update to a " +
 			"greater state")
 	}
@@ -105,7 +105,7 @@ func (s *State)Update(state states.Round, stamp time.Time)error{
 }
 
 //returns an unsigned roundinfo with all fields filled in
-func (s *State)BuildRoundInfo()*pb.RoundInfo{
+func (s *State) BuildRoundInfo() *pb.RoundInfo {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	return &pb.RoundInfo{
@@ -118,23 +118,19 @@ func (s *State)BuildRoundInfo()*pb.RoundInfo{
 }
 
 //returns the state of the round
-func (s *State)GetRoundState()states.Round{
+func (s *State) GetRoundState() states.Round {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	return s.state
 }
 
 //returns the round's topology
-func (s *State)GetTopology()*connect.Circuit{
+func (s *State) GetTopology() *connect.Circuit {
 	return s.topology
 }
 
 //returns the id of the round
-func (s *State)GetRoundID()id.Round{
-	rid:=id.Round(s.base.ID)
+func (s *State) GetRoundID() id.Round {
+	rid := id.Round(s.base.ID)
 	return rid
 }
-
-
-
-

@@ -39,7 +39,7 @@ type RegistrationImpl struct {
 }
 
 //function used to schedule nodes
-type SchedulingAlgorithm  func(params []byte, state *storage.NetworkState)error
+type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 
 // Params object for reading in configuration data
 type Params struct {
@@ -116,7 +116,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		ticker := time.NewTicker(params.registrationCountDuration)
 		regImpl.registrationCapacityRestRunner(ticker, done)
 	}()
-
 
 	if !noTLS {
 		// Read in TLS keys from files

@@ -115,7 +115,6 @@ var rootCmd = &cobra.Command{
 		udbId := make([]byte, 32)
 		udbId[len(udbId)-1] = byte(viper.GetInt("udbID"))
 
-
 		//load the scheduling params file as a string
 		SchedulingConfigPath := viper.GetString("schedulingConfigPath")
 		SchedulingConfig, err := utils.ReadFile(SchedulingConfigPath)
@@ -150,26 +149,26 @@ var rootCmd = &cobra.Command{
 
 		// Begin the thread which handles the completion of node registration
 		beginScheduling := make(chan struct{})
-		go func(){
+		go func() {
 			err = impl.nodeRegistrationCompleter(beginScheduling)
 			if err != nil {
 				jww.FATAL.Panicf("Failed to complete node registration: %+v", err)
 			}
 		}()
 
-		jww.INFO.Printf("Node registration completer has begin, waiting " +
+		jww.INFO.Printf("Node registration completer has begin, waiting "+
 			"for %v nodes to register so rounds can start", RegParams.minimumNodes)
 
-		<- beginScheduling
-		jww.INFO.Printf("Minnimum number of nodes %v have registered," +
+		<-beginScheduling
+		jww.INFO.Printf("Minnimum number of nodes %v have registered,"+
 			"begining scheduling and round creation", RegParams.minimumNodes)
 
 		// Begin scheduling algorithm
 		go func() {
 			var err error
-			algo:=viper.GetString("schedulingAlgorithm")
+			algo := viper.GetString("schedulingAlgorithm")
 			jww.INFO.Printf("Beginning %s scheduling algorithm", algo)
-			switch(algo){
+			switch algo {
 			case "simple":
 				err = simple.Scheduler(SchedulingConfig, impl.State)
 			case "secure":

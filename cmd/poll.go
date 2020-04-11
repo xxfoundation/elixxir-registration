@@ -63,7 +63,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	update, oldActivity, err := n.Update(current.Activity(msg.Activity))
 
 	//if an update ocured, report it to the control thread
-	if update{
+	if update {
 		err = m.State.NodeUpdateNotification(nid, oldActivity, current.Activity(msg.Activity))
 	}
 
