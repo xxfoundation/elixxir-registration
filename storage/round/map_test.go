@@ -27,7 +27,7 @@ func TestStateMap_AddRound_Happy(t *testing.T) {
 
 	const numNodes = 5
 
-	err := sm.AddRound(rid, 32, buildMockTopology(numNodes, t))
+	rRtn, err := sm.AddRound(rid, 32, buildMockTopology(numNodes, t))
 
 	if err!=nil{
 		t.Errorf("Error returned on valid addition of node: %s", err)
@@ -37,6 +37,15 @@ func TestStateMap_AddRound_Happy(t *testing.T) {
 
 	if r ==nil{
 		t.Errorf("round not returned when lookup is valid")
+		t.FailNow()
+	}
+
+	if rRtn.GetRoundID()!=rid{
+		t.Errorf("round from lookup returned with wrong id")
+	}
+
+	if r.GetRoundID()!=rid{
+		t.Errorf("round from lookup returned with wrong id")
 	}
 }
 
@@ -53,11 +62,15 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 
 	sm.rounds[rid] = &State{state: states.FAILED}
 
-	err := sm.AddRound(rid, 32, buildMockTopology(numNodes, t))
+	rRtn, err := sm.AddRound(rid, 32, buildMockTopology(numNodes, t))
 
 	if err==nil{
 		t.Errorf("Error not returned on invalid addition of node: %s", err)
 	}
+
+	if rRtn !=nil{
+		t.Errorf("round returned when none create")
+}
 
 	if sm.rounds[rid].state!= states.FAILED{
 		t.Errorf("the state of the round was overweritten")

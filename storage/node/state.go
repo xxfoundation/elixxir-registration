@@ -42,12 +42,12 @@ func (n *State) Update(newActivity current.Activity)(bool, current.Activity, err
 	oldActivity := n.activity
 
 	//if the activity is the one that the node is already in, do nothing
-	if oldActivity==n.activity{
+	if oldActivity==newActivity{
 		return false, oldActivity, nil
 	}
 
 	//check that teh activity transition is valid
-	valid := transition.Node.IsValidTransition(oldActivity, newActivity)
+	valid := transition.Node.IsValidTransition(newActivity, oldActivity)
 
 	if !valid{
 		return false, oldActivity,
@@ -57,7 +57,7 @@ func (n *State) Update(newActivity current.Activity)(bool, current.Activity, err
 
 	// check that the state of the round the node is assoceated with is correct
 	// for the transition
-	if transition.Node.NeedsRound(oldActivity) == transition.Yes{
+	if transition.Node.NeedsRound(newActivity) == transition.Yes{
 		if n.currentRound==nil{
 			return false, oldActivity,
 				errors.Errorf("node update from %s to %s failed, " +
@@ -65,7 +65,7 @@ func (n *State) Update(newActivity current.Activity)(bool, current.Activity, err
 					newActivity)
 		}
 
-		if n.currentRound.GetRoundState() != transition.Node.RequiredRoundState(oldActivity){
+		if n.currentRound.GetRoundState() != transition.Node.RequiredRoundState(newActivity){
 			return false, oldActivity,
 				errors.Errorf("node update from %s to %s failed, " +
 					"requires the node's be assigned a round to be in the "+
@@ -75,8 +75,8 @@ func (n *State) Update(newActivity current.Activity)(bool, current.Activity, err
 		}
 	}
 
-	//check that the node doesnt have a round if it shouldnt
-	if transition.Node.NeedsRound(oldActivity) == transition.No && n.currentRound!=nil{
+	//check that the node doesnt have a round if it shouldn't
+	if transition.Node.NeedsRound(newActivity) == transition.No && n.currentRound!=nil{
 		return false, oldActivity,
 			errors.Errorf("node update from %s to %s failed, " +
 				"requires the node not be assigned a round", oldActivity,

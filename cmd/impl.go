@@ -36,11 +36,10 @@ type RegistrationImpl struct {
 	certFromFile            string
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
-	schedulingAlgorithm		SchedulingAlgorithm
 }
 
 //function used to schedule nodes
-type SchedulingAlgorithm  func(state *storage.NetworkState)error
+type SchedulingAlgorithm  func(params []byte, state *storage.NetworkState)error
 
 // Params object for reading in configuration data
 type Params struct {
@@ -50,13 +49,11 @@ type Params struct {
 	NdfOutputPath             string
 	NsCertPath                string
 	NsAddress                 string
-	NumNodesInNet             int
 	cmix                      ndf.Group
 	e2e                       ndf.Group
 	publicAddress             string
 	maxRegistrationAttempts   uint64
 	registrationCountDuration time.Duration
-	batchSize                 uint32
 	minimumNodes              uint32
 	udbId                     []byte
 }
@@ -108,7 +105,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
-		nodeCompleted:           make(chan string, len(RegistrationCodes)),
+		nodeCompleted:           make(chan string, 100),
 		NdfReady:                &ndfReady,
 	}
 

@@ -89,13 +89,13 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 }
 
 // Handles including new registrations in the network
-func (m *RegistrationImpl) nodeRegistrationCompleter() error {
+func (m *RegistrationImpl) nodeRegistrationCompleter(beginScheduling chan<- struct{}) error {
 
+	numRegistered := 0
 	// Wait for Nodes to complete registration
-	maxNodes := len(RegistrationCodes)
-	for numNodes := 1; numNodes <= maxNodes; numNodes++ {
-		regCode := <-m.nodeCompleted
-		jww.INFO.Printf("Registered %d node(s)! %s", numNodes, regCode)
+	for regCode := range m.nodeCompleted{
+		numRegistered++
+		jww.INFO.Printf("Registered %d node(s)! %s", numRegistered, regCode)
 
 		// Add the new node to the topology
 		networkDef := m.State.GetFullNdf().Get()
@@ -119,22 +119,16 @@ func (m *RegistrationImpl) nodeRegistrationCompleter() error {
 		}
 
 		// Kick off the network if the minimum number of nodes has been met
-		if uint32(numNodes) == m.params.minimumNodes {
-			jww.INFO.Printf("Minimum number of nodes %d registered!", numNodes)
+		if uint32(numRegistered) == m.params.minimumNodes {
+			jww.INFO.Printf("Minimum number of nodes %d registered!", numRegistered)
 
-			// Create the first round
-			err = m.createNextRound()
-			if err != nil {
-				return err
-			}
-
-			// Alert that the network is ready
 			atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
+
+			//signal that scheduling should begin
+			beginScheduling<-struct{}{}
 		}
 	}
-
-	jww.INFO.Printf("All %d nodes registered! Ending registration...", maxNodes)
-	return nil
+	return errors.New("Node registration completer should never exit")
 }
 
 // Assemble information for the given registration code

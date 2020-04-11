@@ -2,12 +2,14 @@ package round
 
 import (
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"math"
 	"sync"
+	"testing"
 	"time"
 )
 
@@ -51,6 +53,22 @@ func newState(id id.Round, batchsize uint32, topology *connect.Circuit, pendingT
 		},
 		topology:           topology,
 		state:              states.PENDING,
+		readyForTransition: 0,
+		mux:                sync.RWMutex{},
+	}
+}
+
+//creates a round state object
+func NewState_Testing(id id.Round, state states.Round, t *testing.T)*State{
+	if t==nil{
+		jww.FATAL.Panic("Only for testing")
+	}
+	//build and return the round state object
+	return &State{
+		base:              	&pb.RoundInfo{
+			ID:                   uint64(id),
+		},
+		state:              state,
 		readyForTransition: 0,
 		mux:                sync.RWMutex{},
 	}
@@ -112,9 +130,9 @@ func (s *State)GetTopology()*connect.Circuit{
 }
 
 //returns the id of the round
-func (s *State)GetRoundID()*id.Round{
+func (s *State)GetRoundID()id.Round{
 	rid:=id.Round(s.base.ID)
-	return &rid
+	return rid
 }
 
 

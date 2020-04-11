@@ -94,22 +94,20 @@ func (s *NetworkState) GetUpdates(id int) ([]*pb.RoundInfo, error) {
 }
 
 // Makes a copy of the round before inserting into roundUpdates
-func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
+func (s *NetworkState) AddRoundUpdate(updateID uint64, round *pb.RoundInfo) error {
 	roundCopy := &pb.RoundInfo{
 		ID:         round.GetID(),
-		UpdateID:   round.GetUpdateID(),
+		UpdateID: updateID,
 		State:      round.GetState(),
 		BatchSize:  round.GetBatchSize(),
 		Topology:   round.GetTopology(),
 		Timestamps: round.GetTimestamps(),
 	}
 
-	roundCopy.UpdateID = uint64(s.roundUpdates.GetLastUpdateID())
-
 	err := signature.Sign(roundCopy, s.privateKey)
 	if err != nil {
-		return errors.WithMessage(err, "Could not add round updated " +
-			"due to failed signature")
+		return errors.WithMessagef(err, "Could not add round update %v " +
+			"due to failed signature", roundCopy.UpdateID)
 	}
 
 	jww.DEBUG.Printf("Round state updated to %s",

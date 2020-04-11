@@ -3,6 +3,7 @@ package node
 import (
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/registration/storage/round"
 	"math/rand"
 	"strings"
 	"testing"
@@ -57,11 +58,11 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 	}
 
 	nid := id.NewNodeFromUInt(2, t)
-	rid := id.Round(42)
+	r := round.NewState_Testing(42, 0, t)
 
 	sm.nodeStates[*nid] = &State{
 		activity:     current.WAITING,
-		currentRound: &rid,
+		currentRound: r,
 		lastPoll:     time.Now(),
 	}
 
@@ -83,9 +84,9 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 			"Expected: %s, Recieved: %s", current.WAITING, n.activity)
 	}
 
-	if n.currentRound==nil || *n.currentRound!=rid{
+	if n.currentRound==nil || n.currentRound.GetRoundID()!=r.GetRoundID(){
 		t.Errorf("New node has a curent round set incorrectly: " +
-			"Expected: %+v; Recieved: %+v", &rid, n.currentRound)
+			"Expected: %+v; Recieved: %+v", r.GetRoundID(), n.currentRound.GetRoundID())
 
 	}
 
@@ -103,11 +104,11 @@ func TestStateMap_GetNode_Valid(t *testing.T) {
 	}
 
 	nid := id.NewNodeFromUInt(2, t)
-	rid := id.Round(42)
+	r := round.NewState_Testing(42, 0, t)
 
 	sm.nodeStates[*nid] = &State{
 		activity:     current.NOT_STARTED,
-		currentRound: &rid,
+		currentRound: r,
 		lastPoll:     time.Now(),
 	}
 
@@ -121,9 +122,9 @@ func TestStateMap_GetNode_Valid(t *testing.T) {
 				"Expected: %s, Recieved: %s", current.NOT_STARTED, n.activity)
 		}
 
-		if n.currentRound==nil || *n.currentRound!=rid{
+		if n.currentRound==nil || n.currentRound.GetRoundID()!=r.GetRoundID(){
 			t.Errorf("New node has a curent round set incorrectly: " +
-				"Expected: %+v; Recieved: %+v", &rid, n.currentRound)
+				"Expected: %+v; Recieved: %+v", r.GetRoundID(), n.currentRound.GetRoundID())
 
 		}
 

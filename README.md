@@ -16,8 +16,6 @@ verbose: "true"
 logPath: "registration.log"
 # Path to the node topology permissioning info
 ndfOutputPath: "ndf.json"
-# Batch size of each round
-batchSize: 8
 # Minimum number of nodes to begin running rounds
 minimumNodes: 3
 
@@ -64,5 +62,17 @@ groups:
   e2e:
     prime: "${e2e_prime}"
     generator: "${e2e_generator}"
+
+# Selection of scheduling algorithem to use. Options are:
+#   simple - Schedules multiple teams to maximize performance, does not randomly re-arrange teams, if only a single
+#            only scheduling a single team, will use numerical ordering data for AlphaNet
+#   secure - Schedules new teams randomly, has apropreate buffers to ensure unpredictability, designed for BetaNet
+schedulingAlgorithem: "single"
+
+# Path to file with config for scheduling algorithem within the user directory 
+schedulingConfigPath: "schedulingConfig.json"
+
+
+
 ```
 

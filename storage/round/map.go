@@ -24,17 +24,17 @@ func NewStateMap()*StateMap {
 
 // Adds a new round state to the structure. Will not overwrite an existing one.
 func (rsm *StateMap) AddRound(id id.Round, batchsize uint32,
-	topology *connect.Circuit) error{
+	topology *connect.Circuit) (*State, error){
 	rsm.mux.Lock()
 	defer rsm.mux.Unlock()
 
 	if _, ok :=rsm.rounds[id]; ok{
-		return errors.New("cannot add a round which already exists")
+		return nil, errors.New("cannot add a round which already exists")
 	}
 
 	rsm.rounds[id] = newState(id, batchsize, topology, time.Now())
 
-	return nil
+	return rsm.rounds[id], nil
 }
 
 // Gets rounds from the state structure
