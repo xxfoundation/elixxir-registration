@@ -6,7 +6,6 @@
 package simple
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/crypto/shuffle"
@@ -30,19 +29,21 @@ func createRound(params Params, pool *waitingPoll, roundID *RoundID,
 	nodeStateList := make([]*node.State, params.TeamSize)
 	orderedNodeList := make([]*id.Node, params.TeamSize)
 
+	// Input an incrementing array of ints
 	randomIndex := make([]uint64, params.TeamSize)
 	for i := range randomIndex {
 		randomIndex[i] = uint64(i)
 	}
 
 	if params.RandomOrdering {
-		//random order
+		// Shuffle array of ints randomly using Fisher-Yates shuffle
 		// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
-		// already a crypto definition
 		shuffle.Shuffle(&randomIndex)
 		for i, nid := range nodes {
 			n := nodeMap.GetNode(nid)
 			nodeStateList[i] = n
+			// Use the shuffled array as an indexing order for
+			//  the nodes' topological order
 			orderedNodeList[randomIndex[i]] = nid
 		}
 	} else {
@@ -64,9 +65,7 @@ func createRound(params Params, pool *waitingPoll, roundID *RoundID,
 
 	//create the round
 	r, err := state.GetRoundMap().AddRound(roundID.Next(), params.BatchSize, topology)
-
 	if err != nil {
-		fmt.Println("failed to add round to map")
 		return errors.WithMessagef(err, "Failed to create new round %v", roundID.Get())
 	}
 
@@ -80,7 +79,6 @@ func createRound(params Params, pool *waitingPoll, roundID *RoundID,
 	for i, n := range nodeStateList {
 		err := n.SetRound(r)
 		if err != nil {
-			fmt.Println("failed to set round")
 			return errors.WithMessagef(err, "could not add round %v to node %s", r.GetRoundID(), nodes[i])
 		}
 	}
@@ -88,7 +86,6 @@ func createRound(params Params, pool *waitingPoll, roundID *RoundID,
 	//issue the update
 	err = state.AddRoundUpdate(updateID.Next(), r.BuildRoundInfo())
 	if err != nil {
-		fmt.Printf("failed to add round update")
 		return errors.WithMessagef(err, "Could not issue "+
 			"update to create round %v", r.GetRoundID())
 	}

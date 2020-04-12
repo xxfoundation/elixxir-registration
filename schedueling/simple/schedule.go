@@ -39,15 +39,17 @@ func scheduler(params Params, state *storage.NetworkState) error {
 
 	for update := range state.GetNodeUpdateChannel() {
 
+		// To avoid back-to-back teaming, we make sure to sleep
+		if timeDiff := time.Now().Sub(params.LastRound); timeDiff < params.MinimumDelay {
+			time.Sleep(100 * time.Millisecond)
+		}
+
 		//handle the node's state change
 		err := HandleNodeStateChance(update, pool, updateID, state)
 		if err != nil {
 			return err
 		}
 
-		if timeDiff := time.Now().Sub(params.LastRound); timeDiff < params.MinimumDelay {
-			time.Sleep(100 * time.Millisecond)
-		}
 		//create a new round if the pool is full
 		if pool.Len() == int(params.TeamSize) {
 			err = createRound(params, pool, roundID, updateID, state)
