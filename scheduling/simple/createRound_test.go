@@ -1,3 +1,8 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright © 2020 Privategrity Corporation                                   /
+//                                                                             /
+// All rights reserved.                                                        /
+////////////////////////////////////////////////////////////////////////////////
 package simple
 
 import (
@@ -12,21 +17,24 @@ import (
 	"testing"
 )
 
-func TestCreateRound(t *testing.T) {
+// Happy path
+func TestCreateRound_NonRandom(t *testing.T) {
+	// Build params for scheduling
 	testParams := Params{
 		TeamSize:       5,
 		BatchSize:      32,
 		RandomOrdering: false,
 	}
 
+	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-
 	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
 	}
 
+	// Build node list
 	nodeList := make([]*id.Node, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewNodeFromUInt(i, t)
@@ -37,6 +45,7 @@ func TestCreateRound(t *testing.T) {
 		}
 	}
 
+	// Build pool
 	testPool := &waitingPoll{
 		pool:     nodeList,
 		position: int(testParams.TeamSize),
@@ -57,21 +66,24 @@ func TestCreateRound(t *testing.T) {
 
 }
 
+// Error path: Provide a node ordering that is invalid
 func TestCreateRound_BadOrdering(t *testing.T) {
+	// Build scheduling params
 	testParams := Params{
 		TeamSize:       5,
 		BatchSize:      32,
 		RandomOrdering: false,
 	}
 
+	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-
 	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
 	}
 
+	// Build a node list that will be invalid
 	nodeList := make([]*id.Node, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewNodeFromUInt(i, t)
@@ -83,6 +95,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 		}
 	}
 
+	// Build pool
 	testPool := &waitingPoll{
 		pool:     nodeList,
 		position: int(testParams.TeamSize),
@@ -102,21 +115,24 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 
 }
 
+// Happy path for random ordering
 func TestCreateRound_RandomOrdering(t *testing.T) {
+	// Build scheduling params
 	testParams := Params{
-		TeamSize:       5,
+		TeamSize:       10,
 		BatchSize:      32,
 		RandomOrdering: true,
 	}
 
+	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-
 	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
 	}
 
+	// Build the nodes
 	nodeList := make([]*id.Node, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewNodeFromUInt(i, t)
@@ -142,8 +158,11 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 		t.Errorf("Happy path of createRound failed: %v", err)
 	}
 
+	// Get the topology after ordering
 	resultingTopology := testState.GetRoundMap().GetRound(0).GetTopology()
 
+	// Check that shuffling has actually occurred
+	// This has a chance to fail even when successful, however that chance is 1 in ~3.6 million
 	if reflect.DeepEqual(initialTopology, resultingTopology) {
 		t.Errorf("Highly unlikely initial topology identical to resulting after shuffling. " +
 			"Possile shuffling is broken")
