@@ -55,6 +55,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	if m.State.IsRoundNode(auth.Sender.GetId()) {
 		jww.TRACE.Printf("Updating state for node %s: %+v",
 			auth.Sender.GetId(), msg)
+
 		nodeId, err := id.NewNodeFromString(auth.Sender.GetId())
 		if err != nil {
 			return nil, err
