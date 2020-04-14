@@ -22,7 +22,7 @@ func newWaitingPool(size int) *waitingPoll {
 // adds an element to the waiting pool if it is not full, otherwise returns an
 // error
 func (wp *waitingPoll) Add(nid *id.Node) error {
-	if wp.position+1 == len(wp.pool) {
+	if wp.position+1 >= len(wp.pool) {
 		return errors.New("waiting pool is full")
 	}
 

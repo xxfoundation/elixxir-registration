@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func HandleNodeStateChance(update *storage.NodeUpdateNotification, pool *waitingPoll,
+func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waitingPoll,
 	updateID *UpdateID, state *storage.NetworkState) error {
 	//get node and round information
 	n := state.GetNodeMap().GetNode(update.Node)

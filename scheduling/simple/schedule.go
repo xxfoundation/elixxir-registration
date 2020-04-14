@@ -45,7 +45,7 @@ func scheduler(params Params, state *storage.NetworkState) error {
 		}
 
 		//handle the node's state change
-		err := HandleNodeStateChance(update, pool, updateID, state)
+		err := HandleNodeStateChange(update, pool, updateID, state)
 		if err != nil {
 			return err
 		}
