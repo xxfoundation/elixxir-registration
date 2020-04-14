@@ -115,8 +115,11 @@ func (m *RegistrationImpl) newRound(topology []string, batchSize uint32) error {
 	// Initialize node states based on given topology
 	for _, nodeId := range topology {
 		newState := uint32(states.PENDING)
-		s.CurrentRound.NodeStatuses[*id.NewNodeFromBytes([]byte(
-			nodeId))] = &newState
+		newId, err := id.NewNodeFromString(nodeId)
+		if err != nil {
+			return err
+		}
+		s.CurrentRound.NodeStatuses[*newId] = &newState
 	}
 
 	// Sign the new round object
