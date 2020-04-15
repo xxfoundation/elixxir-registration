@@ -23,33 +23,35 @@ import (
 	"gitlab.com/elixxir/registration/storage/round"
 )
 
-// Used for keeping track of NDF and Round state
+const updateBufferLength = 1000
+
+// NetworkState structure used for keeping track of NDF and Round state.
 type NetworkState struct {
-	// NetworkState parameters ---
+	// NetworkState parameters
 	privateKey *rsa.PrivateKey
 
-	// Round state ---
+	// Round state
 	rounds       *round.StateMap
 	roundUpdates *dataStructures.Updates
-	roundData    *dataStructures.Data
 	update       chan *NodeUpdateNotification // For triggering updates to top level
 
-	// Node NetworkState ---
+	// Node NetworkState
 	nodes *node.StateMap
 
-	// NDF state ---
+	// NDF state
 	partialNdf *dataStructures.Ndf
 	fullNdf    *dataStructures.Ndf
 }
 
-// structure used toi notifiy the control thread that the round state has updated
+// NodeUpdateNotification structure used to notify the control thread that the
+// round state has updated.
 type NodeUpdateNotification struct {
 	Node *id.Node
 	From current.Activity
 	To   current.Activity
 }
 
-// Returns a new NetworkState object
+// NewState returns a new NetworkState object.
 func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
@@ -63,8 +65,7 @@ func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 	state := &NetworkState{
 		rounds:       round.NewStateMap(),
 		roundUpdates: dataStructures.NewUpdates(),
-		roundData:    dataStructures.NewData(),
-		update:       make(chan *NodeUpdateNotification, 1000),
+		update:       make(chan *NodeUpdateNotification, updateBufferLength),
 		nodes:        node.NewStateMap(),
 		fullNdf:      fullNdf,
 		partialNdf:   partialNdf,
@@ -79,22 +80,23 @@ func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 	return state, nil
 }
 
-// Returns the full NDF
+// GetFullNdf returns the full NDF.
 func (s *NetworkState) GetFullNdf() *dataStructures.Ndf {
 	return s.fullNdf
 }
 
-// Returns the partial NDF
+// GetPartialNdf returns the partial NDF.
 func (s *NetworkState) GetPartialNdf() *dataStructures.Ndf {
 	return s.partialNdf
 }
 
-// Returns all updates after the given ID
+// GetUpdates returns all of the updates after the given ID.
 func (s *NetworkState) GetUpdates(id int) ([]*pb.RoundInfo, error) {
-	return s.roundUpdates.GetUpdates(id), nil
+	return s.roundUpdates.GetUpdates(id)
 }
 
-// Makes a copy of the round before inserting into roundUpdates
+// AddRoundUpdate creates a copy of the round before inserting it into
+// roundUpdates.
 func (s *NetworkState) AddRoundUpdate(updateID uint64, round *pb.RoundInfo) error {
 	roundCopy := &pb.RoundInfo{
 		ID:         round.GetID(),
@@ -117,7 +119,7 @@ func (s *NetworkState) AddRoundUpdate(updateID uint64, round *pb.RoundInfo) erro
 	return s.roundUpdates.AddRound(roundCopy)
 }
 
-// Given a full NDF, updates internal NDF structures
+// UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	// Build NDF comms messages
 	fullNdfMsg := &pb.NDF{}
@@ -149,22 +151,23 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	return s.partialNdf.Update(partialNdfMsg)
 }
 
-//returns the server's private key
+// GetPrivateKey returns the server's private key.
 func (s *NetworkState) GetPrivateKey() *rsa.PrivateKey {
 	return s.privateKey
 }
 
-//returns the map of rounds
+// GetRoundMap returns the map of rounds.
 func (s *NetworkState) GetRoundMap() *round.StateMap {
 	return s.rounds
 }
 
-//returns the map of nodes
+// GetNodeMap returns the map of nodes.
 func (s *NetworkState) GetNodeMap() *node.StateMap {
 	return s.nodes
 }
 
-//sends a notification to the copntrol thread of an update to a nodes state
+// NodeUpdateNotification sends a notification to the control thread of an
+// update to a nodes state.
 func (s *NetworkState) NodeUpdateNotification(node *id.Node, from, to current.Activity) error {
 	nun := NodeUpdateNotification{
 		Node: node,
@@ -180,7 +183,7 @@ func (s *NetworkState) NodeUpdateNotification(node *id.Node, from, to current.Ac
 	}
 }
 
-//returns a channel to receive node updates on
+// GetNodeUpdateChannel returns a channel to receive node updates on.
 func (s *NetworkState) GetNodeUpdateChannel() <-chan *NodeUpdateNotification {
 	return s.update
 }
