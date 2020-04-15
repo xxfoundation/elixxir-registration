@@ -7,6 +7,7 @@ package simple
 
 import (
 	"crypto/rand"
+	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
@@ -50,18 +51,14 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: 1,
-	}
+	testPool := newWaitingPool(int(testParams.TeamSize))
 
-	updateID := NewUpdateID(1)
-
+	updateID := NewUpdateID(0)
 
 	testUpdate := &storage.NodeUpdateNotification{
 		Node: nodeList[0],
 		From: current.NOT_STARTED,
-		To: current.WAITING}
+		To:   current.WAITING}
 
 	err = HandleNodeStateChange(testUpdate, testPool, updateID, testState)
 	if err != nil {
@@ -95,7 +92,6 @@ func TestHandleNodeStateChance_WaitingError(t *testing.T) {
 		}
 	}
 
-
 	// Unfilled poll s.t. we can add a node to the waiting pool
 	testPool := &waitingPoll{
 		pool:     nodeList,
@@ -104,11 +100,10 @@ func TestHandleNodeStateChance_WaitingError(t *testing.T) {
 
 	updateID := NewUpdateID(1)
 
-
 	testUpdate := &storage.NodeUpdateNotification{
 		Node: nodeList[0],
 		From: current.NOT_STARTED,
-		To: current.WAITING}
+		To:   current.WAITING}
 
 	err = HandleNodeStateChange(testUpdate, testPool, updateID, testState)
 	if err != nil {
@@ -127,7 +122,6 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-
 	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
@@ -143,26 +137,37 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 			t.FailNow()
 		}
 	}
+	circuit := connect.NewCircuit(nodeList)
 
 	roundID := NewRoundID(0)
 
-	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
+	roundState, err := testState.GetRoundMap().AddRound(roundID.Get(), testParams.BatchSize, circuit)
+	if err != nil {
+		t.Errorf("Failed to add round: %v", err)
 	}
+
+	// Unfilled poll s.t. we can add a node to the waiting pool
+	testPool := newWaitingPool(int(testParams.TeamSize))
 
 	updateID := NewUpdateID(1)
 
+	for i := range nodeList {
+		testUpdate := &storage.NodeUpdateNotification{
+			Node: nodeList[i],
+			From: current.NOT_STARTED,
+			To:   current.WAITING,
+		}
+
+		err = HandleNodeStateChange(testUpdate, testPool, updateID, testState)
+		if err != nil {
+			t.Errorf("Waiting pool is full for %d: %v", i, err)
+		}
+	}
 	err = createRound(testParams, testPool, roundID, updateID, testState)
-
-	// Set a round for the node
-	roundState := round.NewState_Testing(roundID.Get(), 0, t)
-
-	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
 
 	// Iterate through all the nodes so that all the nodes are ready for transition
 	for i := range nodeList {
+		_ = testState.GetNodeMap().GetNode(nodeList[i]).SetRound(roundState)
 
 		testUpdate := &storage.NodeUpdateNotification{
 			Node: nodeList[i],
@@ -178,12 +183,8 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 
 }
 
-func TestHandleNodeStateChance_Standby_Error(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Error path should panic without creating a round")
-		}
-	}()
+// Error path: attempt to write to an update that already exists
+func TestHandleNodeStateChange_Standy_BadUpdate(t *testing.T) {
 	testParams := Params{
 		TeamSize:       5,
 		BatchSize:      32,
@@ -207,39 +208,48 @@ func TestHandleNodeStateChance_Standby_Error(t *testing.T) {
 			t.FailNow()
 		}
 	}
+	circuit := connect.NewCircuit(nodeList)
 
 	roundID := NewRoundID(0)
 
-	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
+	roundState, err := testState.GetRoundMap().AddRound(roundID.Get(), testParams.BatchSize, circuit)
+	if err != nil {
+		t.Errorf("Failed to add round: %v", err)
 	}
 
-	updateID := NewUpdateID(1)
+	// Unfilled poll s.t. we can add a node to the waiting pool
+	testPool := newWaitingPool(int(testParams.TeamSize))
 
-	// Attempting to handle a node state change w/o creating a round should result in errors
-	//err = createRound(testParams, testPool, roundID, updateID, testState)
+	updateID := NewUpdateID(0)
 
-	// Set a round for the node
-	roundState := round.NewState_Testing(roundID.Get(), 0, t)
+	for i := range nodeList {
+		testUpdate := &storage.NodeUpdateNotification{
+			Node: nodeList[i],
+			From: current.NOT_STARTED,
+			To:   current.WAITING,
+		}
 
-	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
+		err = HandleNodeStateChange(testUpdate, testPool, updateID, testState)
+		if err != nil {
+			t.Errorf("Waiting pool is full for %d: %v", i, err)
+		}
+	}
 
 	// Iterate through all the nodes so that all the nodes are ready for transition
 	for i := range nodeList {
+		_ = testState.GetNodeMap().GetNode(nodeList[i]).SetRound(roundState)
+
 		testUpdate := &storage.NodeUpdateNotification{
 			Node: nodeList[i],
 			From: current.WAITING,
 			To:   current.STANDBY}
 
 		err = HandleNodeStateChange(testUpdate, testPool, updateID, testState)
-		if err != nil {
-			t.Log("Errored in error path")
+		if uint32(i) == testParams.TeamSize-1 && err == nil {
+			t.Errorf("Expected error: Should not be able to overwrite existing update")
 		}
 
 	}
-
 }
 
 // Error path: Do not give a round to the nodes
@@ -324,26 +334,36 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 			t.FailNow()
 		}
 	}
+	circuit := connect.NewCircuit(nodeList)
 
 	roundID := NewRoundID(0)
 
-	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
+	roundState, err := testState.GetRoundMap().AddRound(roundID.Get(), testParams.BatchSize, circuit)
+	if err != nil {
+		t.Errorf("Failed to add round: %v", err)
 	}
+
+	// Unfilled poll s.t. we can add a node to the waiting pool
+	testPool := newWaitingPool(int(testParams.TeamSize))
 
 	updateID := NewUpdateID(1)
 
-	err = createRound(testParams, testPool, roundID, updateID, testState)
+	for i := range nodeList {
+		testUpdate := &storage.NodeUpdateNotification{
+			Node: nodeList[i],
+			From: current.NOT_STARTED,
+			To:   current.WAITING,
+		}
 
-	// Set a round for the node
-	roundState := round.NewState_Testing(roundID.Get(), 0, t)
-
-	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
+		err = HandleNodeStateChange(testUpdate, testPool, updateID, testState)
+		if err != nil {
+			t.Errorf("Waiting pool is full for %d: %v", i, err)
+		}
+	}
 
 	// Iterate through all the nodes so that all the nodes are ready for transition
 	for i := range nodeList {
+		_ = testState.GetNodeMap().GetNode(nodeList[i]).SetRound(roundState)
 
 		testUpdate := &storage.NodeUpdateNotification{
 			Node: nodeList[i],
@@ -352,77 +372,13 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 
 		err = HandleNodeStateChange(testUpdate, testPool, updateID, testState)
 		if err != nil {
-			t.Errorf("Error in standby happy path: %v", err)
+			t.Errorf("Expected happy path for completed: %v", err)
 		}
 
 	}
 }
 
-func TestHandleNodeStateChange_Completed_Error(t *testing.T) {
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("Error path should panic without creating a round")
-		}
-	}()
-	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
-	}
-
-	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-
-	testState, err := storage.NewState(privKey)
-	if err != nil {
-		t.Errorf("Failed to create test state: %v", err)
-		t.FailNow()
-	}
-
-	nodeList := make([]*id.Node, testParams.TeamSize)
-	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nodeList[i] = id.NewNodeFromUInt(i, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
-		if err != nil {
-			t.Errorf("Couldn't add node: %v", err)
-			t.FailNow()
-		}
-	}
-
-	roundID := NewRoundID(0)
-
-	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
-
-	updateID := NewUpdateID(1)
-
-	// Attempting to handle a node state change w/o creating a round should result in errors
-	//err = createRound(testParams, testPool, roundID, updateID, testState)
-
-	// Set a round for the node
-	roundState := round.NewState_Testing(roundID.Get(), 0, t)
-
-	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
-
-	// Iterate through all the nodes so that all the nodes are ready for transition
-	for i := range nodeList {
-		testUpdate := &storage.NodeUpdateNotification{
-			Node: nodeList[i],
-			From: current.WAITING,
-			To:   current.COMPLETED}
-
-		err = HandleNodeStateChange(testUpdate, testPool, updateID, testState)
-		if err != nil {
-			t.Log("Errored in error path")
-		}
-
-	}
-
-
-}
-
+// Error path: attempt to handle a node transition when nodes never had rounds
 func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
 	testParams := Params{
 		TeamSize:       5,
@@ -472,6 +428,73 @@ func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
 		err = HandleNodeStateChange(testUpdate, testPool, updateID, testState)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
+		}
+
+	}
+}
+
+// Error path: Attempt to pass overwrite an existing update id
+func TestHandleNodeStateChange_Completed_BadUpdate(t *testing.T) {
+	testParams := Params{
+		TeamSize:       5,
+		BatchSize:      32,
+		RandomOrdering: false,
+	}
+
+	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	testState, err := storage.NewState(privKey)
+	if err != nil {
+		t.Errorf("Failed to create test state: %v", err)
+		t.FailNow()
+	}
+
+	nodeList := make([]*id.Node, testParams.TeamSize)
+	for i := uint64(0); i < uint64(len(nodeList)); i++ {
+		nodeList[i] = id.NewNodeFromUInt(i, t)
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		if err != nil {
+			t.Errorf("Couldn't add node: %v", err)
+			t.FailNow()
+		}
+	}
+	circuit := connect.NewCircuit(nodeList)
+
+	roundID := NewRoundID(0)
+	roundState, err := testState.GetRoundMap().AddRound(roundID.Get(), testParams.BatchSize, circuit)
+	if err != nil {
+		t.Errorf("Failed to add round: %v", err)
+	}
+
+	// Unfilled poll s.t. we can add a node to the waiting pool
+	testPool := newWaitingPool(int(testParams.TeamSize))
+
+	updateID := NewUpdateID(0)
+
+	for i := range nodeList {
+		testUpdate := &storage.NodeUpdateNotification{
+			Node: nodeList[i],
+			From: current.NOT_STARTED,
+			To:   current.WAITING,
+		}
+
+		err = HandleNodeStateChange(testUpdate, testPool, updateID, testState)
+		if err != nil {
+			t.Errorf("Waiting pool is full for %d: %v", i, err)
+		}
+	}
+
+	// Iterate through all the nodes so that all the nodes are ready for transition
+	for i := range nodeList {
+		_ = testState.GetNodeMap().GetNode(nodeList[i]).SetRound(roundState)
+
+		testUpdate := &storage.NodeUpdateNotification{
+			Node: nodeList[i],
+			From: current.REALTIME,
+			To:   current.COMPLETED}
+
+		err = HandleNodeStateChange(testUpdate, testPool, updateID, testState)
+		if uint32(i) == testParams.TeamSize-1 && err == nil {
+			t.Errorf("Expected error: Should not be able to overwrite existing update")
 		}
 
 	}

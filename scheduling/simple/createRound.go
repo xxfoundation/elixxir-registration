@@ -17,11 +17,15 @@ import (
 	"time"
 )
 
+// createRound.go contains the logic to construct a team for a round and
+//  add that round to the network state
+
+// createRound.go builds a team for a round out of a pool and round id and places
+//  this round into the network state
 func createRound(params Params, pool *waitingPoll, roundID *RoundID,
 	updateID *UpdateID, state *storage.NetworkState) error {
 	//get the nodes for the team
 	nodes := pool.Clear()
-
 	params.LastRound = time.Now()
 
 	//build the topology

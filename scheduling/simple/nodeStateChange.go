@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+// HandleNodeStateChange handles the node state changes.
+//  A node in waiting is added to the pool in preparation for precomputing.
+//  A node in standby is added to a round in preparation for realtime.
+//  A node in completed waits for all other nodes in the team to transition
+//   before the round is updated.
 func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waitingPoll,
 	updateID *UpdateID, state *storage.NetworkState) error {
 	//get node and round information

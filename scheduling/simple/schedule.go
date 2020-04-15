@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+// scheduler.go contains the business logic for scheduling a round
+
 type Params struct {
 	TeamSize       uint32
 	BatchSize      uint32
@@ -20,6 +22,7 @@ type Params struct {
 	LastRound      time.Time
 }
 
+// Scheduler constructs the teaming parameters and sets up the scheduling
 func Scheduler(serialParam []byte, state *storage.NetworkState) error {
 	var params Params
 	err := json.Unmarshal(serialParam, &params)
@@ -30,6 +33,8 @@ func Scheduler(serialParam []byte, state *storage.NetworkState) error {
 	return scheduler(params, state)
 }
 
+// scheduler is a utility function which builds a round by handling a node's
+//  state changes then creating a team from the nodes in the pool
 func scheduler(params Params, state *storage.NetworkState) error {
 
 	pool := newWaitingPool(state.GetNodeMap().Len())

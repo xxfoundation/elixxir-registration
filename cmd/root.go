@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/utils"
-	"gitlab.com/elixxir/registration/schedueling/simple"
+	"gitlab.com/elixxir/registration/scheduling/simple"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"os"
