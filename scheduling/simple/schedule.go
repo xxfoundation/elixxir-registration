@@ -44,9 +44,9 @@ func scheduler(params Params, state *storage.NetworkState) error {
 
 	for update := range state.GetNodeUpdateChannel() {
 
-		// To avoid back-to-back teaming, we make sure to sleep
+		// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
 		if timeDiff := time.Now().Sub(params.LastRound); timeDiff < params.MinimumDelay {
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(timeDiff)
 		}
 
 		//handle the node's state change
@@ -62,8 +62,6 @@ func scheduler(params Params, state *storage.NetworkState) error {
 				return err
 			}
 		}
-
-		time.Sleep(params.MinimumDelay * time.Millisecond)
 
 	}
 
