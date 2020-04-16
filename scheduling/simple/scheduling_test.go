@@ -17,6 +17,7 @@ import (
 	"testing"
 )
 
+// Happy path
 func TestStartRound(t *testing.T) {
 	// Build params for scheduling
 	testParams := Params{
@@ -76,7 +77,7 @@ func TestStartRound(t *testing.T) {
 	}
 }
 
-// Error paths
+// Error path
 func TestStartRound_BadState(t *testing.T) {
 	// Build params for scheduling
 	testParams := Params{
@@ -139,7 +140,7 @@ func TestStartRound_BadState(t *testing.T) {
 	}
 }
 
-// Error paths
+// Error path
 func TestStartRound_BadNode(t *testing.T) {
 	// Build params for scheduling
 	testParams := Params{
