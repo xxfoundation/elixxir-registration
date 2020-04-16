@@ -96,7 +96,6 @@ func TestHandleNodeStateChance_WaitingError(t *testing.T) {
 		position: int(testParams.TeamSize),
 	}
 
-
 	testUpdate := &storage.NodeUpdateNotification{
 		Node: nodeList[0],
 		From: current.NOT_STARTED,
@@ -145,7 +144,6 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
 	testPool := newWaitingPool(int(testParams.TeamSize))
-
 
 	for i := range nodeList {
 		testUpdate := &storage.NodeUpdateNotification{

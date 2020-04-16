@@ -72,28 +72,27 @@ func TestCreateRound_NonRandom(t *testing.T) {
 	//		testState.GetRoundMap().GetRound(0).GetRoundState())
 	//}
 
-
 	if testProtoRound.ID != roundID.Get() {
-		t.Errorf("ProtoRound's id returned unexpected value!" +
-			"\n\tExpected: %d" +
+		t.Errorf("ProtoRound's id returned unexpected value!"+
+			"\n\tExpected: %d"+
 			"\n\tReceived: %d", roundID.Get(), testProtoRound.ID)
 	}
 
 	if !reflect.DeepEqual(testProtoRound.topology, expectedTopology) {
-		t.Errorf("ProtoRound's topology returned unexpected value!" +
-			"\n\tExpected: %v" +
+		t.Errorf("ProtoRound's topology returned unexpected value!"+
+			"\n\tExpected: %v"+
 			"\n\tReceived: %v", expectedTopology, testProtoRound.topology)
 	}
 
 	if testParams.BatchSize != testProtoRound.batchSize {
-		t.Errorf("ProtoRound's batchsize returned unexpected value!" +
-			"\n\tExpected: %v" +
+		t.Errorf("ProtoRound's batchsize returned unexpected value!"+
+			"\n\tExpected: %v"+
 			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.batchSize)
 
 	}
 	if !reflect.DeepEqual(testProtoRound.nodeStateList, nodeStateList) {
-		t.Errorf("ProtoRound's nodeStateList returned unexpected value!" +
-			"\n\tExpected: %v" +
+		t.Errorf("ProtoRound's nodeStateList returned unexpected value!"+
+			"\n\tExpected: %v"+
 			"\n\tReceived: %v", nodeStateList, testProtoRound.nodeStateList)
 
 	}
@@ -142,7 +141,6 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	if err != nil {
 		return
 	}
-
 
 	t.Errorf("Expected error case: passed in an ordering to nodes which were not numbers should result " +
 		"in an error")
@@ -197,7 +195,6 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 		t.Errorf("Happy path of createRound failed: %v", err)
 	}
 
-
 	// Check that shuffling has actually occurred
 	// This has a chance to fail even when successful, however that chance is 1 in ~3.6 million
 	if reflect.DeepEqual(initialTopology, testProtoRound.topology) {
@@ -206,20 +203,20 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 	}
 
 	if testProtoRound.ID != roundID.Get() {
-		t.Errorf("ProtoRound's id returned unexpected value!" +
-			"\n\tExpected: %d" +
+		t.Errorf("ProtoRound's id returned unexpected value!"+
+			"\n\tExpected: %d"+
 			"\n\tReceived: %d", roundID.Get(), testProtoRound.ID)
 	}
 
 	if testParams.BatchSize != testProtoRound.batchSize {
-		t.Errorf("ProtoRound's batchsize returned unexpected value!" +
-			"\n\tExpected: %v" +
+		t.Errorf("ProtoRound's batchsize returned unexpected value!"+
+			"\n\tExpected: %v"+
 			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.batchSize)
 
 	}
 	if !reflect.DeepEqual(testProtoRound.nodeStateList, nodeStateList) {
-		t.Errorf("ProtoRound's nodeStateList returned unexpected value!" +
-			"\n\tExpected: %v" +
+		t.Errorf("ProtoRound's nodeStateList returned unexpected value!"+
+			"\n\tExpected: %v"+
 			"\n\tReceived: %v", nodeStateList, testProtoRound.nodeStateList)
 
 	}

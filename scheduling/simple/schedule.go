@@ -8,13 +8,13 @@ package simple
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"time"
-	jww "github.com/spf13/jwalterweatherman"
 )
 
 // scheduler.go contains the business logic for scheduling a round
@@ -27,11 +27,11 @@ type Params struct {
 	LastRound      time.Time
 }
 
-type protoRound struct{
-	topology *connect.Circuit
-	ID id.Round
+type protoRound struct {
+	topology      *connect.Circuit
+	ID            id.Round
 	nodeStateList []*node.State
-	batchSize uint32
+	batchSize     uint32
 }
 
 // Scheduler constructs the teaming parameters and sets up the scheduling
@@ -59,7 +59,7 @@ func scheduler(params Params, state *storage.NetworkState) error {
 	go func() {
 		lastRound := time.Now()
 		var err error
-		for newRound := range newRoundChan{
+		for newRound := range newRoundChan {
 			// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
 			if timeDiff := time.Now().Sub(lastRound); timeDiff < params.MinimumDelay {
 				time.Sleep(timeDiff)
@@ -67,7 +67,7 @@ func scheduler(params Params, state *storage.NetworkState) error {
 			lastRound = time.Now()
 
 			err = startRound(newRound, state, errorChan)
-			if err!=nil{
+			if err != nil {
 				break
 			}
 		}
@@ -99,7 +99,7 @@ func scheduler(params Params, state *storage.NetworkState) error {
 				return err
 			}
 			//send the round to the new round channel to be created
-			newRoundChan<-newRound
+			newRoundChan <- newRound
 		}
 
 	}
@@ -107,7 +107,7 @@ func scheduler(params Params, state *storage.NetworkState) error {
 	return errors.New("single scheduler should never exit")
 }
 
-func startRound(round protoRound, state *storage.NetworkState, errChan chan<- error)error {
+func startRound(round protoRound, state *storage.NetworkState, errChan chan<- error) error {
 
 	//create the round
 	r, err := state.GetRoundMap().AddRound(round.ID, round.batchSize, round.topology)
