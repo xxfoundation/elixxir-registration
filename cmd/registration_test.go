@@ -158,9 +158,10 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	infos = append(infos, node.Info{RegCode:"BBBB"})
 
 	storage.PopulateNodeRegistrationCodes(infos)
-
+	localParams := testParams
+	localParams.minimumNodes = 1
 	// Start registration server
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(localParams)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -173,11 +174,20 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 		return
 	}
 
-	beginScheduling := make(chan<- struct{}, 1)
+	beginScheduling := make(chan struct{}, 1)
 
-	err = impl.nodeRegistrationCompleter(beginScheduling)
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
+	go func(){
+		err = impl.nodeRegistrationCompleter(beginScheduling)
+		if err != nil {
+			t.Errorf("Expected happy path, recieved error: %+v", err)
+		}
+	}()
+
+	select{
+	case <-time.NewTimer(50*time.Millisecond).C:
+		t.Errorf("Registration failed to complete")
+		t.FailNow()
+	case <-beginScheduling:
 	}
 
 	//Kill the connections for the next test
@@ -236,10 +246,11 @@ func TestTopology_MultiNodes(t *testing.T) {
 	infos = append(infos, node.Info{RegCode:"AAAA"}, node.Info{RegCode:"BBBB"}, node.Info{RegCode:"CCCC"})
 	storage.PopulateNodeRegistrationCodes(infos)
 
-	RegParams = testParams
+	localParams := testParams
+	localParams.minimumNodes = 2
 
 	// Start registration server
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(localParams)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -260,10 +271,20 @@ func TestTopology_MultiNodes(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-	beginScheduling := make(chan<- struct{}, 1)
-	err = impl.nodeRegistrationCompleter(beginScheduling)
-	if err != nil {
-		t.Errorf(err.Error())
+	beginScheduling := make(chan struct{}, 1)
+
+	go func(){
+		err = impl.nodeRegistrationCompleter(beginScheduling)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+	}()
+
+	select{
+	case <-time.NewTimer(50*time.Millisecond).C:
+		t.Errorf("Registration failed to complete")
+		t.FailNow()
+	case <-beginScheduling:
 	}
 
 	//Kill the connections for the next test

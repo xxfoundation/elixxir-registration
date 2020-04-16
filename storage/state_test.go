@@ -222,8 +222,10 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
+	state.roundUpdateID = 1
+
 	// Call AddRoundUpdate()
-	err = state.AddRoundUpdate(testUpdateID, testRoundInfo)
+	err = state.AddRoundUpdate(testRoundInfo)
 	if err != nil {
 		t.Errorf("AddRoundUpdate() unexpectedly produced an error:\n%+v",
 			err)
@@ -256,7 +258,6 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 // Tests that AddRoundUpdate() returns an error.
 func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
 	// Expected Values
-	testUpdateID := uint64(1)
 	testRoundInfo := &pb.RoundInfo{
 		ID:       0,
 		UpdateID: 5,
@@ -279,7 +280,7 @@ func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
 	state.privateKey = brokenPrivateKey
 
 	// Call AddRoundUpdate()
-	err = state.AddRoundUpdate(testUpdateID, testRoundInfo)
+	err = state.AddRoundUpdate(testRoundInfo)
 
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("AddRoundUpdate() did not produce an error when expected."+
