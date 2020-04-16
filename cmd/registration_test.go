@@ -8,9 +8,10 @@ package cmd
 import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/node"
+	nodeComms "gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
 	"os"
 	"testing"
@@ -24,7 +25,7 @@ var permAddr = "0.0.0.0:5900"
 var testParams Params
 var gatewayCert []byte
 
-var nodeComm *node.Comms
+var nodeComm *nodeComms.Comms
 
 func TestMain(m *testing.M) {
 	jww.SetStdoutThreshold(jww.LevelDebug)
@@ -53,7 +54,7 @@ func TestMain(m *testing.M) {
 		maxRegistrationAttempts:   5,
 		registrationCountDuration: time.Hour,
 	}
-	nodeComm = node.StartNode("tmp", nodeAddr, node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm = nodeComms.StartNode("tmp", nodeAddr, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
 	runFunc := func() int {
 		code := m.Run()
@@ -104,7 +105,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	impl.nodeCompleted = make(chan string, 1)
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
-	err = storage.PermissioningDb.InsertNodeRegCode("AAAA")
+	err = storage.PermissioningDb.InsertNodeRegCode(node.Info{RegCode:"AAAA"})
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
@@ -153,10 +154,10 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	//Crate database
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
-	strings := make([]string, 0)
-	strings = append(strings, "BBBB")
-	storage.PopulateNodeRegistrationCodes(strings)
-	RegistrationCodes = strings
+	infos := make([]node.Info, 0)
+	infos = append(infos, node.Info{RegCode:"BBBB"})
+
+	storage.PopulateNodeRegistrationCodes(infos)
 
 	// Start registration server
 	impl, err := StartRegistration(testParams)
@@ -172,7 +173,9 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 		return
 	}
 
-	err = impl.nodeRegistrationCompleter()
+	beginScheduling := make(chan<- struct{}, 1)
+
+	err = impl.nodeRegistrationCompleter(beginScheduling)
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
@@ -187,10 +190,9 @@ func TestDoubleRegistration(t *testing.T) {
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
 	//Create reg codes and populate the database
-	strings := make([]string, 0)
-	strings = append(strings, "AAAA", "BBBB", "CCCC")
-	storage.PopulateNodeRegistrationCodes(strings)
-	RegistrationCodes = strings
+	infos := make([]node.Info, 0)
+	infos = append(infos, node.Info{RegCode:"AAAA"}, node.Info{RegCode:"BBBB"}, node.Info{RegCode:"CCCC"})
+	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 
 	// Start registration server
@@ -198,10 +200,11 @@ func TestDoubleRegistration(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	go impl.nodeRegistrationCompleter()
+	beginScheduling := make(chan<- struct{}, 1)
+	go impl.nodeRegistrationCompleter(beginScheduling)
 
 	//Create a second node to register
-	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := nodeComms.StartNode("tmp", "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
 	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
@@ -229,10 +232,10 @@ func TestTopology_MultiNodes(t *testing.T) {
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
 	//Create reg codes and populate the database
-	strings := make([]string, 0)
-	strings = append(strings, "BBBB", "CCCC")
-	storage.PopulateNodeRegistrationCodes(strings)
-	RegistrationCodes = strings
+	infos := make([]node.Info, 0)
+	infos = append(infos, node.Info{RegCode:"AAAA"}, node.Info{RegCode:"BBBB"}, node.Info{RegCode:"CCCC"})
+	storage.PopulateNodeRegistrationCodes(infos)
+
 	RegParams = testParams
 
 	// Start registration server
@@ -242,7 +245,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	}
 
 	//Create a second node to register
-	nodeComm2 := node.StartNode("tmp", "0.0.0.0:6901", node.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := nodeComms.StartNode("tmp", "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
 	err = impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
@@ -257,8 +260,8 @@ func TestTopology_MultiNodes(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-
-	err = impl.nodeRegistrationCompleter()
+	beginScheduling := make(chan<- struct{}, 1)
+	err = impl.nodeRegistrationCompleter(beginScheduling)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -335,7 +338,8 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	go impl.nodeRegistrationCompleter()
+	beginScheduling := make(chan<- struct{}, 1)
+	go impl.nodeRegistrationCompleter(beginScheduling)
 
 	// Initialize the database
 	storage.PermissioningDb = storage.NewDatabase(
