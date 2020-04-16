@@ -21,11 +21,13 @@ import (
 
 // createRound.go builds a team for a round out of a pool and round id and places
 //  this round into the network state
-func createRound(params Params, pool *waitingPoll, roundID *RoundID,
-	state *storage.NetworkState) (*connect.Circuit, id.Round, []*node.State, []*id.Node, error) {
+func createRound(params Params, pool *waitingPoll, roundID id.Round,
+	state *storage.NetworkState) (protoRound, error) {
 	//get the nodes for the team
 	nodes := pool.Clear()
 	params.LastRound = time.Now()
+
+	var newRound protoRound
 
 	//build the topology
 	nodeMap := state.GetNodeMap()
@@ -56,7 +58,7 @@ func createRound(params Params, pool *waitingPoll, roundID *RoundID,
 			nodeStateList[i] = n
 			position, err := strconv.Atoi(n.GetOrdering())
 			if err != nil {
-				return nil, id.Round(0), nil, nil, errors.WithMessagef(err,
+				return protoRound{}, errors.WithMessagef(err,
 					"Could not parse ordering info ('%s') from node %s",
 					n.GetOrdering(), nid)
 			}
@@ -65,8 +67,11 @@ func createRound(params Params, pool *waitingPoll, roundID *RoundID,
 		}
 	}
 
-	topology := connect.NewCircuit(orderedNodeList)
+	newRound.topology = connect.NewCircuit(orderedNodeList)
+	newRound.ID = roundID
+	newRound.batchSize = params.BatchSize
+	newRound.nodeStateList = nodeStateList
 
-	return topology, roundID.Next(), nodeStateList, nodes, nil
+	return newRound, nil
 
 }

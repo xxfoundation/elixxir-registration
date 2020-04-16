@@ -116,7 +116,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
-	state, err := storage.NewState()
+	state, err := storage.NewState(getTestKey())
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -124,7 +124,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 		State:    state,
 		NdfReady: &ndfReady,
 	}
-	impl.State.privateKey = getTestKey()
+
 	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
@@ -188,10 +188,14 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
-	err = impl.nodeRegistrationCompleter()
+	beginScheduling := make(chan struct{}, 1)
+
+	err = impl.nodeRegistrationCompleter(beginScheduling)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
+
+
 
 	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
 	if err != nil {
@@ -234,7 +238,6 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	strings := make([]string, 0)
 	strings = append(strings, "BBBB", "CCCC")
 	storage.PopulateNodeRegistrationCodes(strings)
-	RegistrationCodes = strings
 	RegParams = testParams
 	//Setup udb configurations
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
@@ -246,7 +249,10 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	go impl.nodeRegistrationCompleter()
+
+	beginScheduling := make(chan struct{}, 1)
+
+	go impl.nodeRegistrationCompleter(beginScheduling)
 
 	//Register 1st node
 	err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),

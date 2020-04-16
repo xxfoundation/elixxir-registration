@@ -14,7 +14,7 @@ import (
 //  A node in completed waits for all other nodes in the team to transition
 //   before the round is updated.
 func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waitingPoll,
-	updateID *UpdateID, state *storage.NetworkState) error {
+	state *storage.NetworkState) error {
 	//get node and round information
 	n := state.GetNodeMap().GetNode(update.Node)
 	hasRound, r := n.GetCurrentRound()
@@ -51,7 +51,7 @@ func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waiting
 					"Could not move round %v from %s to %s",
 					r.GetRoundID(), states.PRECOMPUTING, states.REALTIME)
 			}
-			err = state.AddRoundUpdate(updateID.Next(), r.BuildRoundInfo())
+			err = state.AddRoundUpdate(r.BuildRoundInfo())
 			if err != nil {
 				return errors.WithMessagef(err, "Could not issue "+
 					"update for round %v transitioning from %s to %s",
@@ -75,7 +75,7 @@ func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waiting
 					"Could not move round %v from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
-			err = state.AddRoundUpdate(updateID.Next(), r.BuildRoundInfo())
+			err = state.AddRoundUpdate(r.BuildRoundInfo())
 			if err != nil {
 				return errors.WithMessagef(err, "Could not issue "+
 					"update for round %v transitioning from %s to %s",

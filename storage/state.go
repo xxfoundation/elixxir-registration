@@ -21,6 +21,7 @@ import (
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
+	"sync"
 )
 
 // Used for keeping track of NDF and Round state
@@ -31,6 +32,8 @@ type NetworkState struct {
 	// Round state ---
 	rounds       *round.StateMap
 	roundUpdates *dataStructures.Updates
+	roundUpdateID uint64
+	roundUpdateLock sync.Mutex
 	roundData    *dataStructures.Data
 	update       chan *NodeUpdateNotification // For triggering updates to top level
 
@@ -69,10 +72,11 @@ func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 		fullNdf:      fullNdf,
 		partialNdf:   partialNdf,
 		privateKey:   pk,
+		roundUpdateID: 0,
 	}
 
 	// Insert dummy update
-	err = state.AddRoundUpdate(0, &pb.RoundInfo{})
+	err = state.AddRoundUpdate(&pb.RoundInfo{})
 	if err != nil {
 		return nil, err
 	}
@@ -91,19 +95,24 @@ func (s *NetworkState) GetPartialNdf() *dataStructures.Ndf {
 
 // Returns all updates after the given ID
 func (s *NetworkState) GetUpdates(id int) ([]*pb.RoundInfo, error) {
-	return s.roundUpdates.GetUpdates(id), nil
+	return s.roundUpdates.GetUpdates(id)
 }
 
 // Makes a copy of the round before inserting into roundUpdates
-func (s *NetworkState) AddRoundUpdate(updateID uint64, round *pb.RoundInfo) error {
+func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
+	s.roundUpdateLock.Lock()
+	defer s.roundUpdateLock.Unlock()
+
 	roundCopy := &pb.RoundInfo{
 		ID:         round.GetID(),
-		UpdateID:   updateID,
+		UpdateID:   s.roundUpdateID,
 		State:      round.GetState(),
 		BatchSize:  round.GetBatchSize(),
 		Topology:   round.GetTopology(),
 		Timestamps: round.GetTimestamps(),
 	}
+
+	s.roundUpdateID++
 
 	err := signature.Sign(roundCopy, s.privateKey)
 	if err != nil {
