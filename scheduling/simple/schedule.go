@@ -8,7 +8,11 @@ package simple
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
+	"gitlab.com/elixxir/comms/connect"
+	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"time"
 )
 
@@ -41,12 +45,19 @@ func scheduler(params Params, state *storage.NetworkState) error {
 
 	roundID := NewRoundID(0)
 	updateID := NewUpdateID(0)
+	errorChan := make(chan error)
 
-	for update := range state.GetNodeUpdateChannel() {
+	go func() {
+		startRound(state, params, topology, newRound, updateID, nodeStateList, nodes, errorChan)
+	}()
 
-		// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
-		if timeDiff := time.Now().Sub(params.LastRound); timeDiff < params.MinimumDelay {
-			time.Sleep(timeDiff)
+	for true {
+		var update *storage.NodeUpdateNotification
+		select {
+		case err := <-errorChan:
+			return err
+		case update = <-state.GetNodeUpdateChannel():
+
 		}
 
 		//handle the node's state change
@@ -55,9 +66,14 @@ func scheduler(params Params, state *storage.NetworkState) error {
 			return err
 		}
 
+		var topology *connect.Circuit
+		var nodeStateList []*node.State
+		var newRound id.Round
+		var nodes []*id.Node
+
 		//create a new round if the pool is full
 		if pool.Len() == int(params.TeamSize) {
-			err = createRound(params, pool, roundID, updateID, state)
+			topology, newRound, nodeStateList, nodes, err = createRound(params, pool, roundID, state)
 			if err != nil {
 				return err
 			}
@@ -66,4 +82,41 @@ func scheduler(params Params, state *storage.NetworkState) error {
 	}
 
 	return errors.New("single scheduler should never exit")
+}
+
+func startRound(state *storage.NetworkState, params Params,
+	topology *connect.Circuit, roundID id.Round, updateID *UpdateID,
+	nodeStateList []*node.State, nodes []*id.Node, errChan chan error) {
+
+	// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
+	if timeDiff := time.Now().Sub(params.LastRound); timeDiff < params.MinimumDelay {
+		time.Sleep(timeDiff)
+	}
+
+	//create the round
+	r, err := state.GetRoundMap().AddRound(roundID, params.BatchSize, topology)
+	if err != nil {
+		errChan <- errors.WithMessagef(err, "Failed to create new round %v", roundID)
+	}
+
+	//move the round to precomputing
+	err = r.Update(states.PRECOMPUTING, time.Now())
+	if err != nil {
+		errChan <- errors.WithMessagef(err, "Could not move new round into %s", states.PRECOMPUTING)
+	}
+
+	//tag all nodes to the round
+	for i, n := range nodeStateList {
+		err := n.SetRound(r)
+		if err != nil {
+			errChan <- errors.WithMessagef(err, "could not add round %v to node %s", r.GetRoundID(), nodes[i])
+		}
+	}
+
+	//issue the update
+	err = state.AddRoundUpdate(updateID.Next(), r.BuildRoundInfo())
+	if err != nil {
+		errChan <- errors.WithMessagef(err, "Could not issue "+
+			"update to create round %v", r.GetRoundID())
+	}
 }
