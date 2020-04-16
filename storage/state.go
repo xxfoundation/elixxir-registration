@@ -97,7 +97,7 @@ func (s *NetworkState) GetPartialNdf() *dataStructures.Ndf {
 
 // GetUpdates returns all of the updates after the given ID.
 func (s *NetworkState) GetUpdates(id int) ([]*pb.RoundInfo, error) {
-	return s.roundUpdates.GetUpdates(id)
+	return s.roundUpdates.GetUpdates(id), nil
 }
 
 // AddRoundUpdate creates a copy of the round before inserting it into

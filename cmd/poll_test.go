@@ -8,7 +8,6 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature/rsa"
@@ -22,6 +21,7 @@ import (
 	"gitlab.com/elixxir/registration/testkeys"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // TestFunc: Gets permissioning server test key
@@ -171,30 +171,27 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 //Happy path
 func TestRegistrationImpl_PollNdf(t *testing.T) {
 
-
-
-	fmt.Println("-5")
 	//Create database
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
-	fmt.Println("-4")
+
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode:"BBBB"},
 		node.Info{RegCode:"CCCC"},
 		node.Info{RegCode:"DDDD"})
 	storage.PopulateNodeRegistrationCodes(infos)
-	fmt.Println("-3")
+
 	RegParams = testParams
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
 	RegParams.udbId = udbId
 	RegParams.minimumNodes = 3
-	fmt.Println("-2")
+
 	// Start registration server
 	impl, err := StartRegistration(RegParams)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	fmt.Println("0")
+
 	beginScheduling := make(chan struct{}, 1)
 	go func(){
 		err = impl.nodeRegistrationCompleter(beginScheduling)
@@ -203,27 +200,33 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		}
 	}()
 
-	fmt.Println("aa", nodeCert)
-
 	//Register 1st node
 	err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
 		"0.0.0.0:7900", string(gatewayCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-	fmt.Println("bb")
+
 	//Register 2nd node
 	err = impl.RegisterNode([]byte("C"), "0.0.0.0:6901", string(nodeCert),
 		"0.0.0.0:7901", string(gatewayCert), "CCCC")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-	fmt.Println("cc")
+
 	//Register 3rd node
 	err = impl.RegisterNode([]byte("D"), "0.0.0.0:6902", string(nodeCert),
 		"0.0.0.0:7902", string(gatewayCert), "DDDD")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+
+	//wait for registration to complete
+	select{
+	case <-time.NewTimer(100*time.Millisecond).C:
+		t.Errorf("Node registration never completed")
+		t.FailNow()
+	case <-beginScheduling:
 	}
 
 	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})

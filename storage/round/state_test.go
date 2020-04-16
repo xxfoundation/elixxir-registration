@@ -292,9 +292,9 @@ func TestState_BuildRoundInfo(t *testing.T) {
 		}
 	}
 
-	if ri.UpdateID != math.MaxUint64 {
+	if ri.UpdateID != 0 {
 		t.Errorf("update ID is incorrect; Expected: %v, Recieved: %v",
-			uint64(math.MaxUint64), ri.UpdateID)
+			0, ri.UpdateID)
 	}
 
 	if ri.ID != uint64(rid) {
