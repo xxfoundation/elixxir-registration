@@ -119,7 +119,7 @@ var rootCmd = &cobra.Command{
 		SchedulingConfigPath := viper.GetString("schedulingConfigPath")
 		SchedulingConfig, err := utils.ReadFile(SchedulingConfigPath)
 		if err != nil {
-			jww.FATAL.Panic("Could not load Scheduling Config file: %v", err)
+			jww.FATAL.Panicf("Could not load Scheduling Config file: %v", err)
 		}
 
 		// Populate params
