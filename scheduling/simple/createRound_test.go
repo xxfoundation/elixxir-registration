@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // Copyright © 2020 Privategrity Corporation                                   /
 //                                                                             /
 // All rights reserved.                                                        /
@@ -10,8 +10,8 @@ import (
 	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"reflect"
 	"strconv"
 	"testing"
@@ -36,14 +36,22 @@ func TestCreateRound_NonRandom(t *testing.T) {
 
 	// Build node list
 	nodeList := make([]*id.Node, testParams.TeamSize)
+	nodeStateList := make([]*node.State, testParams.TeamSize)
+
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nodeList[i] = id.NewNodeFromUInt(i, t)
+		nid := id.NewNodeFromUInt(i, t)
+		nodeList[i] = nid
 		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
 		}
+		nodeState := testState.GetNodeMap().GetNode(nid)
+		nodeStateList[i] = nodeState
+
 	}
+
+	expectedTopology := connect.NewCircuit(nodeList)
 
 	// Build pool
 	testPool := &waitingPoll{
@@ -52,16 +60,42 @@ func TestCreateRound_NonRandom(t *testing.T) {
 	}
 
 	roundID := NewRoundID(0)
-	updateID := NewUpdateID(1)
 
-	err = createRound(testParams, testPool, roundID, updateID, testState)
+	testProtoRound, err := createRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
 		t.Errorf("Happy path of createRound failed: %v", err)
 	}
 
-	if testState.GetRoundMap().GetRound(0).GetRoundState() != states.PRECOMPUTING {
-		t.Errorf("In unexpected state after round creation: %v",
-			testState.GetRoundMap().GetRound(0).GetRoundState())
+	// todo: move this to start round testing
+	//if testState.GetRoundMap().GetRound(0).GetRoundState() != states.PRECOMPUTING {
+	//	t.Errorf("In unexpected state after round creation: %v",
+	//		testState.GetRoundMap().GetRound(0).GetRoundState())
+	//}
+
+
+	if testProtoRound.ID != roundID.Get() {
+		t.Errorf("ProtoRound's id returned unexpected value!" +
+			"\n\tExpected: %d" +
+			"\n\tReceived: %d", roundID.Get(), testProtoRound.ID)
+	}
+
+	if !reflect.DeepEqual(testProtoRound.topology, expectedTopology) {
+		t.Errorf("ProtoRound's topology returned unexpected value!" +
+			"\n\tExpected: %v" +
+			"\n\tReceived: %v", expectedTopology, testProtoRound.topology)
+	}
+
+	if testParams.BatchSize != testProtoRound.batchSize {
+		t.Errorf("ProtoRound's batchsize returned unexpected value!" +
+			"\n\tExpected: %v" +
+			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.batchSize)
+
+	}
+	if !reflect.DeepEqual(testProtoRound.nodeStateList, nodeStateList) {
+		t.Errorf("ProtoRound's nodeStateList returned unexpected value!" +
+			"\n\tExpected: %v" +
+			"\n\tReceived: %v", nodeStateList, testProtoRound.nodeStateList)
+
 	}
 
 }
@@ -102,13 +136,13 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	}
 
 	roundID := NewRoundID(0)
-	updateID := NewUpdateID(1)
 
 	// Invalid ordering will cause this to fail
-	err = createRound(testParams, testPool, roundID, updateID, testState)
+	_, err = createRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
 		return
 	}
+
 
 	t.Errorf("Expected error case: passed in an ordering to nodes which were not numbers should result " +
 		"in an error")
@@ -134,13 +168,19 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 
 	// Build the nodes
 	nodeList := make([]*id.Node, testParams.TeamSize)
+	nodeStateList := make([]*node.State, testParams.TeamSize)
+
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nodeList[i] = id.NewNodeFromUInt(i, t)
+		nid := id.NewNodeFromUInt(i, t)
+		nodeList[i] = nid
 		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
 		}
+		nodeState := testState.GetNodeMap().GetNode(nid)
+		nodeStateList[i] = nodeState
+
 	}
 
 	initialTopology := connect.NewCircuit(nodeList)
@@ -151,20 +191,37 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 	}
 
 	roundID := NewRoundID(0)
-	updateID := NewUpdateID(1)
 
-	err = createRound(testParams, testPool, roundID, updateID, testState)
+	testProtoRound, err := createRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
 		t.Errorf("Happy path of createRound failed: %v", err)
 	}
 
-	// Get the topology after ordering
-	resultingTopology := testState.GetRoundMap().GetRound(0).GetTopology()
 
 	// Check that shuffling has actually occurred
 	// This has a chance to fail even when successful, however that chance is 1 in ~3.6 million
-	if reflect.DeepEqual(initialTopology, resultingTopology) {
+	if reflect.DeepEqual(initialTopology, testProtoRound.topology) {
 		t.Errorf("Highly unlikely initial topology identical to resulting after shuffling. " +
 			"Possile shuffling is broken")
 	}
+
+	if testProtoRound.ID != roundID.Get() {
+		t.Errorf("ProtoRound's id returned unexpected value!" +
+			"\n\tExpected: %d" +
+			"\n\tReceived: %d", roundID.Get(), testProtoRound.ID)
+	}
+
+	if testParams.BatchSize != testProtoRound.batchSize {
+		t.Errorf("ProtoRound's batchsize returned unexpected value!" +
+			"\n\tExpected: %v" +
+			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.batchSize)
+
+	}
+	if !reflect.DeepEqual(testProtoRound.nodeStateList, nodeStateList) {
+		t.Errorf("ProtoRound's nodeStateList returned unexpected value!" +
+			"\n\tExpected: %v" +
+			"\n\tReceived: %v", nodeStateList, testProtoRound.nodeStateList)
+
+	}
+
 }
