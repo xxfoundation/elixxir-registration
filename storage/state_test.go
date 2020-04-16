@@ -21,6 +21,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/round"
 	mrand "math/rand"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -462,12 +463,14 @@ func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
 
 	go func() {
 		err = state.NodeUpdateNotification(testNun.Node, testNun.From, testNun.To)
-		if err != expectedError {
+		if strings.Compare(err.Error(), expectedError.Error()) != 0 {
 			t.Errorf("NodeUpdateNotification() did not produce an error "+
 				"when the channel buffer is full.\n\texpected: %v\n\treceived: %v",
 				expectedError, err)
 		}
 	}()
+
+	time.Sleep(1*time.Second)
 }
 
 // generateTestNetworkState returns a newly generated NetworkState and private
