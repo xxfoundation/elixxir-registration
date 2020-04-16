@@ -103,7 +103,7 @@ type User struct {
 // Initialize the Database interface with database backend
 func NewDatabase(username, password, database, address string) Storage {
 	// Create the database connection
-	/*db := pg.Connect(&pg.Options{
+	db := pg.Connect(&pg.Options{
 		User:         username,
 		Password:     password,
 		Database:     database,
@@ -114,7 +114,7 @@ func NewDatabase(username, password, database, address string) Storage {
 
 	// Initialize the schema
 	err := createSchema(db)
-	if err != nil {*/
+	if err != nil {
 		// Return the map-backend interface
 		// in the event there is a database error
 		//jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
@@ -127,7 +127,7 @@ func NewDatabase(username, password, database, address string) Storage {
 			nodeRegistration: nodeRegistration(&MapImpl{
 				node: make(map[string]*NodeInformation),
 			})}
-	/*}
+	}
 
 	regCodeDb := &DatabaseImpl{
 		db: db,
@@ -141,7 +141,7 @@ func NewDatabase(username, password, database, address string) Storage {
 		clientRegistration: regCodeDb,
 		nodeRegistration:   nodeMap,
 	}
-*/
+
 }
 
 // Create the database schema
