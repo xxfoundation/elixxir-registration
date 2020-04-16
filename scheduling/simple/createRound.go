@@ -13,7 +13,6 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
-	"time"
 )
 
 // createRound.go contains the logic to construct a team for a round and
@@ -25,7 +24,6 @@ func createRound(params Params, pool *waitingPoll, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
 	//get the nodes for the team
 	nodes := pool.Clear()
-	params.LastRound = time.Now()
 
 	var newRound protoRound
 

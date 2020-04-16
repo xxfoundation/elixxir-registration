@@ -24,7 +24,6 @@ type Params struct {
 	BatchSize      uint32
 	RandomOrdering bool
 	MinimumDelay   time.Duration
-	LastRound      time.Time
 }
 
 type protoRound struct {
