@@ -61,7 +61,6 @@ func TestScheduler(t *testing.T) {
 		if err != nil {
 			t.Errorf("Failed to add node %d to map: %v", i, err)
 		}
-		fmt.Printf("added %v to nodeMap\n", nid)
 
 	}
 

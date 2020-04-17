@@ -1,7 +1,6 @@
 package simple
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
@@ -46,8 +45,6 @@ func startRound(round protoRound, state *storage.NetworkState, errChan chan<- er
 		errChan <- err
 		return err
 	}
-
-	fmt.Println("start round completed round creation")
 
 	return nil
 }

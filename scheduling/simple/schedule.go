@@ -97,7 +97,6 @@ func scheduler(params Params, state *storage.NetworkState) error {
 				return err
 			}
 
-			fmt.Println("sending to start round")
 			//send the round to the new round channel to be created
 			newRoundChan <- newRound
 		}

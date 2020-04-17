@@ -6,7 +6,6 @@
 package simple
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/crypto/shuffle"
@@ -45,7 +44,6 @@ func createRound(params Params, pool *waitingPoll, roundID id.Round,
 		// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
 		shuffle.Shuffle(&randomIndex)
 		for i, nid := range nodes {
-			fmt.Println(nid)
 			n := nodeMap.GetNode(nid)
 			nodeStateList[i] = n
 			// Use the shuffled array as an indexing order for
