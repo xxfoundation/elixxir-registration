@@ -11,7 +11,6 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"time"
@@ -60,7 +59,7 @@ func scheduler(params Params, state *storage.NetworkState) error {
 		var err error
 		for newRound := range newRoundChan {
 			// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
-			if timeDiff := time.Now().Sub(lastRound); timeDiff < params.MinimumDelay {
+			if timeDiff := time.Now().Sub(lastRound); timeDiff < params.MinimumDelay*time.Millisecond {
 				time.Sleep(timeDiff)
 			}
 			lastRound = time.Now()
@@ -104,44 +103,4 @@ func scheduler(params Params, state *storage.NetworkState) error {
 	}
 
 	return errors.New("single scheduler should never exit")
-}
-
-func startRound(round protoRound, state *storage.NetworkState, errChan chan<- error) error {
-
-	//create the round
-	r, err := state.GetRoundMap().AddRound(round.ID, round.batchSize, round.topology)
-	if err != nil {
-		err = errors.WithMessagef(err, "Failed to create new round %v", round.ID)
-		errChan <- err
-		return err
-	}
-
-	//move the round to precomputing
-	err = r.Update(states.PRECOMPUTING, time.Now())
-	if err != nil {
-		err = errors.WithMessagef(err, "Could not move new round into %s", states.PRECOMPUTING)
-		errChan <- err
-		return err
-	}
-
-	//tag all nodes to the round
-	for _, n := range round.nodeStateList {
-		err := n.SetRound(r)
-		if err != nil {
-			err = errors.WithMessagef(err, "could not add round %v to node %s", r.GetRoundID(), n.GetID())
-			errChan <- err
-			return err
-		}
-	}
-
-	//issue the update
-	err = state.AddRoundUpdate(r.BuildRoundInfo())
-	if err != nil {
-		err = errors.WithMessagef(err, "Could not issue "+
-			"update to create round %v", r.GetRoundID())
-		errChan <- err
-		return err
-	}
-
-	return nil
 }
