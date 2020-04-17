@@ -14,6 +14,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage/node"
 	"sync"
+	"time"
 )
 
 // Struct implementing the Database Interface with an underlying DB
@@ -37,7 +38,7 @@ type nodeRegistration interface {
 	InsertNode(id []byte, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
 	// Insert Node registration code into the database
-	InsertNodeRegCode(regcode, order string) error
+	InsertNodeRegCode(regCode, order string) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*NodeInformation, error)
 }
@@ -89,6 +90,8 @@ type NodeInformation struct {
 	NodeCertificate string
 	// Gateway TLS public certificate in PEM string format
 	GatewayCertificate string
+	// Date/time that the node was registered
+	DateRegistered time.Time
 }
 
 // Struct representing the User table in the database
@@ -132,21 +135,21 @@ func NewDatabase(username, password, database, address string) Storage {
 	regCodeDb := &DatabaseImpl{
 		db: db,
 	}
-	nodeMap := nodeRegistration(&MapImpl{
-		node: make(map[string]*NodeInformation),
+	nodeDb := nodeRegistration(&DatabaseImpl{
+		db: db,
 	})
 
 	jww.INFO.Println("Database backend initialized successfully!")
 	return Storage{
 		clientRegistration: regCodeDb,
-		nodeRegistration:   nodeMap,
+		nodeRegistration:   nodeDb,
 	}
 
 }
 
 // Create the database schema
 func createSchema(db *pg.DB) error {
-	for _, model := range []interface{}{&RegistrationCode{}, &User{}} {
+	for _, model := range []interface{}{&RegistrationCode{}, &User{}, &NodeInformation{}} {
 		err := db.CreateTable(model, &orm.CreateTableOptions{
 			// Ignore create table if already exists?
 			IfNotExists: true,

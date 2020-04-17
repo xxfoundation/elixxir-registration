@@ -4,7 +4,7 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles the database ORM for registration codes
+// Handles the database ORM for clients
 
 package storage
 
