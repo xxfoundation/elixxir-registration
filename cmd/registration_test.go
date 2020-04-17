@@ -105,7 +105,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	impl.nodeCompleted = make(chan string, 1)
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
-	err = storage.PermissioningDb.InsertNodeRegCode(node.Info{RegCode: "AAAA"})
+	err = storage.PermissioningDb.InsertNodeRegCode("AAAA", "")
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
