@@ -11,7 +11,6 @@ package storage
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/registration/storage/node"
 )
 
 // If Node registration code is valid, add Node information
@@ -34,20 +33,20 @@ func (m *MapImpl) InsertNode(id []byte, code, serverCert, serverAddress,
 }
 
 // Insert Node registration code into the database
-func (m *MapImpl) InsertNodeRegCode(info node.Info) error {
+func (m *MapImpl) InsertNodeRegCode(regcode, order string) error {
 	m.mut.Lock()
 	jww.INFO.Printf("Adding node registration code: %s with Order Info: %s",
-		info.RegCode, info.Order)
+		regcode, order)
 
 	// Enforce unique registration code
-	if m.node[info.RegCode] != nil {
+	if m.node[regcode] != nil {
 		m.mut.Unlock()
 		return errors.Errorf("node registration code %s already exists",
-			info.RegCode)
+			regcode)
 	}
 
-	m.node[info.RegCode] =
-		&NodeInformation{Code: info.RegCode, Order: info.Order}
+	m.node[regcode] =
+		&NodeInformation{Code: regcode, Order: order}
 	m.mut.Unlock()
 	return nil
 }
