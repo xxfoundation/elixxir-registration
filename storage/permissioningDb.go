@@ -24,7 +24,7 @@ func (m *DatabaseImpl) InsertNode(id []byte, code, serverAddr, serverCert,
 		GatewayCertificate: gatewayCert,
 		DateRegistered:     time.Now(),
 	}
-	return m.db.Insert(&newNode)
+	return m.db.Update(&newNode)
 }
 
 // Insert Node registration code into the database
