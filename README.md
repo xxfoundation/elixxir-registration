@@ -10,6 +10,9 @@ cMix
 # Permissioning Server Configuration
 # ==================================
 
+# Log message level
+logLevel: 1
+
 # Verbose logging
 verbose: "true"
 # Path to log file

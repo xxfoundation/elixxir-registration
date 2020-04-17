@@ -3,6 +3,7 @@ package node
 import (
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/current"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/transition"
 	"sync"
@@ -27,6 +28,9 @@ type State struct {
 
 	//holds valid state transitions
 	stateMap *[][]bool
+
+	//id of the node
+	id *id.Node
 }
 
 // updates to the passed in activity if it is different from the known activity
@@ -106,6 +110,11 @@ func (n *State) GetLastPoll() time.Time {
 // gets the ordering string for use in team formation
 func (n *State) GetOrdering() string {
 	return n.ordering
+}
+
+// gets the ID of the node
+func (n *State) GetID() *id.Node {
+	return n.id
 }
 
 // returns true and the round id if the node is assigned to a round,

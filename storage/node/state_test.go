@@ -2,6 +2,7 @@ package node
 
 import (
 	"gitlab.com/elixxir/primitives/current"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
 	"math"
@@ -333,9 +334,9 @@ func TestNodeState_GetCurrentRound_Set(t *testing.T) {
 		t.Errorf("No round is set when one should be")
 	}
 
-	if *rnd.GetRoundID() != *r.GetRoundID() {
+	if rnd.GetRoundID() != r.GetRoundID() {
 		t.Errorf("Returned round is not correct: "+
-			"Expected: %v, Recieved: %v", *r.GetRoundID(), *rnd.GetRoundID())
+			"Expected: %v, Recieved: %v", r.GetRoundID(), rnd.GetRoundID())
 	}
 }
 
@@ -411,5 +412,20 @@ func TestNodeState_SetRound_Invalid(t *testing.T) {
 	if ns.currentRound.GetRoundID() != 69 {
 		t.Errorf("Round not updated to the correct value; "+
 			"Expected: %v, Recieved: %v", 69, ns.currentRound.GetRoundID())
+	}
+}
+
+// tests that teh returned ID is correct
+func TestNodeState_GetID(t *testing.T) {
+	testID := id.NewNodeFromUInt(50, t)
+	ns := State{
+		id: testID,
+	}
+
+	retrievedID := ns.GetID()
+
+	if !testID.Cmp(retrievedID) {
+		t.Errorf("Recieved incorrect id from GetID, "+
+			"Expected: %s, Recieved: %s", testID, retrievedID)
 	}
 }

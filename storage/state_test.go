@@ -21,6 +21,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/round"
 	mrand "math/rand"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -222,8 +223,10 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
+	state.roundUpdateID = 1
+
 	// Call AddRoundUpdate()
-	err = state.AddRoundUpdate(testUpdateID, testRoundInfo)
+	err = state.AddRoundUpdate(testRoundInfo)
 	if err != nil {
 		t.Errorf("AddRoundUpdate() unexpectedly produced an error:\n%+v",
 			err)
@@ -256,7 +259,6 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 // Tests that AddRoundUpdate() returns an error.
 func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
 	// Expected Values
-	testUpdateID := uint64(1)
 	testRoundInfo := &pb.RoundInfo{
 		ID:       0,
 		UpdateID: 5,
@@ -279,7 +281,7 @@ func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
 	state.privateKey = brokenPrivateKey
 
 	// Call AddRoundUpdate()
-	err = state.AddRoundUpdate(testUpdateID, testRoundInfo)
+	err = state.AddRoundUpdate(testRoundInfo)
 
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("AddRoundUpdate() did not produce an error when expected."+
@@ -461,12 +463,14 @@ func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
 
 	go func() {
 		err = state.NodeUpdateNotification(testNun.Node, testNun.From, testNun.To)
-		if err != expectedError {
+		if strings.Compare(err.Error(), expectedError.Error()) != 0 {
 			t.Errorf("NodeUpdateNotification() did not produce an error "+
 				"when the channel buffer is full.\n\texpected: %v\n\treceived: %v",
 				expectedError, err)
 		}
 	}()
+
+	time.Sleep(1 * time.Second)
 }
 
 // generateTestNetworkState returns a newly generated NetworkState and private

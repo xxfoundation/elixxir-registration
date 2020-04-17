@@ -37,7 +37,7 @@ type nodeRegistration interface {
 	InsertNode(id []byte, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
 	// Insert Node registration code into the database
-	InsertNodeRegCode(info node.Info) error
+	InsertNodeRegCode(regcode, order string) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*NodeInformation, error)
 }
@@ -182,7 +182,7 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 // Adds Node registration codes to the database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
 	for _, info := range infos {
-		err := PermissioningDb.InsertNodeRegCode(info)
+		err := PermissioningDb.InsertNodeRegCode(info.RegCode, info.Order)
 		if err != nil {
 			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
 				err)

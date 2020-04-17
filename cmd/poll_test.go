@@ -12,13 +12,16 @@ import (
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/current"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 // TestFunc: Gets permissioning server test key
@@ -31,6 +34,7 @@ func getTestKey() *rsa.PrivateKey {
 
 // Happy path
 func TestRegistrationImpl_Poll(t *testing.T) {
+	testID := id.NewNodeFromUInt(0, t)
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
@@ -40,7 +44,6 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	}
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
-	impl.State.privateKey = getTestKey()
 	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
@@ -48,18 +51,8 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		},
 	})
 
-	go impl.StateControl()
-	if err != nil {
-		t.Errorf("Unable to update ndf: %+v", err)
-		return
-	}
-	err = impl.newRound([]string{testString}, 1)
-	if err != nil {
-		t.Errorf("Unexpected error creating round: %+v", err)
-	}
-
 	// Make a simple auth object that will pass the checks
-	testHost, _ := connect.NewHost(testString, testString,
+	testHost, _ := connect.NewHost(testID.String(), testString,
 		make([]byte, 0), false, true)
 	testAuth := &connect.Auth{
 		IsAuthenticated: true,
@@ -74,6 +67,22 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		LastUpdate: 0,
 		Activity:   uint32(current.WAITING),
 		Error:      nil,
+	}
+
+	err = impl.State.AddRoundUpdate(
+		&pb.RoundInfo{
+			ID:    1,
+			State: uint32(states.PRECOMPUTING),
+		})
+
+	if err != nil {
+		t.Errorf("Could not add round update: %s", err)
+	}
+
+	err = impl.State.GetNodeMap().AddNode(testID, "")
+
+	if err != nil {
+		t.Errorf("Could nto add node: %s", err)
 	}
 
 	response, err := impl.Poll(testMsg, testAuth)
@@ -93,9 +102,22 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 
 // Error path: Ndf not ready
 func TestRegistrationImpl_PollNoNdf(t *testing.T) {
+
+	// Read in private key
+	key, err := utils.ReadFile(testkeys.GetCAKeyPath())
+	if err != nil {
+		t.Errorf("failed to read key at %+v: %+v",
+			testkeys.GetCAKeyPath(), err)
+	}
+
+	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	if err != nil {
+		t.Errorf("Failed to parse permissioning server key: %+v. "+
+			"PermissioningKey is %+v", err, pk)
+	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState()
+	state, err := storage.NewState(pk)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -116,7 +138,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
-	state, err := storage.NewState()
+	state, err := storage.NewState(getTestKey())
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -124,7 +146,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 		State:    state,
 		NdfReady: &ndfReady,
 	}
-	impl.State.privateKey = getTestKey()
+
 	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
@@ -148,14 +170,17 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 //Happy path
 func TestRegistrationImpl_PollNdf(t *testing.T) {
+
 	//Create database
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
 	//Create reg codes and populate the database
-	strings := make([]string, 0)
-	strings = append(strings, "BBBB", "CCCC", "DDDD")
-	storage.PopulateNodeRegistrationCodes(strings)
-	RegistrationCodes = strings
+	infos := make([]node.Info, 0)
+	infos = append(infos, node.Info{RegCode: "BBBB"},
+		node.Info{RegCode: "CCCC"},
+		node.Info{RegCode: "DDDD"})
+	storage.PopulateNodeRegistrationCodes(infos)
+
 	RegParams = testParams
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
 	RegParams.udbId = udbId
@@ -166,6 +191,14 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
+
+	beginScheduling := make(chan struct{}, 1)
+	go func() {
+		err = impl.nodeRegistrationCompleter(beginScheduling)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+	}()
 
 	//Register 1st node
 	err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
@@ -188,9 +221,12 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
-	err = impl.nodeRegistrationCompleter()
-	if err != nil {
-		t.Errorf(err.Error())
+	//wait for registration to complete
+	select {
+	case <-time.NewTimer(100 * time.Millisecond).C:
+		t.Errorf("Node registration never completed")
+		t.FailNow()
+	case <-beginScheduling:
 	}
 
 	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
@@ -231,10 +267,11 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 
 	//Create reg codes and populate the database
-	strings := make([]string, 0)
-	strings = append(strings, "BBBB", "CCCC")
-	storage.PopulateNodeRegistrationCodes(strings)
-	RegistrationCodes = strings
+	infos := make([]node.Info, 0)
+	infos = append(infos, node.Info{RegCode: "BBBB"},
+		node.Info{RegCode: "CCCC"},
+		node.Info{RegCode: "DDDD"})
+	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 	//Setup udb configurations
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
@@ -246,7 +283,10 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	go impl.nodeRegistrationCompleter()
+
+	beginScheduling := make(chan struct{}, 1)
+
+	go impl.nodeRegistrationCompleter(beginScheduling)
 
 	//Register 1st node
 	err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),

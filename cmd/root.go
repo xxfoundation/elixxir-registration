@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/utils"
-	"gitlab.com/elixxir/registration/schedueling/simple"
+	"gitlab.com/elixxir/registration/scheduling/simple"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"os"
@@ -119,7 +119,7 @@ var rootCmd = &cobra.Command{
 		SchedulingConfigPath := viper.GetString("schedulingConfigPath")
 		SchedulingConfig, err := utils.ReadFile(SchedulingConfigPath)
 		if err != nil {
-			jww.FATAL.Panic("Could not load Scheduling Config file: %v", err)
+			jww.FATAL.Panicf("Could not load Scheduling Config file: %v", err)
 		}
 
 		// Populate params

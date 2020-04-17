@@ -9,7 +9,7 @@
 package cmd
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -57,8 +57,16 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		auth.Sender.GetId(), msg)
 
 	//get the nodeState and update
-	nid := id.NewNodeFromBytes([]byte(auth.Sender.GetId()))
+	nid, err := id.NewNodeFromString(auth.Sender.GetId())
+	if err != nil {
+		err = errors.Errorf("could not decode node id of %s: %s", auth.Sender.GetId(), err)
+		return
+	}
 	n := m.State.GetNodeMap().GetNode(nid)
+	if n == nil {
+		err = errors.Errorf("node %s could not be found in internal state tracker", nid)
+		return
+	}
 
 	update, oldActivity, err := n.Update(current.Activity(msg.Activity))
 

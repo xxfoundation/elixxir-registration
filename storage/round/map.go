@@ -2,9 +2,11 @@ package round
 
 import (
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/primitives/id"
 	"sync"
+	"testing"
 	"time"
 )
 
@@ -41,4 +43,13 @@ func (rsm *StateMap) GetRound(id id.Round) *State {
 	rsm.mux.RLock()
 	rsm.mux.RUnlock()
 	return rsm.rounds[id]
+}
+
+func (rsm *StateMap) AddRound_Testing(state *State, t *testing.T) {
+	if t == nil {
+		jww.FATAL.Panic("Only for testing")
+	}
+
+	rsm.rounds[state.GetRoundID()] = state
+
 }
