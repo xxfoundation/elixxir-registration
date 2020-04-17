@@ -1,3 +1,8 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright © 2020 Privategrity Corporation                                   /
+//                                                                             /
+// All rights reserved.                                                        /
+////////////////////////////////////////////////////////////////////////////////
 package simple
 
 import (
@@ -21,11 +26,11 @@ func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waiting
 
 	switch update.To {
 	case current.NOT_STARTED:
-		//do nothing
+		// Do nothing
 	case current.WAITING:
 
-		// clear the round if node has one (it should unless it is
-		// comming from NOT_STARTED
+		// Clear the round if node has one (it should unless it is
+		// coming from NOT_STARTED
 		if hasRound {
 			n.ClearRound()
 		}
@@ -34,7 +39,7 @@ func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waiting
 			return errors.WithMessage(err, "Waiting pool should never fill")
 		}
 	case current.PRECOMPUTING:
-		//do nothing
+		// Do nothing
 	case current.STANDBY:
 
 		if !hasRound {
@@ -58,13 +63,15 @@ func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waiting
 			}
 		}
 	case current.REALTIME:
-		//do nothing
+		// Do nothing
 	case current.COMPLETED:
 
 		if !hasRound {
 			return errors.Errorf("Node %s without round should "+
 				"not be in %s state", update.Node, states.COMPLETED)
 		}
+
+		n.ClearRound()
 
 		stateComplete := r.NodeIsReadyForTransition()
 		if stateComplete {

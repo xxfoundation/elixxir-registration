@@ -1,3 +1,8 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright © 2020 Privategrity Corporation                                   /
+//                                                                             /
+// All rights reserved.                                                        /
+////////////////////////////////////////////////////////////////////////////////
 package simple
 
 import (
@@ -27,6 +32,15 @@ func startRound(round protoRound, state *storage.NetworkState, errChan chan<- er
 		return err
 	}
 
+	// Issue the update to the network state
+	err = state.AddRoundUpdate(r.BuildRoundInfo())
+	if err != nil {
+		err = errors.WithMessagef(err, "Could not issue "+
+			"update to create round %v", r.GetRoundID())
+		errChan <- err
+		return err
+	}
+
 	// Tag all nodes to the round
 	for _, n := range round.nodeStateList {
 		err := n.SetRound(r)
@@ -35,15 +49,6 @@ func startRound(round protoRound, state *storage.NetworkState, errChan chan<- er
 			errChan <- err
 			return err
 		}
-	}
-
-	// Issue the update to the network state
-	err = state.AddRoundUpdate(r.BuildRoundInfo())
-	if err != nil {
-		err = errors.WithMessagef(err, "Could not issue "+
-			"update to create round %v", r.GetRoundID())
-		errChan <- err
-		return err
 	}
 
 	return nil
