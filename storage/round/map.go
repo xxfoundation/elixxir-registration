@@ -45,12 +45,11 @@ func (rsm *StateMap) GetRound(id id.Round) *State {
 	return rsm.rounds[id]
 }
 
-func (rsm *StateMap) AddRound_Testing(state *State, t *testing.T)  {
+func (rsm *StateMap) AddRound_Testing(state *State, t *testing.T) {
 	if t == nil {
 		jww.FATAL.Panic("Only for testing")
 	}
 
 	rsm.rounds[state.GetRoundID()] = state
-
 
 }

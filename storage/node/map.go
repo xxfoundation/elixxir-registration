@@ -36,7 +36,7 @@ func (nsm *StateMap) AddNode(id *id.Node, ordering string) error {
 			currentRound: nil,
 			lastPoll:     time.Now(),
 			ordering:     ordering,
-			id:			 id,
+			id:           id,
 		}
 
 	return nil

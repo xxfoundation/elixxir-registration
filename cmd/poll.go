@@ -58,12 +58,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 
 	//get the nodeState and update
 	nid, err := id.NewNodeFromString(auth.Sender.GetId())
-	if err!=nil{
+	if err != nil {
 		err = errors.Errorf("could not decode node id of %s: %s", auth.Sender.GetId(), err)
 		return
 	}
 	n := m.State.GetNodeMap().GetNode(nid)
-	if n==nil{
+	if n == nil {
 		err = errors.Errorf("node %s could not be found in internal state tracker", nid)
 		return
 	}

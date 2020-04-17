@@ -66,12 +66,6 @@ func TestCreateRound_NonRandom(t *testing.T) {
 		t.Errorf("Happy path of createRound failed: %v", err)
 	}
 
-	// todo: move this to start round testing
-	//if testState.GetRoundMap().GetRound(0).GetRoundState() != states.PRECOMPUTING {
-	//	t.Errorf("In unexpected state after round creation: %v",
-	//		testState.GetRoundMap().GetRound(0).GetRoundState())
-	//}
-
 	if testProtoRound.ID != roundID.Get() {
 		t.Errorf("ProtoRound's id returned unexpected value!"+
 			"\n\tExpected: %d"+

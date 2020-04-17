@@ -105,7 +105,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	impl.nodeCompleted = make(chan string, 1)
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
-	err = storage.PermissioningDb.InsertNodeRegCode(node.Info{RegCode:"AAAA"})
+	err = storage.PermissioningDb.InsertNodeRegCode(node.Info{RegCode: "AAAA"})
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
@@ -155,7 +155,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode:"BBBB"})
+	infos = append(infos, node.Info{RegCode: "BBBB"})
 
 	storage.PopulateNodeRegistrationCodes(infos)
 	localParams := testParams
@@ -176,15 +176,15 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 	beginScheduling := make(chan struct{}, 1)
 
-	go func(){
+	go func() {
 		err = impl.nodeRegistrationCompleter(beginScheduling)
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
 	}()
 
-	select{
-	case <-time.NewTimer(50*time.Millisecond).C:
+	select {
+	case <-time.NewTimer(50 * time.Millisecond).C:
 		t.Errorf("Registration failed to complete")
 		t.FailNow()
 	case <-beginScheduling:
@@ -201,7 +201,7 @@ func TestDoubleRegistration(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode:"AAAA"}, node.Info{RegCode:"BBBB"}, node.Info{RegCode:"CCCC"})
+	infos = append(infos, node.Info{RegCode: "AAAA"}, node.Info{RegCode: "BBBB"}, node.Info{RegCode: "CCCC"})
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 
@@ -243,7 +243,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode:"AAAA"}, node.Info{RegCode:"BBBB"}, node.Info{RegCode:"CCCC"})
+	infos = append(infos, node.Info{RegCode: "AAAA"}, node.Info{RegCode: "BBBB"}, node.Info{RegCode: "CCCC"})
 	storage.PopulateNodeRegistrationCodes(infos)
 
 	localParams := testParams
@@ -273,15 +273,15 @@ func TestTopology_MultiNodes(t *testing.T) {
 	}
 	beginScheduling := make(chan struct{}, 1)
 
-	go func(){
+	go func() {
 		err = impl.nodeRegistrationCompleter(beginScheduling)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
 	}()
 
-	select{
-	case <-time.NewTimer(50*time.Millisecond).C:
+	select {
+	case <-time.NewTimer(50 * time.Millisecond).C:
 		t.Errorf("Registration failed to complete")
 		t.FailNow()
 	case <-beginScheduling:

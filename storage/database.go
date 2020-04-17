@@ -117,7 +117,7 @@ func NewDatabase(username, password, database, address string) Storage {
 	if err != nil {
 		// Return the map-backend interface
 		// in the event there is a database error
-		//jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
+		jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
 		jww.INFO.Println("Map backend initialized successfully!")
 		return Storage{
 			clientRegistration: clientRegistration(&MapImpl{

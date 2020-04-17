@@ -415,18 +415,17 @@ func TestNodeState_SetRound_Invalid(t *testing.T) {
 	}
 }
 
-
 // tests that teh returned ID is correct
 func TestNodeState_GetID(t *testing.T) {
-	testID:= id.NewNodeFromUInt(50, t)
+	testID := id.NewNodeFromUInt(50, t)
 	ns := State{
 		id: testID,
 	}
 
-	retrievedID:= ns.GetID()
+	retrievedID := ns.GetID()
 
-	if !testID.Cmp(retrievedID){
-		t.Errorf("Recieved incorrect id from GetID, " +
+	if !testID.Cmp(retrievedID) {
+		t.Errorf("Recieved incorrect id from GetID, "+
 			"Expected: %s, Recieved: %s", testID, retrievedID)
 	}
 }

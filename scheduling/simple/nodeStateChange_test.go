@@ -332,10 +332,6 @@ func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
 		position: int(testParams.TeamSize),
 	}
 
-	// Explicitly don't give node a round to reach an error state
-	//roundState := round.NewState_Testing(roundID.Get(), 0, t)
-	//_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
-
 	// Iterate through all the nodes so that all the nodes are ready for transition
 	for i := range nodeList {
 		testUpdate := &storage.NodeUpdateNotification{

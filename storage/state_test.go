@@ -470,7 +470,7 @@ func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
 		}
 	}()
 
-	time.Sleep(1*time.Second)
+	time.Sleep(1 * time.Second)
 }
 
 // generateTestNetworkState returns a newly generated NetworkState and private

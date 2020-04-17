@@ -71,17 +71,17 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
-			ID: 1,
+			ID:    1,
 			State: uint32(states.PRECOMPUTING),
 		})
 
-	if err!=nil{
+	if err != nil {
 		t.Errorf("Could not add round update: %s", err)
 	}
 
 	err = impl.State.GetNodeMap().AddNode(testID, "")
 
-	if err!=nil{
+	if err != nil {
 		t.Errorf("Could nto add node: %s", err)
 	}
 
@@ -176,9 +176,9 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode:"BBBB"},
-		node.Info{RegCode:"CCCC"},
-		node.Info{RegCode:"DDDD"})
+	infos = append(infos, node.Info{RegCode: "BBBB"},
+		node.Info{RegCode: "CCCC"},
+		node.Info{RegCode: "DDDD"})
 	storage.PopulateNodeRegistrationCodes(infos)
 
 	RegParams = testParams
@@ -193,7 +193,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	}
 
 	beginScheduling := make(chan struct{}, 1)
-	go func(){
+	go func() {
 		err = impl.nodeRegistrationCompleter(beginScheduling)
 		if err != nil {
 			t.Errorf(err.Error())
@@ -222,8 +222,8 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	}
 
 	//wait for registration to complete
-	select{
-	case <-time.NewTimer(100*time.Millisecond).C:
+	select {
+	case <-time.NewTimer(100 * time.Millisecond).C:
 		t.Errorf("Node registration never completed")
 		t.FailNow()
 	case <-beginScheduling:
@@ -268,9 +268,9 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode:"BBBB"},
-		node.Info{RegCode:"CCCC"},
-		node.Info{RegCode:"DDDD"})
+	infos = append(infos, node.Info{RegCode: "BBBB"},
+		node.Info{RegCode: "CCCC"},
+		node.Info{RegCode: "DDDD"})
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 	//Setup udb configurations

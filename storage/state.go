@@ -32,12 +32,12 @@ type NetworkState struct {
 	privateKey *rsa.PrivateKey
 
 	// Round state
-	rounds       *round.StateMap
-	roundUpdates *dataStructures.Updates
-	roundUpdateID uint64
+	rounds          *round.StateMap
+	roundUpdates    *dataStructures.Updates
+	roundUpdateID   uint64
 	roundUpdateLock sync.Mutex
-	roundData    *dataStructures.Data
-	update       chan *NodeUpdateNotification // For triggering updates to top level
+	roundData       *dataStructures.Data
+	update          chan *NodeUpdateNotification // For triggering updates to top level
 
 	// Node NetworkState
 	nodes *node.StateMap
@@ -67,13 +67,13 @@ func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 	}
 
 	state := &NetworkState{
-		rounds:       round.NewStateMap(),
-		roundUpdates: dataStructures.NewUpdates(),
-		update:       make(chan *NodeUpdateNotification, updateBufferLength),
-		nodes:        node.NewStateMap(),
-		fullNdf:      fullNdf,
-		partialNdf:   partialNdf,
-		privateKey:   pk,
+		rounds:        round.NewStateMap(),
+		roundUpdates:  dataStructures.NewUpdates(),
+		update:        make(chan *NodeUpdateNotification, updateBufferLength),
+		nodes:         node.NewStateMap(),
+		fullNdf:       fullNdf,
+		partialNdf:    partialNdf,
+		privateKey:    pk,
 		roundUpdateID: 0,
 	}
 
