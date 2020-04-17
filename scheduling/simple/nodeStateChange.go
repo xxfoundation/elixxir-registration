@@ -1,6 +1,7 @@
 package simple
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
@@ -29,7 +30,7 @@ func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waiting
 		if hasRound {
 			n.ClearRound()
 		}
-
+		fmt.Println("adding node ", update.Node, " to pool")
 		err := pool.Add(update.Node)
 		if err != nil {
 			return errors.WithMessage(err, "Waiting pool should never fill")

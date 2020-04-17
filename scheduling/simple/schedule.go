@@ -7,6 +7,7 @@ package simple
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
@@ -81,7 +82,6 @@ func scheduler(params Params, state *storage.NetworkState) error {
 		case err := <-errorChan:
 			return err
 		case update = <-state.GetNodeUpdateChannel():
-
 		}
 
 		//handle the node's state change
@@ -96,6 +96,8 @@ func scheduler(params Params, state *storage.NetworkState) error {
 			if err != nil {
 				return err
 			}
+
+			fmt.Println("sending to start round")
 			//send the round to the new round channel to be created
 			newRoundChan <- newRound
 		}
