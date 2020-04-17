@@ -2,7 +2,6 @@ package simple
 
 import (
 	"encoding/json"
-	"fmt"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"

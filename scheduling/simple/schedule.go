@@ -7,7 +7,6 @@ package simple
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
