@@ -12,6 +12,7 @@ import (
 	"github.com/go-pg/pg"
 	"github.com/go-pg/pg/orm"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/registration/storage/node"
 	"sync"
 )
 
@@ -36,9 +37,7 @@ type nodeRegistration interface {
 	InsertNode(id []byte, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
 	// Insert Node registration code into the database
-	InsertNodeRegCode(code string) error
-	// Count the number of Nodes currently registered
-	CountRegisteredNodes() (int, error)
+	InsertNodeRegCode(regcode, order string) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*NodeInformation, error)
 }
@@ -78,6 +77,8 @@ type NodeInformation struct {
 
 	// Registration code acts as the primary key
 	Code string `sql:",pk"`
+	// Node order string, this is a tag used by the algorithem
+	Order string
 	// Node ID
 	Id []byte
 	// Server IP address
@@ -179,9 +180,9 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 }
 
 // Adds Node registration codes to the database
-func PopulateNodeRegistrationCodes(codes []string) {
-	for _, code := range codes {
-		err := PermissioningDb.InsertNodeRegCode(code)
+func PopulateNodeRegistrationCodes(infos []node.Info) {
+	for _, info := range infos {
+		err := PermissioningDb.InsertNodeRegCode(info.RegCode, info.Order)
 		if err != nil {
 			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
 				err)

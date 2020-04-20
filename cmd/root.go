@@ -17,7 +17,10 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/primitives/utils"
+	"gitlab.com/elixxir/registration/scheduling/simple"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"os"
 	"path"
 	"strconv"
@@ -29,7 +32,6 @@ var (
 	cfgFile              string
 	verbose              bool
 	noTLS                bool
-	RegistrationCodes    []string
 	RegParams            Params
 	ClientRegCodes       []string
 	clientVersion        string
@@ -72,7 +74,6 @@ var rootCmd = &cobra.Command{
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
 		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
-		batchSize := viper.GetUint32("batchSize")
 		ndfOutputPath := viper.GetString("ndfOutputPath")
 		setClientVersion(viper.GetString("clientVersion"))
 		ipAddr := viper.GetString("publicAddress")
@@ -100,14 +101,26 @@ var rootCmd = &cobra.Command{
 		)
 
 		// Populate Node registration codes into the database
-		RegistrationCodes = viper.GetStringSlice("registrationCodes")
-		storage.PopulateNodeRegistrationCodes(RegistrationCodes)
+		RegCodesFilePath := viper.GetString("regCodesFilePath")
+		regCodeInfos, err := node.LoadInfo(RegCodesFilePath)
+		if err != nil {
+			jww.FATAL.Panicf("Failed to load registration codes from the "+
+				"file %s: %+v", RegCodesFilePath, err)
+		}
+		storage.PopulateNodeRegistrationCodes(regCodeInfos)
 
 		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
 		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
 		udbId := make([]byte, 32)
 		udbId[len(udbId)-1] = byte(viper.GetInt("udbID"))
+
+		//load the scheduling params file as a string
+		SchedulingConfigPath := viper.GetString("schedulingConfigPath")
+		SchedulingConfig, err := utils.ReadFile(SchedulingConfigPath)
+		if err != nil {
+			jww.FATAL.Panicf("Could not load Scheduling Config file: %v", err)
+		}
 
 		// Populate params
 		RegParams = Params{
@@ -122,7 +135,6 @@ var rootCmd = &cobra.Command{
 			NsCertPath:                nsCertPath,
 			maxRegistrationAttempts:   maxRegistrationAttempts,
 			registrationCountDuration: registrationCountDuration,
-			batchSize:                 batchSize,
 			udbId:                     udbId,
 			minimumNodes:              viper.GetUint32("minimumNodes"),
 		}
@@ -135,15 +147,37 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
-		// Begin state control (loops forever)
-		go impl.StateControl()
-
 		// Begin the thread which handles the completion of node registration
-		err = impl.nodeRegistrationCompleter()
-		if err != nil {
-			jww.FATAL.Panicf("Failed to complete node registration: %+v", err)
-		}
-		jww.INFO.Printf("Node registration complete!")
+		beginScheduling := make(chan struct{})
+		go func() {
+			err = impl.nodeRegistrationCompleter(beginScheduling)
+			if err != nil {
+				jww.FATAL.Panicf("Failed to complete node registration: %+v", err)
+			}
+		}()
+
+		jww.INFO.Printf("Node registration completer has begin, waiting "+
+			"for %v nodes to register so rounds can start", RegParams.minimumNodes)
+
+		<-beginScheduling
+		jww.INFO.Printf("Minnimum number of nodes %v have registered,"+
+			"begining scheduling and round creation", RegParams.minimumNodes)
+
+		// Begin scheduling algorithm
+		go func() {
+			var err error
+			algo := viper.GetString("schedulingAlgorithm")
+			jww.INFO.Printf("Beginning %s scheduling algorithm", algo)
+			switch algo {
+			case "simple":
+				err = simple.Scheduler(SchedulingConfig, impl.State)
+			case "secure":
+				err = errors.New("secure scheduling algorithm not yet implemented")
+			default:
+				err = errors.Errorf("schedulding algorithem %s unknown", algo)
+			}
+			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
+		}()
 
 		// Block forever to prevent the program ending
 		select {}

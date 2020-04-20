@@ -10,15 +10,17 @@ cMix
 # Permissioning Server Configuration
 # ==================================
 
+# Log message level
+logLevel: 1
+
 # Verbose logging
 verbose: "true"
 # Path to log file
 logPath: "registration.log"
 # Path to the node topology permissioning info
 ndfOutputPath: "ndf.json"
-# Batch size of each round
-batchSize: 8
-# Minimum number of nodes to begin running rounds
+# Minimum number of nodes to begin running rounds. this differs from the number of members 
+# in a team because some scheduling algorithms may require multiple teams worth of nodes at minimum
 minimumNodes: 3
 
 # UDB ID
@@ -36,11 +38,9 @@ dbPassword: ""
 dbName: "cmix_server"
 dbAddress: ""
 
-# List of Node registration codes (in order of network placement)
-registrationCodes:
-  - "1"
-  - "2"
-  - "3"
+# Path to JSON file with list of Node registration codes (in order of network 
+# placement)
+RegCodesFilePath: "regCodes.json"
 
 # List of client codes to be added to the database (for testing)
 clientRegCodes:
@@ -66,5 +66,17 @@ groups:
   e2e:
     prime: "${e2e_prime}"
     generator: "${e2e_generator}"
+
+# Selection of scheduling algorithem to use. Options are:
+#   simple - Schedules multiple teams to maximize performance, does not randomly re-arrange teams, if only a single
+#            only scheduling a single team, will use numerical ordering data for AlphaNet
+#   secure - Schedules new teams randomly, has apropreate buffers to ensure unpredictability, designed for BetaNet
+schedulingAlgorithem: "single"
+
+# Path to file with config for scheduling algorithem within the user directory 
+schedulingConfigPath: "schedulingConfig.json"
+
+
+
 ```
 

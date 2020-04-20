@@ -7,68 +7,486 @@
 package storage
 
 import (
-	jww "github.com/spf13/jwalterweatherman"
+	"crypto/rand"
+	"fmt"
+	"github.com/pkg/errors"
 	pb "gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/primitives/states"
-	"os"
+	"gitlab.com/elixxir/comms/network/dataStructures"
+	"gitlab.com/elixxir/crypto/signature"
+	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/primitives/current"
+	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/ndf"
+	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/elixxir/registration/storage/round"
+	mrand "math/rand"
+	"reflect"
+	"strings"
 	"testing"
+	"time"
 )
 
-func TestMain(m *testing.M) {
-	jww.SetStdoutThreshold(jww.LevelDebug)
-
-	runFunc := func() int {
-		code := m.Run()
-		return code
+// Tests that NewState() creates a new NetworkState with all the correctly
+// initialised fields. None of the error paths of NewState() can be tested.
+func TestNewState(t *testing.T) {
+	// Set up expected values
+	expectedRounds := round.NewStateMap()
+	expectedRoundUpdates := dataStructures.NewUpdates()
+	expectedNodes := node.NewStateMap()
+	expectedFullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
+	if err != nil {
+		t.Fatalf("Failed to generate new NDF:\n%v", err)
+	}
+	expectedPartialNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
+	if err != nil {
+		t.Fatalf("Failed to generate new NDF:\n%v", err)
 	}
 
-	os.Exit(runFunc())
+	// Generate private RSA key
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("Failed to generate private key:\n%v", err)
+	}
+
+	// Generate new NetworkState
+	state, err := NewState(privateKey)
+	if err != nil {
+		t.Errorf("NewState() produced an unexpected error:\n%v", err)
+	}
+
+	// Test fields of NetworkState
+	if !reflect.DeepEqual(state.privateKey, privateKey) {
+		t.Errorf("NewState() produced a NetworkState with the wrong privateKey."+
+			"\n\texpected: %v\n\treceived: %v", privateKey, &state.privateKey)
+	}
+
+	if !reflect.DeepEqual(state.rounds, expectedRounds) {
+		t.Errorf("NewState() produced a NetworkState with the wrong rounds."+
+			"\n\texpected: %v\n\treceived: %v", expectedRounds, state.rounds)
+	}
+
+	// Can't check roundUpdates directly because it contains pointers. Instead,
+	// check that it is nto nil and the
+	if state.roundUpdates == nil {
+		t.Errorf("NewState() produced a NetworkState with a nil roundUpdates."+
+			"\n\texpected: %#v\n\treceived: %#v", expectedRoundUpdates, state.roundUpdates)
+	}
+
+	lastUpdateID := state.roundUpdates.GetLastUpdateID()
+	if lastUpdateID != 0 {
+		t.Errorf("roundUpdates has the wrong lastUpdateID"+
+			"\n\texpected: %#v\n\treceived: %#v", 0, lastUpdateID)
+	}
+
+	if !reflect.DeepEqual(state.nodes, expectedNodes) {
+		t.Errorf("NewState() produced a NetworkState with the wrong nodes."+
+			"\n\texpected: %v\n\treceived: %v", expectedNodes, state.nodes)
+	}
+
+	if !reflect.DeepEqual(state.fullNdf, expectedFullNdf) {
+		t.Errorf("NewState() produced a NetworkState with the wrong fullNdf."+
+			"\n\texpected: %v\n\treceived: %v", expectedFullNdf, state.fullNdf)
+	}
+
+	if !reflect.DeepEqual(state.partialNdf, expectedPartialNdf) {
+		t.Errorf("NewState() produced a NetworkState with the wrong partialNdf."+
+			"\n\texpected: %v\n\treceived: %v", expectedPartialNdf, state.partialNdf)
+	}
 }
 
-// Full test
-func TestState_IsRoundNode(t *testing.T) {
-	s, err := NewState()
+// Tests that NewState() produces an error when the private key size is too
+// small.
+func TestNewState_PrivateKeyError(t *testing.T) {
+	// Set up expected values
+	expectedErr := "Could not add round update 0 due to failed signature: " +
+		"Unable to sign message: crypto/rsa: key size too small for PSS " +
+		"signature"
+
+	// Generate private RSA key
+	privateKey, err := rsa.GenerateKey(rand.Reader, 128)
 	if err != nil {
-		t.Errorf("Unable to create state: %+v", err)
-	}
-	s.CurrentRound = &RoundState{
-		RoundInfo: &pb.RoundInfo{},
-	}
-	testString := "Test"
-
-	// Test false case
-	if s.IsRoundNode(testString) {
-		t.Errorf("Expected node not to be round node!")
+		t.Fatalf("Failed to generate private key:\n%v", err)
 	}
 
-	// Test true case
-	s.CurrentRound.Topology = []string{testString}
-	if !s.IsRoundNode(testString) {
-		t.Errorf("Expected node to be round node!")
+	// Generate new NetworkState
+	state, err := NewState(privateKey)
+
+	// Test NewState() output
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("NewState() did not produce an error when expected."+
+			"\n\texpected: %+v\n\treceived: %+v", expectedErr, err)
+	}
+	if state != nil {
+		t.Errorf("NewState() unexpedly produced a non-nil NetworkState when an error was produced."+
+			"\n\texpected: %+v\n\treceived: %+v", nil, state)
 	}
 }
 
-// Full test
-func TestState_GetCurrentRoundState(t *testing.T) {
-	s, err := NewState()
+// Tests that GetFullNdf() returns the correct NDF for a newly created
+// NetworkState.
+func TestNetworkState_GetFullNdf(t *testing.T) {
+	// Set up expected values
+	expectedFullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
-		t.Errorf("Unable to create state: %+v", err)
+		t.Fatalf("Failed to generate new NDF:\n%v", err)
 	}
 
-	// Test nil case
-	if s.GetCurrentRoundState() != states.COMPLETED {
-		t.Errorf("Expected nil round to return completed state! Got %+v",
-			s.GetCurrentRoundState())
+	// Generate new and NetworkState
+	state, _, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
 	}
 
-	s.CurrentRound = &RoundState{
-		RoundInfo: &pb.RoundInfo{
-			State: uint32(states.FAILED),
-		},
+	// Call GetFullNdf()
+	fullNdf := state.GetFullNdf()
+
+	if !reflect.DeepEqual(fullNdf, expectedFullNdf) {
+		t.Errorf("GetFullNdf() returned the wrong NDF."+
+			"\n\texpected: %v\n\treceived: %v", expectedFullNdf, fullNdf)
+	}
+}
+
+// Tests that GetPartialNdf() returns the correct NDF for a newly created
+// NetworkState.
+func TestNetworkState_GetPartialNdf(t *testing.T) {
+	// Set up expected values
+	expectedPartialNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
+	if err != nil {
+		t.Fatalf("Failed to generate new NDF:\n%v", err)
 	}
 
-	// Test happy path
-	if s.GetCurrentRoundState() != states.FAILED {
-		t.Errorf("Expected proper state return! Got %d", s.GetCurrentRoundState())
+	// Generate new NetworkState
+	state, _, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
 	}
+
+	partialNdf := state.GetPartialNdf()
+
+	if !reflect.DeepEqual(partialNdf, expectedPartialNdf) {
+		t.Errorf("GetPartialNdf() returned the wrong NDF."+
+			"\n\texpected: %v\n\treceived: %v", expectedPartialNdf, partialNdf)
+	}
+}
+
+// Smoke test of GetUpdates() by adding rounds and then calling GetUpdates().
+func TestNetworkState_GetUpdates(t *testing.T) {
+	// Generate new NetworkState
+	state, _, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Update the round three times and build expected values array
+	var expectedRoundInfo []*pb.RoundInfo
+	for i := 0; i < 3; i++ {
+		roundInfo := &pb.RoundInfo{
+			ID:       0,
+			UpdateID: uint64(3 + i),
+		}
+
+		err = state.roundUpdates.AddRound(roundInfo)
+		if err != nil {
+			t.Errorf("AddRound() produced an unexpected error:\n%+v", err)
+		}
+
+		expectedRoundInfo = append(expectedRoundInfo, roundInfo)
+	}
+
+	// Test GetUpdates()
+	roundInfo, err := state.GetUpdates(2)
+	if err != nil {
+		t.Errorf("GetUpdates() produced an unexpected error:\n%v", err)
+	}
+
+	if !reflect.DeepEqual(roundInfo, expectedRoundInfo) {
+		t.Errorf("GetUpdates() returned an incorrect RoundInfo slice."+
+			"\n\texpected: %+v\n\treceived: %+v", expectedRoundInfo, roundInfo)
+	}
+}
+
+// Tests that AddRoundUpdate() by adding a round, checking that it is correct
+// and verifying the signature.
+func TestNetworkState_AddRoundUpdate(t *testing.T) {
+	// Expected Values
+	testUpdateID := uint64(1)
+	testRoundInfo := &pb.RoundInfo{
+		ID:       0,
+		UpdateID: 5,
+	}
+	expectedRoundInfo := *testRoundInfo
+	expectedRoundInfo.UpdateID = testUpdateID
+
+	// Generate new private RSA key and NetworkState
+	state, privateKey, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	state.roundUpdateID = 1
+
+	// Call AddRoundUpdate()
+	err = state.AddRoundUpdate(testRoundInfo)
+	if err != nil {
+		t.Errorf("AddRoundUpdate() unexpectedly produced an error:\n%+v",
+			err)
+	}
+
+	// Test if the round was added
+	roundInfoArr, err := state.GetUpdates(0)
+	if err != nil {
+		t.Fatalf("GetUpdates() produced an unexpected error:\n%+v", err)
+	}
+
+	roundInfo := roundInfoArr[0]
+
+	// Make signatures equal because they will not be tested for equality
+	expectedRoundInfo.Signature = roundInfo.Signature
+
+	// Check that the round info returned is correct.
+	if !reflect.DeepEqual(*roundInfo, expectedRoundInfo) {
+		t.Errorf("AddRoundUpdate() added incorrect roundInfo."+
+			"\n\texpected: %#v\n\treceived: %#v", expectedRoundInfo, *roundInfo)
+	}
+
+	// Verify signature
+	err = signature.Verify(roundInfo, privateKey.GetPublic())
+	if err != nil {
+		t.Fatalf("Failed to verify RoundInfo signature:\n%+v", err)
+	}
+}
+
+// Tests that AddRoundUpdate() returns an error.
+func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
+	// Expected Values
+	testRoundInfo := &pb.RoundInfo{
+		ID:       0,
+		UpdateID: 5,
+	}
+	expectedErr := "Could not add round update 1 due to failed signature: " +
+		"Unable to sign message: crypto/rsa: key size too small for PSS " +
+		"signature"
+
+	// Generate new NetworkState
+	state, _, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Generate new invalid private key and insert into NetworkState
+	brokenPrivateKey, err := rsa.GenerateKey(rand.Reader, 128)
+	if err != nil {
+		t.Fatalf("Failed to generate private key:\n%v", err)
+	}
+	state.privateKey = brokenPrivateKey
+
+	// Call AddRoundUpdate()
+	err = state.AddRoundUpdate(testRoundInfo)
+
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("AddRoundUpdate() did not produce an error when expected."+
+			"\n\texpected: %+v\n\treceived: %+v", expectedErr, err)
+	}
+}
+
+// Tests that UpdateNdf() updates fullNdf and partialNdf correctly.
+func TestNetworkState_UpdateNdf(t *testing.T) {
+	// Expected values
+	testNDF := &ndf.NetworkDefinition{}
+
+	// Generate new NetworkState
+	state, _, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Update NDF
+	err = state.UpdateNdf(testNDF)
+	if err != nil {
+		t.Errorf("UpdateNdf() unexpectedly produced an error:\n%+v", err)
+	}
+
+	if !reflect.DeepEqual(*state.fullNdf.Get(), *testNDF) {
+		t.Errorf("UpdateNdf() saved the wrong NDF fullNdf."+
+			"\n\texpected: %#v\n\treceived: %#v", *testNDF, *state.fullNdf.Get())
+	}
+
+	if !reflect.DeepEqual(*state.partialNdf.Get(), *testNDF) {
+		t.Errorf("UpdateNdf() saved the wrong NDF partialNdf."+
+			"\n\texpected: %#v\n\treceived: %#v", *testNDF, *state.partialNdf.Get())
+	}
+}
+
+// Tests that UpdateNdf() generates an error when injected with invalid private
+// key.
+func TestNetworkState_UpdateNdf_SignError(t *testing.T) {
+	// Expected values
+	testNDF := &ndf.NetworkDefinition{}
+	expectedErr := "Unable to sign message: crypto/rsa: key size too small " +
+		"for PSS signature"
+
+	// Generate new NetworkState
+	state, _, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Generate new invalid private key and insert into NetworkState
+	brokenPrivateKey, err := rsa.GenerateKey(rand.Reader, 128)
+	if err != nil {
+		t.Fatalf("Failed to generate private key:\n%v", err)
+	}
+	state.privateKey = brokenPrivateKey
+
+	// Update NDF
+	err = state.UpdateNdf(testNDF)
+
+	if err == nil || err.Error() != expectedErr {
+		t.Errorf("UpdateNdf() did not produce an error when expected."+
+			"\n\texpected: %+v\n\treceived: %+v", expectedErr, err)
+	}
+}
+
+// Tests that GetPrivateKey() returns the correct private key.
+func TestNetworkState_GetPrivateKey(t *testing.T) {
+	// Generate new private RSA key and NetworkState
+	state, expectedPrivateKey, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Get the private
+	privateKey := state.GetPrivateKey()
+
+	if !reflect.DeepEqual(privateKey, expectedPrivateKey) {
+		t.Errorf("GetPrivateKey() produced an incorrect private key."+
+			"\n\texpected: %+v\n\treceived: %+v",
+			expectedPrivateKey, privateKey)
+	}
+}
+
+// Tests that GetRoundMap() returns the correct round StateMap.
+func TestNetworkState_GetRoundMap(t *testing.T) {
+	// Generate new NetworkState
+	state, _, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Get the round map
+	roundMap := state.GetRoundMap()
+
+	if !reflect.DeepEqual(roundMap, round.NewStateMap()) {
+		t.Errorf("GetRoundMap() produced an incorrect round map."+
+			"\n\texpected: %+v\n\treceived: %+v",
+			round.NewStateMap(), roundMap)
+	}
+}
+
+// Tests that GetNodeMap() returns the correct node StateMap.
+func TestNetworkState_GetNodeMap(t *testing.T) {
+	// Generate new NetworkState
+	state, _, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Get the round map
+	nodeMap := state.GetNodeMap()
+
+	if !reflect.DeepEqual(nodeMap, node.NewStateMap()) {
+		t.Errorf("GetNodeMap() produced an incorrect node map."+
+			"\n\texpected: %+v\n\treceived: %+v",
+			node.NewStateMap(), nodeMap)
+	}
+}
+
+// Tests that NodeUpdateNotification() correctly sends an update to the update
+// channel and that GetNodeUpdateChannel() receives and returns it.
+func TestNetworkState_NodeUpdateNotification(t *testing.T) {
+	// Test values
+	testNun := NodeUpdateNotification{
+		Node: id.NewNodeFromUInt(mrand.Uint64(), t),
+		From: current.NOT_STARTED,
+		To:   current.WAITING,
+	}
+
+	// Generate new NetworkState
+	state, _, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	go func() {
+		err = state.NodeUpdateNotification(testNun.Node, testNun.From, testNun.To)
+		if err != nil {
+			t.Errorf("NodeUpdateNotification() produced an unexpected error:"+
+				"\n%+v", err)
+		}
+	}()
+
+	nodeUpdateNotifier := state.GetNodeUpdateChannel()
+
+	select {
+	case testUpdate := <-nodeUpdateNotifier:
+		if !reflect.DeepEqual(*testUpdate, testNun) {
+			t.Errorf("GetNodeUpdateChannel() received the wrong "+
+				"NodeUpdateNotification.\n\texpected: %v\n\t received: %v",
+				testNun, *testUpdate)
+		}
+	case <-time.After(time.Millisecond):
+		t.Error("Failed to receive node update.")
+	}
+}
+
+// Tests that NodeUpdateNotification() correctly produces and error when the
+// channel buffer is already filled.
+func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
+	// Test values
+	testNun := NodeUpdateNotification{
+		Node: id.NewNodeFromUInt(mrand.Uint64(), t),
+		From: current.NOT_STARTED,
+		To:   current.WAITING,
+	}
+	expectedError := errors.New("Could not send update notification")
+
+	// Generate new NetworkState
+	state, _, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+
+	// Fill buffer
+	for i := 0; i < updateBufferLength; i++ {
+		state.update <- &testNun
+	}
+
+	go func() {
+		err = state.NodeUpdateNotification(testNun.Node, testNun.From, testNun.To)
+		if strings.Compare(err.Error(), expectedError.Error()) != 0 {
+			t.Errorf("NodeUpdateNotification() did not produce an error "+
+				"when the channel buffer is full.\n\texpected: %v\n\treceived: %v",
+				expectedError, err)
+		}
+	}()
+
+	time.Sleep(1 * time.Second)
+}
+
+// generateTestNetworkState returns a newly generated NetworkState and private
+// key. Errors created by generating the key or NetworkState are returned.
+func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
+	// Generate new private RSA key
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, privateKey, fmt.Errorf("Failed to generate private key:\n+%v", err)
+	}
+
+	// Generate new NetworkState using the private key
+	state, err := NewState(privateKey)
+	if err != nil {
+		return state, privateKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
+	}
+
+	return state, privateKey, nil
 }

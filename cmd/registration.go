@@ -63,7 +63,7 @@ func (m *RegistrationImpl) RegisterUser(registrationCode, pubKey string) (
 	h := sha256.New()
 	h.Write([]byte(pubKey))
 	data := h.Sum(nil)
-	sig, err := rsa.Sign(rand.Reader, m.State.PrivateKey, crypto.SHA256, data, nil)
+	sig, err := rsa.Sign(rand.Reader, m.State.GetPrivateKey(), crypto.SHA256, data, nil)
 	if err != nil {
 		return make([]byte, 0), errors.Errorf(
 			"Unable to sign client public key: %+v", err)

@@ -9,7 +9,7 @@
 package cmd
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -46,27 +46,39 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		response.PartialNDF = m.State.GetPartialNdf().GetPb()
 	}
 
-	// Do not attempt to update or report state to unprepared nodes
-	if msg.Activity == uint32(current.NOT_STARTED) {
-		return
-	}
-
-	// Commit updates reported by the node if node involved in the current round
-	if m.State.IsRoundNode(auth.Sender.GetId()) {
-		jww.DEBUG.Printf("Updating state for node %s: %+v",
-			auth.Sender.GetId(), msg)
-		err = m.State.UpdateNodeState(
-			*id.NewNodeFromBytes([]byte(auth.Sender.GetId())),
-			current.Activity(msg.Activity))
-		if err != nil {
-			return
-		}
-	}
-
 	// Fetch latest round updates
 	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
 	if err != nil {
 		return
+	}
+
+	// Commit updates reported by the node if node involved in the current round
+	jww.DEBUG.Printf("Updating state for node %s: %+v",
+		auth.Sender.GetId(), msg)
+
+	//get the nodeState and update
+	nid, err := id.NewNodeFromString(auth.Sender.GetId())
+	if err != nil {
+		err = errors.Errorf("could not decode node id of %s: %s", auth.Sender.GetId(), err)
+		return
+	}
+
+	n := m.State.GetNodeMap().GetNode(nid)
+	if n == nil {
+		err = errors.Errorf("node %s could not be found in internal state tracker", nid)
+		return
+	}
+
+	// update does edge checking. It ensures the state change recieved was a
+	// valid one and the state fo the node and
+	// any associated round allows for that change. If the change was not
+	// acceptable, it is not recorded and an error is returned, which is
+	// propagated to the node
+	update, oldActivity, err := n.Update(current.Activity(msg.Activity))
+
+	//if an update ocured, report it to the control thread
+	if update {
+		err = m.State.NodeUpdateNotification(nid, oldActivity, current.Activity(msg.Activity))
 	}
 
 	return
