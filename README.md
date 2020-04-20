@@ -19,7 +19,8 @@ verbose: "true"
 logPath: "registration.log"
 # Path to the node topology permissioning info
 ndfOutputPath: "ndf.json"
-# Minimum number of nodes to begin running rounds
+# Minimum number of nodes to begin running rounds. this differs from the number of members 
+# in a team because some scheduling algorithms may require multiple teams worth of nodes at minimum
 minimumNodes: 3
 
 # UDB ID
