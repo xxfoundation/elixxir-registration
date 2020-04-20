@@ -15,7 +15,6 @@ import (
 	"gitlab.com/elixxir/registration/storage/round"
 	"strconv"
 	"testing"
-	"time"
 )
 
 // Happy path for transitioning to waiting

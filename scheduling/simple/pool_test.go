@@ -22,9 +22,9 @@ func TestNewPool(t *testing.T) {
 			"\n\tReceived: %d", testingSize, len(receivedPool.pool))
 	}
 
-	if receivedPool.position != emptyPool {
+	if receivedPool.position != 0 {
 		t.Errorf("Newly created pool should have a position of %d. "+
-			"Received position is: %v", emptyPool, receivedPool.position)
+			"Received position is: %v", 0, receivedPool.position)
 	}
 }
 
@@ -102,10 +102,10 @@ func TestWaitingPoll_Clear(t *testing.T) {
 			"\n\tReceived: %v", emptyNodeList, testPoll.pool)
 	}
 
-	if testPoll.position != emptyPool {
+	if testPoll.position != 0 {
 		t.Errorf("Waiting pool's position should be reset after clear."+
 			"Expected: %v"+
-			"Position: %v", emptyPool, testPoll.position)
+			"Position: %v", 0, testPoll.position)
 	}
 }
 
