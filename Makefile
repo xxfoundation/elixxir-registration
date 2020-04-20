@@ -14,11 +14,6 @@ build:
 	go build ./...
 	go mod tidy
 
-update_project:
-	GOFLAGS="" go get -u gitlab.com/elixxir/primitives@Dora/UnifiedPolling
-	GOFLAGS="" go get -u gitlab.com/elixxir/crypto@Dora/GenericSigning
-	GOFLAGS="" go get -u gitlab.com/elixxir/comms@Dora/UnifiedPolling
-
 update_release:
 	GOFLAGS="" go get -u gitlab.com/elixxir/primitives@release
 	GOFLAGS="" go get -u gitlab.com/elixxir/crypto@release
@@ -32,5 +27,3 @@ update_master:
 master: clean update_master update build
 
 release: clean update_release update build
-
-project: clean update_project update build

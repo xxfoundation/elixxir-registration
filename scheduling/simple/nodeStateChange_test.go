@@ -15,6 +15,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/round"
 	"strconv"
 	"testing"
+	"time"
 )
 
 // Happy path for transitioning to waiting
@@ -58,7 +59,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 		From: current.NOT_STARTED,
 		To:   current.WAITING}
 
-	err = HandleNodeStateChange(testUpdate, testPool, testState)
+	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
@@ -101,7 +102,7 @@ func TestHandleNodeStateChance_WaitingError(t *testing.T) {
 		From: current.NOT_STARTED,
 		To:   current.WAITING}
 
-	err = HandleNodeStateChange(testUpdate, testPool, testState)
+	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 	if err != nil {
 		return
 	}
@@ -152,7 +153,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 			To:   current.WAITING,
 		}
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState)
+		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
 		}
@@ -167,7 +168,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 			From: current.WAITING,
 			To:   current.STANDBY}
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState)
+		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Error in standby happy path: %v", err)
 		}
@@ -222,7 +223,7 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 			From: current.WAITING,
 			To:   current.STANDBY}
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState)
+		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
 		}
@@ -275,7 +276,7 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 			To:   current.WAITING,
 		}
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState)
+		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
 		}
@@ -290,7 +291,7 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 			From: current.REALTIME,
 			To:   current.COMPLETED}
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState)
+		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Expected happy path for completed: %v", err)
 		}
@@ -339,7 +340,7 @@ func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
 			From: current.WAITING,
 			To:   current.COMPLETED}
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState)
+		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
 		}

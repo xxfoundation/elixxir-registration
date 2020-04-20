@@ -62,12 +62,18 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		err = errors.Errorf("could not decode node id of %s: %s", auth.Sender.GetId(), err)
 		return
 	}
+
 	n := m.State.GetNodeMap().GetNode(nid)
 	if n == nil {
 		err = errors.Errorf("node %s could not be found in internal state tracker", nid)
 		return
 	}
 
+	// update does edge checking. It ensures the state change recieved was a
+	// valid one and the state fo the node and
+	// any associated round allows for that change. If the change was not
+	// acceptable, it is not recorded and an error is returned, which is
+	// propagated to the node
 	update, oldActivity, err := n.Update(current.Activity(msg.Activity))
 
 	//if an update ocured, report it to the control thread

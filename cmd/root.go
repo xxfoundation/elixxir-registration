@@ -172,9 +172,9 @@ var rootCmd = &cobra.Command{
 			case "simple":
 				err = simple.Scheduler(SchedulingConfig, impl.State)
 			case "secure":
-				jww.FATAL.Panic("secure scheduling algorithm not yet implemented")
+				err = errors.New("secure scheduling algorithm not yet implemented")
 			default:
-				jww.FATAL.Panicf("schedulding algorithem %s unknown", algo)
+				err = errors.Errorf("schedulding algorithem %s unknown", algo)
 			}
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
 		}()

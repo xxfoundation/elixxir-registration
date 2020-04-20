@@ -12,19 +12,19 @@ import (
 
 // pool.go contains the logic for a waiting pool, a simple list of nodes
 
+// contains a list of nodes of a certain size. does not allow more to be added
+// than its max size and all nodes must be removed at once.
 type waitingPoll struct {
 	pool []*id.Node
 
 	position int
 }
 
-const emptyPool = 0
-
 //creates an empty waiting of object of the designated size
 func newWaitingPool(size int) *waitingPoll {
 	return &waitingPoll{
 		pool:     make([]*id.Node, size),
-		position: emptyPool,
+		position: 0,
 	}
 }
 
@@ -45,7 +45,7 @@ func (wp *waitingPoll) Add(nid *id.Node) error {
 func (wp *waitingPoll) Clear() []*id.Node {
 	old := wp.pool
 	wp.pool = make([]*id.Node, len(wp.pool))
-	wp.position = emptyPool
+	wp.position = 0
 	return old
 }
 

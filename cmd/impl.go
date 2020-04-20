@@ -24,6 +24,9 @@ import (
 	"time"
 )
 
+//generally large buffer, should be roughly as many nodes as are expected
+const nodeCompletionChanLen = 1000
+
 // The main registration instance object
 type RegistrationImpl struct {
 	Comms                   *registration.Comms
@@ -105,7 +108,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
-		nodeCompleted:           make(chan string, 100),
+		nodeCompleted:           make(chan string, nodeCompletionChanLen),
 		NdfReady:                &ndfReady,
 	}
 

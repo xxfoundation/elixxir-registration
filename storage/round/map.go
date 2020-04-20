@@ -1,3 +1,9 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright © 2018 Privategrity Corporation                                   /
+//                                                                             /
+// All rights reserved.                                                        /
+////////////////////////////////////////////////////////////////////////////////
+
 package round
 
 import (
@@ -17,6 +23,7 @@ type StateMap struct {
 	rounds map[id.Round]*State
 }
 
+//creates a state map object
 func NewStateMap() *StateMap {
 	return &StateMap{
 		rounds: make(map[id.Round]*State),
@@ -45,6 +52,7 @@ func (rsm *StateMap) GetRound(id id.Round) *State {
 	return rsm.rounds[id]
 }
 
+//adds rounds for testing without checks
 func (rsm *StateMap) AddRound_Testing(state *State, t *testing.T) {
 	if t == nil {
 		jww.FATAL.Panic("Only for testing")
