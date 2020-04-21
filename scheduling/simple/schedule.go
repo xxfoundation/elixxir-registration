@@ -24,7 +24,7 @@ type Params struct {
 	RandomOrdering bool
 	MinimumDelay   time.Duration
 	//delay in ms for a realtime round to start
-	RealtimeDelay  uint32
+	RealtimeDelay uint32
 }
 
 //internal structure which describes a round to be created
@@ -54,7 +54,7 @@ func Scheduler(serialParam []byte, state *storage.NetworkState) error {
 func scheduler(params Params, state *storage.NetworkState) error {
 
 	// pool which tracks nodes which are not in a team
-	pool := newWaitingPool(state.GetNodeMap().Len())
+	pool := newWaitingPool(int(params.TeamSize))
 
 	//tracks and incrememnts the round id
 	roundID := NewRoundID(0)
@@ -66,7 +66,7 @@ func scheduler(params Params, state *storage.NetworkState) error {
 	errorChan := make(chan error, 1)
 
 	//calculate the realtime delay from params
-	rtDelay := time.Duration(params.RealtimeDelay)*time.Millisecond
+	rtDelay := time.Duration(params.RealtimeDelay) * time.Millisecond
 
 	//begin the thread that starts rounds
 	go func() {
@@ -89,7 +89,7 @@ func scheduler(params Params, state *storage.NetworkState) error {
 
 	}()
 
-	//start reciving updates from nodes
+	//start receiving updates from nodes
 	for true {
 		var update *storage.NodeUpdateNotification
 		select {
