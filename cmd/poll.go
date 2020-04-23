@@ -23,6 +23,8 @@ import (
 func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	auth *connect.Auth) (response *pb.PermissionPollResponse, err error) {
 
+	auth.Sender.GetId()
+
 	// Initialize the response
 	response = &pb.PermissionPollResponse{}
 
@@ -86,6 +88,11 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 
 // PollNdf handles the client polling for an updated NDF
 func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
+
+	// Check if the IP bucket is full; if it is, then return an error
+	if m.ipNdfBucket.LookupBucket(auth.Sender.GetAddress()).Add(1) {
+		return nil, errors.Errorf("Client has exceeded communications rate limit")
+	}
 
 	// Ensure the NDF is ready to be returned
 	regComplete := atomic.LoadUint32(m.NdfReady)

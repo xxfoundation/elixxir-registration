@@ -19,6 +19,7 @@ import (
 	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
+	"gitlab.com/elixxir/primitives/rateLimiting"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
 	"time"
@@ -39,6 +40,7 @@ type RegistrationImpl struct {
 	certFromFile            string
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
+	ipNdfBucket             *rateLimiting.BucketMap
 }
 
 //function used to schedule nodes
@@ -59,6 +61,7 @@ type Params struct {
 	registrationCountDuration time.Duration
 	minimumNodes              uint32
 	udbId                     []byte
+	ipBucket                  rateLimiting.Params
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -110,6 +113,8 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		ndfOutputPath:           params.NdfOutputPath,
 		nodeCompleted:           make(chan string, nodeCompletionChanLen),
 		NdfReady:                &ndfReady,
+
+		ipNdfBucket: rateLimiting.CreateBucketMapFromParams(params.ipBucket),
 	}
 
 	// Create timer and channel to be used by routine that clears the number of
