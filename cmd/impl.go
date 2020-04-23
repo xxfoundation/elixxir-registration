@@ -41,6 +41,7 @@ type RegistrationImpl struct {
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
 	ipNdfBucket             *rateLimiting.BucketMap
+	ipNdfWhitelist          *rateLimiting.Whitelist
 }
 
 //function used to schedule nodes
@@ -104,6 +105,12 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		return nil, err
 	}
 
+	// Initialize IP bucket whitelist file
+	ipWhitelist, err := rateLimiting.InitWhitelist(params.ipBucket.WhitelistFile, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	// Build default parameters
 	regImpl := &RegistrationImpl{
 		State:                   state,
@@ -114,7 +121,8 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		nodeCompleted:           make(chan string, nodeCompletionChanLen),
 		NdfReady:                &ndfReady,
 
-		ipNdfBucket: rateLimiting.CreateBucketMapFromParams(params.ipBucket),
+		ipNdfBucket:    rateLimiting.CreateBucketMapFromParams(params.ipBucket),
+		ipNdfWhitelist: ipWhitelist,
 	}
 
 	// Create timer and channel to be used by routine that clears the number of

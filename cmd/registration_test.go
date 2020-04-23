@@ -9,6 +9,7 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	nodeComms "gitlab.com/elixxir/comms/node"
+	"gitlab.com/elixxir/primitives/rateLimiting"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -53,6 +54,13 @@ func TestMain(m *testing.M) {
 		publicAddress:             permAddr,
 		maxRegistrationAttempts:   5,
 		registrationCountDuration: time.Hour,
+		ipBucket: rateLimiting.Params{
+			Capacity:      10,
+			LeakRate:      .0000000003,
+			CleanPeriod:   time.Hour,
+			MaxDuration:   time.Hour,
+			WhitelistFile: "test_whitelist.txt",
+		},
 	}
 	nodeComm = nodeComms.StartNode("tmp", nodeAddr, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
@@ -151,6 +159,19 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 
 //Attempt to register a node after the
 func TestCompleteRegistration_HappyPath(t *testing.T) {
+	// Create temporary whitelist file
+	whitelistFilePath := "test_whitelist.txt"
+	err := utils.WriteFile(whitelistFilePath, nil, utils.FilePerms, utils.DirPerms)
+	if err != nil {
+		t.Errorf("Error creating temporary whitelist file:\n%v", err)
+	}
+	defer func() {
+		err = os.RemoveAll(whitelistFilePath)
+		if err != nil {
+			t.Errorf("Error deleting temporary whitelist file:\n%v", err)
+		}
+	}()
+
 	//Crate database
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
@@ -196,6 +217,19 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 //Error path: test that trying to register with the same reg code fails
 func TestDoubleRegistration(t *testing.T) {
+	// Create temporary whitelist file
+	whitelistFilePath := "test_whitelist.txt"
+	err := utils.WriteFile(whitelistFilePath, nil, utils.FilePerms, utils.DirPerms)
+	if err != nil {
+		t.Errorf("Error creating temporary whitelist file:\n%v", err)
+	}
+	defer func() {
+		err = os.RemoveAll(whitelistFilePath)
+		if err != nil {
+			t.Errorf("Error deleting temporary whitelist file:\n%v", err)
+		}
+	}()
+
 	//Create database
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 

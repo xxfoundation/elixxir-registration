@@ -229,7 +229,12 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	case <-beginScheduling:
 	}
 
-	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
+	testHost, err := connect.NewHost("", "0.0.0.0", nil, false, false)
+	if err != nil {
+		t.Errorf("failed to create new hosy: %v", err)
+	}
+
+	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{Sender: testHost})
 	if err != nil {
 		t.Errorf("failed to update ndf: %v", err)
 	}
@@ -295,10 +300,15 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
+	testHost, err := connect.NewHost("", "0.0.0.0", nil, false, false)
+	if err != nil {
+		t.Errorf("failed to create new hosy: %v", err)
+	}
+
 	//Make a client ndf hash that is not up to date
 	clientNdfHash := []byte("test")
 
-	_, err = impl.PollNdf(clientNdfHash, &connect.Auth{})
+	_, err = impl.PollNdf(clientNdfHash, &connect.Auth{Sender: testHost})
 	if err == nil {
 		t.Error("Expected error path, should not have an ndf ready")
 	}
