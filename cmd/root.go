@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/ndf"
-	"gitlab.com/elixxir/registration/database"
+	"gitlab.com/elixxir/registration/storage"
 	"os"
 	"path"
 	"strconv"
@@ -28,7 +28,7 @@ import (
 
 var (
 	cfgFile              string
-	verbose              bool
+	logLevel             uint // 0 = info, 1 = debug, >1 = trace
 	noTLS                bool
 	RegistrationCodes    []string
 	RegParams            Params
@@ -46,28 +46,23 @@ var rootCmd = &cobra.Command{
 	Long:  `This server provides registration functions on cMix`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		if verbose {
-			err := os.Setenv("GRPC_GO_LOG_SEVERITY_LEVEL", "info")
-			if err != nil {
-				jww.ERROR.Printf("Could not set GRPC_GO_LOG_SEVERITY_LEVEL: %+v", err)
-			}
-
-			err = os.Setenv("GRPC_GO_LOG_VERBOSITY_LEVEL", "2")
-			if err != nil {
-				jww.ERROR.Printf("Could not set GRPC_GO_LOG_VERBOSITY_LEVEL: %+v", err)
-			}
-		}
-
 		cmixMap := viper.GetStringMapString("groups.cmix")
 		e2eMap := viper.GetStringMapString("groups.e2e")
 
-		cmix := toGroup(cmixMap)
-		e2e := toGroup(e2eMap)
+		cmix, err := toGroup(cmixMap)
+		if err != nil {
+			jww.FATAL.Panicf("Failed to create cMix group: %+v", err)
+		}
+		e2e, err := toGroup(e2eMap)
+		if err != nil {
+			jww.FATAL.Panicf("Failed to create E2E group: %+v", err)
+		}
 
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
 		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
+		batchSize := viper.GetInt("batchSize")
 		ndfOutputPath := viper.GetString("ndfOutputPath")
 		setClientVersion(viper.GetString("clientVersion"))
 		ipAddr := viper.GetString("publicAddress")
@@ -87,7 +82,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Set up database connection
-		database.PermissioningDb = database.NewDatabase(
+		storage.PermissioningDb = storage.NewDatabase(
 			viper.GetString("dbUsername"),
 			viper.GetString("dbPassword"),
 			viper.GetString("dbName"),
@@ -96,10 +91,10 @@ var rootCmd = &cobra.Command{
 
 		// Populate Node registration codes into the database
 		RegistrationCodes = viper.GetStringSlice("registrationCodes")
-		database.PopulateNodeRegistrationCodes(RegistrationCodes)
+		storage.PopulateNodeRegistrationCodes(RegistrationCodes)
 
 		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
-		database.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
+		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
 		//Fixme: Do we want the udbID to be specified in the yaml?
 		tmpSlice := make([]byte, 32)
@@ -112,25 +107,33 @@ var rootCmd = &cobra.Command{
 			CertPath:                  certPath,
 			KeyPath:                   keyPath,
 			NdfOutputPath:             ndfOutputPath,
-			cmix:                      cmix,
-			e2e:                       e2e,
+			cmix:                      *cmix,
+			e2e:                       *e2e,
 			publicAddress:             publicAddress,
 			NsAddress:                 nsAddress,
 			NsCertPath:                nsCertPath,
 			maxRegistrationAttempts:   maxRegistrationAttempts,
 			registrationCountDuration: registrationCountDuration,
+			batchSize:                 uint32(batchSize),
 		}
-		jww.INFO.Println("Starting Permissioning")
-		jww.INFO.Println("Starting User Registration")
+
+		jww.INFO.Println("Starting Permissioning Server...")
+
 		// Start registration server
-		impl := StartRegistration(RegParams)
+		impl, err := StartRegistration(RegParams)
+		if err != nil {
+			jww.FATAL.Panicf(err.Error())
+		}
 
 		// Begin the thread which handles the completion of node registration
-		go nodeRegistrationCompleter(impl)
+		err = nodeRegistrationCompleter(impl)
+		if err != nil {
+			jww.FATAL.Panicf("Failed to complete node registration: %+v", err)
+		}
+		jww.INFO.Printf("Node registration complete!")
 
-		// Wait forever to prevent process from ending
-		select {}
-
+		// Begin state control (loops forever)
+		impl.StateControl()
 	},
 }
 
@@ -156,8 +159,8 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false,
-		"Show verbose logs for debugging")
+	rootCmd.Flags().UintVarP(&logLevel, "logLevel", "l", 1,
+		"Level of debugging to display. 0 = info, 1 = debug, >1 = trace")
 
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c",
 		"", "Sets a custom config file path")
@@ -258,15 +261,35 @@ func validateVersion(versionString string) error {
 // initLog initializes logging thresholds and the log path.
 func initLog() {
 	if viper.Get("logPath") != nil {
-		// If verbose flag set then log more info for debugging
-		if verbose || viper.GetBool("verbose") {
+		vipLogLevel := viper.GetUint("logLevel")
+
+		// Check the level of logs to display
+		if vipLogLevel > 1 {
+			// Set the GRPC log level
+			err := os.Setenv("GRPC_GO_LOG_SEVERITY_LEVEL", "info")
+			if err != nil {
+				jww.ERROR.Printf("Could not set GRPC_GO_LOG_SEVERITY_LEVEL: %+v", err)
+			}
+
+			err = os.Setenv("GRPC_GO_LOG_VERBOSITY_LEVEL", "99")
+			if err != nil {
+				jww.ERROR.Printf("Could not set GRPC_GO_LOG_VERBOSITY_LEVEL: %+v", err)
+			}
+			// Turn on trace logs
+			jww.SetLogThreshold(jww.LevelTrace)
+			jww.SetStdoutThreshold(jww.LevelTrace)
+			mixmessages.TraceMode()
+		} else if vipLogLevel == 1 {
+			// Turn on debugging logs
 			jww.SetLogThreshold(jww.LevelDebug)
 			jww.SetStdoutThreshold(jww.LevelDebug)
 			mixmessages.DebugMode()
 		} else {
+			// Turn on info logs
 			jww.SetLogThreshold(jww.LevelInfo)
 			jww.SetStdoutThreshold(jww.LevelInfo)
 		}
+
 		// Create log file, overwrites if existing
 		logPath := viper.GetString("logPath")
 		logFile, err := os.Create(logPath)
