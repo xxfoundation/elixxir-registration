@@ -62,3 +62,7 @@ func GetClientPublicKey() string {
 func GetClientNdf() string {
 	return filepath.Join(getDirForFile(), "clientNDF.json")
 }
+
+func GetSchedulingConfig() string {
+	return filepath.Join(getDirForFile(), "schedulingConfig.json")
+}

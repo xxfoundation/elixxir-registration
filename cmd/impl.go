@@ -24,19 +24,25 @@ import (
 	"time"
 )
 
+//generally large buffer, should be roughly as many nodes as are expected
+const nodeCompletionChanLen = 1000
+
 // The main registration instance object
 type RegistrationImpl struct {
 	Comms                   *registration.Comms
 	params                  *Params
-	State                   *storage.State
+	State                   *storage.NetworkState
 	permissioningCert       *x509.Certificate
 	ndfOutputPath           string
-	nodeCompleted           chan struct{}
+	nodeCompleted           chan string
 	NdfReady                *uint32
 	certFromFile            string
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
 }
+
+//function used to schedule nodes
+type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 
 // Params object for reading in configuration data
 type Params struct {
@@ -46,13 +52,13 @@ type Params struct {
 	NdfOutputPath             string
 	NsCertPath                string
 	NsAddress                 string
-	NumNodesInNet             int
 	cmix                      ndf.Group
 	e2e                       ndf.Group
 	publicAddress             string
 	maxRegistrationAttempts   uint64
 	registrationCountDuration time.Duration
-	batchSize                 uint32
+	minimumNodes              uint32
+	udbId                     []byte
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -75,7 +81,22 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Initialize variables
 	regRemaining := uint64(0)
 	ndfReady := uint32(0)
-	state, err := storage.NewState()
+
+	// Read in private key
+	key, err := utils.ReadFile(params.KeyPath)
+	if err != nil {
+		return nil, errors.Errorf("failed to read key at %+v: %+v",
+			params.KeyPath, err)
+	}
+
+	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	if err != nil {
+		return nil, errors.Errorf("Failed to parse permissioning server key: %+v. "+
+			"PermissioningKey is %+v", err, pk)
+	}
+
+	//initilize the state tracking object
+	state, err := storage.NewState(pk)
 	if err != nil {
 		return nil, err
 	}
@@ -87,7 +108,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
-		nodeCompleted:           make(chan struct{}, len(RegistrationCodes)),
+		nodeCompleted:           make(chan string, nodeCompletionChanLen),
 		NdfReady:                &ndfReady,
 	}
 
@@ -98,18 +119,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		ticker := time.NewTicker(params.registrationCountDuration)
 		regImpl.registrationCapacityRestRunner(ticker, done)
 	}()
-
-	// Read in private key
-	key, err := utils.ReadFile(params.KeyPath)
-	if err != nil {
-		return nil, errors.Errorf("failed to read key at %+v: %+v",
-			params.KeyPath, err)
-	}
-	regImpl.State.PrivateKey, err = rsa.LoadPrivateKeyFromPem(key)
-	if err != nil {
-		return nil, errors.Errorf("Failed to parse permissioning server key: %+v. "+
-			"PermissioningKey is %+v", err, regImpl.State.PrivateKey)
-	}
 
 	if !noTLS {
 		// Read in TLS keys from files
@@ -125,6 +134,38 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			return nil, errors.Errorf("Failed to parse permissioning server cert: %+v. "+
 				"Permissioning cert is %+v", err, regImpl.permissioningCert)
 		}
+	}
+
+	// Construct the NDF
+	networkDef := &ndf.NetworkDefinition{
+		Registration: ndf.Registration{
+			Address:        RegParams.publicAddress,
+			TlsCertificate: regImpl.certFromFile,
+		},
+		Timestamp: time.Now(),
+		UDB:       ndf.UDB{ID: RegParams.udbId},
+		E2E:       RegParams.e2e,
+		CMIX:      RegParams.cmix,
+	}
+
+	// Assemble notification server information if configured
+	if RegParams.NsCertPath != "" && RegParams.NsAddress != "" {
+		nsCert, err := utils.ReadFile(RegParams.NsCertPath)
+		if err != nil {
+			return nil, errors.Errorf("unable to read notification certificate")
+		}
+		networkDef.Notification = ndf.Notification{
+			Address:        RegParams.NsAddress,
+			TlsCertificate: string(nsCert),
+		}
+	} else {
+		jww.WARN.Printf("Configured to run without notifications bot!")
+	}
+
+	// update the internal state with the newly-formed NDF
+	err = regImpl.State.UpdateNdf(networkDef)
+	if err != nil {
+		return nil, err
 	}
 
 	// Start the communication server
