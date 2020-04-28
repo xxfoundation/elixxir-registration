@@ -75,8 +75,5 @@ schedulingAlgorithm: "single"
 
 # Path to file with config for scheduling algorithem within the user directory 
 schedulingConfigPath: "schedulingConfig.json"
-
-
-
 ```
 

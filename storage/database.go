@@ -25,7 +25,7 @@ type DatabaseImpl struct {
 // Struct implementing the Database Interface with an underlying Map
 type MapImpl struct {
 	client map[string]*RegistrationCode
-	node   map[string]*NodeInformation
+	node   map[string]*Node
 	user   map[string]bool
 	mut    sync.Mutex
 }
@@ -40,7 +40,7 @@ type nodeRegistration interface {
 	// Insert Node registration code into the database
 	InsertNodeRegCode(regCode, order string) error
 	// Get Node information for the given Node registration code
-	GetNode(code string) (*NodeInformation, error)
+	GetNode(code string) (*Node, error)
 }
 
 type clientRegistration interface {
@@ -63,23 +63,24 @@ type Storage struct {
 // Struct representing a RegistrationCode table in the database
 type RegistrationCode struct {
 	// Overwrite table name
-	tableName struct{} `sql:"registration_codes,alias:registration_codes"`
+	tableName struct{} `sql:"registration_codes,alias:rc"`
 
 	// Registration code acts as the primary key
-	Code string `sql:",pk"`
+	Code string `sql:"pk"`
 	// Remaining uses for the RegistrationCode
 	RemainingUses int
 }
 
-// Struct representing the Node Information table in the database
-type NodeInformation struct {
+// Struct representing the Node table in the database
+type Node struct {
 	// Overwrite table name
-	tableName struct{} `sql:"nodes,alias:nodes"`
+	tableName struct{} `sql:"nodes,alias:n"`
 
 	// Registration code acts as the primary key
-	Code string `sql:",pk"`
+	Code string `sql:"pk"`
 	// Node order string, this is a tag used by the algorithem
 	Order string
+
 	// Node ID
 	Id []byte
 	// Server IP address
@@ -90,17 +91,106 @@ type NodeInformation struct {
 	NodeCertificate string
 	// Gateway TLS public certificate in PEM string format
 	GatewayCertificate string
+
 	// Date/time that the node was registered
 	DateRegistered time.Time
+	// Node's network status
+	Status uint8
+
+	// ID of the Node's Application
+	ApplicationId uint64 `pg:"notnull,unique"`
+
+	// Node has one Application
+	Application *Application
+	// Node has many NodeMetrics
+	NodeMetrics []*NodeMetric
+	// Each Node participates in many Rounds
+	RoundMetrics []*RoundMetric `pg:"many2many:node_to_round_metrics"`
+}
+
+// Struct representing the Node's Application table in the database
+type Application struct {
+	// Overwrite table name
+	tableName struct{} `sql:"applications,alias:app"`
+
+	// The Application's unique ID
+	Id    uint64 `sql:"pk"`
+	Name  string
+	Url   string
+	Blurb string
+
+	// Location string for the Node
+	Location string
+	// Geographic bin of the Node's location
+	GeoBin string
+	// GPS location of the Node
+	GpsLocation string
+
+	// Social media
+	Email     string
+	Twitter   string
+	Discord   string
+	Instagram string
+	Medium    string
+}
+
+// Struct representing Node Metrics table in the database
+type NodeMetric struct {
+	// Overwrite table name
+	tableName struct{} `sql:"node_metrics,alias:nm"`
+
+	// Auto-incrementing primary key
+	Id uint64 `sql:"pk"`
+	// Node has many NodeMetrics
+	NodeId []byte `pg:"notnull"`
+	// Start time of monitoring period
+	StartTime time.Time `pg:"notnull"`
+	// End time of monitoring period
+	EndTime time.Time `pg:"notnull"`
+	// Number of pings responded to during monitoring period
+	NumPings uint64 `pg:"notnull"`
+}
+
+// Junction table for the many-to-many relationship between Nodes & RoundMetrics
+type NodeToRoundMetrics struct {
+	// Overwrite table name
+	tableName struct{} `sql:"node_to_round_metrics,alias:nr"`
+
+	// Composite primary key
+	NodeId        []byte `sql:"pk"`
+	RoundMetricId uint64 `sql:"pk"`
+
+	// Order in the topology of a Node for a given Round
+	Order uint8
+}
+
+// Struct representing Round Metrics table in the database
+type RoundMetric struct {
+	// Overwrite table name
+	tableName struct{} `sql:"round_metrics,alias:rm"`
+
+	// Auto-incrementing primary key
+	Id uint64 `sql:"pk"`
+	// Nullable error string, if one occurred
+	Error string
+
+	PrecompStart  time.Time `pg:"notnull"`
+	PrecompEnd    time.Time `pg:"notnull"`
+	RealtimeStart time.Time `pg:"notnull"`
+	RealtimeEnd   time.Time `pg:"notnull"`
+	Batchsize     uint32    `pg:"notnull"`
+
+	// Each RoundMetric has many Nodes participating in each Round
+	Topology []*Node `pg:"many2many:node_to_round_metrics"`
 }
 
 // Struct representing the User table in the database
 type User struct {
 	// Overwrite table name
-	tableName struct{} `sql:"users,alias:users"`
+	tableName struct{} `sql:"users,alias:u"`
 
 	// User TLS public certificate in PEM string format
-	PublicKey string `sql:",pk"`
+	PublicKey string `sql:"pk"`
 }
 
 // Initialize the Database interface with database backend
@@ -128,7 +218,7 @@ func NewDatabase(username, password, database, address string) Storage {
 				user:   make(map[string]bool),
 			}),
 			nodeRegistration: nodeRegistration(&MapImpl{
-				node: make(map[string]*NodeInformation),
+				node: make(map[string]*Node),
 			})}
 	}
 
@@ -149,7 +239,17 @@ func NewDatabase(username, password, database, address string) Storage {
 
 // Create the database schema
 func createSchema(db *pg.DB) error {
-	for _, model := range []interface{}{&RegistrationCode{}, &User{}, &NodeInformation{}} {
+	// Register many to many model so ORM can better recognize m2m relation.
+	orm.RegisterTable(&NodeToRoundMetrics{})
+
+	// Create the models
+	// Must be updated in order to create new models in the database
+	models := []interface{}{
+		&RegistrationCode{}, &User{}, &Node{},
+		&Application{}, &NodeMetric{}, &RoundMetric{},
+		&NodeToRoundMetrics{},
+	}
+	for _, model := range models {
 		err := db.CreateTable(model, &orm.CreateTableOptions{
 			// Ignore create table if already exists?
 			IfNotExists: true,

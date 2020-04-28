@@ -13,7 +13,7 @@ import (
 // Happy path
 func TestMapImpl_InsertNodeRegCode(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*NodeInformation),
+		node: make(map[string]*Node),
 	}
 
 	// Attempt to load in a valid code
@@ -35,12 +35,12 @@ func TestMapImpl_InsertNodeRegCode(t *testing.T) {
 // Error Path: Duplicate node registration code
 func TestMapImpl_InsertNodeRegCode_Duplicate(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*NodeInformation),
+		node: make(map[string]*Node),
 	}
 
 	// Load in a registration code
 	code := "TEST"
-	m.node[code] = &NodeInformation{Code: code}
+	m.node[code] = &Node{Code: code}
 
 	// Attempt to load in a duplicate code
 	err := m.InsertNodeRegCode(code, "")
@@ -54,7 +54,7 @@ func TestMapImpl_InsertNodeRegCode_Duplicate(t *testing.T) {
 // Happy path
 func TestMapImpl_InsertNode(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*NodeInformation),
+		node: make(map[string]*Node),
 	}
 
 	// Load in a registration code
@@ -63,7 +63,7 @@ func TestMapImpl_InsertNode(t *testing.T) {
 	gwCert := "gwcert"
 	addr := "addr"
 	gwAddr := "gwaddr"
-	m.node[code] = &NodeInformation{Code: code}
+	m.node[code] = &Node{Code: code}
 
 	// Attempt to insert a node
 	err := m.InsertNode(make([]byte, 0), code, cert, addr, gwAddr, gwCert)
@@ -79,7 +79,7 @@ func TestMapImpl_InsertNode(t *testing.T) {
 // Error path: Invalid registration code
 func TestMapImpl_InsertNode_Invalid(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*NodeInformation),
+		node: make(map[string]*Node),
 	}
 
 	// Do NOT load in a registration code
@@ -98,12 +98,12 @@ func TestMapImpl_InsertNode_Invalid(t *testing.T) {
 // Happy path
 func TestMapImpl_GetNode(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*NodeInformation),
+		node: make(map[string]*Node),
 	}
 
 	// Load in a registration code
 	code := "TEST"
-	m.node[code] = &NodeInformation{Code: code}
+	m.node[code] = &Node{Code: code}
 
 	// Check that the correct node is obtained
 	info, err := m.GetNode(code)
@@ -115,7 +115,7 @@ func TestMapImpl_GetNode(t *testing.T) {
 // Error path: Nonexistent registration code
 func TestMapImpl_GetNode_Invalid(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*NodeInformation),
+		node: make(map[string]*Node),
 	}
 
 	// Check that no node is obtained from empty map

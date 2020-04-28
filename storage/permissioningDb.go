@@ -15,7 +15,7 @@ import (
 // If Node registration code is valid, add Node information
 func (m *DatabaseImpl) InsertNode(id []byte, code, serverAddr, serverCert,
 	gatewayAddress, gatewayCert string) error {
-	newNode := NodeInformation{
+	newNode := Node{
 		Code:               code,
 		Id:                 id,
 		ServerAddress:      serverAddr,
@@ -29,7 +29,7 @@ func (m *DatabaseImpl) InsertNode(id []byte, code, serverAddr, serverCert,
 
 // Insert Node registration code into the database
 func (m *DatabaseImpl) InsertNodeRegCode(regCode, order string) error {
-	newNode := NodeInformation{
+	newNode := Node{
 		Code:  regCode,
 		Order: order,
 	}
@@ -37,8 +37,8 @@ func (m *DatabaseImpl) InsertNodeRegCode(regCode, order string) error {
 }
 
 // Get Node information for the given Node registration code
-func (m *DatabaseImpl) GetNode(code string) (*NodeInformation, error) {
-	newNode := &NodeInformation{
+func (m *DatabaseImpl) GetNode(code string) (*Node, error) {
+	newNode := &Node{
 		Code: code,
 	}
 	err := m.db.Select(newNode)

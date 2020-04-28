@@ -46,13 +46,13 @@ func (m *MapImpl) InsertNodeRegCode(regCode, order string) error {
 	}
 
 	m.node[regCode] =
-		&NodeInformation{Code: regCode, Order: order}
+		&Node{Code: regCode, Order: order}
 	m.mut.Unlock()
 	return nil
 }
 
 // Get Node information for the given Node registration code
-func (m *MapImpl) GetNode(code string) (*NodeInformation, error) {
+func (m *MapImpl) GetNode(code string) (*Node, error) {
 	m.mut.Lock()
 	info := m.node[code]
 	if info == nil {
