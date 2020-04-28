@@ -78,11 +78,11 @@ type Node struct {
 
 	// Registration code acts as the primary key
 	Code string `sql:",pk"`
-	// Node order string, this is a tag used by the algorithem
+	// Node order string, this is a tag used by the algorithm
 	Order string
 
-	// Node ID
-	Id string
+	// Unique Node ID
+	Id string `sql:",unique"`
 	// Server IP address
 	ServerAddress string
 	// Gateway IP address
@@ -97,8 +97,8 @@ type Node struct {
 	// Node's network status
 	Status uint8
 
-	// ID of the Node's Application
-	ApplicationId uint64 `sql:",notnull"`
+	// Unique ID of the Node's Application
+	ApplicationId uint64 `sql:",notnull,unique"`
 
 	// Node has one Application
 	Application *Application
