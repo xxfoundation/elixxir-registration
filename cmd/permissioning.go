@@ -34,7 +34,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errors.Errorf(
 			"Registration code %+v is invalid or not currently enabled: %+v", RegistrationCode, err)
 	}
-	if nodeInfo.Id != nil {
+	if nodeInfo.Id != "" {
 		return errors.Errorf(
 			"Node with registration code %+v has already been registered", RegistrationCode)
 	}
@@ -145,7 +145,7 @@ func assembleNdf(code string) (*ndf.Gateway, *ndf.Node, error) {
 	}
 
 	node := &ndf.Node{
-		ID:             nodeInfo.Id,
+		ID:             []byte(nodeInfo.Id),
 		Address:        nodeInfo.ServerAddress,
 		TlsCertificate: nodeInfo.NodeCertificate,
 	}

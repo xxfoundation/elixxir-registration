@@ -17,7 +17,7 @@ func (m *DatabaseImpl) InsertNode(id []byte, code, serverAddr, serverCert,
 	gatewayAddress, gatewayCert string) error {
 	newNode := Node{
 		Code:               code,
-		Id:                 id,
+		Id:                 string(id),
 		ServerAddress:      serverAddr,
 		GatewayAddress:     gatewayAddress,
 		NodeCertificate:    serverCert,

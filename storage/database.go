@@ -66,7 +66,7 @@ type RegistrationCode struct {
 	tableName struct{} `sql:"registration_codes,alias:rc"`
 
 	// Registration code acts as the primary key
-	Code string `sql:"pk"`
+	Code string `sql:",pk"`
 	// Remaining uses for the RegistrationCode
 	RemainingUses int
 }
@@ -77,12 +77,12 @@ type Node struct {
 	tableName struct{} `sql:"nodes,alias:n"`
 
 	// Registration code acts as the primary key
-	Code string `sql:"pk"`
+	Code string `sql:",pk"`
 	// Node order string, this is a tag used by the algorithem
 	Order string
 
 	// Node ID
-	Id []byte
+	Id string
 	// Server IP address
 	ServerAddress string
 	// Gateway IP address
@@ -98,14 +98,12 @@ type Node struct {
 	Status uint8
 
 	// ID of the Node's Application
-	ApplicationId uint64 `pg:"notnull,unique"`
+	ApplicationId uint64 `sql:",notnull"`
 
 	// Node has one Application
 	Application *Application
-	// Node has many NodeMetrics
-	NodeMetrics []*NodeMetric
 	// Each Node participates in many Rounds
-	RoundMetrics []*RoundMetric `pg:"many2many:node_to_round_metrics"`
+	RoundMetrics []*RoundMetric `sql:"many2many:node_to_round_metrics"`
 }
 
 // Struct representing the Node's Application table in the database
@@ -114,7 +112,7 @@ type Application struct {
 	tableName struct{} `sql:"applications,alias:app"`
 
 	// The Application's unique ID
-	Id    uint64 `sql:"pk"`
+	Id    uint64 `sql:",pk"`
 	Name  string
 	Url   string
 	Blurb string
@@ -140,15 +138,16 @@ type NodeMetric struct {
 	tableName struct{} `sql:"node_metrics,alias:nm"`
 
 	// Auto-incrementing primary key
-	Id uint64 `sql:"pk"`
+	Id uint64 `sql:",pk"`
 	// Node has many NodeMetrics
-	NodeId []byte `pg:"notnull"`
+	NodeId string `sql:",notnull"`
+	Node   *Node
 	// Start time of monitoring period
-	StartTime time.Time `pg:"notnull"`
+	StartTime time.Time `sql:",notnull"`
 	// End time of monitoring period
-	EndTime time.Time `pg:"notnull"`
+	EndTime time.Time `sql:",notnull"`
 	// Number of pings responded to during monitoring period
-	NumPings uint64 `pg:"notnull"`
+	NumPings uint64 `sql:",notnull"`
 }
 
 // Junction table for the many-to-many relationship between Nodes & RoundMetrics
@@ -157,8 +156,10 @@ type NodeToRoundMetrics struct {
 	tableName struct{} `sql:"node_to_round_metrics,alias:nr"`
 
 	// Composite primary key
-	NodeId        []byte `sql:"pk"`
-	RoundMetricId uint64 `sql:"pk"`
+	NodeId        string `sql:",pk"`
+	Node          *Node
+	RoundMetricId uint64 `sql:",pk"`
+	RoundMetric   *RoundMetric
 
 	// Order in the topology of a Node for a given Round
 	Order uint8
@@ -170,18 +171,18 @@ type RoundMetric struct {
 	tableName struct{} `sql:"round_metrics,alias:rm"`
 
 	// Auto-incrementing primary key
-	Id uint64 `sql:"pk"`
+	Id uint64 `sql:",pk"`
 	// Nullable error string, if one occurred
 	Error string
 
-	PrecompStart  time.Time `pg:"notnull"`
-	PrecompEnd    time.Time `pg:"notnull"`
-	RealtimeStart time.Time `pg:"notnull"`
-	RealtimeEnd   time.Time `pg:"notnull"`
-	Batchsize     uint32    `pg:"notnull"`
+	PrecompStart  time.Time `sql:",notnull"`
+	PrecompEnd    time.Time `sql:",notnull"`
+	RealtimeStart time.Time `sql:",notnull"`
+	RealtimeEnd   time.Time `sql:",notnull"`
+	BatchSize     uint32    `sql:",notnull"`
 
 	// Each RoundMetric has many Nodes participating in each Round
-	Topology []*Node `pg:"many2many:node_to_round_metrics"`
+	Topology []*Node `sql:"many2many:node_to_round_metrics"`
 }
 
 // Struct representing the User table in the database
@@ -190,7 +191,7 @@ type User struct {
 	tableName struct{} `sql:"users,alias:u"`
 
 	// User TLS public certificate in PEM string format
-	PublicKey string `sql:"pk"`
+	PublicKey string `sql:",pk"`
 }
 
 // Initialize the Database interface with database backend
@@ -245,8 +246,8 @@ func createSchema(db *pg.DB) error {
 	// Create the models
 	// Must be updated in order to create new models in the database
 	models := []interface{}{
-		&RegistrationCode{}, &User{}, &Node{},
-		&Application{}, &NodeMetric{}, &RoundMetric{},
+		&RegistrationCode{}, &User{}, &Application{}, &Node{},
+		&NodeMetric{}, &RoundMetric{},
 		&NodeToRoundMetrics{},
 	}
 	for _, model := range models {
