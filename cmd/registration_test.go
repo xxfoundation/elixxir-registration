@@ -80,7 +80,11 @@ func TestEmptyDataBase(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0:6969")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
 
 	//using node cert as gateway cert
 	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
@@ -103,7 +107,11 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 	impl.nodeCompleted = make(chan string, 1)
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0:6969")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
 	//Insert a sample regCode
 	err = storage.PermissioningDb.InsertNodeRegCode("AAAA", "")
 	if err != nil {
@@ -128,8 +136,13 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 		t.Errorf("Unable to start: %+v", err)
 	}
 
-	//Inialiaze the database
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6900")
+	// Initialize the database
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0:6969")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
+
 	//Insert regcodes into it
 	err = storage.PermissioningDb.InsertClientRegCode("AAAA", 100)
 	if err != nil {
@@ -151,9 +164,13 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 
 //Attempt to register a node after the
 func TestCompleteRegistration_HappyPath(t *testing.T) {
-	//Crate database
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
-	//Insert a sample regCode
+	// Initialize the database
+	var err error
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0:6969")
+	if err != nil {
+		t.Errorf("%+v", err)
+	} //Insert a sample regCode
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "BBBB"})
 
@@ -196,9 +213,13 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 //Error path: test that trying to register with the same reg code fails
 func TestDoubleRegistration(t *testing.T) {
-	//Create database
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
-
+	// Initialize the database
+	var err error
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0:6969")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "AAAA"}, node.Info{RegCode: "BBBB"}, node.Info{RegCode: "CCCC"})
@@ -238,9 +259,13 @@ func TestDoubleRegistration(t *testing.T) {
 
 //Happy path: attempt to register 2 nodes
 func TestTopology_MultiNodes(t *testing.T) {
-	//Create database
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
-
+	// Initialize the database
+	var err error
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0:6969")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "AAAA"}, node.Info{RegCode: "BBBB"}, node.Info{RegCode: "CCCC"})
@@ -363,8 +388,11 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	go impl.nodeRegistrationCompleter(beginScheduling)
 
 	// Initialize the database
-	storage.PermissioningDb = storage.NewDatabase(
-		"test", "password", "regCodes", "0.0.0.0:6548")
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0:6969")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
 
 	// Attempt to register a user
 	_, err = impl.RegisterUser("b", "B")

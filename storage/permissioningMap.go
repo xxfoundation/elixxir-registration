@@ -11,15 +11,16 @@ package storage
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/primitives/id"
 )
 
 // If Node registration code is valid, add Node information
-func (m *MapImpl) InsertNode(id []byte, code, serverCert, serverAddress,
+func (m *MapImpl) InsertNode(id *id.Node, code, serverCert, serverAddress,
 	gatewayAddress, gatewayCert string) error {
 	m.mut.Lock()
 	jww.INFO.Printf("Attempting to register node with code: %s", code)
 	if info := m.node[code]; info != nil {
-		info.Id = string(id)
+		info.Id = id.String()
 		info.ServerAddress = serverAddress
 		info.GatewayCertificate = gatewayCert
 		info.GatewayAddress = gatewayAddress

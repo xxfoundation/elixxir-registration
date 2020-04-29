@@ -7,6 +7,7 @@
 package storage
 
 import (
+	"gitlab.com/elixxir/primitives/id"
 	"testing"
 )
 
@@ -66,7 +67,8 @@ func TestMapImpl_InsertNode(t *testing.T) {
 	m.node[code] = &Node{Code: code}
 
 	// Attempt to insert a node
-	err := m.InsertNode(make([]byte, 0), code, cert, addr, gwAddr, gwCert)
+	err := m.InsertNode(id.NewNodeFromBytes(make([]byte, 0)), code, cert,
+		addr, gwAddr, gwCert)
 
 	// Verify the insert was successful
 	if info := m.node[code]; err != nil || info.NodeCertificate != cert ||
@@ -86,7 +88,8 @@ func TestMapImpl_InsertNode_Invalid(t *testing.T) {
 	code := "TEST"
 
 	// Attempt to insert a node without an associated registration code
-	err := m.InsertNode(make([]byte, 0), code, code, code, code, code)
+	err := m.InsertNode(id.NewNodeFromBytes(make([]byte, 0)), code, code,
+		code, code, code)
 
 	// Verify the insert failed
 	if err == nil {

@@ -170,9 +170,13 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 //Happy path
 func TestRegistrationImpl_PollNdf(t *testing.T) {
-
 	//Create database
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	var err error
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0:6969")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
@@ -264,7 +268,12 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 //Error  path
 func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Create database
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	var err error
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0:6969")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)

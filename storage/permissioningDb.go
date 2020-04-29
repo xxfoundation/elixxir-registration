@@ -9,38 +9,37 @@
 package storage
 
 import (
+	"gitlab.com/elixxir/primitives/id"
 	"time"
 )
 
 // If Node registration code is valid, add Node information
-func (m *DatabaseImpl) InsertNode(id []byte, code, serverAddr, serverCert,
+func (m *DatabaseImpl) InsertNode(id *id.Node, code, serverAddr, serverCert,
 	gatewayAddress, gatewayCert string) error {
 	newNode := Node{
 		Code:               code,
-		Id:                 string(id),
+		Id:                 id.String(),
 		ServerAddress:      serverAddr,
 		GatewayAddress:     gatewayAddress,
 		NodeCertificate:    serverCert,
 		GatewayCertificate: gatewayCert,
 		DateRegistered:     time.Now(),
 	}
-	return m.db.Update(&newNode)
+	return m.db.Create(&newNode).Error
 }
 
 // Insert Node registration code into the database
 func (m *DatabaseImpl) InsertNodeRegCode(regCode, order string) error {
-	newNode := Node{
+	newNode := &Node{
 		Code:  regCode,
 		Order: order,
 	}
-	return m.db.Insert(&newNode)
+	return m.db.Create(newNode).Error
 }
 
 // Get Node information for the given Node registration code
 func (m *DatabaseImpl) GetNode(code string) (*Node, error) {
-	newNode := &Node{
-		Code: code,
-	}
-	err := m.db.Select(newNode)
+	newNode := &Node{}
+	err := m.db.First(&newNode, "code = ?", code).Error
 	return newNode, err
 }

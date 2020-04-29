@@ -9,9 +9,11 @@
 package storage
 
 import (
-	"github.com/go-pg/pg"
-	"github.com/go-pg/pg/orm"
+	"fmt"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
 	"sync"
 	"time"
@@ -19,7 +21,7 @@ import (
 
 // Struct implementing the Database Interface with an underlying DB
 type DatabaseImpl struct {
-	db *pg.DB // Stored database connection
+	db *gorm.DB // Stored database connection
 }
 
 // Struct implementing the Database Interface with an underlying Map
@@ -35,7 +37,7 @@ var PermissioningDb Storage
 
 type nodeRegistration interface {
 	// If Node registration code is valid, add Node information
-	InsertNode(id []byte, code, serverAddr, serverCert,
+	InsertNode(id *id.Node, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
 	// Insert Node registration code into the database
 	InsertNodeRegCode(regCode, order string) error
@@ -62,27 +64,21 @@ type Storage struct {
 
 // Struct representing a RegistrationCode table in the database
 type RegistrationCode struct {
-	// Overwrite table name
-	tableName struct{} `sql:"registration_codes,alias:rc"`
-
 	// Registration code acts as the primary key
-	Code string `sql:",pk"`
+	Code string `gorm:"primary_key"`
 	// Remaining uses for the RegistrationCode
 	RemainingUses int
 }
 
 // Struct representing the Node table in the database
 type Node struct {
-	// Overwrite table name
-	tableName struct{} `sql:"nodes,alias:n"`
-
 	// Registration code acts as the primary key
-	Code string `sql:",pk"`
+	Code string `gorm:"primary_key"`
 	// Node order string, this is a tag used by the algorithm
 	Order string
 
 	// Unique Node ID
-	Id string `sql:",unique"`
+	Id string `gorm:"UNIQUE_INDEX"`
 	// Server IP address
 	ServerAddress string
 	// Gateway IP address
@@ -98,21 +94,23 @@ type Node struct {
 	Status uint8
 
 	// Unique ID of the Node's Application
-	ApplicationId uint64 `sql:",notnull,unique"`
+	ApplicationId uint64 `gorm:"UNIQUE_INDEX;NOT NULL"`
 
-	// Node has one Application
-	Application *Application
+	// Each Node has many Node Metrics
+	NodeMetrics []*NodeMetric `gorm:"foreignkey:Id"`
+
 	// Each Node participates in many Rounds
-	RoundMetrics []*RoundMetric `sql:"many2many:node_to_round_metrics"`
+	RoundMetrics []*RoundMetric `gorm:"many2many:topologies"`
 }
 
 // Struct representing the Node's Application table in the database
 type Application struct {
-	// Overwrite table name
-	tableName struct{} `sql:"applications,alias:app"`
-
 	// The Application's unique ID
-	Id    uint64 `sql:",pk"`
+	Id uint64 `gorm:"primary_key"`
+	// Each Application has one Node
+	Node *Node `gorm:"foreignkey:ApplicationId"`
+
+	// Node information
 	Name  string
 	Url   string
 	Blurb string
@@ -134,80 +132,62 @@ type Application struct {
 
 // Struct representing Node Metrics table in the database
 type NodeMetric struct {
-	// Overwrite table name
-	tableName struct{} `sql:"node_metrics,alias:nm"`
-
 	// Auto-incrementing primary key
-	Id uint64 `sql:",pk"`
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
 	// Node has many NodeMetrics
-	NodeId string `sql:",notnull"`
-	Node   *Node
+	NodeId string `gorm:"NOT NULL"`
 	// Start time of monitoring period
-	StartTime time.Time `sql:",notnull"`
+	StartTime time.Time `gorm:"NOT NULL"`
 	// End time of monitoring period
-	EndTime time.Time `sql:",notnull"`
+	EndTime time.Time `gorm:"NOT NULL"`
 	// Number of pings responded to during monitoring period
-	NumPings uint64 `sql:",notnull"`
+	NumPings uint64 `gorm:"NOT NULL"`
 }
 
 // Junction table for the many-to-many relationship between Nodes & RoundMetrics
-type NodeToRoundMetrics struct {
-	// Overwrite table name
-	tableName struct{} `sql:"node_to_round_metrics,alias:nr"`
-
+type Topology struct {
 	// Composite primary key
-	NodeId        string `sql:",pk"`
-	Node          *Node
-	RoundMetricId uint64 `sql:",pk"`
-	RoundMetric   *RoundMetric
+	NodeId        string `gorm:"primary_key"`
+	RoundMetricId uint64 `gorm:"primary_key"`
 
 	// Order in the topology of a Node for a given Round
-	Order uint8
+	Order uint8 `gorm:"NOT NULL"`
 }
 
 // Struct representing Round Metrics table in the database
 type RoundMetric struct {
-	// Overwrite table name
-	tableName struct{} `sql:"round_metrics,alias:rm"`
-
 	// Auto-incrementing primary key
-	Id uint64 `sql:",pk"`
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
 	// Nullable error string, if one occurred
 	Error string
 
-	PrecompStart  time.Time `sql:",notnull"`
-	PrecompEnd    time.Time `sql:",notnull"`
-	RealtimeStart time.Time `sql:",notnull"`
-	RealtimeEnd   time.Time `sql:",notnull"`
-	BatchSize     uint32    `sql:",notnull"`
+	PrecompStart  time.Time `gorm:"NOT NULL"`
+	PrecompEnd    time.Time `gorm:"NOT NULL"`
+	RealtimeStart time.Time `gorm:"NOT NULL"`
+	RealtimeEnd   time.Time `gorm:"NOT NULL"`
+	BatchSize     uint32    `gorm:"NOT NULL"`
 
 	// Each RoundMetric has many Nodes participating in each Round
-	Topology []*Node `sql:"many2many:node_to_round_metrics"`
+	Topology []*Node `gorm:"many2many:topologies;"`
 }
 
 // Struct representing the User table in the database
 type User struct {
-	// Overwrite table name
-	tableName struct{} `sql:"users,alias:u"`
-
 	// User TLS public certificate in PEM string format
-	PublicKey string `sql:",pk"`
+	PublicKey string `gorm:"primary_key"`
 }
 
 // Initialize the Database interface with database backend
-func NewDatabase(username, password, database, address string) Storage {
+func NewDatabase(username, password, database, address string) (Storage, error) {
 	// Create the database connection
-	db := pg.Connect(&pg.Options{
-		User:         username,
-		Password:     password,
-		Database:     database,
-		Addr:         address,
-		MaxRetries:   10,
-		MinIdleConns: 1,
-	})
-
-	// Initialize the schema
-	err := createSchema(db)
+	connectString := fmt.Sprintf(
+		"host=%s port=5432 user=%s dbname=%s sslmode=disable",
+		address, username, database)
+	// Handle empty database password
+	if len(password) > 0 {
+		connectString += fmt.Sprintf(" password=%s", password)
+	}
+	db, err := gorm.Open("postgres", connectString)
 	if err != nil {
 		// Return the map-backend interface
 		// in the event there is a database error
@@ -220,9 +200,27 @@ func NewDatabase(username, password, database, address string) Storage {
 			}),
 			nodeRegistration: nodeRegistration(&MapImpl{
 				node: make(map[string]*Node),
-			})}
+			})}, nil
 	}
 
+	// Initialize the databage logger
+	db.SetLogger(jww.DEBUG)
+	db.LogMode(true)
+
+	// Initialize the database schema
+	models := []interface{}{
+		&RegistrationCode{}, &User{},
+		&Topology{}, &Application{}, &Node{},
+		&NodeMetric{}, &RoundMetric{},
+	}
+	for _, model := range models {
+		err = db.AutoMigrate(model).Error
+		if err != nil {
+			return Storage{}, err
+		}
+	}
+
+	// Build the interface
 	regCodeDb := &DatabaseImpl{
 		db: db,
 	}
@@ -234,42 +232,8 @@ func NewDatabase(username, password, database, address string) Storage {
 	return Storage{
 		clientRegistration: regCodeDb,
 		nodeRegistration:   nodeDb,
-	}
+	}, nil
 
-}
-
-// Create the database schema
-func createSchema(db *pg.DB) error {
-	// Register many to many model so ORM can better recognize m2m relation.
-	orm.RegisterTable(&NodeToRoundMetrics{})
-
-	// Create the models
-	// Must be updated in order to create new models in the database
-	models := []interface{}{
-		&RegistrationCode{}, &User{}, &Application{}, &Node{},
-		&NodeMetric{}, &RoundMetric{},
-		&NodeToRoundMetrics{},
-	}
-	for _, model := range models {
-		err := db.CreateTable(model, &orm.CreateTableOptions{
-			// Ignore create table if already exists?
-			IfNotExists: true,
-			// Create temporary table?
-			Temp: false,
-			// FKConstraints causes CreateTable to create foreign key constraints
-			// for has one relations. ON DELETE hook can be added using tag
-			// `sql:"on_delete:RESTRICT"` on foreign key field.
-			FKConstraints: true,
-			// Replaces PostgreSQL data type `text` with `varchar(n)`
-			// Varchar: 255
-		})
-		if err != nil {
-			// Return error if one comes up
-			return err
-		}
-	}
-	// No error, return nil
-	return nil
 }
 
 // Adds Client registration codes to the database
