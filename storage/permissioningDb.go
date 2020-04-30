@@ -13,8 +13,32 @@ import (
 	"time"
 )
 
+// Insert Application object
+func (m *DatabaseImpl) InsertApplication(application *Application) error {
+	return m.db.Create(application).Error
+}
+
+// Insert NodeMetric object
+func (m *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
+	return m.db.Create(metric).Error
+}
+
+// Insert RoundMetric object
+func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology []string) error {
+	newTopology := make([]Topology, len(topology))
+	for i, node := range topology {
+		topologyObj := Topology{
+			NodeId: node,
+			Order:  uint8(i),
+		}
+		newTopology[i] = topologyObj
+	}
+	metric.Topologies = newTopology
+	return m.db.Save(metric).Error
+}
+
 // If Node registration code is valid, add Node information
-func (m *DatabaseImpl) InsertNode(id *id.Node, code, serverAddr, serverCert,
+func (m *DatabaseImpl) RegisterNode(id *id.Node, code, serverAddr, serverCert,
 	gatewayAddress, gatewayCert string) error {
 	newNode := Node{
 		Code:               code,
@@ -25,14 +49,15 @@ func (m *DatabaseImpl) InsertNode(id *id.Node, code, serverAddr, serverCert,
 		GatewayCertificate: gatewayCert,
 		DateRegistered:     time.Now(),
 	}
-	return m.db.Create(&newNode).Error
+	return m.db.Model(&newNode).Update(&newNode).Error
 }
 
 // Insert Node registration code into the database
-func (m *DatabaseImpl) InsertNodeRegCode(regCode, order string) error {
+func (m *DatabaseImpl) InsertUnregisteredNode(code, order string, applicationId uint64) error {
 	newNode := &Node{
-		Code:  regCode,
-		Order: order,
+		Code:          code,
+		ApplicationId: applicationId,
+		Order:         order,
 	}
 	return m.db.Create(newNode).Error
 }

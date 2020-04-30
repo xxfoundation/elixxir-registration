@@ -15,7 +15,7 @@ import (
 )
 
 // If Node registration code is valid, add Node information
-func (m *MapImpl) InsertNode(id *id.Node, code, serverCert, serverAddress,
+func (m *MapImpl) RegisterNode(id *id.Node, code, serverCert, serverAddress,
 	gatewayAddress, gatewayCert string) error {
 	m.mut.Lock()
 	jww.INFO.Printf("Attempting to register node with code: %s", code)
@@ -34,20 +34,19 @@ func (m *MapImpl) InsertNode(id *id.Node, code, serverCert, serverAddress,
 }
 
 // Insert Node registration code into the database
-func (m *MapImpl) InsertNodeRegCode(regCode, order string) error {
+func (m *MapImpl) InsertUnregisteredNode(code, order string, applicationId uint64) error {
 	m.mut.Lock()
 	jww.INFO.Printf("Adding node registration code: %s with Order Info: %s",
-		regCode, order)
+		code, order)
 
 	// Enforce unique registration code
-	if m.node[regCode] != nil {
+	if m.node[code] != nil {
 		m.mut.Unlock()
 		return errors.Errorf("node registration code %s already exists",
-			regCode)
+			code)
 	}
 
-	m.node[regCode] =
-		&Node{Code: regCode, Order: order}
+	m.node[code] = &Node{Code: code, Order: order}
 	m.mut.Unlock()
 	return nil
 }

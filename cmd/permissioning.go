@@ -64,7 +64,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	}
 
 	// Attempt to insert Node into the database
-	err = storage.PermissioningDb.InsertNode(id.NewNodeFromBytes(ID),
+	err = storage.PermissioningDb.RegisterNode(id.NewNodeFromBytes(ID),
 		RegistrationCode, signedNodeCert, ServerAddr, GatewayAddr, signedGatewayCert)
 	if err != nil {
 		return errors.Errorf("unable to insert node: %+v", err)

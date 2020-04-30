@@ -113,7 +113,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 	//Insert a sample regCode
-	err = storage.PermissioningDb.InsertNodeRegCode("AAAA", "")
+	err = storage.PermissioningDb.InsertUnregisteredNode("AAAA", "", 0)
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}

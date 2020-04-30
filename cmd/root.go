@@ -93,12 +93,15 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Set up database connection
-		storage.PermissioningDb = storage.NewDatabase(
+		storage.PermissioningDb, err = storage.NewDatabase(
 			viper.GetString("dbUsername"),
 			viper.GetString("dbPassword"),
 			viper.GetString("dbName"),
 			viper.GetString("dbAddress"),
 		)
+		if err != nil {
+			jww.FATAL.Panicf("Unable to initialize storage: %+v", err)
+		}
 
 		// Populate Node registration codes into the database
 		RegCodesFilePath := viper.GetString("regCodesFilePath")

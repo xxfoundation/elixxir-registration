@@ -37,12 +37,18 @@ var PermissioningDb Storage
 
 type nodeRegistration interface {
 	// If Node registration code is valid, add Node information
-	InsertNode(id *id.Node, code, serverAddr, serverCert,
+	RegisterNode(id *id.Node, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
 	// Insert Node registration code into the database
-	InsertNodeRegCode(regCode, order string) error
+	InsertUnregisteredNode(code, order string, applicationId uint64) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*Node, error)
+	// Insert Application object
+	InsertApplication(application *Application) error
+	// Insert NodeMetric object
+	InsertNodeMetric(metric *NodeMetric) error
+	// Insert RoundMetric object
+	InsertRoundMetric(metric *RoundMetric, topology []string) error
 }
 
 type clientRegistration interface {
@@ -70,37 +76,10 @@ type RegistrationCode struct {
 	RemainingUses int
 }
 
-// Struct representing the Node table in the database
-type Node struct {
-	// Registration code acts as the primary key
-	Code string `gorm:"primary_key"`
-	// Node order string, this is a tag used by the algorithm
-	Order string
-
-	// Unique Node ID
-	Id string `gorm:"UNIQUE_INDEX"`
-	// Server IP address
-	ServerAddress string
-	// Gateway IP address
-	GatewayAddress string
-	// Node TLS public certificate in PEM string format
-	NodeCertificate string
-	// Gateway TLS public certificate in PEM string format
-	GatewayCertificate string
-
-	// Date/time that the node was registered
-	DateRegistered time.Time
-	// Node's network status
-	Status uint8
-
-	// Unique ID of the Node's Application
-	ApplicationId uint64 `gorm:"UNIQUE_INDEX;NOT NULL"`
-
-	// Each Node has many Node Metrics
-	NodeMetrics []*NodeMetric `gorm:"foreignkey:Id"`
-
-	// Each Node participates in many Rounds
-	RoundMetrics []*RoundMetric `gorm:"many2many:topologies"`
+// Struct representing the User table in the database
+type User struct {
+	// User TLS public certificate in PEM string format
+	PublicKey string `gorm:"primary_key"`
 }
 
 // Struct representing the Node's Application table in the database
@@ -108,7 +87,7 @@ type Application struct {
 	// The Application's unique ID
 	Id uint64 `gorm:"primary_key"`
 	// Each Application has one Node
-	Node *Node `gorm:"foreignkey:ApplicationId"`
+	Node Node `gorm:"foreignkey:ApplicationId"`
 
 	// Node information
 	Name  string
@@ -128,6 +107,39 @@ type Application struct {
 	Discord   string
 	Instagram string
 	Medium    string
+}
+
+// Struct representing the Node table in the database
+type Node struct {
+	// Registration code acts as the primary key
+	Code string `gorm:"primary_key"`
+	// Node order string, this is a tag used by the algorithm
+	Order string
+
+	// Unique Node ID
+	Id string `gorm:"UNIQUE_INDEX;default: null"`
+	// Server IP address
+	ServerAddress string
+	// Gateway IP address
+	GatewayAddress string
+	// Node TLS public certificate in PEM string format
+	NodeCertificate string
+	// Gateway TLS public certificate in PEM string format
+	GatewayCertificate string
+
+	// Date/time that the node was registered
+	DateRegistered time.Time
+	// Node's network status
+	Status uint8
+
+	// Unique ID of the Node's Application
+	ApplicationId uint64 `gorm:"UNIQUE_INDEX;NOT NULL"`
+
+	// Each Node has many Node Metrics
+	NodeMetrics []NodeMetric `gorm:"foreignkey:Id;association_foreignkey:Id"`
+
+	// Each Node participates in many Rounds
+	Topologies []Topology `gorm:"foreignkey:NodeId;association_foreignkey:Id"`
 }
 
 // Struct representing Node Metrics table in the database
@@ -168,13 +180,7 @@ type RoundMetric struct {
 	BatchSize     uint32    `gorm:"NOT NULL"`
 
 	// Each RoundMetric has many Nodes participating in each Round
-	Topology []*Node `gorm:"many2many:topologies;"`
-}
-
-// Struct representing the User table in the database
-type User struct {
-	// User TLS public certificate in PEM string format
-	PublicKey string `gorm:"primary_key"`
+	Topologies []Topology `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
 }
 
 // Initialize the Database interface with database backend
@@ -193,17 +199,18 @@ func NewDatabase(username, password, database, address string) (Storage, error) 
 		// in the event there is a database error
 		jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
 		jww.INFO.Println("Map backend initialized successfully!")
-		return Storage{
-			clientRegistration: clientRegistration(&MapImpl{
-				client: make(map[string]*RegistrationCode),
-				user:   make(map[string]bool),
-			}),
-			nodeRegistration: nodeRegistration(&MapImpl{
-				node: make(map[string]*Node),
-			})}, nil
+		return Storage{}, nil
+		//return Storage{ TODO
+		//	clientRegistration: clientRegistration(&MapImpl{
+		//		client: make(map[string]*RegistrationCode),
+		//		user:   make(map[string]bool),
+		//	}),
+		//	nodeRegistration: nodeRegistration(&MapImpl{
+		//		node: make(map[string]*Node),
+		//	})}, nil
 	}
 
-	// Initialize the databage logger
+	// Initialize the database logger
 	db.SetLogger(jww.DEBUG)
 	db.LogMode(true)
 
@@ -221,17 +228,14 @@ func NewDatabase(username, password, database, address string) (Storage, error) 
 	}
 
 	// Build the interface
-	regCodeDb := &DatabaseImpl{
+	di := &DatabaseImpl{
 		db: db,
 	}
-	nodeDb := nodeRegistration(&DatabaseImpl{
-		db: db,
-	})
 
 	jww.INFO.Println("Database backend initialized successfully!")
 	return Storage{
-		clientRegistration: regCodeDb,
-		nodeRegistration:   nodeDb,
+		clientRegistration: di,
+		nodeRegistration:   di,
 	}, nil
 
 }
@@ -250,7 +254,8 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 // Adds Node registration codes to the database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
 	for _, info := range infos {
-		err := PermissioningDb.InsertNodeRegCode(info.RegCode, info.Order)
+		err := PermissioningDb.InsertUnregisteredNode(info.RegCode,
+			info.Order, 0)
 		if err != nil {
 			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
 				err)

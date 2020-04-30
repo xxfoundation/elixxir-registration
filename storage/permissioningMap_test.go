@@ -20,7 +20,7 @@ func TestMapImpl_InsertNodeRegCode(t *testing.T) {
 	// Attempt to load in a valid code
 	code := "TEST"
 	Order := "BLARG"
-	err := m.InsertNodeRegCode(code, Order)
+	err := m.InsertUnregisteredNode(code, Order, 0)
 
 	// Verify the insert was successful
 	if err != nil || m.node[code] == nil {
@@ -44,7 +44,7 @@ func TestMapImpl_InsertNodeRegCode_Duplicate(t *testing.T) {
 	m.node[code] = &Node{Code: code}
 
 	// Attempt to load in a duplicate code
-	err := m.InsertNodeRegCode(code, "")
+	err := m.InsertUnregisteredNode(code, "", 0)
 
 	// Verify the insert failed
 	if err == nil {
@@ -67,7 +67,7 @@ func TestMapImpl_InsertNode(t *testing.T) {
 	m.node[code] = &Node{Code: code}
 
 	// Attempt to insert a node
-	err := m.InsertNode(id.NewNodeFromBytes(make([]byte, 0)), code, cert,
+	err := m.RegisterNode(id.NewNodeFromBytes(make([]byte, 0)), code, cert,
 		addr, gwAddr, gwCert)
 
 	// Verify the insert was successful
@@ -88,7 +88,7 @@ func TestMapImpl_InsertNode_Invalid(t *testing.T) {
 	code := "TEST"
 
 	// Attempt to insert a node without an associated registration code
-	err := m.InsertNode(id.NewNodeFromBytes(make([]byte, 0)), code, code,
+	err := m.RegisterNode(id.NewNodeFromBytes(make([]byte, 0)), code, code,
 		code, code, code)
 
 	// Verify the insert failed
