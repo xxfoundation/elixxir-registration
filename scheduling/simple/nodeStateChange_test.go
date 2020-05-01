@@ -103,6 +103,8 @@ func TestHandleNodeStateChance_WaitingError(t *testing.T) {
 		From: current.NOT_STARTED,
 		To:   current.WAITING}
 
+	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
+
 	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 	if err != nil {
 		return
