@@ -38,7 +38,10 @@ type State struct {
 	//id of the node
 	id *id.Node
 
-	//lock to ensure only one polling operation occurs at a time
+	// when a node poll is received, this nodes polling lock is. If
+	// there is no update, it is released in this endpoint, otherwise it is
+	// released in the scheduling algorithm which blocks all future polls until
+	// processing completes
 	pollingLock sync.Mutex
 }
 
