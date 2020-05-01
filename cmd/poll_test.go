@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature/rsa"
@@ -185,48 +186,43 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
 	RegParams.udbId = udbId
 	RegParams.minimumNodes = 3
-
+	fmt.Println("-A")
 	// Start registration server
 	impl, err := StartRegistration(RegParams)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	beginScheduling := make(chan struct{}, 1)
-	go func() {
-		err = impl.nodeRegistrationCompleter(beginScheduling)
+	go func(){
+		fmt.Println("A")
+		//Register 1st node
+		err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
+			"0.0.0.0:7900", string(gatewayCert), "BBBB")
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Errorf("Expected happy path, recieved error: %+v", err)
+		}
+		fmt.Println("B")
+		//Register 2nd node
+		err = impl.RegisterNode([]byte("C"), "0.0.0.0:6901", string(nodeCert),
+			"0.0.0.0:7901", string(gatewayCert), "CCCC")
+		if err != nil {
+			t.Errorf("Expected happy path, recieved error: %+v", err)
+		}
+		fmt.Println("C")
+		//Register 3rd node
+		err = impl.RegisterNode([]byte("D"), "0.0.0.0:6902", string(nodeCert),
+			"0.0.0.0:7902", string(gatewayCert), "DDDD")
+		if err != nil {
+			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
 	}()
 
-	//Register 1st node
-	err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
-		"0.0.0.0:7900", string(gatewayCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 2nd node
-	err = impl.RegisterNode([]byte("C"), "0.0.0.0:6901", string(nodeCert),
-		"0.0.0.0:7901", string(gatewayCert), "CCCC")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 3rd node
-	err = impl.RegisterNode([]byte("D"), "0.0.0.0:6902", string(nodeCert),
-		"0.0.0.0:7902", string(gatewayCert), "DDDD")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
 	//wait for registration to complete
 	select {
-	case <-time.NewTimer(100 * time.Millisecond).C:
+	case <-time.NewTimer(1000 * time.Millisecond).C:
 		t.Errorf("Node registration never completed")
 		t.FailNow()
-	case <-beginScheduling:
+	case <-impl.beginScheduling:
 	}
 
 	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
@@ -283,10 +279,6 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-
-	beginScheduling := make(chan struct{}, 1)
-
-	go impl.nodeRegistrationCompleter(beginScheduling)
 
 	//Register 1st node
 	err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),

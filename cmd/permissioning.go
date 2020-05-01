@@ -86,51 +86,51 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	}
 
 	// Notify registration thread
-	m.nodeCompleted <- RegistrationCode
-	return nil
+	return m.completeNodeRegistration(RegistrationCode)
 }
 
 // Handles including new registrations in the network
-func (m *RegistrationImpl) nodeRegistrationCompleter(beginScheduling chan<- struct{}) error {
+func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
-	numRegistered := 0
-	// Wait for Nodes to complete registration
-	for regCode := range m.nodeCompleted {
-		numRegistered++
-		jww.INFO.Printf("Registered %d node(s)! %s", numRegistered, regCode)
+	m.registrationLock.Lock()
+	defer m.registrationLock.Unlock()
 
-		// Add the new node to the topology
-		networkDef := m.State.GetFullNdf().Get()
-		gateway, node, err := assembleNdf(regCode)
-		if err != nil {
-			return errors.Errorf("unable to assemble topology: %+v", err)
-		}
-		networkDef.Gateways = append(networkDef.Gateways, *gateway)
-		networkDef.Nodes = append(networkDef.Nodes, *node)
+	m.numRegistered++
 
-		// update the internal state with the newly-updated ndf
-		err = m.State.UpdateNdf(networkDef)
-		if err != nil {
-			return err
-		}
+	jww.INFO.Printf("Registered %d node(s)! %s", m.numRegistered, regCode)
 
-		// Output the current topology to a JSON file
-		err = outputToJSON(networkDef, m.ndfOutputPath)
-		if err != nil {
-			return errors.Errorf("unable to output NDF JSON file: %+v", err)
-		}
-
-		// Kick off the network if the minimum number of nodes has been met
-		if uint32(numRegistered) == m.params.minimumNodes {
-			jww.INFO.Printf("Minimum number of nodes %d registered!", numRegistered)
-
-			atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
-
-			//signal that scheduling should begin
-			beginScheduling <- struct{}{}
-		}
+	// Add the new node to the topology
+	networkDef := m.State.GetFullNdf().Get()
+	gateway, node, err := assembleNdf(regCode)
+	if err != nil {
+		return errors.Errorf("unable to assemble topology: %+v", err)
 	}
-	return errors.New("Node registration completer should never exit")
+	networkDef.Gateways = append(networkDef.Gateways, *gateway)
+	networkDef.Nodes = append(networkDef.Nodes, *node)
+
+	// update the internal state with the newly-updated ndf
+	err = m.State.UpdateNdf(networkDef)
+	if err != nil {
+		return err
+	}
+
+	// Output the current topology to a JSON file
+	err = outputToJSON(networkDef, m.ndfOutputPath)
+	if err != nil {
+		return errors.Errorf("unable to output NDF JSON file: %+v", err)
+	}
+
+	// Kick off the network if the minimum number of nodes has been met
+	if uint32(m.numRegistered) == m.params.minimumNodes {
+		jww.INFO.Printf("Minimum number of nodes %d registered!", m.numRegistered)
+
+		atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
+
+		//signal that scheduling should begin
+		m.beginScheduling <- struct{}{}
+	}
+
+	return nil
 }
 
 // Assemble information for the given registration code

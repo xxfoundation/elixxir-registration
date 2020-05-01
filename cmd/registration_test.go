@@ -102,7 +102,6 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	impl.nodeCompleted = make(chan string, 1)
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	err = storage.PermissioningDb.InsertNodeRegCode("AAAA", "")
@@ -167,19 +166,12 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	}
 	RegParams = testParams
 
-	err = impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
-		"0.0.0.0:6900", string(nodeCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-		return
-	}
-
-	beginScheduling := make(chan struct{}, 1)
-
-	go func() {
-		err = impl.nodeRegistrationCompleter(beginScheduling)
+	go func(){
+		err = impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
+			"0.0.0.0:6900", string(nodeCert), "BBBB")
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
+			return
 		}
 	}()
 
@@ -187,7 +179,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	case <-time.NewTimer(50 * time.Millisecond).C:
 		t.Errorf("Registration failed to complete")
 		t.FailNow()
-	case <-beginScheduling:
+	case <-impl.beginScheduling:
 	}
 
 	//Kill the connections for the next test
@@ -210,8 +202,6 @@ func TestDoubleRegistration(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	beginScheduling := make(chan<- struct{}, 1)
-	go impl.nodeRegistrationCompleter(beginScheduling)
 
 	//Create a second node to register
 	nodeComm2 := nodeComms.StartNode("tmp", "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
@@ -258,33 +248,27 @@ func TestTopology_MultiNodes(t *testing.T) {
 	//Create a second node to register
 	nodeComm2 := nodeComms.StartNode("tmp", "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
 
-	//Register 1st node
-	err = impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
-		nodeAddr, string(nodeCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 2nd node
-	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(gatewayCert),
-		"0.0.0.0:6901", string(gatewayCert), "CCCC")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-	beginScheduling := make(chan struct{}, 1)
-
-	go func() {
-		err = impl.nodeRegistrationCompleter(beginScheduling)
+	go func(){
+		//Register 1st node
+		err = impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
+			nodeAddr, string(nodeCert), "BBBB")
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Errorf("Expected happy path, recieved error: %+v", err)
+		}
+
+		//Register 2nd node
+		err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(gatewayCert),
+			"0.0.0.0:6901", string(gatewayCert), "CCCC")
+		if err != nil {
+			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
 	}()
 
 	select {
-	case <-time.NewTimer(50 * time.Millisecond).C:
+	case <-time.NewTimer(200 * time.Millisecond).C:
 		t.Errorf("Registration failed to complete")
 		t.FailNow()
-	case <-beginScheduling:
+	case <-impl.beginScheduling:
 	}
 
 	//Kill the connections for the next test
@@ -359,8 +343,6 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	beginScheduling := make(chan<- struct{}, 1)
-	go impl.nodeRegistrationCompleter(beginScheduling)
 
 	// Initialize the database
 	storage.PermissioningDb = storage.NewDatabase(

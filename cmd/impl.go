@@ -21,6 +21,7 @@ import (
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
+	"sync"
 	"time"
 )
 
@@ -34,11 +35,15 @@ type RegistrationImpl struct {
 	State                   *storage.NetworkState
 	permissioningCert       *x509.Certificate
 	ndfOutputPath           string
-	nodeCompleted           chan string
 	NdfReady                *uint32
 	certFromFile            string
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
+
+	//registration status trackers
+	numRegistered 			int
+	registrationLock		sync.Mutex
+	beginScheduling			chan struct{}
 }
 
 //function used to schedule nodes
@@ -108,8 +113,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
-		nodeCompleted:           make(chan string, nodeCompletionChanLen),
 		NdfReady:                &ndfReady,
+
+		numRegistered: 0,
+		beginScheduling: make(chan struct{}),
 	}
 
 	// Create timer and channel to be used by routine that clears the number of
