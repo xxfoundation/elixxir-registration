@@ -37,6 +37,9 @@ type State struct {
 
 	//id of the node
 	id *id.Node
+
+	//lock to ensure only one polling operation occurs at a time
+	pollingLock sync.Mutex
 }
 
 // updates to the passed in activity if it is different from the known activity
@@ -112,6 +115,12 @@ func (n *State) GetLastPoll() time.Time {
 	defer n.mux.RUnlock()
 	return n.lastPoll
 }
+
+// Returns the polling lock
+func (n *State) GetPollingLock() *sync.Mutex {
+	return &n.pollingLock
+}
+
 
 // gets the ordering string for use in team formation
 func (n *State) GetOrdering() string {

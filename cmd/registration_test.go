@@ -176,7 +176,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	}()
 
 	select {
-	case <-time.NewTimer(50 * time.Millisecond).C:
+	case <-time.NewTimer(200 * time.Millisecond).C:
 		t.Errorf("Registration failed to complete")
 		t.FailNow()
 	case <-impl.beginScheduling:

@@ -22,7 +22,11 @@ func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waiting
 	state *storage.NetworkState, realtimeDelay time.Duration) error {
 	//get node and round information
 	n := state.GetNodeMap().GetNode(update.Node)
+	defer n.GetPollingLock().Unlock()
+
 	hasRound, r := n.GetCurrentRound()
+
+
 
 	switch update.To {
 	case current.NOT_STARTED:

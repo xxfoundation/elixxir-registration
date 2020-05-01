@@ -51,14 +51,17 @@ func TestScheduler(t *testing.T) {
 	for i := 0; i < teamSize; i++ {
 		nid := id.NewNodeFromUInt(uint64(i), t)
 		nodeList[i] = nid
+
+
+		err = state.GetNodeMap().AddNode(nid, strconv.Itoa(i))
+		if err != nil {
+			t.Errorf("Failed to add node %d to map: %v", i, err)
+		}
+		state.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 		err = state.NodeUpdateNotification(nid, current.NOT_STARTED, current.WAITING)
 		if err != nil {
 			t.Errorf("Failed to update node %d from %s to %s: %v",
 				i, current.NOT_STARTED, current.WAITING, err)
-		}
-		err = state.GetNodeMap().AddNode(nid, strconv.Itoa(i))
-		if err != nil {
-			t.Errorf("Failed to add node %d to map: %v", i, err)
 		}
 
 	}
