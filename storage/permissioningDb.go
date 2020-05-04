@@ -13,8 +13,9 @@ import (
 	"time"
 )
 
-// Insert Application object
-func (m *DatabaseImpl) InsertApplication(application *Application) error {
+// Insert Application object along with associated unregistered Node
+func (m *DatabaseImpl) InsertApplication(application *Application, unregisteredNode *Node) error {
+	application.Node = *unregisteredNode
 	return m.db.Create(application).Error
 }
 
@@ -50,16 +51,6 @@ func (m *DatabaseImpl) RegisterNode(id *id.Node, code, serverAddr, serverCert,
 		DateRegistered:     time.Now(),
 	}
 	return m.db.Model(&newNode).Update(&newNode).Error
-}
-
-// Insert Node registration code into the database
-func (m *DatabaseImpl) InsertUnregisteredNode(code, order string, applicationId uint64) error {
-	newNode := &Node{
-		Code:          code,
-		ApplicationId: applicationId,
-		Order:         order,
-	}
-	return m.db.Create(newNode).Error
 }
 
 // Get Node information for the given Node registration code

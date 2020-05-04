@@ -14,6 +14,36 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 )
 
+// TODO: Insert Application object along with associated unregistered Node
+func (m *MapImpl) InsertApplication(application *Application,
+	unregisteredNode *Node) error {
+	// TODO: This is map code which will help with inserting the node
+	//m.mut.Lock()
+	//jww.INFO.Printf("Adding node registration code: %s with Order Info: %s",
+	//	code, order)
+	//
+	//// Enforce unique registration code
+	//if m.node[code] != nil {
+	//	m.mut.Unlock()
+	//	return errors.Errorf("node registration code %s already exists",
+	//		code)
+	//}
+	//
+	//m.node[code] = &Node{Code: code, Order: order}
+	//m.mut.Unlock()
+	return nil
+}
+
+// TODO: Insert NodeMetric object
+func (m *MapImpl) InsertNodeMetric(metric *NodeMetric) error {
+	return nil
+}
+
+// TODO: Insert RoundMetric object
+func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology []string) error {
+	return nil
+}
+
 // If Node registration code is valid, add Node information
 func (m *MapImpl) RegisterNode(id *id.Node, code, serverCert, serverAddress,
 	gatewayAddress, gatewayCert string) error {
@@ -31,24 +61,6 @@ func (m *MapImpl) RegisterNode(id *id.Node, code, serverCert, serverAddress,
 	m.mut.Unlock()
 	return errors.Errorf("unable to register node %s", code)
 
-}
-
-// Insert Node registration code into the database
-func (m *MapImpl) InsertUnregisteredNode(code, order string, applicationId uint64) error {
-	m.mut.Lock()
-	jww.INFO.Printf("Adding node registration code: %s with Order Info: %s",
-		code, order)
-
-	// Enforce unique registration code
-	if m.node[code] != nil {
-		m.mut.Unlock()
-		return errors.Errorf("node registration code %s already exists",
-			code)
-	}
-
-	m.node[code] = &Node{Code: code, Order: order}
-	m.mut.Unlock()
-	return nil
 }
 
 // Get Node information for the given Node registration code

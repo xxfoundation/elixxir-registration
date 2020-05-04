@@ -39,12 +39,10 @@ type nodeRegistration interface {
 	// If Node registration code is valid, add Node information
 	RegisterNode(id *id.Node, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
-	// Insert Node registration code into the database
-	InsertUnregisteredNode(code, order string, applicationId uint64) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*Node, error)
-	// Insert Application object
-	InsertApplication(application *Application) error
+	// Insert Application object along with associated unregistered Node
+	InsertApplication(application *Application, unregisteredNode *Node) error
 	// Insert NodeMetric object
 	InsertNodeMetric(metric *NodeMetric) error
 	// Insert RoundMetric object
@@ -100,6 +98,10 @@ type Application struct {
 	GeoBin string
 	// GPS location of the Node
 	GpsLocation string
+	// Specifies the group the node was assigned
+	Group string
+	// Specifies which network the node is in
+	Network string
 
 	// Social media
 	Email     string
@@ -133,10 +135,10 @@ type Node struct {
 	Status uint8
 
 	// Unique ID of the Node's Application
-	ApplicationId uint64 `gorm:"UNIQUE_INDEX;NOT NULL"`
+	ApplicationId uint64 `gorm:"UNIQUE_INDEX;NOT NULL;type:bigint REFERENCES applications(id)"`
 
 	// Each Node has many Node Metrics
-	NodeMetrics []NodeMetric `gorm:"foreignkey:Id;association_foreignkey:Id"`
+	NodeMetrics []NodeMetric `gorm:"foreignkey:NodeId;association_foreignkey:Id"`
 
 	// Each Node participates in many Rounds
 	Topologies []Topology `gorm:"foreignkey:NodeId;association_foreignkey:Id"`
@@ -144,10 +146,10 @@ type Node struct {
 
 // Struct representing Node Metrics table in the database
 type NodeMetric struct {
-	// Auto-incrementing primary key
+	// Auto-incrementing primary key (Do not set)
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
 	// Node has many NodeMetrics
-	NodeId string `gorm:"NOT NULL"`
+	NodeId string `gorm:"NOT NULL;type:text REFERENCES nodes(Id)"`
 	// Start time of monitoring period
 	StartTime time.Time `gorm:"NOT NULL"`
 	// End time of monitoring period
@@ -159,8 +161,8 @@ type NodeMetric struct {
 // Junction table for the many-to-many relationship between Nodes & RoundMetrics
 type Topology struct {
 	// Composite primary key
-	NodeId        string `gorm:"primary_key"`
-	RoundMetricId uint64 `gorm:"primary_key"`
+	NodeId        string `gorm:"primary_key;type:text REFERENCES nodes(Id)"`
+	RoundMetricId uint64 `gorm:"primary_key;type:bigint REFERENCES round_metrics(Id)"`
 
 	// Order in the topology of a Node for a given Round
 	Order uint8 `gorm:"NOT NULL"`
@@ -168,7 +170,7 @@ type Topology struct {
 
 // Struct representing Round Metrics table in the database
 type RoundMetric struct {
-	// Auto-incrementing primary key
+	// Auto-incrementing primary key (Do not set)
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
 	// Nullable error string, if one occurred
 	Error string
@@ -199,15 +201,14 @@ func NewDatabase(username, password, database, address string) (Storage, error) 
 		// in the event there is a database error
 		jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
 		jww.INFO.Println("Map backend initialized successfully!")
-		return Storage{}, nil
-		//return Storage{ TODO
-		//	clientRegistration: clientRegistration(&MapImpl{
-		//		client: make(map[string]*RegistrationCode),
-		//		user:   make(map[string]bool),
-		//	}),
-		//	nodeRegistration: nodeRegistration(&MapImpl{
-		//		node: make(map[string]*Node),
-		//	})}, nil
+		return Storage{
+			clientRegistration: clientRegistration(&MapImpl{
+				client: make(map[string]*RegistrationCode),
+				user:   make(map[string]bool),
+			}),
+			nodeRegistration: nodeRegistration(&MapImpl{
+				node: make(map[string]*Node),
+			})}, nil
 	}
 
 	// Initialize the database logger
@@ -215,10 +216,10 @@ func NewDatabase(username, password, database, address string) (Storage, error) 
 	db.LogMode(true)
 
 	// Initialize the database schema
+	// WARNING: Order is important. Do not change without database testing
 	models := []interface{}{
 		&RegistrationCode{}, &User{},
-		&Topology{}, &Application{}, &Node{},
-		&NodeMetric{}, &RoundMetric{},
+		&Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
 	}
 	for _, model := range models {
 		err = db.AutoMigrate(model).Error
@@ -253,12 +254,13 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 
 // Adds Node registration codes to the database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
-	for _, info := range infos {
-		err := PermissioningDb.InsertUnregisteredNode(info.RegCode,
-			info.Order, 0)
-		if err != nil {
-			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
-				err)
-		}
-	}
+	// TODO
+	//for _, info := range infos {
+	//	err := PermissioningDb.InsertUnregisteredNode(info.RegCode,
+	//		info.Order, 0)
+	//	if err != nil {
+	//		jww.ERROR.Printf("Unable to populate Node registration code: %+v",
+	//			err)
+	//	}
+	//}
 }
