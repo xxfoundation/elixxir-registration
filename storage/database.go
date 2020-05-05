@@ -26,10 +26,15 @@ type DatabaseImpl struct {
 
 // Struct implementing the Database Interface with an underlying Map
 type MapImpl struct {
-	client map[string]*RegistrationCode
-	node   map[string]*Node
-	user   map[string]bool
-	mut    sync.Mutex
+	clients            map[string]*RegistrationCode
+	nodes              map[string]*Node
+	users              map[string]bool
+	applications       map[uint64]*Application
+	nodeMetrics        map[uint64]*NodeMetric
+	nodeMetricCounter  uint64
+	roundMetrics       map[uint64]*RoundMetric
+	roundMetricCounter uint64
+	mut                sync.Mutex
 }
 
 // Global variable for database interaction
@@ -42,11 +47,11 @@ type nodeRegistration interface {
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*Node, error)
 	// Insert Application object along with associated unregistered Node
-	InsertApplication(application *Application, unregisteredNode *Node) error
+	InsertApplication(application Application, unregisteredNode Node) error
 	// Insert NodeMetric object
-	InsertNodeMetric(metric *NodeMetric) error
+	InsertNodeMetric(metric NodeMetric) error
 	// Insert RoundMetric object
-	InsertRoundMetric(metric *RoundMetric, topology []string) error
+	InsertRoundMetric(metric RoundMetric, topology []string) error
 }
 
 type clientRegistration interface {
@@ -203,11 +208,14 @@ func NewDatabase(username, password, database, address string) (Storage, error) 
 		jww.INFO.Println("Map backend initialized successfully!")
 		return Storage{
 			clientRegistration: clientRegistration(&MapImpl{
-				client: make(map[string]*RegistrationCode),
-				user:   make(map[string]bool),
+				clients: make(map[string]*RegistrationCode),
+				users:   make(map[string]bool),
 			}),
 			nodeRegistration: nodeRegistration(&MapImpl{
-				node: make(map[string]*Node),
+				applications: make(map[uint64]*Application),
+				nodes:        make(map[string]*Node),
+				nodeMetrics:  make(map[uint64]*NodeMetric),
+				roundMetrics: make(map[uint64]*RoundMetric),
 			})}, nil
 	}
 
@@ -254,13 +262,18 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 
 // Adds Node registration codes to the database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
-	// TODO
-	//for _, info := range infos {
-	//	err := PermissioningDb.InsertUnregisteredNode(info.RegCode,
-	//		info.Order, 0)
-	//	if err != nil {
-	//		jww.ERROR.Printf("Unable to populate Node registration code: %+v",
-	//			err)
-	//	}
-	//}
+	// TODO: This will eventually need to be updated to intake applications too
+	for i, info := range infos {
+		err := PermissioningDb.InsertApplication(Application{
+			Id: uint64(i),
+		}, Node{
+			Code:          info.RegCode,
+			Order:         info.Order,
+			ApplicationId: uint64(i),
+		})
+		if err != nil {
+			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
+				err)
+		}
+	}
 }

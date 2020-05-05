@@ -11,7 +11,7 @@ import "testing"
 // Happy path
 func TestMapImpl_InsertClientRegCode(t *testing.T) {
 	m := &MapImpl{
-		client: make(map[string]*RegistrationCode),
+		clients: make(map[string]*RegistrationCode),
 	}
 
 	// Attempt to load in a valid code
@@ -20,7 +20,7 @@ func TestMapImpl_InsertClientRegCode(t *testing.T) {
 	err := m.InsertClientRegCode(code, uses)
 
 	// Verify the insert was successful
-	if err != nil || m.client[code] == nil || m.client[code].
+	if err != nil || m.clients[code] == nil || m.clients[code].
 		RemainingUses != uses {
 		t.Errorf("Expected to successfully insert client registration code")
 	}
@@ -29,13 +29,13 @@ func TestMapImpl_InsertClientRegCode(t *testing.T) {
 // Error Path: Duplicate client registration code
 func TestMapImpl_InsertClientRegCode_Duplicate(t *testing.T) {
 	m := &MapImpl{
-		client: make(map[string]*RegistrationCode),
+		clients: make(map[string]*RegistrationCode),
 	}
 
 	// Load in a registration code
 	code := "TEST"
 	uses := 100
-	m.client[code] = &RegistrationCode{Code: code}
+	m.clients[code] = &RegistrationCode{Code: code}
 
 	// Attempt to load in a duplicate code
 	err := m.InsertClientRegCode(code, uses)
@@ -50,17 +50,17 @@ func TestMapImpl_InsertClientRegCode_Duplicate(t *testing.T) {
 // Happy path
 func TestMapImpl_UseCode(t *testing.T) {
 	m := &MapImpl{
-		client: make(map[string]*RegistrationCode),
+		clients: make(map[string]*RegistrationCode),
 	}
 
 	// Load in a registration code
 	code := "TEST"
 	uses := 100
-	m.client[code] = &RegistrationCode{Code: code, RemainingUses: uses}
+	m.clients[code] = &RegistrationCode{Code: code, RemainingUses: uses}
 
 	// Verify the code was used successfully
 	err := m.UseCode(code)
-	if err != nil || m.client[code].RemainingUses != uses-1 {
+	if err != nil || m.clients[code].RemainingUses != uses-1 {
 		t.Errorf("Expected using client registration code to succeed")
 	}
 }
@@ -68,13 +68,13 @@ func TestMapImpl_UseCode(t *testing.T) {
 // Error Path: No remaining uses of client registration code
 func TestMapImpl_UseCode_NoRemainingUses(t *testing.T) {
 	m := &MapImpl{
-		client: make(map[string]*RegistrationCode),
+		clients: make(map[string]*RegistrationCode),
 	}
 
 	// Load in a registration code
 	code := "TEST"
 	uses := 0
-	m.client[code] = &RegistrationCode{Code: code, RemainingUses: uses}
+	m.clients[code] = &RegistrationCode{Code: code, RemainingUses: uses}
 
 	// Verify the code was used successfully
 	err := m.UseCode(code)
@@ -87,7 +87,7 @@ func TestMapImpl_UseCode_NoRemainingUses(t *testing.T) {
 // Error Path: Invalid client registration code
 func TestMapImpl_UseCode_Invalid(t *testing.T) {
 	m := &MapImpl{
-		client: make(map[string]*RegistrationCode),
+		clients: make(map[string]*RegistrationCode),
 	}
 
 	// Verify the code was used successfully

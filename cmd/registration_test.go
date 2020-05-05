@@ -99,7 +99,7 @@ func TestEmptyDataBase(t *testing.T) {
 
 }
 
-//Happy path: looking for a code that is in the database
+// Happy path: looking for a code that is in the database
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	// Start registration server
 	impl, err := StartRegistration(testParams)
@@ -112,14 +112,21 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
-	//Insert a sample regCode
-	err = storage.PermissioningDb.InsertUnregisteredNode("AAAA", "", 0)
+	// Load in a registration code
+	applicationId := uint64(10)
+	newNode := storage.Node{
+		Code:          "TEST",
+		Order:         "BLARG",
+		ApplicationId: applicationId,
+	}
+	newApplication := storage.Application{Id: applicationId}
+	err = storage.PermissioningDb.InsertApplication(newApplication, newNode)
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 	//Register a node with that regCode
 	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
-		nodeAddr, string(nodeCert), "AAAA")
+		nodeAddr, string(nodeCert), newNode.Code)
 	if err != nil {
 		t.Errorf("Registered a node with a known reg code, but recieved the following error: %+v", err)
 	}

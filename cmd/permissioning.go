@@ -64,7 +64,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	}
 
 	// Attempt to insert Node into the database
-	err = storage.PermissioningDb.RegisterNode(id.NewNodeFromBytes(ID),
+	err = storage.PermissioningDb.RegisterNode(nid,
 		RegistrationCode, signedNodeCert, ServerAddr, GatewayAddr, signedGatewayCert)
 	if err != nil {
 		return errors.Errorf("unable to insert node: %+v", err)
@@ -78,7 +78,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
 	}
 
-	//add the node to the node map to track its state
+	// Add the node to the node map to track its state
 	err = m.State.GetNodeMap().AddNode(nid, nodeInfo.Order)
 	if err != nil {
 		return errors.WithMessage(err, "Could not register node with "+
@@ -144,8 +144,14 @@ func assembleNdf(code string) (*ndf.Gateway, *ndf.Node, error) {
 				" code %+v: %+v", code, err)
 	}
 
+	// Properly convert node ID from string to bytes
+	nodeId, err := id.NewNodeFromString(nodeInfo.Id)
+	if err != nil {
+		return nil, nil, errors.Errorf("unable to obtain node nodeId: %+v", err)
+	}
+
 	node := &ndf.Node{
-		ID:             []byte(nodeInfo.Id),
+		ID:             nodeId.Bytes(),
 		Address:        nodeInfo.ServerAddress,
 		TlsCertificate: nodeInfo.NodeCertificate,
 	}

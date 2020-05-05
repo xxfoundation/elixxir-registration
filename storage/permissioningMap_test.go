@@ -11,51 +11,64 @@ import (
 	"testing"
 )
 
-// TODO: Happy path
-//func TestMapImpl_InsertNodeRegCode(t *testing.T) {
-//	m := &MapImpl{
-//		node: make(map[string]*Node),
-//	}
-//
-//	// Attempt to load in a valid code
-//	code := "TEST"
-//	Order := "BLARG"
-//	err := m.InsertUnregisteredNode(code, Order, 0)
-//
-//	// Verify the insert was successful
-//	if err != nil || m.node[code] == nil {
-//		t.Errorf("Expected to successfully insert node registration code")
-//	}
-//
-//	if m.node[code].Order != Order {
-//		t.Errorf("Order string incorret; Expected: %s, Recieved: %s",
-//			Order, m.node[code].Order)
-//	}
-//}
+// Happy path
+func TestMapImpl_InsertNodeRegCode(t *testing.T) {
+	m := &MapImpl{
+		nodes:        make(map[string]*Node),
+		applications: make(map[uint64]*Application),
+	}
 
-// TODO: Error Path: Duplicate node registration code
-//func TestMapImpl_InsertNodeRegCode_Duplicate(t *testing.T) {
-//	m := &MapImpl{
-//		node: make(map[string]*Node),
-//	}
-//
-//	// Load in a registration code
-//	code := "TEST"
-//	m.node[code] = &Node{Code: code}
-//
-//	// Attempt to load in a duplicate code
-//	err := m.InsertUnregisteredNode(code, "", 0)
-//
-//	// Verify the insert failed
-//	if err == nil {
-//		t.Errorf("Expected to fail inserting duplicate node registration code")
-//	}
-//}
+	// Attempt to load in a valid code
+	applicationId := uint64(10)
+	newNode := Node{
+		Code:          "TEST",
+		Order:         "BLARG",
+		ApplicationId: applicationId,
+	}
+	newApplication := Application{Id: applicationId}
+	err := m.InsertApplication(newApplication, newNode)
+
+	// Verify the insert was successful
+	if err != nil || m.nodes[newNode.Code] == nil {
+		t.Errorf("Expected to successfully insert node registration code")
+	}
+
+	if m.nodes[newNode.Code].Order != newNode.Order {
+		t.Errorf("Order string incorret; Expected: %s, Recieved: %s",
+			newNode.Order, m.nodes[newNode.Code].Order)
+	}
+}
+
+// Error Path: Duplicate node registration code
+func TestMapImpl_InsertNodeRegCode_Duplicate(t *testing.T) {
+	m := &MapImpl{
+		nodes:        make(map[string]*Node),
+		applications: make(map[uint64]*Application),
+	}
+
+	// Load in a registration code
+	applicationId := uint64(10)
+	newNode := Node{
+		Code:          "TEST",
+		Order:         "BLARG",
+		ApplicationId: applicationId,
+	}
+	newApplication := Application{Id: applicationId}
+	m.nodes[newNode.Code] = &newNode
+
+	// Attempt to load in a duplicate code
+	err := m.InsertApplication(newApplication, newNode)
+
+	// Verify the insert failed
+	if err == nil {
+		t.Errorf("Expected to fail inserting duplicate node registration code")
+	}
+}
 
 // Happy path
 func TestMapImpl_InsertNode(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*Node),
+		nodes: make(map[string]*Node),
 	}
 
 	// Load in a registration code
@@ -64,14 +77,14 @@ func TestMapImpl_InsertNode(t *testing.T) {
 	gwCert := "gwcert"
 	addr := "addr"
 	gwAddr := "gwaddr"
-	m.node[code] = &Node{Code: code}
+	m.nodes[code] = &Node{Code: code}
 
 	// Attempt to insert a node
 	err := m.RegisterNode(id.NewNodeFromBytes(make([]byte, 0)), code, cert,
 		addr, gwAddr, gwCert)
 
 	// Verify the insert was successful
-	if info := m.node[code]; err != nil || info.NodeCertificate != cert ||
+	if info := m.nodes[code]; err != nil || info.NodeCertificate != cert ||
 		info.GatewayCertificate != gwCert || info.ServerAddress != addr ||
 		info.GatewayAddress != gwAddr {
 		t.Errorf("Expected to successfully insert node information: %+v", info)
@@ -81,7 +94,7 @@ func TestMapImpl_InsertNode(t *testing.T) {
 // Error path: Invalid registration code
 func TestMapImpl_InsertNode_Invalid(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*Node),
+		nodes: make(map[string]*Node),
 	}
 
 	// Do NOT load in a registration code
@@ -101,12 +114,12 @@ func TestMapImpl_InsertNode_Invalid(t *testing.T) {
 // Happy path
 func TestMapImpl_GetNode(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*Node),
+		nodes: make(map[string]*Node),
 	}
 
 	// Load in a registration code
 	code := "TEST"
-	m.node[code] = &Node{Code: code}
+	m.nodes[code] = &Node{Code: code}
 
 	// Check that the correct node is obtained
 	info, err := m.GetNode(code)
@@ -118,7 +131,7 @@ func TestMapImpl_GetNode(t *testing.T) {
 // Error path: Nonexistent registration code
 func TestMapImpl_GetNode_Invalid(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*Node),
+		nodes: make(map[string]*Node),
 	}
 
 	// Check that no node is obtained from empty map
@@ -131,12 +144,12 @@ func TestMapImpl_GetNode_Invalid(t *testing.T) {
 // Happy path
 func TestMapImpl_InsertUser(t *testing.T) {
 	m := &MapImpl{
-		user: make(map[string]bool),
+		users: make(map[string]bool),
 	}
 
 	testKey := "TEST"
 	_ = m.InsertUser(testKey)
-	if !m.user[testKey] {
+	if !m.users[testKey] {
 		t.Errorf("Insert failed to add the user!")
 	}
 }
@@ -144,11 +157,11 @@ func TestMapImpl_InsertUser(t *testing.T) {
 // Happy path
 func TestMapImpl_GetUser(t *testing.T) {
 	m := &MapImpl{
-		user: make(map[string]bool),
+		users: make(map[string]bool),
 	}
 
 	testKey := "TEST"
-	m.user[testKey] = true
+	m.users[testKey] = true
 
 	user, err := m.GetUser(testKey)
 	if err != nil || user.PublicKey != testKey {
@@ -159,7 +172,7 @@ func TestMapImpl_GetUser(t *testing.T) {
 // Get user that does not exist
 func TestMapImpl_GetUserNotExists(t *testing.T) {
 	m := &MapImpl{
-		user: make(map[string]bool),
+		users: make(map[string]bool),
 	}
 
 	testKey := "TEST"

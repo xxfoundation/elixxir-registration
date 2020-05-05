@@ -18,11 +18,11 @@ func (m *MapImpl) InsertClientRegCode(code string, uses int) error {
 	m.mut.Lock()
 	jww.INFO.Printf("Inserting code %s, %d uses remaining", code, uses)
 	// Enforce unique registration code
-	if m.client[code] != nil {
+	if m.clients[code] != nil {
 		m.mut.Unlock()
 		return errors.Errorf("client registration code %s already exists", code)
 	}
-	m.client[code] = &RegistrationCode{
+	m.clients[code] = &RegistrationCode{
 		Code:          code,
 		RemainingUses: uses,
 	}
@@ -35,7 +35,7 @@ func (m *MapImpl) UseCode(code string) error {
 	m.mut.Lock()
 	// Look up given registration code
 	jww.INFO.Printf("Attempting to use code %s...", code)
-	reg := m.client[code]
+	reg := m.clients[code]
 	if reg == nil {
 		// Unable to find code, return error
 		m.mut.Unlock()
@@ -58,7 +58,7 @@ func (m *MapImpl) UseCode(code string) error {
 
 // Gets User from the map
 func (m *MapImpl) GetUser(publicKey string) (*User, error) {
-	if ok := m.user[publicKey]; ok {
+	if ok := m.users[publicKey]; ok {
 		return &User{
 			PublicKey: publicKey,
 		}, nil
@@ -68,6 +68,6 @@ func (m *MapImpl) GetUser(publicKey string) (*User, error) {
 
 // Inserts User into the map
 func (m *MapImpl) InsertUser(publicKey string) error {
-	m.user[publicKey] = true
+	m.users[publicKey] = true
 	return nil
 }
