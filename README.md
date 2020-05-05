@@ -71,7 +71,7 @@ groups:
 #   simple - Schedules multiple teams to maximize performance, does not randomly re-arrange teams, if only a single
 #            only scheduling a single team, will use numerical ordering data for AlphaNet
 #   secure - Schedules new teams randomly, has appropriate buffers to ensure
- unpredictability, designed for BetaNet
+# unpredictability, designed for BetaNet
 schedulingAlgorithm: "single"
 
 # Path to file with config for scheduling algorithm within the user directory 
