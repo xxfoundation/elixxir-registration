@@ -23,7 +23,9 @@ func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waiting
 	//get node and round information
 	n := state.GetNodeMap().GetNode(update.Node)
 	hasRound, r := n.GetCurrentRound()
-
+	if hasRound == true && r.GetRoundState() == states.FAILED && update.To != current.ERROR {
+		return nil
+	}
 	switch update.To {
 	case current.NOT_STARTED:
 		// Do nothing
@@ -87,6 +89,15 @@ func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waiting
 					"update for round %v transitioning from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
+		}
+	case current.ERROR:
+		_ = r.Update(states.FAILED, time.Now())
+		n.ClearRound()
+		err := state.AddRoundUpdate(r.BuildRoundInfo())
+		if err != nil {
+			return errors.WithMessagef(err, "Could not issue "+
+				"update for round %v transitioning from %s to %s",
+				r.GetRoundID(), update.From, update.To)
 		}
 	}
 

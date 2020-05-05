@@ -49,14 +49,16 @@ func TestScheduler(t *testing.T) {
 
 	nodeList := make([]*id.Node, teamSize)
 	for i := 0; i < teamSize; i++ {
-		nid := id.NewNodeFromUInt(uint64(i), t)
-		nodeList[i] = nid
-		err = state.NodeUpdateNotification(nid, current.NOT_STARTED, current.WAITING)
+		nodIDBytes := make([]byte, id.NodeIdLen)
+		nodIDBytes[0] = byte(i + 1)
+		nodeID := id.NewNodeFromBytes(nodIDBytes)
+		nodeList[i] = nodeID
+		err = state.NodeUpdateNotification(nodeID, current.NOT_STARTED, current.WAITING)
 		if err != nil {
 			t.Errorf("Failed to update node %d from %s to %s: %v",
 				i, current.NOT_STARTED, current.WAITING, err)
 		}
-		err = state.GetNodeMap().AddNode(nid, strconv.Itoa(i))
+		err = state.GetNodeMap().AddNode(nodeID, strconv.Itoa(i))
 		if err != nil {
 			t.Errorf("Failed to add node %d to map: %v", i, err)
 		}

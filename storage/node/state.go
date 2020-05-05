@@ -10,6 +10,7 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/transition"
 	"sync"
@@ -54,6 +55,10 @@ func (n *State) Update(newActivity current.Activity) (bool, current.Activity, er
 	//if the activity is the one that the node is already in, do nothing
 	if oldActivity == newActivity {
 		return false, oldActivity, nil
+	}
+
+	if n.currentRound != nil && n.currentRound.GetRoundState() == states.FAILED && newActivity != current.ERROR {
+		return false, oldActivity, errors.New("Round has failed, state cannot be updated")
 	}
 
 	//check that teh activity transition is valid

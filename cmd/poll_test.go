@@ -34,7 +34,7 @@ func getTestKey() *rsa.PrivateKey {
 
 // Happy path
 func TestRegistrationImpl_Poll(t *testing.T) {
-	testID := id.NewNodeFromUInt(0, t)
+	testID := id.NewNodeFromUInt(50, t)
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
