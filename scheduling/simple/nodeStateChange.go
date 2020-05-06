@@ -20,12 +20,15 @@ import (
 //   before the round is updated.
 func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waitingPoll,
 	state *storage.NetworkState, realtimeDelay time.Duration) error {
-	//get node and round information
+	// Check the round's error state
 	n := state.GetNodeMap().GetNode(update.Node)
 	hasRound, r := n.GetCurrentRound()
-	if hasRound == true && r.GetRoundState() == states.FAILED && update.To != current.ERROR {
+	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED && update.To != current.ERROR
+	if roundErrored {
 		return nil
 	}
+
+	//get node and round information
 	switch update.To {
 	case current.NOT_STARTED:
 		// Do nothing
