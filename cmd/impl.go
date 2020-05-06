@@ -119,6 +119,8 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		beginScheduling: make(chan struct{}),
 	}
 
+	regImpl.State.GetFullNdf().Get()
+
 	// Create timer and channel to be used by routine that clears the number of
 	// registrations every time the ticker activates
 	done := make(chan bool)
@@ -149,10 +151,15 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			Address:        RegParams.publicAddress,
 			TlsCertificate: regImpl.certFromFile,
 		},
+
 		Timestamp: time.Now(),
 		UDB:       ndf.UDB{ID: RegParams.udbId},
 		E2E:       RegParams.e2e,
 		CMIX:      RegParams.cmix,
+		// fixme: consider removing. this allows clients to remain agnostic of teaming order
+		//  by forcing team order == ndf order for simple non-random
+		Nodes:make([]ndf.Node, params.minimumNodes),
+		Gateways:make([]ndf.Gateway, params.minimumNodes),
 	}
 
 	// Assemble notification server information if configured
