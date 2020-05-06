@@ -338,6 +338,7 @@ func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {
 	if version != testVersion {
 		t.Errorf("Version was %+v, expected %+v", version, testVersion)
 	}
+	impl.Comms.Shutdown()
 }
 
 // Test a case that should pass validation
