@@ -107,11 +107,14 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		return errors.Errorf("unable to assemble topology: %+v", err)
 	}
 
-
 	// fixme: consider removing. this allows clients to remain agnostic of teaming order
 	//  by forcing team order == ndf order for simple non-random
-	networkDef.Gateways[order] = *gateway
-	networkDef.Nodes[order] = *node
+	if order >= len(networkDef.Nodes) {
+		appendNdf(networkDef, order)
+	}
+
+	networkDef.Gateways[order] = gateway
+	networkDef.Nodes[order] = node
 
 	// update the internal state with the newly-updated ndf
 	err = m.State.UpdateNdf(networkDef)
@@ -138,30 +141,40 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	return nil
 }
 
+// helper function which appends the ndf to the maximum order
+func appendNdf(definition *ndf.NetworkDefinition, order int) {
+	lengthDifference := (order % len(definition.Nodes)) + 1
+	gwExtension := make([]ndf.Gateway, lengthDifference)
+	nodeExtension := make([]ndf.Node, lengthDifference)
+	definition.Nodes = append(definition.Nodes, nodeExtension...)
+	definition.Gateways = append(definition.Gateways, gwExtension...)
+
+}
+
 // Assemble information for the given registration code
-func assembleNdf(code string) (*ndf.Gateway, *ndf.Node, int, error) {
+func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 
 	// Get node information for each registration code
 	nodeInfo, err := storage.PermissioningDb.GetNode(code)
 	if err != nil {
-		return nil, nil, 0, errors.Errorf(
+		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf(
 			"unable to obtain node for registration"+
 				" code %+v: %+v", code, err)
 	}
 
-	node := &ndf.Node{
+	node := ndf.Node{
 		ID:             nodeInfo.Id,
 		Address:        nodeInfo.ServerAddress,
 		TlsCertificate: nodeInfo.NodeCertificate,
 	}
-	gateway := &ndf.Gateway{
+	gateway := ndf.Gateway{
 		Address:        nodeInfo.GatewayAddress,
 		TlsCertificate: nodeInfo.GatewayCertificate,
 	}
 
 	order, err := strconv.Atoi(nodeInfo.Order)
 	if err != nil {
-		return nil, nil, 0, errors.Errorf("Unable to read node's info: %v", err)
+		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf("Unable to read node's info: %v", err)
 	}
 
 	return gateway, node, order, nil

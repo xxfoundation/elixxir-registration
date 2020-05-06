@@ -52,7 +52,6 @@ func TestScheduler(t *testing.T) {
 		nid := id.NewNodeFromUInt(uint64(i), t)
 		nodeList[i] = nid
 
-
 		err = state.GetNodeMap().AddNode(nid, strconv.Itoa(i))
 		if err != nil {
 			t.Errorf("Failed to add node %d to map: %v", i, err)
