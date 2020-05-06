@@ -95,8 +95,6 @@ func TestEmptyDataBase(t *testing.T) {
 			"Expected %s, Recieved: %+v", expectedErr, err)
 		return
 	}
-	impl.Comms.Shutdown()
-
 }
 
 // Happy path: looking for a code that is in the database
