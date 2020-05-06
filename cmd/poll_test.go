@@ -177,9 +177,9 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB"},
-		node.Info{RegCode: "CCCC"},
-		node.Info{RegCode: "DDDD"})
+	infos = append(infos, node.Info{RegCode: "BBBB", Order:"0"},
+		node.Info{RegCode: "CCCC", Order:"1"},
+		node.Info{RegCode: "DDDD", Order:"2"})
 	storage.PopulateNodeRegistrationCodes(infos)
 
 	RegParams = testParams
@@ -264,9 +264,9 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB"},
-		node.Info{RegCode: "CCCC"},
-		node.Info{RegCode: "DDDD"})
+	infos = append(infos, node.Info{RegCode: "BBBB", Order:"0"},
+		node.Info{RegCode: "CCCC", Order:"1"},
+		node.Info{RegCode: "DDDD", Order:"2"})
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 	//Setup udb configurations

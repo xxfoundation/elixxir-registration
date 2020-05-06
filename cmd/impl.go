@@ -158,8 +158,8 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		CMIX:      RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
-		Nodes:make([]ndf.Node, params.minimumNodes),
-		Gateways:make([]ndf.Gateway, params.minimumNodes),
+		Nodes:make([]ndf.Node, nodeCompletionChanLen),
+		Gateways:make([]ndf.Gateway, nodeCompletionChanLen),
 	}
 
 	// Assemble notification server information if configured
