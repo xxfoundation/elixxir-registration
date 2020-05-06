@@ -313,7 +313,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	}()
 
 	select {
-	case <-time.NewTimer(50 * time.Millisecond).C:
+	case <-time.NewTimer(250 * time.Millisecond).C:
 		t.Errorf("Registration failed to complete")
 	case <-beginScheduling:
 	}
