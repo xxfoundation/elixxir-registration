@@ -153,7 +153,7 @@ func TestNodeState_Update_Valid_RequiresRound_Round_InvalidState(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("Node state update returned no error on invalid state change")
-	} else if !strings.Contains(err.Error(), "requires the node's be assigned a round to be in the") {
+	} else if !strings.Contains(err.Error(), "Round has failed, state cannot be updated") {
 		t.Errorf("Node state update returned the wrong error on "+
 			"state change requiring round in teh correct state but in wrong one: %s", err)
 	}

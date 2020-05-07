@@ -20,10 +20,15 @@ import (
 //   before the round is updated.
 func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waitingPoll,
 	state *storage.NetworkState, realtimeDelay time.Duration) error {
-	//get node and round information
+	// Check the round's error state
 	n := state.GetNodeMap().GetNode(update.Node)
 	hasRound, r := n.GetCurrentRound()
+	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED && update.To != current.ERROR
+	if roundErrored {
+		return nil
+	}
 
+	//get node and round information
 	switch update.To {
 	case current.NOT_STARTED:
 		// Do nothing
@@ -87,6 +92,15 @@ func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waiting
 					"update for round %v transitioning from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
+		}
+	case current.ERROR:
+		_ = r.Update(states.FAILED, time.Now())
+		n.ClearRound()
+		err := state.AddRoundUpdate(r.BuildRoundInfo())
+		if err != nil {
+			return errors.WithMessagef(err, "Could not issue "+
+				"update for round %v transitioning from %s to %s",
+				r.GetRoundID(), update.From, update.To)
 		}
 	}
 
