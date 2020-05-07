@@ -16,20 +16,18 @@ import (
 // Inserts client registration code with given number of uses
 func (m *DatabaseImpl) InsertClientRegCode(code string, uses int) error {
 	jww.INFO.Printf("Inserting code %s, %d uses remaining", code, uses)
-	err := m.db.Insert(&RegistrationCode{
+	return m.db.Create(&RegistrationCode{
 		Code:          code,
 		RemainingUses: uses,
-	})
-	return err
+	}).Error
 }
 
 // If client registration code is valid, decrements remaining uses
 func (m *DatabaseImpl) UseCode(code string) error {
-
 	// Look up given registration code
-	regCode := RegistrationCode{Code: code}
+	regCode := RegistrationCode{}
 	jww.INFO.Printf("Attempting to use code %s...", code)
-	err := m.db.Select(&regCode)
+	err := m.db.First(&regCode, "code = ?", code).Error
 	if err != nil {
 		// Unable to find code, return error
 		return err
@@ -42,22 +40,21 @@ func (m *DatabaseImpl) UseCode(code string) error {
 
 	// Decrement remaining uses by one
 	regCode.RemainingUses -= 1
-	err = m.db.Update(&regCode)
+	err = m.db.Save(&regCode).Error
+	if err != nil {
+		return err
+	}
 
 	jww.INFO.Printf("Code %s used, %d uses remaining", code,
 		regCode.RemainingUses)
-
-	// Return error, if any
-	return err
+	return nil
 }
 
 // Gets User from the database
 func (m *DatabaseImpl) GetUser(publicKey string) (*User, error) {
-	user := &User{
-		PublicKey: publicKey,
-	}
-	err := m.db.Select(user)
-	return user, err
+	user := &User{}
+	result := m.db.First(&user, "public_key = ?", publicKey)
+	return user, result.Error
 }
 
 // Inserts User into the database
@@ -65,6 +62,5 @@ func (m *DatabaseImpl) InsertUser(publicKey string) error {
 	user := &User{
 		PublicKey: publicKey,
 	}
-	err := m.db.Insert(user)
-	return err
+	return m.db.Create(user).Error
 }
