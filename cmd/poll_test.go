@@ -177,9 +177,9 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB"},
-		node.Info{RegCode: "CCCC"},
-		node.Info{RegCode: "DDDD"})
+	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"},
+		node.Info{RegCode: "CCCC", Order: "1"},
+		node.Info{RegCode: "DDDD", Order: "2"})
 	storage.PopulateNodeRegistrationCodes(infos)
 
 	RegParams = testParams
@@ -193,7 +193,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	go func(){
+	go func() {
 		fmt.Println("A")
 		//Register 1st node
 		err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
@@ -246,7 +246,8 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	}
 	expectedNodeIDs := make([][]byte, 0)
 	expectedNodeIDs = append(expectedNodeIDs, []byte("B"), []byte("C"), []byte("D"))
-	for i := range observedNDF.Nodes {
+
+	for i := range expectedNodeIDs {
 		if bytes.Compare(expectedNodeIDs[i], observedNDF.Nodes[i].ID) != 0 {
 			t.Errorf("Could not build node %d's, id: Expected: %v \n Recieved: %v", i,
 				expectedNodeIDs, observedNDF.Nodes[i].ID)
@@ -264,9 +265,9 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB"},
-		node.Info{RegCode: "CCCC"},
-		node.Info{RegCode: "DDDD"})
+	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"},
+		node.Info{RegCode: "CCCC", Order: "1"},
+		node.Info{RegCode: "DDDD", Order: "2"})
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 	//Setup udb configurations
