@@ -246,8 +246,6 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	}
 	expectedNodeIDs := make([][]byte, 0)
 	expectedNodeIDs = append(expectedNodeIDs, []byte("B"), []byte("C"), []byte("D"))
-	fmt.Printf("expected len %v\n", expectedNodeIDs)
-	fmt.Printf("observed len %v\n", observedNDF.Nodes)
 
 	for i := range expectedNodeIDs {
 		if bytes.Compare(expectedNodeIDs[i], observedNDF.Nodes[i].ID) != 0 {

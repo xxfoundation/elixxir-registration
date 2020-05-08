@@ -119,8 +119,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		beginScheduling: make(chan struct{}),
 	}
 
-	regImpl.State.GetFullNdf().Get()
-
 	// Create timer and channel to be used by routine that clears the number of
 	// registrations every time the ticker activates
 	done := make(chan bool)
