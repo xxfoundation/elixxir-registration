@@ -14,18 +14,18 @@ import (
 )
 
 // Insert Application object along with associated unregistered Node
-func (m *DatabaseImpl) InsertApplication(application Application, unregisteredNode Node) error {
-	application.Node = unregisteredNode
+func (m *DatabaseImpl) InsertApplication(application *Application, unregisteredNode *Node) error {
+	application.Node = *unregisteredNode
 	return m.db.Create(application).Error
 }
 
 // Insert NodeMetric object
-func (m *DatabaseImpl) InsertNodeMetric(metric NodeMetric) error {
+func (m *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
 	return m.db.Create(metric).Error
 }
 
 // Insert RoundMetric object
-func (m *DatabaseImpl) InsertRoundMetric(metric RoundMetric, topology []string) error {
+func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology []string) error {
 	newTopology := make([]Topology, len(topology))
 	for i, node := range topology {
 		topologyObj := Topology{

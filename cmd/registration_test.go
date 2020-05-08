@@ -112,12 +112,12 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	}
 	// Load in a registration code
 	applicationId := uint64(10)
-	newNode := storage.Node{
+	newNode := &storage.Node{
 		Code:          "TEST",
 		Order:         "BLARG",
 		ApplicationId: applicationId,
 	}
-	newApplication := storage.Application{Id: applicationId}
+	newApplication := &storage.Application{Id: applicationId}
 	err = storage.PermissioningDb.InsertApplication(newApplication, newNode)
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)

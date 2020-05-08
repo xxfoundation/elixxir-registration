@@ -16,7 +16,7 @@ import (
 func TestMapImpl_InsertNodeMetric(t *testing.T) {
 	m := &MapImpl{nodeMetrics: make(map[uint64]*NodeMetric)}
 
-	newMetric := NodeMetric{
+	newMetric := &NodeMetric{
 		NodeId:    "TEST",
 		StartTime: time.Now(),
 		EndTime:   time.Now(),
@@ -57,7 +57,7 @@ func TestMapImpl_InsertRoundMetric(t *testing.T) {
 	}
 	newTopology := []string{"Node1", "Node2"}
 
-	err := m.InsertRoundMetric(newMetric, newTopology)
+	err := m.InsertRoundMetric(&newMetric, newTopology)
 	if err != nil {
 		t.Errorf("Unable to insert round metric: %+v", err)
 	}
@@ -95,12 +95,12 @@ func TestMapImpl_InsertApplication(t *testing.T) {
 
 	// Attempt to load in a valid code
 	applicationId := uint64(10)
-	newNode := Node{
+	newNode := &Node{
 		Code:          "TEST",
 		Order:         "BLARG",
 		ApplicationId: applicationId,
 	}
-	newApplication := Application{Id: applicationId}
+	newApplication := &Application{Id: applicationId}
 	err := m.InsertApplication(newApplication, newNode)
 
 	// Verify the insert was successful
@@ -123,15 +123,15 @@ func TestMapImpl_InsertApplication_Duplicate(t *testing.T) {
 
 	// Load in a registration code
 	applicationId := uint64(10)
-	newNode := Node{
+	newNode := &Node{
 		Code:          "TEST",
 		Order:         "BLARG",
 		ApplicationId: applicationId,
 	}
-	newApplication := Application{Id: applicationId}
+	newApplication := &Application{Id: applicationId}
 
 	// Attempt to load in a duplicate application
-	m.applications[applicationId] = &newApplication
+	m.applications[applicationId] = newApplication
 	err := m.InsertApplication(newApplication, newNode)
 
 	// Verify the insert failed
@@ -140,7 +140,7 @@ func TestMapImpl_InsertApplication_Duplicate(t *testing.T) {
 	}
 
 	// Attempt to load in a duplicate code
-	m.nodes[newNode.Code] = &newNode
+	m.nodes[newNode.Code] = newNode
 	err = m.InsertApplication(newApplication, newNode)
 
 	// Verify the insert failed

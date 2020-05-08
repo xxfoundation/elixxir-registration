@@ -15,8 +15,7 @@ import (
 )
 
 // Insert Application object along with associated unregistered Node
-func (m *MapImpl) InsertApplication(application Application,
-	unregisteredNode Node) error {
+func (m *MapImpl) InsertApplication(application *Application, unregisteredNode *Node) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -34,13 +33,13 @@ func (m *MapImpl) InsertApplication(application Application,
 			application.Id)
 	}
 
-	m.nodes[unregisteredNode.Code] = &unregisteredNode
-	m.applications[application.Id] = &application
+	m.nodes[unregisteredNode.Code] = unregisteredNode
+	m.applications[application.Id] = application
 	return nil
 }
 
 // Insert NodeMetric object
-func (m *MapImpl) InsertNodeMetric(metric NodeMetric) error {
+func (m *MapImpl) InsertNodeMetric(metric *NodeMetric) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -49,13 +48,13 @@ func (m *MapImpl) InsertNodeMetric(metric NodeMetric) error {
 
 	// Add to map
 	metric.Id = m.nodeMetricCounter
-	m.nodeMetrics[m.nodeMetricCounter] = &metric
+	m.nodeMetrics[m.nodeMetricCounter] = metric
 
 	return nil
 }
 
 // Insert RoundMetric object
-func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology []string) error {
+func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology []string) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -75,7 +74,7 @@ func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology []string) error
 	}
 
 	// Add to map
-	m.roundMetrics[m.roundMetricCounter] = &metric
+	m.roundMetrics[m.roundMetricCounter] = metric
 
 	return nil
 }
@@ -96,7 +95,6 @@ func (m *MapImpl) RegisterNode(id *id.Node, code, serverCert, serverAddress,
 	}
 	m.mut.Unlock()
 	return errors.Errorf("unable to register node %s", code)
-
 }
 
 // Get Node information for the given Node registration code
