@@ -53,6 +53,7 @@ func TestMain(m *testing.M) {
 		publicAddress:             permAddr,
 		maxRegistrationAttempts:   5,
 		registrationCountDuration: time.Hour,
+		minimumNodes:              3,
 	}
 	nodeComm = nodeComms.StartNode("tmp", nodeAddr, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
@@ -104,7 +105,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	}
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
-	err = storage.PermissioningDb.InsertNodeRegCode("AAAA", "")
+	err = storage.PermissioningDb.InsertNodeRegCode("AAAA", "0")
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
@@ -154,7 +155,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
 	//Insert a sample regCode
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB"})
+	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"})
 
 	storage.PopulateNodeRegistrationCodes(infos)
 	localParams := testParams
@@ -166,7 +167,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	}
 	RegParams = testParams
 
-	go func(){
+	go func() {
 		err = impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
 			"0.0.0.0:6900", string(nodeCert), "BBBB")
 		if err != nil {
@@ -193,7 +194,9 @@ func TestDoubleRegistration(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "AAAA"}, node.Info{RegCode: "BBBB"}, node.Info{RegCode: "CCCC"})
+	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
+		node.Info{RegCode: "BBBB", Order: "1"},
+		node.Info{RegCode: "CCCC", Order: "2"})
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 
@@ -233,7 +236,10 @@ func TestTopology_MultiNodes(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "AAAA"}, node.Info{RegCode: "BBBB"}, node.Info{RegCode: "CCCC"})
+	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
+		node.Info{RegCode: "BBBB", Order: "1"},
+		node.Info{RegCode: "CCCC", Order: "2"})
+
 	storage.PopulateNodeRegistrationCodes(infos)
 
 	localParams := testParams
@@ -248,7 +254,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	//Create a second node to register
 	nodeComm2 := nodeComms.StartNode("tmp", "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
 
-	go func(){
+	go func() {
 		//Register 1st node
 		err = impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
 			nodeAddr, string(nodeCert), "BBBB")

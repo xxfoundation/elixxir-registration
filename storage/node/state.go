@@ -124,7 +124,6 @@ func (n *State) GetPollingLock() *sync.Mutex {
 	return &n.pollingLock
 }
 
-
 // gets the ordering string for use in team formation
 func (n *State) GetOrdering() string {
 	return n.ordering

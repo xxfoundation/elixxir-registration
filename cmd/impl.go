@@ -41,9 +41,9 @@ type RegistrationImpl struct {
 	maxRegistrationAttempts uint64
 
 	//registration status trackers
-	numRegistered 			int
-	registrationLock		sync.Mutex
-	beginScheduling			chan struct{}
+	numRegistered    int
+	registrationLock sync.Mutex
+	beginScheduling  chan struct{}
 }
 
 //function used to schedule nodes
@@ -115,7 +115,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		ndfOutputPath:           params.NdfOutputPath,
 		NdfReady:                &ndfReady,
 
-		numRegistered: 0,
+		numRegistered:   0,
 		beginScheduling: make(chan struct{}),
 	}
 
@@ -149,10 +149,15 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			Address:        RegParams.publicAddress,
 			TlsCertificate: regImpl.certFromFile,
 		},
+
 		Timestamp: time.Now(),
 		UDB:       ndf.UDB{ID: RegParams.udbId},
 		E2E:       RegParams.e2e,
 		CMIX:      RegParams.cmix,
+		// fixme: consider removing. this allows clients to remain agnostic of teaming order
+		//  by forcing team order == ndf order for simple non-random
+		Nodes:    make([]ndf.Node, params.minimumNodes),
+		Gateways: make([]ndf.Gateway, params.minimumNodes),
 	}
 
 	// Assemble notification server information if configured
