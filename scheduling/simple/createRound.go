@@ -30,7 +30,7 @@ func createRound(params Params, pool *waitingPoll, roundID id.Round,
 	//build the topology
 	nodeMap := state.GetNodeMap()
 	nodeStateList := make([]*node.State, params.TeamSize)
-	orderedNodeList := make([]*id.Node, params.TeamSize)
+	orderedNodeList := make([]*id.ID, params.TeamSize)
 
 	if params.RandomOrdering {
 

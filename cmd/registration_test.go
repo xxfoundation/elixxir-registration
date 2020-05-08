@@ -9,6 +9,7 @@ import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
 	nodeComms "gitlab.com/elixxir/comms/node"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -54,7 +55,7 @@ func TestMain(m *testing.M) {
 		maxRegistrationAttempts:   5,
 		registrationCountDuration: time.Hour,
 	}
-	nodeComm = nodeComms.StartNode("tmp", nodeAddr, nodeComms.NewImplementation(), nodeCert, nodeKey)
+	nodeComm = nodeComms.StartNode(&id.TempGateway, nodeAddr, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
 	runFunc := func() int {
 		code := m.Run()
@@ -87,7 +88,7 @@ func TestEmptyDataBase(t *testing.T) {
 	}
 
 	//using node cert as gateway cert
-	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode(id.NewIdFromBytes([]byte("test"), t), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "AAA")
 	if err == nil {
 		expectedErr := "Unable to insert node: unable to register node AAA"
@@ -113,12 +114,12 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 	//Insert a sample regCode
-	err = storage.PermissioningDb.InsertUnregisteredNode("AAAA", "", 0)
+	err = storage.PermissioningDb.InsertApplication(storage.Application{}, storage.Node{Code: "AAAA"})
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 	//Register a node with that regCode
-	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode(id.NewIdFromBytes([]byte("test"), t), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "AAAA")
 	if err != nil {
 		t.Errorf("Registered a node with a known reg code, but recieved the following error: %+v", err)
@@ -184,7 +185,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	}
 	RegParams = testParams
 
-	err = impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
+	err = impl.RegisterNode(id.NewIdFromBytes([]byte("test"), t), "0.0.0.0:6900", string(nodeCert),
 		"0.0.0.0:6900", string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
@@ -235,17 +236,17 @@ func TestDoubleRegistration(t *testing.T) {
 	go impl.nodeRegistrationCompleter(beginScheduling)
 
 	//Create a second node to register
-	nodeComm2 := nodeComms.StartNode("tmp", "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := nodeComms.StartNode(&id.TempGateway, "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
-	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode(id.NewIdFromBytes([]byte("test"), t), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(nodeCert),
+	err = impl.RegisterNode(id.NewIdFromBytes([]byte("B"), t), "0.0.0.0:6901", string(nodeCert),
 		"0.0.0.0:6901", string(nodeCert), "BBBB")
 	//Kill the connections for the next test
 	nodeComm2.Shutdown()
@@ -281,17 +282,17 @@ func TestTopology_MultiNodes(t *testing.T) {
 	}
 
 	//Create a second node to register
-	nodeComm2 := nodeComms.StartNode("tmp", "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := nodeComms.StartNode(&id.TempGateway, "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
-	err = impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode(id.NewIdFromBytes([]byte("A"), t), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(gatewayCert),
+	err = impl.RegisterNode(id.NewIdFromBytes([]byte("B"), t), "0.0.0.0:6901", string(gatewayCert),
 		"0.0.0.0:6901", string(gatewayCert), "CCCC")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)

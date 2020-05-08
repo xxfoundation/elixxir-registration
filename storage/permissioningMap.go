@@ -14,43 +14,79 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 )
 
-// TODO: Insert Application object along with associated unregistered Node
-func (m *MapImpl) InsertApplication(application *Application,
-	unregisteredNode *Node) error {
-	// TODO: This is map code which will help with inserting the node
-	//m.mut.Lock()
-	//jww.INFO.Printf("Adding node registration code: %s with Order Info: %s",
-	//	code, order)
-	//
-	//// Enforce unique registration code
-	//if m.node[code] != nil {
-	//	m.mut.Unlock()
-	//	return errors.Errorf("node registration code %s already exists",
-	//		code)
-	//}
-	//
-	//m.node[code] = &Node{Code: code, Order: order}
-	//m.mut.Unlock()
+// Insert Application object along with associated unregistered Node
+func (m *MapImpl) InsertApplication(application Application,
+	unregisteredNode Node) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	jww.INFO.Printf("Adding application: %d", application.Id)
+	jww.INFO.Printf("Adding node registration code: %s with Order Info: %s",
+		unregisteredNode.Code, unregisteredNode.Order)
+
+	// Enforce unique keys
+	if m.nodes[unregisteredNode.Code] != nil {
+		return errors.Errorf("node registration code %s already exists",
+			unregisteredNode.Code)
+	}
+	if m.applications[application.Id] != nil {
+		return errors.Errorf("application ID %d already exists",
+			application.Id)
+	}
+
+	m.nodes[unregisteredNode.Code] = &unregisteredNode
+	m.applications[application.Id] = &application
 	return nil
 }
 
-// TODO: Insert NodeMetric object
-func (m *MapImpl) InsertNodeMetric(metric *NodeMetric) error {
+// Insert NodeMetric object
+func (m *MapImpl) InsertNodeMetric(metric NodeMetric) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	// Auto-increment key
+	m.nodeMetricCounter += 1
+
+	// Add to map
+	metric.Id = m.nodeMetricCounter
+	m.nodeMetrics[m.nodeMetricCounter] = &metric
+
 	return nil
 }
 
-// TODO: Insert RoundMetric object
-func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology []string) error {
+// Insert RoundMetric object
+func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology []string) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	// Auto-increment key
+	m.roundMetricCounter += 1
+	metric.Id = m.roundMetricCounter
+
+	// Build Topology objects
+	metric.Topologies = make([]Topology, len(topology))
+	for i, node := range topology {
+		topologyObj := Topology{
+			NodeId:        node,
+			RoundMetricId: m.roundMetricCounter,
+			Order:         uint8(i),
+		}
+		metric.Topologies[i] = topologyObj
+	}
+
+	// Add to map
+	m.roundMetrics[m.roundMetricCounter] = &metric
+
 	return nil
 }
 
 // If Node registration code is valid, add Node information
-func (m *MapImpl) RegisterNode(id *id.Node, code, serverCert, serverAddress,
+func (m *MapImpl) RegisterNode(id *id.ID, code, serverCert, serverAddress,
 	gatewayAddress, gatewayCert string) error {
 	m.mut.Lock()
 	jww.INFO.Printf("Attempting to register node with code: %s", code)
-	if info := m.node[code]; info != nil {
-		info.Id = id.String()
+	if info := m.nodes[code]; info != nil {
+		info.Id = id.Marshal()
 		info.ServerAddress = serverAddress
 		info.GatewayCertificate = gatewayCert
 		info.GatewayAddress = gatewayAddress
@@ -66,7 +102,7 @@ func (m *MapImpl) RegisterNode(id *id.Node, code, serverCert, serverAddress,
 // Get Node information for the given Node registration code
 func (m *MapImpl) GetNode(code string) (*Node, error) {
 	m.mut.Lock()
-	info := m.node[code]
+	info := m.nodes[code]
 	if info == nil {
 		m.mut.Unlock()
 		return nil, errors.Errorf("unable to get node %s", code)

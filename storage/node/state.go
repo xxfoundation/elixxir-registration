@@ -36,7 +36,7 @@ type State struct {
 	stateMap *[][]bool
 
 	//id of the node
-	id *id.Node
+	id *id.ID
 }
 
 // updates to the passed in activity if it is different from the known activity
@@ -119,7 +119,7 @@ func (n *State) GetOrdering() string {
 }
 
 // gets the ID of the node
-func (n *State) GetID() *id.Node {
+func (n *State) GetID() *id.ID {
 	return n.id
 }
 

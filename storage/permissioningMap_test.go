@@ -9,53 +9,150 @@ package storage
 import (
 	"gitlab.com/elixxir/primitives/id"
 	"testing"
+	"time"
 )
 
-// TODO: Happy path
-//func TestMapImpl_InsertNodeRegCode(t *testing.T) {
-//	m := &MapImpl{
-//		node: make(map[string]*Node),
-//	}
-//
-//	// Attempt to load in a valid code
-//	code := "TEST"
-//	Order := "BLARG"
-//	err := m.InsertUnregisteredNode(code, Order, 0)
-//
-//	// Verify the insert was successful
-//	if err != nil || m.node[code] == nil {
-//		t.Errorf("Expected to successfully insert node registration code")
-//	}
-//
-//	if m.node[code].Order != Order {
-//		t.Errorf("Order string incorret; Expected: %s, Recieved: %s",
-//			Order, m.node[code].Order)
-//	}
-//}
+// Happy path
+func TestMapImpl_InsertNodeMetric(t *testing.T) {
+	m := &MapImpl{nodeMetrics: make(map[uint64]*NodeMetric)}
 
-// TODO: Error Path: Duplicate node registration code
-//func TestMapImpl_InsertNodeRegCode_Duplicate(t *testing.T) {
-//	m := &MapImpl{
-//		node: make(map[string]*Node),
-//	}
-//
-//	// Load in a registration code
-//	code := "TEST"
-//	m.node[code] = &Node{Code: code}
-//
-//	// Attempt to load in a duplicate code
-//	err := m.InsertUnregisteredNode(code, "", 0)
-//
-//	// Verify the insert failed
-//	if err == nil {
-//		t.Errorf("Expected to fail inserting duplicate node registration code")
-//	}
-//}
+	newMetric := NodeMetric{
+		NodeId:    "TEST",
+		StartTime: time.Now(),
+		EndTime:   time.Now(),
+		NumPings:  1000,
+	}
+
+	err := m.InsertNodeMetric(newMetric)
+	if err != nil {
+		t.Errorf("Unable to insert node metric: %+v", err)
+	}
+
+	insertedMetric := m.nodeMetrics[m.nodeMetricCounter]
+	if insertedMetric.Id != m.nodeMetricCounter {
+		t.Errorf("Mismatched ID returned!")
+	}
+	if insertedMetric.StartTime != newMetric.StartTime {
+		t.Errorf("Mismatched StartTime returned!")
+	}
+	if insertedMetric.EndTime != newMetric.EndTime {
+		t.Errorf("Mismatched EndTime returned!")
+	}
+	if insertedMetric.NumPings != newMetric.NumPings {
+		t.Errorf("Mismatched NumPings returned!")
+	}
+}
 
 // Happy path
-func TestMapImpl_InsertNode(t *testing.T) {
+func TestMapImpl_InsertRoundMetric(t *testing.T) {
+	m := &MapImpl{roundMetrics: make(map[uint64]*RoundMetric)}
+
+	newMetric := RoundMetric{
+		Error:         "TEST",
+		PrecompStart:  time.Now(),
+		PrecompEnd:    time.Now(),
+		RealtimeStart: time.Now(),
+		RealtimeEnd:   time.Now(),
+		BatchSize:     420,
+	}
+	newTopology := []string{"Node1", "Node2"}
+
+	err := m.InsertRoundMetric(newMetric, newTopology)
+	if err != nil {
+		t.Errorf("Unable to insert round metric: %+v", err)
+	}
+
+	insertedMetric := m.roundMetrics[m.roundMetricCounter]
+	if insertedMetric.Id != m.roundMetricCounter {
+		t.Errorf("Mismatched ID returned!")
+	}
+	if insertedMetric.PrecompStart != newMetric.PrecompStart {
+		t.Errorf("Mismatched PrecompStart returned!")
+	}
+	if insertedMetric.PrecompEnd != newMetric.PrecompEnd {
+		t.Errorf("Mismatched PrecompEnd returned!")
+	}
+	if insertedMetric.RealtimeStart != newMetric.RealtimeStart {
+		t.Errorf("Mismatched RealtimeStart returned!")
+	}
+	if insertedMetric.RealtimeEnd != newMetric.RealtimeEnd {
+		t.Errorf("Mismatched RealtimeEnd returned!")
+	}
+	if insertedMetric.BatchSize != newMetric.BatchSize {
+		t.Errorf("Mismatched BatchSize returned!")
+	}
+	if insertedMetric.Error != newMetric.Error {
+		t.Errorf("Mismatched Error returned!")
+	}
+}
+
+// Happy path
+func TestMapImpl_InsertApplication(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*Node),
+		nodes:        make(map[string]*Node),
+		applications: make(map[uint64]*Application),
+	}
+
+	// Attempt to load in a valid code
+	applicationId := uint64(10)
+	newNode := Node{
+		Code:          "TEST",
+		Order:         "BLARG",
+		ApplicationId: applicationId,
+	}
+	newApplication := Application{Id: applicationId}
+	err := m.InsertApplication(newApplication, newNode)
+
+	// Verify the insert was successful
+	if err != nil || m.nodes[newNode.Code] == nil {
+		t.Errorf("Expected to successfully insert node registration code")
+	}
+
+	if m.nodes[newNode.Code].Order != newNode.Order {
+		t.Errorf("Order string incorret; Expected: %s, Recieved: %s",
+			newNode.Order, m.nodes[newNode.Code].Order)
+	}
+}
+
+// Error Path: Duplicate node registration code and application
+func TestMapImpl_InsertApplication_Duplicate(t *testing.T) {
+	m := &MapImpl{
+		nodes:        make(map[string]*Node),
+		applications: make(map[uint64]*Application),
+	}
+
+	// Load in a registration code
+	applicationId := uint64(10)
+	newNode := Node{
+		Code:          "TEST",
+		Order:         "BLARG",
+		ApplicationId: applicationId,
+	}
+	newApplication := Application{Id: applicationId}
+
+	// Attempt to load in a duplicate application
+	m.applications[applicationId] = &newApplication
+	err := m.InsertApplication(newApplication, newNode)
+
+	// Verify the insert failed
+	if err == nil {
+		t.Errorf("Expected to fail inserting duplicate application")
+	}
+
+	// Attempt to load in a duplicate code
+	m.nodes[newNode.Code] = &newNode
+	err = m.InsertApplication(newApplication, newNode)
+
+	// Verify the insert failed
+	if err == nil {
+		t.Errorf("Expected to fail inserting duplicate node registration code")
+	}
+}
+
+// Happy path
+func TestMapImpl_RegisterNode(t *testing.T) {
+	m := &MapImpl{
+		nodes: make(map[string]*Node),
 	}
 
 	// Load in a registration code
@@ -64,14 +161,14 @@ func TestMapImpl_InsertNode(t *testing.T) {
 	gwCert := "gwcert"
 	addr := "addr"
 	gwAddr := "gwaddr"
-	m.node[code] = &Node{Code: code}
+	m.nodes[code] = &Node{Code: code}
 
 	// Attempt to insert a node
-	err := m.RegisterNode(id.NewNodeFromBytes(make([]byte, 0)), code, cert,
+	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), code, cert,
 		addr, gwAddr, gwCert)
 
 	// Verify the insert was successful
-	if info := m.node[code]; err != nil || info.NodeCertificate != cert ||
+	if info := m.nodes[code]; err != nil || info.NodeCertificate != cert ||
 		info.GatewayCertificate != gwCert || info.ServerAddress != addr ||
 		info.GatewayAddress != gwAddr {
 		t.Errorf("Expected to successfully insert node information: %+v", info)
@@ -79,16 +176,16 @@ func TestMapImpl_InsertNode(t *testing.T) {
 }
 
 // Error path: Invalid registration code
-func TestMapImpl_InsertNode_Invalid(t *testing.T) {
+func TestMapImpl_RegisterNode_Invalid(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*Node),
+		nodes: make(map[string]*Node),
 	}
 
 	// Do NOT load in a registration code
 	code := "TEST"
 
 	// Attempt to insert a node without an associated registration code
-	err := m.RegisterNode(id.NewNodeFromBytes(make([]byte, 0)), code, code,
+	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), code, code,
 		code, code, code)
 
 	// Verify the insert failed
@@ -101,12 +198,12 @@ func TestMapImpl_InsertNode_Invalid(t *testing.T) {
 // Happy path
 func TestMapImpl_GetNode(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*Node),
+		nodes: make(map[string]*Node),
 	}
 
 	// Load in a registration code
 	code := "TEST"
-	m.node[code] = &Node{Code: code}
+	m.nodes[code] = &Node{Code: code}
 
 	// Check that the correct node is obtained
 	info, err := m.GetNode(code)
@@ -118,54 +215,12 @@ func TestMapImpl_GetNode(t *testing.T) {
 // Error path: Nonexistent registration code
 func TestMapImpl_GetNode_Invalid(t *testing.T) {
 	m := &MapImpl{
-		node: make(map[string]*Node),
+		nodes: make(map[string]*Node),
 	}
 
 	// Check that no node is obtained from empty map
 	info, err := m.GetNode("TEST")
 	if err == nil || info != nil {
 		t.Errorf("Expected to not find the node")
-	}
-}
-
-// Happy path
-func TestMapImpl_InsertUser(t *testing.T) {
-	m := &MapImpl{
-		user: make(map[string]bool),
-	}
-
-	testKey := "TEST"
-	_ = m.InsertUser(testKey)
-	if !m.user[testKey] {
-		t.Errorf("Insert failed to add the user!")
-	}
-}
-
-// Happy path
-func TestMapImpl_GetUser(t *testing.T) {
-	m := &MapImpl{
-		user: make(map[string]bool),
-	}
-
-	testKey := "TEST"
-	m.user[testKey] = true
-
-	user, err := m.GetUser(testKey)
-	if err != nil || user.PublicKey != testKey {
-		t.Errorf("Get failed to get user!")
-	}
-}
-
-// Get user that does not exist
-func TestMapImpl_GetUserNotExists(t *testing.T) {
-	m := &MapImpl{
-		user: make(map[string]bool),
-	}
-
-	testKey := "TEST"
-
-	_, err := m.GetUser(testKey)
-	if err == nil {
-		t.Errorf("Get expected to not find user!")
 	}
 }

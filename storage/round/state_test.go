@@ -7,6 +7,7 @@
 package round
 
 import (
+	"bytes"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"math"
@@ -54,7 +55,7 @@ func TestNewState(t *testing.T) {
 
 	for i := 0; i < topology.Len(); i++ {
 		strId := topology.GetNodeAtIndex(i).String()
-		if ns.base.Topology[i] != strId {
+		if bytes.Equal(ns.base.Topology[i], []byte(strId)) {
 			t.Errorf("Topology string on index %v is incorrect"+
 				"Expected: %s, Recieved: %s", i, strId, ns.base.Topology[i])
 		}
@@ -292,7 +293,7 @@ func TestState_BuildRoundInfo(t *testing.T) {
 
 	for i := 0; i < topology.Len(); i++ {
 		strId := topology.GetNodeAtIndex(i).String()
-		if ri.Topology[i] != strId {
+		if bytes.Equal(ri.Topology[i], []byte(strId)) {
 			t.Errorf("Topology string on index %v is incorrect"+
 				"Expected: %s, Recieved: %s", i, strId, ri.Topology[i])
 		}

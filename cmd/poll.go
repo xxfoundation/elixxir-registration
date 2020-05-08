@@ -14,7 +14,6 @@ import (
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"sync/atomic"
 )
@@ -57,11 +56,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		auth.Sender.GetId(), msg)
 
 	//get the nodeState and update
-	nid, err := id.NewNodeFromString(auth.Sender.GetId())
-	if err != nil {
-		err = errors.Errorf("could not decode node id of %s: %s", auth.Sender.GetId(), err)
-		return
-	}
+	nid := auth.Sender.GetId()
 
 	n := m.State.GetNodeMap().GetNode(nid)
 	if n == nil {

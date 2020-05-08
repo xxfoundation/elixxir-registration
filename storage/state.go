@@ -50,7 +50,7 @@ type NetworkState struct {
 // NodeUpdateNotification structure used to notify the control thread that the
 // round state has updated.
 type NodeUpdateNotification struct {
-	Node *id.Node
+	Node *id.ID
 	From current.Activity
 	To   current.Activity
 }
@@ -178,7 +178,7 @@ func (s *NetworkState) GetNodeMap() *node.StateMap {
 
 // NodeUpdateNotification sends a notification to the control thread of an
 // update to a nodes state.
-func (s *NetworkState) NodeUpdateNotification(node *id.Node, from, to current.Activity) error {
+func (s *NetworkState) NodeUpdateNotification(node *id.ID, from, to current.Activity) error {
 	nun := NodeUpdateNotification{
 		Node: node,
 		From: from,

@@ -35,11 +35,11 @@ func TestStartRound(t *testing.T) {
 	}
 
 	// Build node list
-	nodeList := make([]*id.Node, testParams.TeamSize)
+	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nid := id.NewNodeFromUInt(i, t)
+		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
 		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
 		if err != nil {
@@ -95,10 +95,10 @@ func TestStartRound_BadState(t *testing.T) {
 	}
 
 	// Build node list
-	nodeList := make([]*id.Node, testParams.TeamSize)
+	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nid := id.NewNodeFromUInt(i, t)
+		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
 		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
 		if err != nil {
@@ -158,10 +158,10 @@ func TestStartRound_BadNode(t *testing.T) {
 	}
 
 	// Build node list
-	nodeList := make([]*id.Node, testParams.TeamSize)
+	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nid := id.NewNodeFromUInt(i, t)
+		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
 		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
 		if err != nil {
