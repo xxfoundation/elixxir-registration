@@ -42,6 +42,9 @@ type RegistrationImpl struct {
 
 	//registration status trackers
 	numRegistered    int
+	//FIXME: it is possible that polling lock and registration lock
+	// do the same job and could conflict. reconsiderations of this logic
+	// may be fruitful
 	registrationLock sync.Mutex
 	beginScheduling  chan struct{}
 }

@@ -42,6 +42,9 @@ type State struct {
 	// there is no update, it is released in this endpoint, otherwise it is
 	// released in the scheduling algorithm which blocks all future polls until
 	// processing completes
+	//FIXME: it is possible that polling lock and registration lock
+	// do the same job and could conflict. reconsiderations of this logic
+	// may be fruitfull
 	pollingLock sync.Mutex
 }
 

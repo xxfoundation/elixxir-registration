@@ -91,6 +91,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 }
 
 // Handles including new registrations in the network
+// fixme: we should split this function into what is relevant to registering a  node and what is relevant
+//  to permissioning
 func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 	m.registrationLock.Lock()
@@ -104,7 +106,8 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	networkDef := m.State.GetFullNdf().Get()
 	gateway, node, order, err := assembleNdf(regCode)
 	if err != nil {
-		return errors.Errorf("unable to assemble topology: %+v", err)
+		jww.ERROR.Printf("unable to assemble topology: %+v", err)
+		return errors.Errorf("Could not complete registration")
 	}
 
 	// fixme: consider removing. this allows clients to remain agnostic of teaming order
@@ -125,7 +128,8 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	// Output the current topology to a JSON file
 	err = outputToJSON(networkDef, m.ndfOutputPath)
 	if err != nil {
-		return errors.Errorf("unable to output NDF JSON file: %+v", err)
+		jww.ERROR.Printf("unable to output NDF JSON file: %+v", err)
+		return errors.Errorf("Could not complete registration")
 	}
 
 	// Kick off the network if the minimum number of nodes has been met
