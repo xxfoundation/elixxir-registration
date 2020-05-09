@@ -58,6 +58,8 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 		From: current.NOT_STARTED,
 		To:   current.WAITING}
 
+	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
+
 	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
@@ -100,6 +102,8 @@ func TestHandleNodeStateChance_WaitingError(t *testing.T) {
 		Node: nodeList[0],
 		From: current.NOT_STARTED,
 		To:   current.WAITING}
+
+	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
 
 	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 	if err != nil {
@@ -152,6 +156,8 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 			To:   current.WAITING,
 		}
 
+		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
+
 		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
@@ -166,6 +172,8 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 			Node: nodeList[i],
 			From: current.WAITING,
 			To:   current.STANDBY}
+
+		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
 		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err != nil {
@@ -222,6 +230,8 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 			From: current.WAITING,
 			To:   current.STANDBY}
 
+		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
+
 		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
@@ -275,6 +285,8 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 			To:   current.WAITING,
 		}
 
+		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
+
 		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
@@ -289,6 +301,8 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 			Node: nodeList[i],
 			From: current.REALTIME,
 			To:   current.COMPLETED}
+
+		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
 		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err != nil {
@@ -338,6 +352,8 @@ func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
 			Node: nodeList[i],
 			From: current.WAITING,
 			To:   current.COMPLETED}
+
+		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
 		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
 		if err == nil {

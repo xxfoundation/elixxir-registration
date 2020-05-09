@@ -147,19 +147,10 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
-		// Begin the thread which handles the completion of node registration
-		beginScheduling := make(chan struct{})
-		go func() {
-			err = impl.nodeRegistrationCompleter(beginScheduling)
-			if err != nil {
-				jww.FATAL.Panicf("Failed to complete node registration: %+v", err)
-			}
-		}()
+		jww.INFO.Printf("Waiting for for %v nodes to register so "+
+			"rounds can start", RegParams.minimumNodes)
 
-		jww.INFO.Printf("Node registration completer has begin, waiting "+
-			"for %v nodes to register so rounds can start", RegParams.minimumNodes)
-
-		<-beginScheduling
+		<-impl.beginScheduling
 		jww.INFO.Printf("Minnimum number of nodes %v have registered,"+
 			"begining scheduling and round creation", RegParams.minimumNodes)
 
