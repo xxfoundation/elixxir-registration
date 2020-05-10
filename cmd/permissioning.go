@@ -67,7 +67,7 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 		return errors.Errorf("unable to insert node: %+v", err)
 	}
 	jww.DEBUG.Printf("Inserted node %s into the database with code %s",
-		ID.Marshal(), RegistrationCode)
+		ID.String(), RegistrationCode)
 
 	//add the node to the host object for authenticated communications
 	_, err = m.Comms.AddHost(ID, ServerAddr, []byte(ServerTlsCert), false, true)
