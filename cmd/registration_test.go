@@ -88,7 +88,7 @@ func TestEmptyDataBase(t *testing.T) {
 	}
 
 	//using node cert as gateway cert
-	err = impl.RegisterNode(id.NewIdFromBytes([]byte("test"), t), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode(id.NewIdFromString("test", id.Node, t), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "AAA")
 	if err == nil {
 		expectedErr := "Unable to insert node: unable to register node AAA"
