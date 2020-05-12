@@ -50,8 +50,6 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errors.Errorf("Failed to load gateway certificate: %v", err)
 	}
 
-	pk := &m.State.GetPrivateKey().PrivateKey
-
 	// Sign the node and gateway certs
 	signedNodeCert, err := certAuthority.Sign(nodeCertificate,
 		m.permissioningCert, pk)

@@ -12,9 +12,6 @@ cMix
 
 # Log message level
 logLevel: 1
-
-# Verbose logging
-verbose: "true"
 # Path to log file
 logPath: "registration.log"
 # Path to the node topology permissioning info
