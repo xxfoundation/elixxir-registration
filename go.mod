@@ -6,6 +6,7 @@ require (
 	github.com/denisenkom/go-mssqldb v0.0.0-20200428022330-06a60b6afbbc // indirect
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
+	github.com/golang/protobuf v1.4.1 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
 	github.com/jinzhu/gorm v1.9.12
 	github.com/jinzhu/now v1.1.1 // indirect
@@ -23,8 +24,9 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 
 	github.com/spf13/viper v1.6.3
-	gitlab.com/elixxir/comms v0.0.0-20200507222900-9ca6955d39e3
-	gitlab.com/elixxir/crypto v0.0.0-20200504184505-e210a219cbd9
-	gitlab.com/elixxir/primitives v0.0.0-20200506184657-93da24058321
+	gitlab.com/elixxir/comms v0.0.0-20200511223802-0fd1264d16db
+	gitlab.com/elixxir/crypto v0.0.0-20200512230225-6055aa8ec89e
+	gitlab.com/elixxir/primitives v0.0.0-20200511202032-081f195abcf4
+	google.golang.org/grpc v1.29.1 // indirect
 	gopkg.in/ini.v1 v1.55.0 // indirect
 )
