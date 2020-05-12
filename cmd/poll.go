@@ -69,6 +69,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		return
 	}
 
+	// when a node poll is received, the nodes polling lock is taken here. If
+	// there is no update, it is released in this endpoint, otherwise it is
+	// released in the scheduling algorithm which blocks all future polls until
+	// processing completes
+	n.GetPollingLock().Lock()
+
 	// update does edge checking. It ensures the state change recieved was a
 	// valid one and the state fo the node and
 	// any associated round allows for that change. If the change was not
@@ -79,6 +85,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	//if an update ocured, report it to the control thread
 	if update {
 		err = m.State.NodeUpdateNotification(nid, oldActivity, current.Activity(msg.Activity))
+	} else {
+		n.GetPollingLock().Unlock()
 	}
 
 	return

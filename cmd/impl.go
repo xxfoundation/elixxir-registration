@@ -21,6 +21,7 @@ import (
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
+	"sync"
 	"time"
 )
 
@@ -34,11 +35,18 @@ type RegistrationImpl struct {
 	State                   *storage.NetworkState
 	permissioningCert       *x509.Certificate
 	ndfOutputPath           string
-	nodeCompleted           chan string
 	NdfReady                *uint32
 	certFromFile            string
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
+
+	//registration status trackers
+	numRegistered int
+	//FIXME: it is possible that polling lock and registration lock
+	// do the same job and could conflict. reconsiderations of this logic
+	// may be fruitful
+	registrationLock sync.Mutex
+	beginScheduling  chan struct{}
 }
 
 //function used to schedule nodes
@@ -108,8 +116,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		maxRegistrationAttempts: params.maxRegistrationAttempts,
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
-		nodeCompleted:           make(chan string, nodeCompletionChanLen),
 		NdfReady:                &ndfReady,
+
+		numRegistered:   0,
+		beginScheduling: make(chan struct{}),
 	}
 
 	// Create timer and channel to be used by routine that clears the number of
@@ -142,10 +152,15 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			Address:        RegParams.publicAddress,
 			TlsCertificate: regImpl.certFromFile,
 		},
+
 		Timestamp: time.Now(),
 		UDB:       ndf.UDB{ID: RegParams.udbId},
 		E2E:       RegParams.e2e,
 		CMIX:      RegParams.cmix,
+		// fixme: consider removing. this allows clients to remain agnostic of teaming order
+		//  by forcing team order == ndf order for simple non-random
+		Nodes:    make([]ndf.Node, params.minimumNodes),
+		Gateways: make([]ndf.Gateway, params.minimumNodes),
 	}
 
 	// Assemble notification server information if configured

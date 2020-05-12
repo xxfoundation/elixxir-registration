@@ -38,6 +38,15 @@ type State struct {
 
 	//id of the node
 	id *id.Node
+
+	// when a node poll is received, this nodes polling lock is. If
+	// there is no update, it is released in this endpoint, otherwise it is
+	// released in the scheduling algorithm which blocks all future polls until
+	// processing completes
+	//FIXME: it is possible that polling lock and registration lock
+	// do the same job and could conflict. reconsiderations of this logic
+	// may be fruitfull
+	pollingLock sync.Mutex
 }
 
 // updates to the passed in activity if it is different from the known activity
@@ -118,6 +127,11 @@ func (n *State) GetLastPoll() time.Time {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	return n.lastPoll
+}
+
+// Returns the polling lock
+func (n *State) GetPollingLock() *sync.Mutex {
+	return &n.pollingLock
 }
 
 // gets the ordering string for use in team formation
