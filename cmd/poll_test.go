@@ -227,29 +227,6 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	expectedNodeIDs := []*id.ID{id.NewIdFromString("B", id.Node, t),
 		id.NewIdFromString("C", id.Node, t), id.NewIdFromString("D", id.Node, t)}
 
-	//Register 1st node
-	err = impl.RegisterNode(expectedNodeIDs[0], nodeAddr, string(nodeCert),
-		"0.0.0.0:7900", string(gatewayCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 2nd node
-	err = impl.RegisterNode(expectedNodeIDs[1], "0.0.0.0:6901",
-		string(nodeCert),
-		"0.0.0.0:7901", string(gatewayCert), "CCCC")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 3rd node
-	err = impl.RegisterNode(expectedNodeIDs[2], "0.0.0.0:6902",
-		string(nodeCert),
-		"0.0.0.0:7902", string(gatewayCert), "DDDD")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
 	//wait for registration to complete
 	select {
 	case <-time.NewTimer(1000 * time.Millisecond).C:

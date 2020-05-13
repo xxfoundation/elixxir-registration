@@ -115,7 +115,8 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 	//Insert a sample regCode
-	err = storage.PermissioningDb.InsertApplication(storage.Application{}, storage.Node{Code: "AAAA"})
+	err = storage.PermissioningDb.InsertApplication(storage.Application{},
+		storage.Node{Code: "AAAA", Order: "0"})
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
@@ -186,15 +187,6 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	}
 	RegParams = testParams
 
-	err = impl.RegisterNode(id.NewIdFromBytes([]byte("test"), t), "0.0.0.0:6900", string(nodeCert),
-		"0.0.0.0:6900", string(nodeCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-		return
-	}
-
-	//beginScheduling := make(chan struct{}, 1)
-
 	go func() {
 		err = impl.RegisterNode(id.NewIdFromString("test", id.Node, t), "0.0.0.0:6900", string(nodeCert),
 			"0.0.0.0:6900", string(nodeCert), "BBBB")
@@ -211,6 +203,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	case <-impl.beginScheduling:
 	}
 
+	fmt.Println("DONE!")
 	//Kill the connections for the next test
 	impl.Comms.Shutdown()
 }
@@ -289,21 +282,6 @@ func TestTopology_MultiNodes(t *testing.T) {
 
 	//Create a second node to register
 	nodeComm2 := nodeComms.StartNode(&id.TempGateway, "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
-
-	//Register 1st node
-	err = impl.RegisterNode(id.NewIdFromBytes([]byte("A"), t), nodeAddr, string(nodeCert),
-		nodeAddr, string(nodeCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 2nd node
-	err = impl.RegisterNode(id.NewIdFromBytes([]byte("B"), t), "0.0.0.0:6901", string(gatewayCert),
-		"0.0.0.0:6901", string(gatewayCert), "CCCC")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-	//beginScheduling := make(chan struct{}, 1)
 
 	go func() {
 		//Register 1st node
