@@ -6,7 +6,9 @@
 
 package storage
 
-import "testing"
+import (
+	"testing"
+)
 
 // Happy path
 func TestMapImpl_InsertNodeRegCode(t *testing.T) {
@@ -16,11 +18,17 @@ func TestMapImpl_InsertNodeRegCode(t *testing.T) {
 
 	// Attempt to load in a valid code
 	code := "TEST"
-	err := m.InsertNodeRegCode(code)
+	Order := "BLARG"
+	err := m.InsertNodeRegCode(code, Order)
 
 	// Verify the insert was successful
 	if err != nil || m.node[code] == nil {
 		t.Errorf("Expected to successfully insert node registration code")
+	}
+
+	if m.node[code].Order != Order {
+		t.Errorf("Order string incorret; Expected: %s, Recieved: %s",
+			Order, m.node[code].Order)
 	}
 }
 
@@ -35,7 +43,7 @@ func TestMapImpl_InsertNodeRegCode_Duplicate(t *testing.T) {
 	m.node[code] = &NodeInformation{Code: code}
 
 	// Attempt to load in a duplicate code
-	err := m.InsertNodeRegCode(code)
+	err := m.InsertNodeRegCode(code, "")
 
 	// Verify the insert failed
 	if err == nil {
@@ -84,38 +92,6 @@ func TestMapImpl_InsertNode_Invalid(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected to fail inserting node information without the" +
 			" correct registration code")
-	}
-}
-
-// Full happy path
-func TestMapImpl_CountRegisteredNodes(t *testing.T) {
-	m := &MapImpl{
-		node: make(map[string]*NodeInformation),
-	}
-
-	// Check that there are zero registered nodes
-	count, err := m.CountRegisteredNodes()
-	if err != nil || count != 0 {
-		t.Errorf("Expected no registered nodes")
-	}
-
-	// Load in a registration code
-	code := "TEST"
-	m.node[code] = &NodeInformation{Code: code}
-
-	// Check that adding an unregistered node still returns zero
-	count, err = m.CountRegisteredNodes()
-	if err != nil || count != 0 {
-		t.Errorf("Still expected no registered nodes")
-	}
-
-	// Load in a node
-	m.node[code].Id = make([]byte, 0)
-
-	// Check that adding a registered node increases the count
-	count, err = m.CountRegisteredNodes()
-	if err != nil || count != 1 {
-		t.Errorf("Expected a registered node")
 	}
 }
 

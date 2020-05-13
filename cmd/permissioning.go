@@ -17,8 +17,8 @@ import (
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/storage"
+	"strconv"
 	"sync/atomic"
-	"time"
 )
 
 // Handle registration attempt by a Node
@@ -26,7 +26,8 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
 
 	// Get proper ID string
-	idString := id.NewNodeFromBytes(ID).String()
+	nid := id.NewNodeFromBytes(ID)
+	idString := nid.String()
 
 	// Check that the node hasn't already been registered
 	nodeInfo, err := storage.PermissioningDb.GetNode(RegistrationCode)
@@ -38,7 +39,7 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errors.Errorf(
 			"Node with registration code %+v has already been registered", RegistrationCode)
 	}
-
+	pk := &m.State.GetPrivateKey().PrivateKey
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
@@ -51,12 +52,12 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 
 	// Sign the node and gateway certs
 	signedNodeCert, err := certAuthority.Sign(nodeCertificate,
-		m.permissioningCert, &(m.State.PrivateKey.PrivateKey))
+		m.permissioningCert, pk)
 	if err != nil {
 		return errors.Errorf("failed to sign node certificate: %v", err)
 	}
 	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate,
-		m.permissioningCert, &(m.State.PrivateKey.PrivateKey))
+		m.permissioningCert, pk)
 	if err != nil {
 		return errors.Errorf("Failed to sign gateway certificate: %v", err)
 	}
@@ -70,106 +71,115 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	jww.DEBUG.Printf("Inserted node %s into the database with code %s",
 		idString, RegistrationCode)
 
-	// Obtain the number of registered nodes
-	_, err = storage.PermissioningDb.CountRegisteredNodes()
-	if err != nil {
-		return errors.Errorf("Unable to count registered Nodes: %+v", err)
-	}
-
+	//add the node to the host object for authenticated communications
 	_, err = m.Comms.AddHost(idString, ServerAddr, []byte(ServerTlsCert), false, true)
 	if err != nil {
 		return errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
 	}
 
-	jww.DEBUG.Printf("Total number of expected nodes for registration"+
-		" completion: %d", len(RegistrationCodes))
-	m.nodeCompleted <- struct{}{}
-	return nil
+	//add the node to the node map to track its state
+	err = m.State.GetNodeMap().AddNode(nid, nodeInfo.Order)
+	if err != nil {
+		return errors.WithMessage(err, "Could not register node with "+
+			"state tracker")
+	}
+
+	// Notify registration thread
+	return m.completeNodeRegistration(RegistrationCode)
 }
 
-// nodeRegistrationCompleter is a wrapper for completed node registration error handling
-func nodeRegistrationCompleter(impl *RegistrationImpl) error {
-	// Wait for all Nodes to complete registration
-	for numNodes := uint32(0); numNodes < uint32(len(RegistrationCodes)); numNodes++ {
-		jww.INFO.Printf("Registered %d node(s)!", numNodes)
-		<-impl.nodeCompleted
-	}
-	// Assemble the completed topology
-	gateways, nodes, err := assembleNdf(RegistrationCodes)
+// Handles including new registrations in the network
+// fixme: we should split this function into what is relevant to registering a  node and what is relevant
+//  to permissioning
+func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
+
+	m.registrationLock.Lock()
+	defer m.registrationLock.Unlock()
+
+	m.numRegistered++
+
+	jww.INFO.Printf("Registered %d node(s)! %s", m.numRegistered, regCode)
+
+	// Add the new node to the topology
+	networkDef := m.State.GetFullNdf().Get()
+	gateway, node, order, err := assembleNdf(regCode)
 	if err != nil {
-		return errors.Errorf("unable to assemble topology: %+v", err)
+		jww.ERROR.Printf("unable to assemble topology: %+v", err)
+		return errors.Errorf("Could not complete registration")
 	}
 
-	// Assemble the registration server information
-	registration := ndf.Registration{Address: RegParams.publicAddress, TlsCertificate: impl.certFromFile}
-
-	// Construct the NDF
-	networkDef := &ndf.NetworkDefinition{
-		Registration: registration,
-		Timestamp:    time.Now(),
-		Nodes:        nodes,
-		Gateways:     gateways,
-		UDB:          udbParams,
-		E2E:          RegParams.e2e,
-		CMIX:         RegParams.cmix,
+	// fixme: consider removing. this allows clients to remain agnostic of teaming order
+	//  by forcing team order == ndf order for simple non-random
+	if order >= len(networkDef.Nodes) {
+		appendNdf(networkDef, order)
 	}
 
-	// Assemble notification server information if configured
-	if RegParams.NsCertPath != "" && RegParams.NsAddress != "" {
-		nsCert, err := utils.ReadFile(RegParams.NsCertPath)
-		if err != nil {
-			return errors.Errorf("unable to read notification certificate")
-		}
-		networkDef.Notification = ndf.Notification{Address: RegParams.NsAddress, TlsCertificate: string(nsCert)}
-	} else {
-		jww.WARN.Printf("Configured to run without notifications bot!")
-	}
+	networkDef.Gateways[order] = gateway
+	networkDef.Nodes[order] = node
 
-	// Update the internal state with the newly-formed NDF
-	err = impl.State.UpdateNdf(networkDef)
-	err = impl.createNextRound()
+	// update the internal state with the newly-updated ndf
+	err = m.State.UpdateNdf(networkDef)
 	if err != nil {
 		return err
 	}
 
-	// Output the completed topology to a JSON file and save marshall'ed json data
-	err = outputToJSON(networkDef, impl.ndfOutputPath)
+	// Output the current topology to a JSON file
+	err = outputToJSON(networkDef, m.ndfOutputPath)
 	if err != nil {
-		return errors.Errorf("unable to output NDF JSON file: %+v", err)
+		jww.ERROR.Printf("unable to output NDF JSON file: %+v", err)
+		return errors.Errorf("Could not complete registration")
 	}
 
-	// Alert that registration is complete
-	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
+	// Kick off the network if the minimum number of nodes has been met
+	if uint32(m.numRegistered) == m.params.minimumNodes {
+		jww.INFO.Printf("Minimum number of nodes %d registered!", m.numRegistered)
+
+		atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
+
+		//signal that scheduling should begin
+		m.beginScheduling <- struct{}{}
+	}
+
 	return nil
 }
 
-// Assemble the completed topology from the database
-func assembleNdf(codes []string) ([]ndf.Gateway, []ndf.Node, error) {
-	var gateways []ndf.Gateway
-	var nodes []ndf.Node
-	for _, registrationCode := range codes {
-		// Get node information for each registration code
-		nodeInfo, err := storage.PermissioningDb.GetNode(registrationCode)
-		if err != nil {
-			return nil, nil, errors.Errorf(
-				"unable to obtain node for registration"+
-					" code %+v: %+v", registrationCode, err)
-		}
-		var node ndf.Node
-		node.ID = nodeInfo.Id
-		node.TlsCertificate = nodeInfo.NodeCertificate
-		node.Address = nodeInfo.ServerAddress
+// helper function which appends the ndf to the maximum order
+func appendNdf(definition *ndf.NetworkDefinition, order int) {
+	lengthDifference := (order % len(definition.Nodes)) + 1
+	gwExtension := make([]ndf.Gateway, lengthDifference)
+	nodeExtension := make([]ndf.Node, lengthDifference)
+	definition.Nodes = append(definition.Nodes, nodeExtension...)
+	definition.Gateways = append(definition.Gateways, gwExtension...)
 
-		var gateway ndf.Gateway
-		gateway.TlsCertificate = nodeInfo.GatewayCertificate
-		gateway.Address = nodeInfo.GatewayAddress
-		//Since we are appending them simultaneously, indexing corresponding
-		// gateway-node is just finding your index (as a gateway or a node)
-		gateways = append(gateways, gateway)
-		nodes = append(nodes, node)
+}
+
+// Assemble information for the given registration code
+func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
+
+	// Get node information for each registration code
+	nodeInfo, err := storage.PermissioningDb.GetNode(code)
+	if err != nil {
+		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf(
+			"unable to obtain node for registration"+
+				" code %+v: %+v", code, err)
 	}
-	jww.DEBUG.Printf("Assembled the network topology")
-	return gateways, nodes, nil
+
+	node := ndf.Node{
+		ID:             nodeInfo.Id,
+		Address:        nodeInfo.ServerAddress,
+		TlsCertificate: nodeInfo.NodeCertificate,
+	}
+	gateway := ndf.Gateway{
+		Address:        nodeInfo.GatewayAddress,
+		TlsCertificate: nodeInfo.GatewayCertificate,
+	}
+
+	order, err := strconv.Atoi(nodeInfo.Order)
+	if err != nil {
+		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf("Unable to read node's info: %v", err)
+	}
+
+	return gateway, node, order, nil
 }
 
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and

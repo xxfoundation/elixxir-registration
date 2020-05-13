@@ -9,165 +9,191 @@
 package storage
 
 import (
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/network/dataStructures"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
-	"sync/atomic"
+	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/elixxir/registration/storage/round"
+	"sync"
 )
 
-// Used for keeping track of NDF and Round state
-type State struct {
-	// State parameters ---
-	PrivateKey *rsa.PrivateKey
+const updateBufferLength = 1000
 
-	// Round state ---
-	CurrentRound  *RoundState
-	CurrentUpdate int // Round update counter
-	RoundUpdates  *dataStructures.Updates
-	RoundData     *dataStructures.Data
-	Update        chan struct{} // For triggering updates to top level
+// NetworkState structure used for keeping track of NDF and Round state.
+type NetworkState struct {
+	// NetworkState parameters
+	privateKey *rsa.PrivateKey
 
-	// NDF state ---
-	partialNdf    *dataStructures.Ndf
-	fullNdf       *dataStructures.Ndf
-	PartialNdfMsg *pb.NDF
-	FullNdfMsg    *pb.NDF
+	// Round state
+	rounds          *round.StateMap
+	roundUpdates    *dataStructures.Updates
+	roundUpdateID   uint64
+	roundUpdateLock sync.Mutex
+	roundData       *dataStructures.Data
+	update          chan *NodeUpdateNotification // For triggering updates to top level
+
+	// Node NetworkState
+	nodes *node.StateMap
+
+	// NDF state
+	partialNdf *dataStructures.Ndf
+	fullNdf    *dataStructures.Ndf
 }
 
-// Tracks the current global state of a round
-type RoundState struct {
-	// Tracks round information
-	*pb.RoundInfo
-
-	// Keeps track of the state of each node
-	NodeStatuses map[id.Node]*uint32
-
-	// Keeps track of the real state of the network
-	// as described by the cumulative states of nodes
-	// In other words, counts the number of nodes currently in each state
-	NetworkStatus [states.NUM_STATES]*uint32
+// NodeUpdateNotification structure used to notify the control thread that the
+// round state has updated.
+type NodeUpdateNotification struct {
+	Node *id.Node
+	From current.Activity
+	To   current.Activity
 }
 
-// Returns a new State object
-func NewState() (*State, error) {
-	state := &State{
-		CurrentRound: &RoundState{
-			RoundInfo: &pb.RoundInfo{
-				Topology: make([]string, 0),        // Set this to avoid segfault
-				State:    uint32(states.COMPLETED), // Set this to start rounds
-			},
-			NodeStatuses: make(map[id.Node]*uint32),
-		},
-		CurrentUpdate: 0,
-		RoundUpdates:  dataStructures.NewUpdates(),
-		RoundData:     dataStructures.NewData(),
-		Update:        make(chan struct{}),
+// NewState returns a new NetworkState object.
+func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
+	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
+	if err != nil {
+		return nil, err
+	}
+	partialNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
+	if err != nil {
+		return nil, err
+	}
+
+	state := &NetworkState{
+		rounds:        round.NewStateMap(),
+		roundUpdates:  dataStructures.NewUpdates(),
+		update:        make(chan *NodeUpdateNotification, updateBufferLength),
+		nodes:         node.NewStateMap(),
+		fullNdf:       fullNdf,
+		partialNdf:    partialNdf,
+		privateKey:    pk,
+		roundUpdateID: 0,
 	}
 
 	// Insert dummy update
-	err := state.AddRoundUpdate(&pb.RoundInfo{})
+	err = state.AddRoundUpdate(&pb.RoundInfo{})
 	if err != nil {
 		return nil, err
 	}
 	return state, nil
 }
 
-// Returns the full NDF
-func (s *State) GetFullNdf() *dataStructures.Ndf {
+// GetFullNdf returns the full NDF.
+func (s *NetworkState) GetFullNdf() *dataStructures.Ndf {
 	return s.fullNdf
 }
 
-// Returns the partial NDF
-func (s *State) GetPartialNdf() *dataStructures.Ndf {
+// GetPartialNdf returns the partial NDF.
+func (s *NetworkState) GetPartialNdf() *dataStructures.Ndf {
 	return s.partialNdf
 }
 
-// Returns all updates after the given ID
-func (s *State) GetUpdates(id int) []*pb.RoundInfo {
-	return s.RoundUpdates.GetUpdates(id)
+// GetUpdates returns all of the updates after the given ID.
+func (s *NetworkState) GetUpdates(id int) ([]*pb.RoundInfo, error) {
+	return s.roundUpdates.GetUpdates(id), nil
 }
 
-// Returns true if given node ID is participating in the current round
-func (s *State) IsRoundNode(id string) bool {
-	for _, nodeId := range s.CurrentRound.Topology {
-		if nodeId == id {
-			return true
-		}
-	}
-	return false
-}
+// AddRoundUpdate creates a copy of the round before inserting it into
+// roundUpdates.
+func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
+	s.roundUpdateLock.Lock()
+	defer s.roundUpdateLock.Unlock()
 
-// Returns the state of the current round
-func (s *State) GetCurrentRoundState() states.Round {
-	return states.Round(s.CurrentRound.State)
-}
-
-// Makes a copy of the round before inserting into RoundUpdates
-func (s *State) AddRoundUpdate(round *pb.RoundInfo) error {
 	roundCopy := &pb.RoundInfo{
 		ID:         round.GetID(),
-		UpdateID:   round.GetUpdateID(),
+		UpdateID:   s.roundUpdateID,
 		State:      round.GetState(),
 		BatchSize:  round.GetBatchSize(),
 		Topology:   round.GetTopology(),
 		Timestamps: round.GetTimestamps(),
-		Signature: &pb.RSASignature{
-			Nonce:     round.GetNonce(),
-			Signature: round.GetSig(),
-		},
 	}
+
+	s.roundUpdateID++
+
+	err := signature.Sign(roundCopy, s.privateKey)
+	if err != nil {
+		return errors.WithMessagef(err, "Could not add round update %v "+
+			"due to failed signature", roundCopy.UpdateID)
+	}
+
 	jww.DEBUG.Printf("Round state updated to %s",
 		states.Round(roundCopy.State))
 
-	return s.RoundUpdates.AddRound(roundCopy)
+	return s.roundUpdates.AddRound(roundCopy)
 }
 
-// Given a full NDF, updates internal NDF structures
-func (s *State) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
-	s.fullNdf, err = dataStructures.NewNdf(newNdf)
-	if err != nil {
-		return
-	}
-	s.partialNdf, err = dataStructures.NewNdf(newNdf.StripNdf())
-	if err != nil {
-		return
-	}
-
+// UpdateNdf updates internal NDF structures with the specified new NDF.
+func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	// Build NDF comms messages
-	s.FullNdfMsg = &pb.NDF{}
-	s.FullNdfMsg.Ndf, err = s.GetFullNdf().Get().Marshal()
+	fullNdfMsg := &pb.NDF{}
+	fullNdfMsg.Ndf, err = newNdf.Marshal()
 	if err != nil {
 		return
 	}
-	s.PartialNdfMsg = &pb.NDF{}
-	s.PartialNdfMsg.Ndf, err = s.GetPartialNdf().Get().Marshal()
+	partialNdfMsg := &pb.NDF{}
+	partialNdfMsg.Ndf, err = newNdf.StripNdf().Marshal()
 	if err != nil {
 		return
 	}
 
 	// Sign NDF comms messages
-	err = signature.Sign(s.FullNdfMsg, s.PrivateKey)
+	err = signature.Sign(fullNdfMsg, s.privateKey)
 	if err != nil {
 		return
 	}
-	return signature.Sign(s.PartialNdfMsg, s.PrivateKey)
+	err = signature.Sign(partialNdfMsg, s.privateKey)
+	if err != nil {
+		return
+	}
+
+	// Assign NDF comms messages
+	err = s.fullNdf.Update(fullNdfMsg)
+	if err != nil {
+		return err
+	}
+	return s.partialNdf.Update(partialNdfMsg)
 }
 
-// Updates the state of the given node with the new state provided
-func (s *State) UpdateNodeState(id *id.Node, newState states.Round) {
-	// Attempt to update node state atomically
-	// If an update occurred, continue, else nothing will happen
-	old := atomic.SwapUint32(s.CurrentRound.NodeStatuses[*id], uint32(newState))
-	if old != uint32(newState) {
-		// Node state was updated, increment state counter
-		atomic.AddUint32(s.CurrentRound.NetworkStatus[newState], 1)
+// GetPrivateKey returns the server's private key.
+func (s *NetworkState) GetPrivateKey() *rsa.PrivateKey {
+	return s.privateKey
+}
 
-		// Cue an update
-		s.Update <- struct{}{}
+// GetRoundMap returns the map of rounds.
+func (s *NetworkState) GetRoundMap() *round.StateMap {
+	return s.rounds
+}
+
+// GetNodeMap returns the map of nodes.
+func (s *NetworkState) GetNodeMap() *node.StateMap {
+	return s.nodes
+}
+
+// NodeUpdateNotification sends a notification to the control thread of an
+// update to a nodes state.
+func (s *NetworkState) NodeUpdateNotification(node *id.Node, from, to current.Activity) error {
+	nun := NodeUpdateNotification{
+		Node: node,
+		From: from,
+		To:   to,
 	}
+
+	select {
+	case s.update <- &nun:
+		return nil
+	default:
+		return errors.New("Could not send update notification")
+	}
+}
+
+// GetNodeUpdateChannel returns a channel to receive node updates on.
+func (s *NetworkState) GetNodeUpdateChannel() <-chan *NodeUpdateNotification {
+	return s.update
 }
