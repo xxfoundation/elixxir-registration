@@ -161,7 +161,7 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 				" code %+v: %+v", code, err)
 	}
 
-	node := &ndf.Node{
+	node := ndf.Node{
 		ID:             []byte(nodeInfo.Id),
 		Address:        nodeInfo.ServerAddress,
 		TlsCertificate: nodeInfo.NodeCertificate,

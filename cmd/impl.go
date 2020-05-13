@@ -41,7 +41,7 @@ type RegistrationImpl struct {
 	maxRegistrationAttempts uint64
 
 	//registration status trackers
-	numRegistered    int
+	numRegistered int
 	//FIXME: it is possible that polling lock and registration lock
 	// do the same job and could conflict. reconsiderations of this logic
 	// may be fruitful

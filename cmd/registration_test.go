@@ -108,7 +108,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-	impl.nodeCompleted = make(chan string, 1)
+	//impl.nodeCompleted = make(chan string, 1)
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
 		"regCodes", "0.0.0.0:6969")
 	if err != nil {
@@ -193,10 +193,10 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 		return
 	}
 
-	beginScheduling := make(chan struct{}, 1)
+	//beginScheduling := make(chan struct{}, 1)
 
 	go func() {
-		err = impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
+		err = impl.RegisterNode(id.NewIdFromString("test", id.Node, t), "0.0.0.0:6900", string(nodeCert),
 			"0.0.0.0:6900", string(nodeCert), "BBBB")
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
@@ -303,18 +303,20 @@ func TestTopology_MultiNodes(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
-	beginScheduling := make(chan struct{}, 1)
+	//beginScheduling := make(chan struct{}, 1)
 
 	go func() {
 		//Register 1st node
-		err = impl.RegisterNode([]byte("A"), nodeAddr, string(nodeCert),
+		err = impl.RegisterNode(id.NewIdFromString("A", id.Node, t),
+			nodeAddr, string(nodeCert),
 			nodeAddr, string(nodeCert), "BBBB")
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
 
 		//Register 2nd node
-		err = impl.RegisterNode([]byte("B"), "0.0.0.0:6901", string(gatewayCert),
+		err = impl.RegisterNode(id.NewIdFromString("B", id.Node, t),
+			"0.0.0.0:6901", string(gatewayCert),
 			"0.0.0.0:6901", string(gatewayCert), "CCCC")
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)

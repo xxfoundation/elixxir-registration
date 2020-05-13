@@ -58,7 +58,6 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Failed to create E2E group: %+v", err)
 		}
 
-
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
