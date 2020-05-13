@@ -8,6 +8,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature/rsa"
@@ -180,62 +181,58 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB"},
-		node.Info{RegCode: "CCCC"},
-		node.Info{RegCode: "DDDD"})
+	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"},
+		node.Info{RegCode: "CCCC", Order: "1"},
+		node.Info{RegCode: "DDDD", Order: "2"})
 	storage.PopulateNodeRegistrationCodes(infos)
 
 	RegParams = testParams
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
 	RegParams.udbId = udbId
 	RegParams.minimumNodes = 3
-
+	fmt.Println("-A")
 	// Start registration server
 	impl, err := StartRegistration(RegParams)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	beginScheduling := make(chan struct{}, 1)
 	go func() {
-		err = impl.nodeRegistrationCompleter(beginScheduling)
+		fmt.Println("A")
+		//Register 1st node
+		err = impl.RegisterNode(id.NewIdFromString("B", id.Node, t),
+			nodeAddr, string(nodeCert),
+			"0.0.0.0:7900", string(gatewayCert), "BBBB")
 		if err != nil {
-			t.Errorf(err.Error())
+			t.Errorf("Expected happy path, recieved error: %+v", err)
+		}
+		fmt.Println("B")
+		//Register 2nd node
+		err = impl.RegisterNode(id.NewIdFromString("C", id.Node, t),
+			"0.0.0.0:6901", string(nodeCert),
+			"0.0.0.0:7901", string(gatewayCert), "CCCC")
+		if err != nil {
+			t.Errorf("Expected happy path, recieved error: %+v", err)
+		}
+		fmt.Println("C")
+		//Register 3rd node
+		err = impl.RegisterNode(id.NewIdFromString("D", id.Node, t),
+			"0.0.0.0:6902", string(nodeCert),
+			"0.0.0.0:7902", string(gatewayCert), "DDDD")
+		if err != nil {
+			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
 	}()
 
 	expectedNodeIDs := []*id.ID{id.NewIdFromString("B", id.Node, t),
 		id.NewIdFromString("C", id.Node, t), id.NewIdFromString("D", id.Node, t)}
 
-	//Register 1st node
-	err = impl.RegisterNode(expectedNodeIDs[0], nodeAddr, string(nodeCert),
-		"0.0.0.0:7900", string(gatewayCert), "BBBB")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 2nd node
-	err = impl.RegisterNode(expectedNodeIDs[1], "0.0.0.0:6901",
-		string(nodeCert),
-		"0.0.0.0:7901", string(gatewayCert), "CCCC")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
-	//Register 3rd node
-	err = impl.RegisterNode(expectedNodeIDs[2], "0.0.0.0:6902",
-		string(nodeCert),
-		"0.0.0.0:7902", string(gatewayCert), "DDDD")
-	if err != nil {
-		t.Errorf("Expected happy path, recieved error: %+v", err)
-	}
-
 	//wait for registration to complete
 	select {
-	case <-time.NewTimer(100 * time.Millisecond).C:
+	case <-time.NewTimer(1000 * time.Millisecond).C:
 		t.Errorf("Node registration never completed")
 		t.FailNow()
-	case <-beginScheduling:
+	case <-impl.beginScheduling:
 	}
 
 	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
@@ -257,11 +254,10 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("Failed to set registration address. Expected: %v \n Recieved: %v",
 			permAddr, observedNDF.Registration.Address)
 	}
-
-	for i := range observedNDF.Nodes {
-		if bytes.Compare(expectedNodeIDs[i].Marshal(), observedNDF.Nodes[i].ID) != 0 {
-			t.Errorf("Could not build node %d's id id: \nExpected: %#v \nRecieved: %#v", i,
-				expectedNodeIDs[i].Marshal(), observedNDF.Nodes[i].ID)
+	for i := range expectedNodeIDs {
+		if bytes.Compare(expectedNodeIDs[i].Bytes(), observedNDF.Nodes[i].ID) != 0 {
+			t.Errorf("Could not build node %d's, id: Expected: %v \n Recieved: %v", i,
+				expectedNodeIDs, observedNDF.Nodes[i].ID)
 		}
 	}
 
@@ -281,9 +277,9 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB"},
-		node.Info{RegCode: "CCCC"},
-		node.Info{RegCode: "DDDD"})
+	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"},
+		node.Info{RegCode: "CCCC", Order: "1"},
+		node.Info{RegCode: "DDDD", Order: "2"})
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 	//Setup udb configurations
@@ -296,10 +292,6 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-
-	beginScheduling := make(chan struct{}, 1)
-
-	go impl.nodeRegistrationCompleter(beginScheduling)
 
 	//Register 1st node
 	err = impl.RegisterNode(id.NewIdFromString("B", id.Node, t), nodeAddr, string(nodeCert),

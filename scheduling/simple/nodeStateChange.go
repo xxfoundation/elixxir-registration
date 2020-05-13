@@ -22,6 +22,12 @@ func HandleNodeStateChange(update *storage.NodeUpdateNotification, pool *waiting
 	state *storage.NetworkState, realtimeDelay time.Duration) error {
 	//get node and round information
 	n := state.GetNodeMap().GetNode(update.Node)
+
+	// when a node poll is received, the nodes polling lock is taken.  If there
+	// is no update, it is released in the endpoint, otherwise it is released
+	// here which blocks all future polls until processing completes
+	defer n.GetPollingLock().Unlock()
+
 	hasRound, r := n.GetCurrentRound()
 
 	switch update.To {
