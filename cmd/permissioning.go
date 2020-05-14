@@ -161,12 +161,21 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 				" code %+v: %+v", code, err)
 	}
 
+	nodeID, err := id.Unmarshal(nodeInfo.Id)
+	if err != nil {
+		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf("Error parsing node ID: %v", err)
+	}
+
 	node := ndf.Node{
-		ID:             []byte(nodeInfo.Id),
+		ID:             nodeID.Bytes(),
 		Address:        nodeInfo.ServerAddress,
 		TlsCertificate: nodeInfo.NodeCertificate,
 	}
+
+	gwID := nodeID.DeepCopy()
+	gwID.SetType(id.Gateway)
 	gateway := ndf.Gateway{
+		ID:             gwID.Bytes(),
 		Address:        nodeInfo.GatewayAddress,
 		TlsCertificate: nodeInfo.GatewayCertificate,
 	}
