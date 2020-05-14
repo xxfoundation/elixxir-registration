@@ -28,10 +28,10 @@ func TestNewStateMap(t *testing.T) {
 //Tests a node is added correctly to the state map when it is
 func TestStateMap_AddNode_Happy(t *testing.T) {
 	sm := &StateMap{
-		nodeStates: make(map[id.Node]*State),
+		nodeStates: make(map[id.ID]*State),
 	}
 
-	nid := id.NewNodeFromUInt(2, t)
+	nid := id.NewIdFromUInt(2, id.Node, t)
 
 	err := sm.AddNode(nid, "")
 
@@ -60,10 +60,10 @@ func TestStateMap_AddNode_Happy(t *testing.T) {
 //Tests a node is added correctly to the state map when it is
 func TestStateMap_AddNode_Invalid(t *testing.T) {
 	sm := &StateMap{
-		nodeStates: make(map[id.Node]*State),
+		nodeStates: make(map[id.ID]*State),
 	}
 
-	nid := id.NewNodeFromUInt(2, t)
+	nid := id.NewIdFromUInt(2, id.Node, t)
 	r := round.NewState_Testing(42, 0, t)
 
 	sm.nodeStates[*nid] = &State{
@@ -106,10 +106,10 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 //Tests a node is retrieved correctly when in the state map
 func TestStateMap_GetNode_Valid(t *testing.T) {
 	sm := &StateMap{
-		nodeStates: make(map[id.Node]*State),
+		nodeStates: make(map[id.ID]*State),
 	}
 
-	nid := id.NewNodeFromUInt(2, t)
+	nid := id.NewIdFromUInt(2, id.Node, t)
 	r := round.NewState_Testing(42, 0, t)
 
 	sm.nodeStates[*nid] = &State{
@@ -146,10 +146,10 @@ func TestStateMap_GetNode_Valid(t *testing.T) {
 //Tests a node not is not returned when no node exists
 func TestStateMap_GetNode_invalid(t *testing.T) {
 	sm := &StateMap{
-		nodeStates: make(map[id.Node]*State),
+		nodeStates: make(map[id.ID]*State),
 	}
 
-	nid := id.NewNodeFromUInt(2, t)
+	nid := id.NewIdFromUInt(2, id.Node, t)
 
 	n := sm.GetNode(nid)
 
@@ -170,11 +170,11 @@ func TestStateMap_Len(t *testing.T) {
 		}
 
 		sm := &StateMap{
-			nodeStates: make(map[id.Node]*State),
+			nodeStates: make(map[id.ID]*State),
 		}
 
 		for j := 0; j < l; j++ {
-			sm.nodeStates[*id.NewNodeFromUInt(uint64(5*j+1), t)] = &State{}
+			sm.nodeStates[*id.NewIdFromUInt(uint64(5*j+1), id.Node, t)] = &State{}
 		}
 
 		if sm.Len() != l {

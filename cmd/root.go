@@ -58,7 +58,6 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Failed to create E2E group: %+v", err)
 		}
 
-
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
@@ -82,12 +81,15 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Set up database connection
-		storage.PermissioningDb = storage.NewDatabase(
+		storage.PermissioningDb, err = storage.NewDatabase(
 			viper.GetString("dbUsername"),
 			viper.GetString("dbPassword"),
 			viper.GetString("dbName"),
 			viper.GetString("dbAddress"),
 		)
+		if err != nil {
+			jww.FATAL.Panicf("Unable to initialize storage: %+v", err)
+		}
 
 		// Populate Node registration codes into the database
 		RegCodesFilePath := viper.GetString("regCodesFilePath")
@@ -316,6 +318,8 @@ func initLog() {
 			jww.SetLogThreshold(jww.LevelInfo)
 			jww.SetStdoutThreshold(jww.LevelInfo)
 		}
+		jww.SetLogThreshold(jww.LevelTrace)
+		jww.SetStdoutThreshold(jww.LevelTrace)
 
 		// Create log file, overwrites if existing
 		logPath := viper.GetString("logPath")

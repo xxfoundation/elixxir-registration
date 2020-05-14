@@ -423,7 +423,7 @@ func TestNodeState_SetRound_Invalid(t *testing.T) {
 
 // tests that teh returned ID is correct
 func TestNodeState_GetID(t *testing.T) {
-	testID := id.NewNodeFromUInt(50, t)
+	testID := id.NewIdFromUInt(50, id.Node, t)
 	ns := State{
 		id: testID,
 	}

@@ -9,9 +9,11 @@
 package storage
 
 import (
-	"github.com/go-pg/pg"
-	"github.com/go-pg/pg/orm"
+	"fmt"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
 	"sync"
 	"time"
@@ -19,15 +21,20 @@ import (
 
 // Struct implementing the Database Interface with an underlying DB
 type DatabaseImpl struct {
-	db *pg.DB // Stored database connection
+	db *gorm.DB // Stored database connection
 }
 
 // Struct implementing the Database Interface with an underlying Map
 type MapImpl struct {
-	client map[string]*RegistrationCode
-	node   map[string]*NodeInformation
-	user   map[string]bool
-	mut    sync.Mutex
+	clients            map[string]*RegistrationCode
+	nodes              map[string]*Node
+	users              map[string]bool
+	applications       map[uint64]*Application
+	nodeMetrics        map[uint64]*NodeMetric
+	nodeMetricCounter  uint64
+	roundMetrics       map[uint64]*RoundMetric
+	roundMetricCounter uint64
+	mut                sync.Mutex
 }
 
 // Global variable for database interaction
@@ -35,12 +42,16 @@ var PermissioningDb Storage
 
 type nodeRegistration interface {
 	// If Node registration code is valid, add Node information
-	InsertNode(id []byte, code, serverAddr, serverCert,
+	RegisterNode(id *id.ID, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
-	// Insert Node registration code into the database
-	InsertNodeRegCode(regCode, order string) error
 	// Get Node information for the given Node registration code
-	GetNode(code string) (*NodeInformation, error)
+	GetNode(code string) (*Node, error)
+	// Insert Application object along with associated unregistered Node
+	InsertApplication(application Application, unregisteredNode Node) error
+	// Insert NodeMetric object
+	InsertNodeMetric(metric NodeMetric) error
+	// Insert RoundMetric object
+	InsertRoundMetric(metric RoundMetric, topology []string) error
 }
 
 type clientRegistration interface {
@@ -62,26 +73,58 @@ type Storage struct {
 
 // Struct representing a RegistrationCode table in the database
 type RegistrationCode struct {
-	// Overwrite table name
-	tableName struct{} `sql:"registration_codes,alias:registration_codes"`
-
 	// Registration code acts as the primary key
-	Code string `sql:",pk"`
+	Code string `gorm:"primary_key"`
 	// Remaining uses for the RegistrationCode
 	RemainingUses int
 }
 
-// Struct representing the Node Information table in the database
-type NodeInformation struct {
-	// Overwrite table name
-	tableName struct{} `sql:"nodes,alias:nodes"`
+// Struct representing the User table in the database
+type User struct {
+	// User TLS public certificate in PEM string format
+	PublicKey string `gorm:"primary_key"`
+}
 
+// Struct representing the Node's Application table in the database
+type Application struct {
+	// The Application's unique ID
+	Id uint64 `gorm:"primary_key"`
+	// Each Application has one Node
+	Node Node `gorm:"foreignkey:ApplicationId"`
+
+	// Node information
+	Name  string
+	Url   string
+	Blurb string
+
+	// Location string for the Node
+	Location string
+	// Geographic bin of the Node's location
+	GeoBin string
+	// GPS location of the Node
+	GpsLocation string
+	// Specifies the group the node was assigned
+	Group string
+	// Specifies which network the node is in
+	Network string
+
+	// Social media
+	Email     string
+	Twitter   string
+	Discord   string
+	Instagram string
+	Medium    string
+}
+
+// Struct representing the Node table in the database
+type Node struct {
 	// Registration code acts as the primary key
-	Code string `sql:",pk"`
-	// Node order string, this is a tag used by the algorithem
+	Code string `gorm:"primary_key"`
+	// Node order string, this is a tag used by the algorithm
 	Order string
-	// Node ID
-	Id []byte
+
+	// Unique Node ID
+	Id []byte `gorm:"UNIQUE_INDEX;default: null"`
 	// Server IP address
 	ServerAddress string
 	// Gateway IP address
@@ -90,33 +133,74 @@ type NodeInformation struct {
 	NodeCertificate string
 	// Gateway TLS public certificate in PEM string format
 	GatewayCertificate string
+
 	// Date/time that the node was registered
 	DateRegistered time.Time
+	// Node's network status
+	Status uint8
+
+	// Unique ID of the Node's Application
+	ApplicationId uint64 `gorm:"UNIQUE_INDEX;NOT NULL;type:bigint REFERENCES applications(id)"`
+
+	// Each Node has many Node Metrics
+	NodeMetrics []NodeMetric `gorm:"foreignkey:NodeId;association_foreignkey:Id"`
+
+	// Each Node participates in many Rounds
+	Topologies []Topology `gorm:"foreignkey:NodeId;association_foreignkey:Id"`
 }
 
-// Struct representing the User table in the database
-type User struct {
-	// Overwrite table name
-	tableName struct{} `sql:"users,alias:users"`
+// Struct representing Node Metrics table in the database
+type NodeMetric struct {
+	// Auto-incrementing primary key (Do not set)
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
+	// Node has many NodeMetrics
+	NodeId string `gorm:"NOT NULL;type:text REFERENCES nodes(Id)"`
+	// Start time of monitoring period
+	StartTime time.Time `gorm:"NOT NULL"`
+	// End time of monitoring period
+	EndTime time.Time `gorm:"NOT NULL"`
+	// Number of pings responded to during monitoring period
+	NumPings uint64 `gorm:"NOT NULL"`
+}
 
-	// User TLS public certificate in PEM string format
-	PublicKey string `sql:",pk"`
+// Junction table for the many-to-many relationship between Nodes & RoundMetrics
+type Topology struct {
+	// Composite primary key
+	NodeId        string `gorm:"primary_key;type:text REFERENCES nodes(Id)"`
+	RoundMetricId uint64 `gorm:"primary_key;type:bigint REFERENCES round_metrics(Id)"`
+
+	// Order in the topology of a Node for a given Round
+	Order uint8 `gorm:"NOT NULL"`
+}
+
+// Struct representing Round Metrics table in the database
+type RoundMetric struct {
+	// Auto-incrementing primary key (Do not set)
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
+	// Nullable error string, if one occurred
+	Error string
+
+	PrecompStart  time.Time `gorm:"NOT NULL"`
+	PrecompEnd    time.Time `gorm:"NOT NULL"`
+	RealtimeStart time.Time `gorm:"NOT NULL"`
+	RealtimeEnd   time.Time `gorm:"NOT NULL"`
+	BatchSize     uint32    `gorm:"NOT NULL"`
+
+	// Each RoundMetric has many Nodes participating in each Round
+	Topologies []Topology `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
 }
 
 // Initialize the Database interface with database backend
-func NewDatabase(username, password, database, address string) Storage {
+func NewDatabase(username, password, database, address string) (Storage, error) {
 	// Create the database connection
-	db := pg.Connect(&pg.Options{
-		User:         username,
-		Password:     password,
-		Database:     database,
-		Addr:         address,
-		MaxRetries:   10,
-		MinIdleConns: 1,
-	})
-
-	// Initialize the schema
-	err := createSchema(db)
+	connectString := fmt.Sprintf(
+		"host=%s port=5432 user=%s dbname=%s sslmode=disable",
+		address, username, database)
+	// Handle empty database password
+	if len(password) > 0 {
+		connectString += fmt.Sprintf(" password=%s", password)
+	}
+	db, err := gorm.Open("postgres", connectString)
 	if err != nil {
 		// Return the map-backend interface
 		// in the event there is a database error
@@ -124,51 +208,45 @@ func NewDatabase(username, password, database, address string) Storage {
 		jww.INFO.Println("Map backend initialized successfully!")
 		return Storage{
 			clientRegistration: clientRegistration(&MapImpl{
-				client: make(map[string]*RegistrationCode),
-				user:   make(map[string]bool),
+				clients: make(map[string]*RegistrationCode),
+				users:   make(map[string]bool),
 			}),
 			nodeRegistration: nodeRegistration(&MapImpl{
-				node: make(map[string]*NodeInformation),
-			})}
+				applications: make(map[uint64]*Application),
+				nodes:        make(map[string]*Node),
+				nodeMetrics:  make(map[uint64]*NodeMetric),
+				roundMetrics: make(map[uint64]*RoundMetric),
+			})}, nil
 	}
 
-	regCodeDb := &DatabaseImpl{
+	// Initialize the database logger
+	db.SetLogger(jww.DEBUG)
+	db.LogMode(true)
+
+	// Initialize the database schema
+	// WARNING: Order is important. Do not change without database testing
+	models := []interface{}{
+		&RegistrationCode{}, &User{},
+		&Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
+	}
+	for _, model := range models {
+		err = db.AutoMigrate(model).Error
+		if err != nil {
+			return Storage{}, err
+		}
+	}
+
+	// Build the interface
+	di := &DatabaseImpl{
 		db: db,
 	}
-	nodeDb := nodeRegistration(&DatabaseImpl{
-		db: db,
-	})
 
 	jww.INFO.Println("Database backend initialized successfully!")
 	return Storage{
-		clientRegistration: regCodeDb,
-		nodeRegistration:   nodeDb,
-	}
+		clientRegistration: di,
+		nodeRegistration:   di,
+	}, nil
 
-}
-
-// Create the database schema
-func createSchema(db *pg.DB) error {
-	for _, model := range []interface{}{&RegistrationCode{}, &User{}, &NodeInformation{}} {
-		err := db.CreateTable(model, &orm.CreateTableOptions{
-			// Ignore create table if already exists?
-			IfNotExists: true,
-			// Create temporary table?
-			Temp: false,
-			// FKConstraints causes CreateTable to create foreign key constraints
-			// for has one relations. ON DELETE hook can be added using tag
-			// `sql:"on_delete:RESTRICT"` on foreign key field.
-			FKConstraints: true,
-			// Replaces PostgreSQL data type `text` with `varchar(n)`
-			// Varchar: 255
-		})
-		if err != nil {
-			// Return error if one comes up
-			return err
-		}
-	}
-	// No error, return nil
-	return nil
 }
 
 // Adds Client registration codes to the database
@@ -184,8 +262,15 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 
 // Adds Node registration codes to the database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
-	for _, info := range infos {
-		err := PermissioningDb.InsertNodeRegCode(info.RegCode, info.Order)
+	// TODO: This will eventually need to be updated to intake applications too
+	for i, info := range infos {
+		err := PermissioningDb.InsertApplication(Application{
+			Id: uint64(i),
+		}, Node{
+			Code:          info.RegCode,
+			Order:         info.Order,
+			ApplicationId: uint64(i),
+		})
 		if err != nil {
 			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
 				err)

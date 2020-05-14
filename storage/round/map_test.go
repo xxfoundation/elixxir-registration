@@ -114,9 +114,9 @@ func TestStateMap_GetNode_invalid(t *testing.T) {
 }
 
 func buildMockTopology(numNodes int, t *testing.T) *connect.Circuit {
-	nodeLst := make([]*id.Node, numNodes)
+	nodeLst := make([]*id.ID, numNodes)
 	for i := 0; i < numNodes; i++ {
-		nid := id.NewNodeFromUInt(uint64(i+1), t)
+		nid := id.NewIdFromUInt(uint64(i+1), id.Node, t)
 		nodeLst[i] = nid
 	}
 	return connect.NewCircuit(nodeLst)

@@ -47,9 +47,9 @@ func TestScheduler(t *testing.T) {
 
 	teamSize := 3
 
-	nodeList := make([]*id.Node, teamSize)
+	nodeList := make([]*id.ID, teamSize)
 	for i := 0; i < teamSize; i++ {
-		nid := id.NewNodeFromUInt(uint64(i), t)
+		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
 		nodeList[i] = nid
 
 		err = state.GetNodeMap().AddNode(nid, strconv.Itoa(i))
@@ -85,7 +85,7 @@ func TestScheduler(t *testing.T) {
 		t.Errorf("Unexpected error retrieving round info: %v", err)
 	}
 
-	receivedNodeList, err := id.NewNodeListFromStrings(roundInfo[0].Topology)
+	receivedNodeList, err := id.NewIDListFromBytes(roundInfo[0].Topology)
 	if err != nil {
 		t.Errorf("Failed to convert topology of round info: %v", err)
 	}

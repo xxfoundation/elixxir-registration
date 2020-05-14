@@ -35,7 +35,7 @@ func getTestKey() *rsa.PrivateKey {
 
 // Happy path
 func TestRegistrationImpl_Poll(t *testing.T) {
-	testID := id.NewNodeFromUInt(0, t)
+	testID := id.NewIdFromUInt(0, id.Node, t)
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
@@ -53,7 +53,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	})
 
 	// Make a simple auth object that will pass the checks
-	testHost, _ := connect.NewHost(testID.String(), testString,
+	testHost, _ := connect.NewHost(testID, testString,
 		make([]byte, 0), false, true)
 	testAuth := &connect.Auth{
 		IsAuthenticated: true,
@@ -156,8 +156,8 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 	})
 
 	// Make a simple auth object that will fail the checks
-	testHost, _ := connect.NewHost(testString, testString,
-		make([]byte, 0), false, true)
+	testHost, _ := connect.NewHost(id.NewIdFromString(testString, id.Node, t),
+		testString, make([]byte, 0), false, true)
 	testAuth := &connect.Auth{
 		IsAuthenticated: false,
 		Sender:          testHost,
@@ -171,9 +171,13 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 //Happy path
 func TestRegistrationImpl_PollNdf(t *testing.T) {
-
 	//Create database
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	var err error
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0:6969")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
@@ -196,26 +200,32 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	go func() {
 		fmt.Println("A")
 		//Register 1st node
-		err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
+		err = impl.RegisterNode(id.NewIdFromString("B", id.Node, t),
+			nodeAddr, string(nodeCert),
 			"0.0.0.0:7900", string(gatewayCert), "BBBB")
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
 		fmt.Println("B")
 		//Register 2nd node
-		err = impl.RegisterNode([]byte("C"), "0.0.0.0:6901", string(nodeCert),
+		err = impl.RegisterNode(id.NewIdFromString("C", id.Node, t),
+			"0.0.0.0:6901", string(nodeCert),
 			"0.0.0.0:7901", string(gatewayCert), "CCCC")
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
 		fmt.Println("C")
 		//Register 3rd node
-		err = impl.RegisterNode([]byte("D"), "0.0.0.0:6902", string(nodeCert),
+		err = impl.RegisterNode(id.NewIdFromString("D", id.Node, t),
+			"0.0.0.0:6902", string(nodeCert),
 			"0.0.0.0:7902", string(gatewayCert), "DDDD")
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
 	}()
+
+	expectedNodeIDs := []*id.ID{id.NewIdFromString("B", id.Node, t),
+		id.NewIdFromString("C", id.Node, t), id.NewIdFromString("D", id.Node, t)}
 
 	//wait for registration to complete
 	select {
@@ -244,11 +254,8 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("Failed to set registration address. Expected: %v \n Recieved: %v",
 			permAddr, observedNDF.Registration.Address)
 	}
-	expectedNodeIDs := make([][]byte, 0)
-	expectedNodeIDs = append(expectedNodeIDs, []byte("B"), []byte("C"), []byte("D"))
-
 	for i := range expectedNodeIDs {
-		if bytes.Compare(expectedNodeIDs[i], observedNDF.Nodes[i].ID) != 0 {
+		if bytes.Compare(expectedNodeIDs[i].Bytes(), observedNDF.Nodes[i].ID) != 0 {
 			t.Errorf("Could not build node %d's, id: Expected: %v \n Recieved: %v", i,
 				expectedNodeIDs, observedNDF.Nodes[i].ID)
 		}
@@ -261,7 +268,12 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 //Error  path
 func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Create database
-	storage.PermissioningDb = storage.NewDatabase("test", "password", "regCodes", "0.0.0.0:6969")
+	var err error
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0:6969")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
 
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
@@ -282,7 +294,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	}
 
 	//Register 1st node
-	err = impl.RegisterNode([]byte("B"), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode(id.NewIdFromString("B", id.Node, t), nodeAddr, string(nodeCert),
 		"0.0.0.0:7900", string(gatewayCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)

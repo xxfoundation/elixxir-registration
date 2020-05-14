@@ -41,7 +41,7 @@ type RegistrationImpl struct {
 	maxRegistrationAttempts uint64
 
 	//registration status trackers
-	numRegistered    int
+	numRegistered int
 	//FIXME: it is possible that polling lock and registration lock
 	// do the same job and could conflict. reconsiderations of this logic
 	// may be fruitful
@@ -184,7 +184,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// Start the communication server
-	regImpl.Comms = registration.StartRegistrationServer(id.PERMISSIONING,
+	regImpl.Comms = registration.StartRegistrationServer(&id.Permissioning,
 		params.Address, NewImplementation(regImpl),
 		[]byte(regImpl.certFromFile), key)
 
@@ -218,7 +218,7 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 
 		return response, err
 	}
-	impl.Functions.RegisterNode = func(ID []byte, ServerAddr, ServerTlsCert,
+	impl.Functions.RegisterNode = func(ID *id.ID, ServerAddr, ServerTlsCert,
 		GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
 
 		err := instance.RegisterNode(ID, ServerAddr,

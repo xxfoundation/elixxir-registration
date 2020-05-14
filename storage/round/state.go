@@ -38,9 +38,9 @@ type State struct {
 
 //creates a round state object
 func newState(id id.Round, batchsize uint32, topology *connect.Circuit, pendingTs time.Time) *State {
-	strTopology := make([]string, topology.Len())
+	strTopology := make([][]byte, topology.Len())
 	for i := 0; i < topology.Len(); i++ {
-		strTopology[i] = topology.GetNodeAtIndex(i).String()
+		strTopology[i] = topology.GetNodeAtIndex(i).Marshal()
 	}
 
 	//create the timestamps and populate the first one
