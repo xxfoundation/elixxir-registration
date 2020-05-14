@@ -35,7 +35,7 @@ func TestWaitingPoll_Add(t *testing.T) {
 
 	// node id with arbitrary initializer
 	for i := 0; i < testingSize; i++ {
-		nid := id.NewNodeFromUInt(uint64(i), t)
+		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
 
 		err := testPoll.Add(nid)
 		if err != nil {
@@ -57,12 +57,12 @@ func TestWaitingPoll_Add_Full(t *testing.T) {
 	testPoll := newWaitingPool(testingSize)
 
 	for i := 0; i < testingSize; i++ {
-		nid := id.NewNodeFromUInt(uint64(i), t)
+		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
 		testPoll.Add(nid)
 	}
 
 	// Attempt to push an additional node in
-	nid := id.NewNodeFromUInt(uint64(5), t)
+	nid := id.NewIdFromUInt(uint64(5), id.Node, t)
 
 	err := testPoll.Add(nid)
 	if err == nil {
@@ -80,9 +80,9 @@ func TestWaitingPoll_Clear(t *testing.T) {
 	testingSize := 5
 	testPoll := newWaitingPool(testingSize)
 
-	nodeList := make([]*id.Node, testingSize)
+	nodeList := make([]*id.ID, testingSize)
 	for i := 0; i < testingSize; i++ {
-		nid := id.NewNodeFromUInt(uint64(i), t)
+		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
 		testPoll.Add(nid)
 		nodeList[i] = nid
 	}
@@ -95,7 +95,7 @@ func TestWaitingPoll_Clear(t *testing.T) {
 			"\n\tReceived: %v", nodeList, receivedList)
 	}
 
-	emptyNodeList := make([]*id.Node, testingSize)
+	emptyNodeList := make([]*id.ID, testingSize)
 	if !reflect.DeepEqual(testPoll.pool, emptyNodeList) {
 		t.Errorf("After clearing, waiting pool should not contain any nodes."+
 			"\n\tExpected: %v"+
@@ -114,7 +114,7 @@ func TestWaitingPoll_Size(t *testing.T) {
 	testingSize := 5
 	testPoll := newWaitingPool(testingSize)
 
-	nid := id.NewNodeFromUInt(uint64(1), t)
+	nid := id.NewIdFromUInt(uint64(1), id.Node, t)
 	testPoll.Add(nid)
 
 	receivedSize := testPoll.Size()
@@ -131,7 +131,7 @@ func TestWaitingPoll_Len(t *testing.T) {
 
 	// node id with arbitrary initializer
 	for i := 0; i < testingSize; i++ {
-		nid := id.NewNodeFromUInt(uint64(i), t)
+		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
 
 		err := testPoll.Add(nid)
 		if err != nil {

@@ -15,7 +15,7 @@ import (
 // contains a list of nodes of a certain size. does not allow more to be added
 // than its max size and all nodes must be removed at once.
 type waitingPoll struct {
-	pool []*id.Node
+	pool []*id.ID
 
 	position int
 }
@@ -23,14 +23,14 @@ type waitingPoll struct {
 //creates an empty waiting of object of the designated size
 func newWaitingPool(size int) *waitingPoll {
 	return &waitingPoll{
-		pool:     make([]*id.Node, size),
+		pool:     make([]*id.ID, size),
 		position: 0,
 	}
 }
 
 // adds an element to the waiting pool if it is not full, otherwise returns an
 // error
-func (wp *waitingPoll) Add(nid *id.Node) error {
+func (wp *waitingPoll) Add(nid *id.ID) error {
 	if wp.position == len(wp.pool) {
 		return errors.New("waiting pool is full")
 	}
@@ -42,9 +42,9 @@ func (wp *waitingPoll) Add(nid *id.Node) error {
 }
 
 // returns all elements from the waiting pool and clears it
-func (wp *waitingPoll) Clear() []*id.Node {
+func (wp *waitingPoll) Clear() []*id.ID {
 	old := wp.pool
-	wp.pool = make([]*id.Node, len(wp.pool))
+	wp.pool = make([]*id.ID, len(wp.pool))
 	wp.position = 0
 	return old
 }

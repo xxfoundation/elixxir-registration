@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"bytes"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
@@ -22,12 +23,8 @@ import (
 )
 
 // Handle registration attempt by a Node
-func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
+func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 	GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
-
-	// Get proper ID string
-	nid := id.NewNodeFromBytes(ID)
-	idString := nid.String()
 
 	// Check that the node hasn't already been registered
 	nodeInfo, err := storage.PermissioningDb.GetNode(RegistrationCode)
@@ -35,11 +32,11 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 		return errors.Errorf(
 			"Registration code %+v is invalid or not currently enabled: %+v", RegistrationCode, err)
 	}
-	if nodeInfo.Id != "" {
+	if !bytes.Equal(nodeInfo.Id, []byte("")) {
 		return errors.Errorf(
 			"Node with registration code %+v has already been registered", RegistrationCode)
 	}
-
+	pk := &m.State.GetPrivateKey().PrivateKey
 	// Load the node and gateway certs
 	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
 	if err != nil {
@@ -49,8 +46,6 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	if err != nil {
 		return errors.Errorf("Failed to load gateway certificate: %v", err)
 	}
-
-	pk := &m.State.GetPrivateKey().PrivateKey
 
 	// Sign the node and gateway certs
 	signedNodeCert, err := certAuthority.Sign(nodeCertificate,
@@ -65,22 +60,22 @@ func (m *RegistrationImpl) RegisterNode(ID []byte, ServerAddr, ServerTlsCert,
 	}
 
 	// Attempt to insert Node into the database
-	err = storage.PermissioningDb.RegisterNode(nid,
+	err = storage.PermissioningDb.RegisterNode(ID,
 		RegistrationCode, signedNodeCert, ServerAddr, GatewayAddr, signedGatewayCert)
 	if err != nil {
 		return errors.Errorf("unable to insert node: %+v", err)
 	}
 	jww.DEBUG.Printf("Inserted node %s into the database with code %s",
-		idString, RegistrationCode)
+		ID.String(), RegistrationCode)
 
 	//add the node to the host object for authenticated communications
-	_, err = m.Comms.AddHost(idString, ServerAddr, []byte(ServerTlsCert), false, true)
+	_, err = m.Comms.AddHost(ID, ServerAddr, []byte(ServerTlsCert), false, true)
 	if err != nil {
 		return errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
 	}
 
-	// Add the node to the node map to track its state
-	err = m.State.GetNodeMap().AddNode(nid, nodeInfo.Order)
+	//add the node to the node map to track its state
+	err = m.State.GetNodeMap().AddNode(ID, nodeInfo.Order)
 	if err != nil {
 		return errors.WithMessage(err, "Could not register node with "+
 			"state tracker")
@@ -166,14 +161,8 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 				" code %+v: %+v", code, err)
 	}
 
-	// Properly convert node ID from string to bytes
-	nodeId, err := id.NewNodeFromString(nodeInfo.Id)
-	if err != nil {
-		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf("unable to obtain node nodeId: %+v", err)
-	}
-
 	node := ndf.Node{
-		ID:             nodeId.Bytes(),
+		ID:             nodeInfo.Id,
 		Address:        nodeInfo.ServerAddress,
 		TlsCertificate: nodeInfo.NodeCertificate,
 	}

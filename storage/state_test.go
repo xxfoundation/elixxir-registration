@@ -244,7 +244,13 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 	expectedRoundInfo.Signature = roundInfo.Signature
 
 	// Check that the round info returned is correct.
-	if !reflect.DeepEqual(*roundInfo, expectedRoundInfo) {
+	if roundInfo.State != expectedRoundInfo.State && roundInfo.ID != expectedRoundInfo.ID &&
+		reflect.DeepEqual(roundInfo.Topology, expectedRoundInfo.Topology) &&
+		roundInfo.BatchSize != expectedRoundInfo.BatchSize &&
+		reflect.DeepEqual(roundInfo.Errors, expectedRoundInfo.Errors) &&
+		reflect.DeepEqual(roundInfo.Timestamps, expectedRoundInfo.Timestamps) &&
+		roundInfo.UpdateID != expectedRoundInfo.UpdateID {
+
 		t.Errorf("AddRoundUpdate() added incorrect roundInfo."+
 			"\n\texpected: %#v\n\treceived: %#v", expectedRoundInfo, *roundInfo)
 	}
@@ -406,7 +412,7 @@ func TestNetworkState_GetNodeMap(t *testing.T) {
 func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 	// Test values
 	testNun := NodeUpdateNotification{
-		Node: id.NewNodeFromUInt(mrand.Uint64(), t),
+		Node: id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
 		From: current.NOT_STARTED,
 		To:   current.WAITING,
 	}
@@ -444,7 +450,7 @@ func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
 	// Test values
 	testNun := NodeUpdateNotification{
-		Node: id.NewNodeFromUInt(mrand.Uint64(), t),
+		Node: id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
 		From: current.NOT_STARTED,
 		To:   current.WAITING,
 	}

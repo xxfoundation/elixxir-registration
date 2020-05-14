@@ -18,17 +18,17 @@ import (
 type StateMap struct {
 	mux sync.RWMutex
 
-	nodeStates map[id.Node]*State
+	nodeStates map[id.ID]*State
 }
 
 func NewStateMap() *StateMap {
 	return &StateMap{
-		nodeStates: make(map[id.Node]*State),
+		nodeStates: make(map[id.ID]*State),
 	}
 }
 
 // Adds a new node state to the structure. Will not overwrite an existing one.
-func (nsm *StateMap) AddNode(id *id.Node, ordering string) error {
+func (nsm *StateMap) AddNode(id *id.ID, ordering string) error {
 	nsm.mux.Lock()
 	defer nsm.mux.Unlock()
 
@@ -49,7 +49,7 @@ func (nsm *StateMap) AddNode(id *id.Node, ordering string) error {
 }
 
 // Returns the State object for the given id if it exists
-func (nsm *StateMap) GetNode(id *id.Node) *State {
+func (nsm *StateMap) GetNode(id *id.ID) *State {
 	nsm.mux.RLock()
 	defer nsm.mux.RUnlock()
 	return nsm.nodeStates[*id]

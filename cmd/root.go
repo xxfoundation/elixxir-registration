@@ -30,7 +30,7 @@ import (
 
 var (
 	cfgFile              string
-	verbose              bool
+	logLevel             uint // 0 = info, 1 = debug, >1 = trace
 	noTLS                bool
 	RegParams            Params
 	ClientRegCodes       []string
@@ -46,18 +46,6 @@ var rootCmd = &cobra.Command{
 	Long:  `This server provides registration functions on cMix`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		if verbose {
-			err := os.Setenv("GRPC_GO_LOG_SEVERITY_LEVEL", "info")
-			if err != nil {
-				jww.ERROR.Printf("Could not set GRPC_GO_LOG_SEVERITY_LEVEL: %+v", err)
-			}
-
-			err = os.Setenv("GRPC_GO_LOG_VERBOSITY_LEVEL", "2")
-			if err != nil {
-				jww.ERROR.Printf("Could not set GRPC_GO_LOG_VERBOSITY_LEVEL: %+v", err)
-			}
-		}
-
 		cmixMap := viper.GetStringMapString("groups.cmix")
 		e2eMap := viper.GetStringMapString("groups.e2e")
 
@@ -200,8 +188,8 @@ func init() {
 	// Here you will define your flags and configuration settings.
 	// Cobra supports persistent flags, which, if defined here,
 	// will be global for your application.
-	rootCmd.Flags().BoolVarP(&verbose, "verbose", "v", false,
-		"Show verbose logs for debugging")
+	rootCmd.Flags().UintVarP(&logLevel, "logLevel", "l", 1,
+		"Level of debugging to display. 0 = info, 1 = debug, >1 = trace")
 
 	rootCmd.Flags().StringVarP(&cfgFile, "config", "c",
 		"", "Sets a custom config file path")
@@ -302,15 +290,35 @@ func validateVersion(versionString string) error {
 // initLog initializes logging thresholds and the log path.
 func initLog() {
 	if viper.Get("logPath") != nil {
-		// If verbose flag set then log more info for debugging
-		if verbose || viper.GetBool("verbose") {
+		vipLogLevel := viper.GetUint("logLevel")
+
+		// Check the level of logs to display
+		if vipLogLevel > 1 {
+			// Set the GRPC log level
+			err := os.Setenv("GRPC_GO_LOG_SEVERITY_LEVEL", "info")
+			if err != nil {
+				jww.ERROR.Printf("Could not set GRPC_GO_LOG_SEVERITY_LEVEL: %+v", err)
+			}
+
+			err = os.Setenv("GRPC_GO_LOG_VERBOSITY_LEVEL", "99")
+			if err != nil {
+				jww.ERROR.Printf("Could not set GRPC_GO_LOG_VERBOSITY_LEVEL: %+v", err)
+			}
+			// Turn on trace logs
+			jww.SetLogThreshold(jww.LevelTrace)
+			jww.SetStdoutThreshold(jww.LevelTrace)
+			mixmessages.TraceMode()
+		} else if vipLogLevel == 1 {
+			// Turn on debugging logs
 			jww.SetLogThreshold(jww.LevelDebug)
 			jww.SetStdoutThreshold(jww.LevelDebug)
 			mixmessages.DebugMode()
 		} else {
+			// Turn on info logs
 			jww.SetLogThreshold(jww.LevelInfo)
 			jww.SetStdoutThreshold(jww.LevelInfo)
 		}
+
 		// Create log file, overwrites if existing
 		logPath := viper.GetString("logPath")
 		logFile, err := os.Create(logPath)

@@ -37,7 +37,7 @@ type State struct {
 	stateMap *[][]bool
 
 	//id of the node
-	id *id.Node
+	id *id.ID
 
 	// when a node poll is received, this nodes polling lock is. If
 	// there is no update, it is released in this endpoint, otherwise it is
@@ -140,7 +140,7 @@ func (n *State) GetOrdering() string {
 }
 
 // gets the ID of the node
-func (n *State) GetID() *id.Node {
+func (n *State) GetID() *id.ID {
 	return n.id
 }
 

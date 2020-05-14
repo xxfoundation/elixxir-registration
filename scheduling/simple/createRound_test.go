@@ -35,11 +35,11 @@ func TestCreateRound_NonRandom(t *testing.T) {
 	}
 
 	// Build node list
-	nodeList := make([]*id.Node, testParams.TeamSize)
+	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nid := id.NewNodeFromUInt(i, t)
+		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
 		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
 		if err != nil {
@@ -111,9 +111,9 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	}
 
 	// Build a node list that will be invalid
-	nodeList := make([]*id.Node, testParams.TeamSize)
+	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nodeList[i] = id.NewNodeFromUInt(i, t)
+		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
 		// Input an invalid ordering to node
 		err := testState.GetNodeMap().AddNode(nodeList[i], "BadNumber")
 		if err != nil {
@@ -159,11 +159,11 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 	}
 
 	// Build the nodes
-	nodeList := make([]*id.Node, testParams.TeamSize)
+	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nid := id.NewNodeFromUInt(i, t)
+		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
 		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
 		if err != nil {

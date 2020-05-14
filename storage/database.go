@@ -42,16 +42,16 @@ var PermissioningDb Storage
 
 type nodeRegistration interface {
 	// If Node registration code is valid, add Node information
-	RegisterNode(id *id.Node, code, serverAddr, serverCert,
+	RegisterNode(id *id.ID, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*Node, error)
 	// Insert Application object along with associated unregistered Node
-	InsertApplication(application *Application, unregisteredNode *Node) error
+	InsertApplication(application Application, unregisteredNode Node) error
 	// Insert NodeMetric object
-	InsertNodeMetric(metric *NodeMetric) error
+	InsertNodeMetric(metric NodeMetric) error
 	// Insert RoundMetric object
-	InsertRoundMetric(metric *RoundMetric, topology []string) error
+	InsertRoundMetric(metric RoundMetric, topology []string) error
 }
 
 type clientRegistration interface {
@@ -124,7 +124,7 @@ type Node struct {
 	Order string
 
 	// Unique Node ID
-	Id string `gorm:"UNIQUE_INDEX;default: null"`
+	Id []byte `gorm:"UNIQUE_INDEX;default: null"`
 	// Server IP address
 	ServerAddress string
 	// Gateway IP address
@@ -264,9 +264,9 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 func PopulateNodeRegistrationCodes(infos []node.Info) {
 	// TODO: This will eventually need to be updated to intake applications too
 	for i, info := range infos {
-		err := PermissioningDb.InsertApplication(&Application{
+		err := PermissioningDb.InsertApplication(Application{
 			Id: uint64(i),
-		}, &Node{
+		}, Node{
 			Code:          info.RegCode,
 			Order:         info.Order,
 			ApplicationId: uint64(i),
