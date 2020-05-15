@@ -72,7 +72,8 @@ func NewState_Testing(id id.Round, state states.Round, t *testing.T) *State {
 	//build and return the round state object
 	return &State{
 		base: &pb.RoundInfo{
-			ID: uint64(id),
+			ID:         uint64(id),
+			Timestamps: make([]uint64, states.NUM_STATES),
 		},
 		state:              state,
 		readyForTransition: 0,

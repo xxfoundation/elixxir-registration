@@ -254,10 +254,12 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("Failed to set registration address. Expected: %v \n Recieved: %v",
 			permAddr, observedNDF.Registration.Address)
 	}
-	for i := range expectedNodeIDs {
-		if bytes.Compare(expectedNodeIDs[i].Bytes(), observedNDF.Nodes[i].ID) != 0 {
-			t.Errorf("Could not build node %d's, id: Expected: %v \n Recieved: %v", i,
-				expectedNodeIDs, observedNDF.Nodes[i].ID)
+
+	for i := range observedNDF.Nodes {
+		if bytes.Compare(expectedNodeIDs[i].Bytes(),
+			observedNDF.Nodes[i].ID) != 0 {
+			t.Errorf("Could not build node %d's id id: Expected: %v \nRecieved: %v", i,
+				expectedNodeIDs[i].String(), observedNDF.Nodes[i].ID)
 		}
 	}
 

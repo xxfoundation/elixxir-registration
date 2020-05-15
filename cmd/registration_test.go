@@ -97,11 +97,9 @@ func TestEmptyDataBase(t *testing.T) {
 			"Expected %s, Recieved: %+v", expectedErr, err)
 		return
 	}
-	impl.Comms.Shutdown()
-
 }
 
-//Happy path: looking for a code that is in the database
+// Happy path: looking for a code that is in the database
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	// Start registration server
 	impl, err := StartRegistration(testParams)
@@ -115,14 +113,20 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 	//Insert a sample regCode
-	err = storage.PermissioningDb.InsertApplication(storage.Application{},
-		storage.Node{Code: "AAAA", Order: "0"})
+	applicationId := uint64(10)
+	newNode := storage.Node{
+		Code:          "AAAA",
+		Order:         "0",
+		ApplicationId: applicationId,
+	}
+	newApplication := storage.Application{Id: applicationId}
+	err = storage.PermissioningDb.InsertApplication(newApplication, newNode)
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 	//Register a node with that regCode
-	err = impl.RegisterNode(id.NewIdFromBytes([]byte("test"), t), nodeAddr, string(nodeCert),
-		nodeAddr, string(nodeCert), "AAAA")
+	err = impl.RegisterNode(id.NewIdFromString("test", id.Node, t), nodeAddr, string(nodeCert),
+		nodeAddr, string(nodeCert), newNode.Code)
 	if err != nil {
 		t.Errorf("Registered a node with a known reg code, but recieved the following error: %+v", err)
 	}
@@ -302,7 +306,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	}()
 
 	select {
-	case <-time.NewTimer(200 * time.Millisecond).C:
+	case <-time.NewTimer(250 * time.Millisecond).C:
 		t.Errorf("Registration failed to complete")
 		t.FailNow()
 	case <-impl.beginScheduling:
