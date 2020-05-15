@@ -9,7 +9,6 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
 	github.com/jinzhu/gorm v1.9.12
 	github.com/jinzhu/now v1.1.1 // indirect
-	github.com/kr/pretty v0.2.0 // indirect
 	github.com/lib/pq v1.5.2 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/mitchellh/go-homedir v1.1.0
@@ -24,7 +23,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 
 	github.com/spf13/viper v1.6.3
-	gitlab.com/elixxir/comms v0.0.0-20200514214458-cade176a52fc
+	gitlab.com/elixxir/comms v0.0.0-20200515170447-d88e95684f9c
 	gitlab.com/elixxir/crypto v0.0.0-20200514211323-de119c132b78
 	gitlab.com/elixxir/primitives v0.0.0-20200514181428-14736275e533
 	gopkg.in/ini.v1 v1.55.0 // indirect
