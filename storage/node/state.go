@@ -14,6 +14,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/transition"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -47,6 +48,9 @@ type State struct {
 	// do the same job and could conflict. reconsiderations of this logic
 	// may be fruitfull
 	pollingLock sync.Mutex
+
+	// Representative
+	status *int32
 }
 
 // updates to the passed in activity if it is different from the known activity
@@ -175,4 +179,14 @@ func (n *State) SetRound(r *round.State) error {
 
 	n.currentRound = r
 	return nil
+}
+
+// Gets the status of the node
+func (n *State) GetStatus() int32 {
+	return atomic.LoadInt32(n.status)
+}
+
+// Sets the status of the node. // todo: consider making this unexported? or part of update
+func (n *State) SetStatus(newStatus int32) {
+	atomic.StoreInt32(n.status, newStatus)
 }

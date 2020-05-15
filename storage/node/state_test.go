@@ -435,3 +435,29 @@ func TestNodeState_GetID(t *testing.T) {
 			"Expected: %s, Recieved: %s", testID, retrievedID)
 	}
 }
+
+func TestState_GetStatus(t *testing.T) {
+	ourStatus := int32(0)
+	ns := State{status: &ourStatus}
+
+	if ns.GetStatus() != ourStatus {
+		t.Errorf("Getter did not get expected value!"+
+			"\n\tExpected: %v"+
+			"\n\tReceived: %v", ourStatus, ns.GetStatus())
+	}
+}
+
+func TestState_SetStatus(t *testing.T) {
+	ourStatus := int32(0)
+	ns := State{status: &ourStatus}
+
+	newStatus := Offline
+	ns.SetStatus(int32(newStatus))
+
+	if ns.GetStatus() != int32(newStatus) {
+		t.Errorf("Getter did not get expected value!"+
+			"\n\tExpected: %v"+
+			"\n\tReceived: %v", newStatus, ns.GetStatus())
+	}
+
+}

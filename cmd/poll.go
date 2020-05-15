@@ -15,6 +15,7 @@ import (
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/ndf"
+	"gitlab.com/elixxir/registration/storage/node"
 	"sync/atomic"
 )
 
@@ -51,10 +52,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		return
 	}
 
-	// Commit updates reported by the node if node involved in the current round
-	jww.DEBUG.Printf("Updating state for node %s: %+v",
-		auth.Sender.GetId(), msg)
-
 	//get the nodeState and update
 	nid := auth.Sender.GetId()
 
@@ -63,6 +60,16 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		err = errors.Errorf("node %s could not be found in internal state tracker", nid)
 		return
 	}
+
+	// Check if the node has been deemed out of network
+	if n.GetStatus() == node.OutOfNetwork {
+		// TODO: Have this error gone through with a fine tooth comb. Consider placing in prims
+		return nil, errors.Errorf("Node is no longer recognized by network.")
+	}
+
+	// Commit updates reported by the node if node involved in the current round
+	jww.DEBUG.Printf("Updating state for node %s: %+v",
+		auth.Sender.GetId(), msg)
 
 	// when a node poll is received, the nodes polling lock is taken here. If
 	// there is no update, it is released in this endpoint, otherwise it is

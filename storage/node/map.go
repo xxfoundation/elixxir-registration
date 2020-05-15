@@ -36,6 +36,8 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering string) error {
 		return errors.New("cannot add a node which already exists")
 	}
 
+	initalStatus := int32(Online)
+
 	nsm.nodeStates[*id] =
 		&State{
 			activity:     current.NOT_STARTED,
@@ -43,6 +45,7 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering string) error {
 			lastPoll:     time.Now(),
 			ordering:     ordering,
 			id:           id,
+			status:       &initalStatus,
 		}
 
 	return nil
