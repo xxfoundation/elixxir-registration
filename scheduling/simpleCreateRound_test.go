@@ -3,7 +3,7 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
-package simple
+package scheduling
 
 import (
 	"crypto/rand"
@@ -61,9 +61,9 @@ func TestCreateRound_NonRandom(t *testing.T) {
 
 	roundID := NewRoundID(0)
 
-	testProtoRound, err := createRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
-		t.Errorf("Happy path of createRound failed: %v", err)
+		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 
 	if testProtoRound.ID != roundID.Get() {
@@ -131,7 +131,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	roundID := NewRoundID(0)
 
 	// Invalid ordering will cause this to fail
-	_, err = createRound(testParams, testPool, roundID.Get(), testState)
+	_, err = createSecureRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
 		return
 	}
@@ -184,9 +184,9 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 
 	roundID := NewRoundID(0)
 
-	testProtoRound, err := createRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
-		t.Errorf("Happy path of createRound failed: %v", err)
+		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 
 	// Check that shuffling has actually occurred

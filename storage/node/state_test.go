@@ -44,12 +44,12 @@ func TestNodeState_Update_Same(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old != current.WAITING {
+	if old.FromActivity != current.WAITING {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.WAITING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.WAITING, ns.activity)
 	}
 }
@@ -85,12 +85,12 @@ func TestNodeState_Update_Invalid(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old != current.WAITING {
+	if old.FromActivity != current.WAITING {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.WAITING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.WAITING, ns.activity)
 	}
 }
@@ -111,7 +111,7 @@ func TestNodeState_Update_Valid_RequiresRound_RoundNil(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("Node state update returned no error on invalid state change")
-	} else if !strings.Contains(err.Error(), "requires the node be assigned a round") {
+	} else if !strings.Contains(err.Error(), "requires the Node be assigned a round") {
 		t.Errorf("Node state update returned the wrong error on "+
 			"state change requiring round but without one: %s", err)
 	}
@@ -126,12 +126,12 @@ func TestNodeState_Update_Valid_RequiresRound_RoundNil(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old != current.WAITING {
+	if old.FromActivity != current.WAITING {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.WAITING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.WAITING, ns.activity)
 	}
 }
@@ -168,12 +168,12 @@ func TestNodeState_Update_Valid_RequiresRound_Round_InvalidState(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old != current.WAITING {
+	if old.FromActivity != current.WAITING {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.WAITING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.WAITING, ns.activity)
 	}
 }
@@ -207,12 +207,12 @@ func TestNodeState_Update_Valid_RequiresRound_Round_ValidState(t *testing.T) {
 		t.Errorf("Node state should have updated")
 	}
 
-	if old != current.WAITING {
+	if old.FromActivity != current.WAITING {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.PRECOMPUTING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.PRECOMPUTING, ns.activity)
 	}
 }
@@ -234,7 +234,7 @@ func TestNodeState_Update_Valid_RequiresNoRound_HasRound(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("Node state update returned no error on invalid state change")
-	} else if !strings.Contains(err.Error(), "requires the node not be assigned a round") {
+	} else if !strings.Contains(err.Error(), "requires the Node not be assigned a round") {
 		t.Errorf("Node state update returned the wrong error on "+
 			"state change requiring no round but has one: %s", err)
 	}
@@ -249,12 +249,12 @@ func TestNodeState_Update_Valid_RequiresNoRound_HasRound(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old != current.COMPLETED {
+	if old.FromActivity != current.COMPLETED {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.COMPLETED {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.COMPLETED, ns.activity)
 	}
 }
@@ -287,12 +287,12 @@ func TestNodeState_Update_Valid_RequiresNoRound_NoRound(t *testing.T) {
 		t.Errorf("Node state should  have updated")
 	}
 
-	if old != current.COMPLETED {
+	if old.FromActivity != current.COMPLETED {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.WAITING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.WAITING, ns.activity)
 	}
 }
@@ -437,27 +437,12 @@ func TestNodeState_GetID(t *testing.T) {
 }
 
 func TestState_GetStatus(t *testing.T) {
-	ourStatus := int32(0)
-	ns := State{status: &ourStatus}
+	ourStatus := Status(0)
+	ns := State{status: ourStatus}
 
 	if ns.GetStatus() != ourStatus {
 		t.Errorf("Getter did not get expected value!"+
 			"\n\tExpected: %v"+
 			"\n\tReceived: %v", ourStatus, ns.GetStatus())
 	}
-}
-
-func TestState_SetStatus(t *testing.T) {
-	ourStatus := int32(0)
-	ns := State{status: &ourStatus}
-
-	newStatus := Offline
-	ns.SetStatus(int32(newStatus))
-
-	if ns.GetStatus() != int32(newStatus) {
-		t.Errorf("Getter did not get expected value!"+
-			"\n\tExpected: %v"+
-			"\n\tReceived: %v", newStatus, ns.GetStatus())
-	}
-
 }

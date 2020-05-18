@@ -27,16 +27,14 @@ func NewStateMap() *StateMap {
 	}
 }
 
-// Adds a new node state to the structure. Will not overwrite an existing one.
+// Adds a new Node state to the structure. Will not overwrite an existing one.
 func (nsm *StateMap) AddNode(id *id.ID, ordering string) error {
 	nsm.mux.Lock()
 	defer nsm.mux.Unlock()
 
 	if _, ok := nsm.nodeStates[*id]; ok {
-		return errors.New("cannot add a node which already exists")
+		return errors.New("cannot add a Node which already exists")
 	}
-
-	initalStatus := int32(Online)
 
 	nsm.nodeStates[*id] =
 		&State{
@@ -45,7 +43,7 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering string) error {
 			lastPoll:     time.Now(),
 			ordering:     ordering,
 			id:           id,
-			status:       &initalStatus,
+			status:       Active,
 		}
 
 	return nil

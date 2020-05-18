@@ -18,7 +18,7 @@ import (
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/utils"
-	"gitlab.com/elixxir/registration/scheduling/simple"
+	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"os"
@@ -152,7 +152,7 @@ var rootCmd = &cobra.Command{
 			jww.INFO.Printf("Beginning %s scheduling algorithm", algo)
 			switch algo {
 			case "simple":
-				err = simple.Scheduler(SchedulingConfig, impl.State)
+				err = scheduling.Scheduler(SchedulingConfig, impl.State)
 			case "secure":
 				err = errors.New("secure scheduling algorithm not yet implemented")
 			default:

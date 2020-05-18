@@ -1,4 +1,4 @@
-package simple
+package scheduling
 
 import (
 	"encoding/json"

@@ -3,7 +3,7 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
-package simple
+package scheduling
 
 import (
 	"crypto/rand"
@@ -59,9 +59,9 @@ func TestStartRound(t *testing.T) {
 
 	roundID := NewRoundID(0)
 
-	testProtoRound, err := createRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
-		t.Errorf("Happy path of createRound failed: %v", err)
+		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 
 	errorChan := make(chan error, 1)
@@ -122,9 +122,9 @@ func TestStartRound_BadState(t *testing.T) {
 	badState := round.NewState_Testing(roundID.Get(), states.COMPLETED, t)
 	testState.GetRoundMap().AddRound_Testing(badState, t)
 
-	testProtoRound, err := createRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
-		t.Errorf("Happy path of createRound failed: %v", err)
+		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 
 	errorChan := make(chan error, 1)
@@ -182,9 +182,9 @@ func TestStartRound_BadNode(t *testing.T) {
 	roundID := NewRoundID(0)
 	badState := round.NewState_Testing(roundID.Get(), states.COMPLETED, t)
 
-	testProtoRound, err := createRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
-		t.Errorf("Happy path of createRound failed: %v", err)
+		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 	// Manually set the round of a node
 	testProtoRound.nodeStateList[0].SetRound(badState)

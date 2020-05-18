@@ -15,7 +15,6 @@ import (
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/ndf"
-	"gitlab.com/elixxir/registration/storage/node"
 	"sync/atomic"
 )
 
@@ -37,6 +36,21 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		return response, connect.AuthError(auth.Sender.GetId())
 	}
 
+	//get the nodeState and update
+	nid := auth.Sender.GetId()
+
+	n := m.State.GetNodeMap().GetNode(nid)
+	if n == nil {
+		err = errors.Errorf("node %s could not be found in internal state tracker", nid)
+		return
+	}
+
+	// Check if the node has been deemed out of network
+	if n.IsBanned() {
+		// TODO: Have this error gone through with a fine tooth comb. Consider placing in prims
+		return nil, errors.Errorf("Node %s has been banned from the network", nid)
+	}
+
 	// Return updated NDF if provided hash does not match current NDF hash
 	if isSame := m.State.GetFullNdf().CompareHash(msg.Full.Hash); !isSame {
 		jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
@@ -52,20 +66,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		return
 	}
 
-	//get the nodeState and update
-	nid := auth.Sender.GetId()
-
-	n := m.State.GetNodeMap().GetNode(nid)
-	if n == nil {
-		err = errors.Errorf("node %s could not be found in internal state tracker", nid)
-		return
-	}
-
-	// Check if the node has been deemed out of network
-	if n.GetStatus() == node.OutOfNetwork {
-		// TODO: Have this error gone through with a fine tooth comb. Consider placing in prims
-		return nil, errors.Errorf("Node is no longer recognized by network.")
-	}
 
 	// Commit updates reported by the node if node involved in the current round
 	jww.DEBUG.Printf("Updating state for node %s: %+v",
@@ -82,11 +82,11 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	// any associated round allows for that change. If the change was not
 	// acceptable, it is not recorded and an error is returned, which is
 	// propagated to the node
-	update, oldActivity, err := n.Update(current.Activity(msg.Activity))
+	update, updateNotification, err := n.Update(current.Activity(msg.Activity))
 
 	//if an update ocured, report it to the control thread
 	if update {
-		err = m.State.NodeUpdateNotification(nid, oldActivity, current.Activity(msg.Activity))
+		err = m.State.SendUpdateNotification(updateNotification)
 	} else {
 		n.GetPollingLock().Unlock()
 	}

@@ -3,7 +3,7 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
-package simple
+package scheduling
 
 import (
 	"github.com/pkg/errors"
@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// startRound is a function which takes the info from createRound and updates the
+// startRound is a function which takes the info from createSimpleRound and updates the
 //  node and network states in order to begin the round
 func startRound(round protoRound, state *storage.NetworkState, errChan chan<- error) error {
 
