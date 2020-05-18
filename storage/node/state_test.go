@@ -45,7 +45,9 @@ func TestNodeState_Update_Same(t *testing.T) {
 	}
 
 	if old.FromActivity != current.WAITING {
-		t.Errorf("Node state returned the wrong old state")
+		t.Errorf("Node state returned the wrong old state." +
+			"\n\tExpected: %v" +
+			"\n\tReceived: %v", current.WAITING, )
 	}
 
 	if ns.activity != current.WAITING {

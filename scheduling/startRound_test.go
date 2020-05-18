@@ -52,10 +52,9 @@ func TestStartRound(t *testing.T) {
 	}
 
 	// Build pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
+	// fixme: this test required a crafted (full) pool, which is no longer possible..
+
+	testPool := NewWaitingPool()
 
 	roundID := NewRoundID(0)
 
@@ -111,10 +110,9 @@ func TestStartRound_BadState(t *testing.T) {
 	}
 
 	// Build pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
+	// fixme: this test required a crafted (full) pool, which is no longer possible..
+
+	testPool := NewWaitingPool()
 
 	roundID := NewRoundID(0)
 
@@ -174,10 +172,9 @@ func TestStartRound_BadNode(t *testing.T) {
 	}
 
 	// Build pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
+	// fixme: this test required a crafted (full) pool, which is no longer possible..
+
+	testPool := NewWaitingPool()
 
 	roundID := NewRoundID(0)
 	badState := round.NewState_Testing(roundID.Get(), states.COMPLETED, t)
@@ -187,7 +184,7 @@ func TestStartRound_BadNode(t *testing.T) {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 	// Manually set the round of a node
-	testProtoRound.nodeStateList[0].SetRound(badState)
+	testProtoRound.NodeStateList[0].SetRound(badState)
 
 	errorChan := make(chan error, 1)
 

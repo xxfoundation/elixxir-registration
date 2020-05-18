@@ -12,6 +12,7 @@ import (
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
 	"strconv"
 	"testing"
@@ -51,12 +52,12 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := newWaitingPool(int(testParams.TeamSize))
+	testPool := NewWaitingPool()
 
-	testUpdate := &storage.NodeUpdateNotification{
+	testUpdate := node.UpdateNotification{
 		Node: nodeList[0],
-		From: current.NOT_STARTED,
-		To:   current.WAITING}
+		FromActivity: current.NOT_STARTED,
+		ToActivity:   current.WAITING}
 
 	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
 
@@ -93,15 +94,13 @@ func TestHandleNodeStateChance_WaitingError(t *testing.T) {
 	}
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
+	// fixme: this test required a crafted (full) pool, which is no longer possible..
 
-	testUpdate := &storage.NodeUpdateNotification{
+	testPool := NewWaitingPool()
+	testUpdate := node.UpdateNotification{
 		Node: nodeList[0],
-		From: current.NOT_STARTED,
-		To:   current.WAITING}
+		FromActivity: current.NOT_STARTED,
+		ToActivity:   current.WAITING}
 
 	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
 
@@ -147,13 +146,13 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	}
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := newWaitingPool(int(testParams.TeamSize))
+	testPool := NewWaitingPool()
 
 	for i := range nodeList {
-		testUpdate := &storage.NodeUpdateNotification{
+		testUpdate := node.UpdateNotification{
 			Node: nodeList[i],
-			From: current.NOT_STARTED,
-			To:   current.WAITING,
+			FromActivity: current.NOT_STARTED,
+			ToActivity:   current.WAITING,
 		}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
@@ -168,10 +167,10 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	for i := range nodeList {
 		_ = testState.GetNodeMap().GetNode(nodeList[i]).SetRound(roundState)
 
-		testUpdate := &storage.NodeUpdateNotification{
+		testUpdate := node.UpdateNotification{
 			Node: nodeList[i],
-			From: current.WAITING,
-			To:   current.STANDBY}
+			FromActivity: current.WAITING,
+			ToActivity:   current.STANDBY}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
@@ -214,10 +213,9 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 	//roundID := NewRoundID(0)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
+	// fixme: this test required a crafted (full) pool, which is no longer possible..
+
+	testPool := NewWaitingPool()
 
 	// Explicitly don't give node a round to reach an error state
 	//roundState := round.NewState_Testing(roundID.Get(), 0, t)
@@ -225,10 +223,10 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 
 	// Iterate through all the nodes so that all the nodes are ready for transition
 	for i := range nodeList {
-		testUpdate := &storage.NodeUpdateNotification{
+		testUpdate := node.UpdateNotification{
 			Node: nodeList[i],
-			From: current.WAITING,
-			To:   current.STANDBY}
+			FromActivity: current.WAITING,
+			ToActivity:   current.STANDBY}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
@@ -276,13 +274,13 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 	}
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := newWaitingPool(int(testParams.TeamSize))
+	testPool := NewWaitingPool()
 
 	for i := range nodeList {
-		testUpdate := &storage.NodeUpdateNotification{
+		testUpdate := node.UpdateNotification{
 			Node: nodeList[i],
-			From: current.NOT_STARTED,
-			To:   current.WAITING,
+			FromActivity: current.NOT_STARTED,
+			ToActivity:   current.WAITING,
 		}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
@@ -297,10 +295,10 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 	for i := range nodeList {
 		_ = testState.GetNodeMap().GetNode(nodeList[i]).SetRound(roundState)
 
-		testUpdate := &storage.NodeUpdateNotification{
+		testUpdate := node.UpdateNotification{
 			Node: nodeList[i],
-			From: current.REALTIME,
-			To:   current.COMPLETED}
+			FromActivity: current.REALTIME,
+			ToActivity:   current.COMPLETED}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
@@ -340,18 +338,16 @@ func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
 
 	//roundID := NewRoundID(0)
 
+	// fixme: this test required a crafted (full) pool, which is no longer possible..
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
+	testPool := NewWaitingPool()
 
 	// Iterate through all the nodes so that all the nodes are ready for transition
 	for i := range nodeList {
-		testUpdate := &storage.NodeUpdateNotification{
+		testUpdate := node.UpdateNotification{
 			Node: nodeList[i],
-			From: current.WAITING,
-			To:   current.COMPLETED}
+			FromActivity: current.WAITING,
+			ToActivity:   current.COMPLETED}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
@@ -396,12 +392,12 @@ func TestHandleNodeStateChange_Error(t *testing.T) {
 	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := newWaitingPool(int(testParams.TeamSize))
+	testPool := NewWaitingPool()
 
-	testUpdate := &storage.NodeUpdateNotification{
+	testUpdate := node.UpdateNotification{
 		Node: nodeList[0],
-		From: current.WAITING,
-		To:   current.ERROR}
+		FromActivity: current.WAITING,
+		ToActivity:   current.ERROR}
 	testState.GetNodeMap().GetNode(testUpdate.Node).GetPollingLock().Lock()
 
 	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)

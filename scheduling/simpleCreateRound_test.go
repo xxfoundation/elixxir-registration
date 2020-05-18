@@ -54,10 +54,9 @@ func TestCreateRound_NonRandom(t *testing.T) {
 	expectedTopology := connect.NewCircuit(nodeList)
 
 	// Build pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
+	// fixme: this test required a crafted (full) pool, which is no longer possible..
+
+	testPool := NewWaitingPool()
 
 	roundID := NewRoundID(0)
 
@@ -72,22 +71,22 @@ func TestCreateRound_NonRandom(t *testing.T) {
 			"\n\tReceived: %d", roundID.Get(), testProtoRound.ID)
 	}
 
-	if !reflect.DeepEqual(testProtoRound.topology, expectedTopology) {
+	if !reflect.DeepEqual(testProtoRound.Topology, expectedTopology) {
 		t.Errorf("ProtoRound's topology returned unexpected value!"+
 			"\n\tExpected: %v"+
-			"\n\tReceived: %v", expectedTopology, testProtoRound.topology)
+			"\n\tReceived: %v", expectedTopology, testProtoRound.Topology)
 	}
 
-	if testParams.BatchSize != testProtoRound.batchSize {
+	if testParams.BatchSize != testProtoRound.BatchSize {
 		t.Errorf("ProtoRound's batchsize returned unexpected value!"+
 			"\n\tExpected: %v"+
-			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.batchSize)
+			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.BatchSize)
 
 	}
-	if !reflect.DeepEqual(testProtoRound.nodeStateList, nodeStateList) {
+	if !reflect.DeepEqual(testProtoRound.NodeStateList, nodeStateList) {
 		t.Errorf("ProtoRound's nodeStateList returned unexpected value!"+
 			"\n\tExpected: %v"+
-			"\n\tReceived: %v", nodeStateList, testProtoRound.nodeStateList)
+			"\n\tReceived: %v", nodeStateList, testProtoRound.NodeStateList)
 
 	}
 
@@ -123,10 +122,9 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	}
 
 	// Build pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
+	// fixme: this test required a crafted (full) pool, which is no longer possible..
+
+	testPool := NewWaitingPool()
 
 	roundID := NewRoundID(0)
 
@@ -176,12 +174,9 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 	}
 
 	initialTopology := connect.NewCircuit(nodeList)
+	// fixme: this test required a crafted (full) pool, which is no longer possible..
 
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
-
+	testPool :=NewWaitingPool()
 	roundID := NewRoundID(0)
 
 	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
@@ -191,7 +186,7 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 
 	// Check that shuffling has actually occurred
 	// This has a chance to fail even when successful, however that chance is 1 in ~3.6 million
-	if reflect.DeepEqual(initialTopology, testProtoRound.topology) {
+	if reflect.DeepEqual(initialTopology, testProtoRound.Topology) {
 		t.Errorf("Highly unlikely initial topology identical to resulting after shuffling. " +
 			"Possile shuffling is broken")
 	}
@@ -202,16 +197,16 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 			"\n\tReceived: %d", roundID.Get(), testProtoRound.ID)
 	}
 
-	if testParams.BatchSize != testProtoRound.batchSize {
+	if testParams.BatchSize != testProtoRound.BatchSize {
 		t.Errorf("ProtoRound's batchsize returned unexpected value!"+
 			"\n\tExpected: %v"+
-			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.batchSize)
+			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.BatchSize)
 
 	}
-	if !reflect.DeepEqual(testProtoRound.nodeStateList, nodeStateList) {
+	if !reflect.DeepEqual(testProtoRound.NodeStateList, nodeStateList) {
 		t.Errorf("ProtoRound's nodeStateList returned unexpected value!"+
 			"\n\tExpected: %v"+
-			"\n\tReceived: %v", nodeStateList, testProtoRound.nodeStateList)
+			"\n\tReceived: %v", nodeStateList, testProtoRound.NodeStateList)
 
 	}
 

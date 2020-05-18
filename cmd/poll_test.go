@@ -317,7 +317,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	impl.Comms.Shutdown()
 }
 
-func TestPoll_OutOfNetwork(t *testing.T) {
+func TestPoll_BannedNode(t *testing.T) {
 	testID := id.NewIdFromUInt(0, id.Node, t)
 	testString := "test"
 	// Start registration server
@@ -368,7 +368,9 @@ func TestPoll_OutOfNetwork(t *testing.T) {
 		t.Errorf("Could nto add node: %s", err)
 	}
 
-	impl.State.GetNodeMap().GetNode(testID).SetStatus(node.OutOfNetwork)
+
+
+	impl.State.GetNodeMap().GetNode(testID).Ban()
 
 	_, err = impl.Poll(testMsg, testAuth)
 	if err != nil {

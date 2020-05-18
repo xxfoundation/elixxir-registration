@@ -64,7 +64,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 			if err != nil {
 				return protoRound{}, errors.WithMessagef(err,
 					"Could not parse ordering info ('%s') from node %s",
-					n.GetOrdering(), nid)
+					n.GetOrdering(), nid.GetID().String())
 			}
 
 			orderedNodeList[position] = nid.GetID()

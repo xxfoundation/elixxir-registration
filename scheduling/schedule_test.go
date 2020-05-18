@@ -7,6 +7,7 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
 	"reflect"
 	"strconv"
@@ -62,7 +63,13 @@ func TestScheduler(t *testing.T) {
 		}
 		state.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = state.NodeUpdateNotification(nodeID, current.NOT_STARTED, current.WAITING)
+		nun := node.UpdateNotification{
+			Node:         nodeID,
+			FromActivity: 	current.NOT_STARTED,
+			ToActivity:   current.WAITING,
+		}
+
+		err = state.SendUpdateNotification(nun)
 		if err != nil {
 			t.Errorf("Failed to update node %d from %s to %s: %v",
 				i, current.NOT_STARTED, current.WAITING, err)
