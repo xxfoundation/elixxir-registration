@@ -21,6 +21,7 @@ import (
 	"gitlab.com/elixxir/registration/scheduling/simple"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"net"
 	"os"
 	"path"
 	"strconv"
@@ -81,11 +82,16 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Set up database connection
+		addr, port, err := net.SplitHostPort(viper.GetString("dbAddress"))
+		if err != nil {
+			jww.FATAL.Panicf("Unable to get database port: %+v", err)
+		}
 		storage.PermissioningDb, err = storage.NewDatabase(
 			viper.GetString("dbUsername"),
 			viper.GetString("dbPassword"),
 			viper.GetString("dbName"),
-			viper.GetString("dbAddress"),
+			addr,
+			port,
 		)
 		if err != nil {
 			jww.FATAL.Panicf("Unable to initialize storage: %+v", err)
