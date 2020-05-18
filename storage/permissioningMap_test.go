@@ -8,6 +8,7 @@ package storage
 
 import (
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/registration/storage/node"
 	"testing"
 	"time"
 )
@@ -222,5 +223,46 @@ func TestMapImpl_GetNode_Invalid(t *testing.T) {
 	info, err := m.GetNode("TEST")
 	if err == nil || info != nil {
 		t.Errorf("Expected to not find the node")
+	}
+}
+
+// Happy path
+func TestMapImpl_GetNodesByStatus(t *testing.T) {
+	m := &MapImpl{
+		nodes: make(map[string]*Node),
+	}
+
+	// Should start off empty
+	nodes, err := m.GetNodesByStatus(node.Banned)
+	if err != nil {
+		t.Errorf("Unable to get nodes by status: %+v", err)
+	}
+	if len(nodes) > 0 {
+		t.Errorf("Unexpected nodes returned for status: %v", nodes)
+	}
+
+	// Add a banned node
+	code := "TEST"
+	m.nodes[code] = &Node{Code: code, Status: uint8(node.Banned)}
+
+	// Should have a result now
+	nodes, err = m.GetNodesByStatus(node.Banned)
+	if err != nil {
+		t.Errorf("Unable to get nodes by status: %+v", err)
+	}
+	if len(nodes) != 1 {
+		t.Errorf("Unexpected nodes returned for status: %v", nodes)
+	}
+
+	// Unban the node
+	m.nodes[code].Status = uint8(node.Active)
+
+	// Shouldn't get a result anymore
+	nodes, err = m.GetNodesByStatus(node.Banned)
+	if err != nil {
+		t.Errorf("Unable to get nodes by status: %+v", err)
+	}
+	if len(nodes) > 0 {
+		t.Errorf("Unexpected nodes returned for status: %v", nodes)
 	}
 }
