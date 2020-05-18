@@ -147,17 +147,7 @@ var rootCmd = &cobra.Command{
 
 		// Begin scheduling algorithm
 		go func() {
-			var err error
-			algo := viper.GetString("schedulingAlgorithm")
-			jww.INFO.Printf("Beginning %s scheduling algorithm", algo)
-			switch algo {
-			case "simple":
-				err = scheduling.Scheduler(SchedulingConfig, impl.State)
-			case "secure":
-				err = errors.New("secure scheduling algorithm not yet implemented")
-			default:
-				err = errors.Errorf("schedulding algorithem %s unknown", algo)
-			}
+			err = scheduling.Scheduler(SchedulingConfig, impl.State)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
 		}()
 

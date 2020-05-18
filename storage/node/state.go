@@ -7,6 +7,7 @@
 package node
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
@@ -97,38 +98,51 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 
 	//if the Node is inactive, check if requirements are met to reactive it
 	if n.status == Inactive {
+		fmt.Println("inactive")
 		return n.updateInactive(newActivity)
 	}
 
 	//if the activity is the one that the Node is already in, do nothing
 	if oldActivity == newActivity {
+		fmt.Println("change")
+
 		return false, UpdateNotification{}, nil
 	}
 
 	// Check the round error state
 	roundError := n.currentRound != nil && n.currentRound.GetRoundState() == states.FAILED && newActivity != current.ERROR
 	if roundError {
+		fmt.Println("")
+
 		return false, UpdateNotification{}, errors.New("Round has failed, state cannot be updated")
 	}
+
+	fmt.Println("valid")
 
 	//check that teh activity transition is valid
 	valid := transition.Node.IsValidTransition(newActivity, oldActivity)
 
 	if !valid {
+		fmt.Println("invlaid")
 		return false, UpdateNotification{},
 			errors.Errorf("Node update from %s to %s failed, "+
 				"invalid transition", oldActivity, newActivity)
 	}
 
+
 	// check that the state of the round the Node is assoceated with is correct
 	// for the transition
 	if transition.Node.NeedsRound(newActivity) == transition.Yes {
+		fmt.Println("nil round")
+
 		if n.currentRound == nil {
 			return false, UpdateNotification{},
 				errors.Errorf("Node update from %s to %s failed, "+
 					"requires the Node be assigned a round", oldActivity,
 					newActivity)
 		}
+
+		fmt.Println("needs round roundstate")
 
 		if n.currentRound.GetRoundState() != transition.Node.RequiredRoundState(newActivity) {
 			return false, UpdateNotification{},
@@ -139,6 +153,8 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 					transition.Node.RequiredRoundState(oldActivity))
 		}
 	}
+
+	fmt.Println("needs round")
 
 	//check that the Node doesnt have a round if it shouldn't
 	if transition.Node.NeedsRound(newActivity) == transition.No && n.currentRound != nil {
@@ -159,6 +175,8 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 		FromActivity: oldActivity,
 		ToActivity:   newActivity,
 	}
+
+	fmt.Println("nun: ", nun)
 
 	return true, nun, nil
 }

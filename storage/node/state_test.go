@@ -12,6 +12,7 @@ import (
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
 	"math"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -23,6 +24,7 @@ func TestNodeState_Update_Same(t *testing.T) {
 	ns := State{
 		activity: current.WAITING,
 		lastPoll: time.Now(),
+		status:Active,
 	}
 
 	time.Sleep(10 * time.Millisecond)
@@ -44,10 +46,11 @@ func TestNodeState_Update_Same(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old.FromActivity != current.WAITING {
+	// Returns default updateNotification object on failed update
+	if !reflect.DeepEqual(old, UpdateNotification{}) {
 		t.Errorf("Node state returned the wrong old state." +
 			"\n\tExpected: %v" +
-			"\n\tReceived: %v", current.WAITING, )
+			"\n\tReceived: %v", current.NOT_STARTED, old.ToActivity)
 	}
 
 	if ns.activity != current.WAITING {
@@ -87,7 +90,8 @@ func TestNodeState_Update_Invalid(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old.FromActivity != current.WAITING {
+	// Returns default (NotStarted) on a failed update
+	if old.FromActivity != current.NOT_STARTED {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
@@ -128,7 +132,7 @@ func TestNodeState_Update_Valid_RequiresRound_RoundNil(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old.FromActivity != current.WAITING {
+	if !reflect.DeepEqual(old, UpdateNotification{}) {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
@@ -170,7 +174,8 @@ func TestNodeState_Update_Valid_RequiresRound_Round_InvalidState(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old.FromActivity != current.WAITING {
+	// Returns default updateNotification object on failed update
+	if !reflect.DeepEqual(old, UpdateNotification{}) {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
@@ -251,7 +256,8 @@ func TestNodeState_Update_Valid_RequiresNoRound_HasRound(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old.FromActivity != current.COMPLETED {
+	// Returns default updateNotification object on failed update
+	if !reflect.DeepEqual(old, UpdateNotification{}) {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
