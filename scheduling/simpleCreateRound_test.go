@@ -21,9 +21,12 @@ import (
 func TestCreateRound_NonRandom(t *testing.T) {
 	// Build params for scheduling
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:            5,
+		BatchSize:           32,
+		RandomOrdering:      false,
+		Threshold:           0,
+		NodeCleanUpInterval: 3,
+		Secure:              false,
 	}
 
 	// Build network state
@@ -37,9 +40,13 @@ func TestCreateRound_NonRandom(t *testing.T) {
 	// Build node list
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
+	// Build pool
+	// fixme: this test required a crafted (full) pool, which is no longer possible..
 
-	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nid := id.NewIdFromUInt(i, id.Node, t)
+	testPool := NewWaitingPool()
+
+	for i := 0; i < int(testParams.TeamSize); i++ {
+		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
 		nodeList[i] = nid
 		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
 		if err != nil {
@@ -48,19 +55,14 @@ func TestCreateRound_NonRandom(t *testing.T) {
 		}
 		nodeState := testState.GetNodeMap().GetNode(nid)
 		nodeStateList[i] = nodeState
-
+		testPool.Add(nodeState)
 	}
 
 	expectedTopology := connect.NewCircuit(nodeList)
 
-	// Build pool
-	// fixme: this test required a crafted (full) pool, which is no longer possible..
-
-	testPool := NewWaitingPool()
-
 	roundID := NewRoundID(0)
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSimpleRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -81,12 +83,6 @@ func TestCreateRound_NonRandom(t *testing.T) {
 		t.Errorf("ProtoRound's batchsize returned unexpected value!"+
 			"\n\tExpected: %v"+
 			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.BatchSize)
-
-	}
-	if !reflect.DeepEqual(testProtoRound.NodeStateList, nodeStateList) {
-		t.Errorf("ProtoRound's nodeStateList returned unexpected value!"+
-			"\n\tExpected: %v"+
-			"\n\tReceived: %v", nodeStateList, testProtoRound.NodeStateList)
 
 	}
 
@@ -143,9 +139,12 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 func TestCreateRound_RandomOrdering(t *testing.T) {
 	// Build scheduling params
 	testParams := Params{
-		TeamSize:       10,
-		BatchSize:      32,
-		RandomOrdering: true,
+		TeamSize:            10,
+		BatchSize:           32,
+		RandomOrdering:      true,
+		Threshold:           1,
+		Secure:              false,
+		NodeCleanUpInterval: 3,
 	}
 
 	// Build network state
@@ -159,6 +158,7 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 	// Build the nodes
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
+	testPool := NewWaitingPool()
 
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
@@ -170,13 +170,11 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 		}
 		nodeState := testState.GetNodeMap().GetNode(nid)
 		nodeStateList[i] = nodeState
-
+		testPool.Add(nodeState)
 	}
 
 	initialTopology := connect.NewCircuit(nodeList)
-	// fixme: this test required a crafted (full) pool, which is no longer possible..
 
-	testPool :=NewWaitingPool()
 	roundID := NewRoundID(0)
 
 	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
@@ -201,12 +199,6 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 		t.Errorf("ProtoRound's batchsize returned unexpected value!"+
 			"\n\tExpected: %v"+
 			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.BatchSize)
-
-	}
-	if !reflect.DeepEqual(testProtoRound.NodeStateList, nodeStateList) {
-		t.Errorf("ProtoRound's nodeStateList returned unexpected value!"+
-			"\n\tExpected: %v"+
-			"\n\tReceived: %v", nodeStateList, testProtoRound.NodeStateList)
 
 	}
 

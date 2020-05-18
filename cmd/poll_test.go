@@ -368,8 +368,6 @@ func TestPoll_BannedNode(t *testing.T) {
 		t.Errorf("Could nto add node: %s", err)
 	}
 
-
-
 	impl.State.GetNodeMap().GetNode(testID).Ban()
 
 	_, err = impl.Poll(testMsg, testAuth)

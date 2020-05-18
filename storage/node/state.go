@@ -52,7 +52,6 @@ type State struct {
 	// do the same job and could conflict. reconsiderations of this logic
 	// may be fruitfull
 	pollingLock sync.Mutex
-
 }
 
 // sets the Node to banned and then returns an update notification for signaling
@@ -62,7 +61,7 @@ func (n *State) Ban() (UpdateNotification, error) {
 	defer n.mux.Unlock()
 
 	//check if the Node is already banned. do not continue if it is
-	if n.status == Banned{
+	if n.status == Banned {
 		return UpdateNotification{}, errors.New("cannot ban an already banned Node")
 	}
 
@@ -82,7 +81,6 @@ func (n *State) Ban() (UpdateNotification, error) {
 
 	return nun, nil
 }
-
 
 // updates to the passed in activity if it is different from the known activity
 // returns true if the state changed and the state was it was reguardless
@@ -128,7 +126,6 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 			errors.Errorf("Node update from %s to %s failed, "+
 				"invalid transition", oldActivity, newActivity)
 	}
-
 
 	// check that the state of the round the Node is assoceated with is correct
 	// for the transition
@@ -264,7 +261,7 @@ func (n *State) SetRound(r *round.State) error {
 	return nil
 }
 
-func (n *State) updateInactive(newActivity current.Activity)(bool, UpdateNotification, error){
+func (n *State) updateInactive(newActivity current.Activity) (bool, UpdateNotification, error) {
 	switch newActivity {
 	case current.WAITING:
 		oldActivity := n.activity
@@ -300,4 +297,3 @@ func (n *State) SetOrdering(ordering string, t *testing.T) {
 	}
 	n.ordering = ordering
 }
-

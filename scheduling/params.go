@@ -10,11 +10,11 @@ import (
 // JSONable structure which defines the parameters of the scheduler
 type Params struct {
 	// selects if the secure or simple node selection algorithm is used
-	Secure 		   bool
+	Secure bool
 	// number of nodes in a team
-	TeamSize       uint32
+	TeamSize uint32
 	// number of slots in a batch
-	BatchSize      uint32
+	BatchSize uint32
 
 	// Time in ms between assigning a round
 	MinimumDelay time.Duration
@@ -31,10 +31,8 @@ type Params struct {
 	//SECURE ONLY
 	// sets the minimum number of nodes in the waiting pool before secure teaming
 	// wil create a team
-	Threshold     uint32
-
+	Threshold uint32
 }
-
 
 //internal structure which describes a round to be created
 type protoRound struct {
@@ -43,4 +41,3 @@ type protoRound struct {
 	NodeStateList []*node.State
 	BatchSize     uint32
 }
-

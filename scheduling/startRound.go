@@ -15,7 +15,6 @@ import (
 // startRound is a function which takes the info from createSimpleRound and updates the
 //  node and network states in order to begin the round
 func startRound(round protoRound, state *storage.NetworkState, errChan chan<- error) error {
-
 	// Add the round to the manager
 	r, err := state.GetRoundMap().AddRound(round.ID, round.BatchSize, round.Topology)
 	if err != nil {

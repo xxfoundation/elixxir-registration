@@ -16,10 +16,10 @@ import (
 )
 
 // Happy path
-func TestScheduler(t *testing.T) {
-	configJson, err := utils.ReadFile(testkeys.GetSchedulingConfig())
+func TestScheduler_NonRandom(t *testing.T) {
+	configJson, err := utils.ReadFile(testkeys.GetSchedulingSimple(false))
 	if err != nil {
-		t.Errorf("Failed to open %s", testkeys.GetSchedulingConfig())
+		t.Errorf("Failed to open %s", testkeys.GetSchedulingSimple(false))
 	}
 
 	var testParams Params
@@ -46,10 +46,8 @@ func TestScheduler(t *testing.T) {
 		t.Errorf("Unable to create state: %+v", err)
 	}
 
-	teamSize := 3
-
-	nodeList := make([]*id.ID, teamSize)
-	for i := 0; i < teamSize; i++ {
+	nodeList := make([]*id.ID, testParams.TeamSize)
+	for i := 0; i < int(testParams.TeamSize); i++ {
 		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
 		nodeList[i] = nid
 		nodIDBytes := make([]byte, id.ArrIDLen)
@@ -65,7 +63,7 @@ func TestScheduler(t *testing.T) {
 
 		nun := node.UpdateNotification{
 			Node:         nodeID,
-			FromActivity: 	current.NOT_STARTED,
+			FromActivity: current.NOT_STARTED,
 			ToActivity:   current.WAITING,
 		}
 
@@ -87,13 +85,13 @@ func TestScheduler(t *testing.T) {
 
 	roundInfo, err := state.GetUpdates(0)
 
+	if err != nil {
+		t.Errorf("Unexpected error retrieving round info: %v", err)
+	}
+
 	if len(roundInfo) == 0 {
 		t.Errorf("Expected round to start. " +
 			"Received no round info indicating this")
-	}
-
-	if err != nil {
-		t.Errorf("Unexpected error retrieving round info: %v", err)
 	}
 
 	receivedNodeList, err := id.NewIDListFromBytes(roundInfo[0].Topology)

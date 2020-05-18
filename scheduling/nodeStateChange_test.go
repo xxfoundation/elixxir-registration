@@ -55,61 +55,16 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 	testPool := NewWaitingPool()
 
 	testUpdate := node.UpdateNotification{
-		Node: nodeList[0],
+		Node:         nodeList[0],
 		FromActivity: current.NOT_STARTED,
 		ToActivity:   current.WAITING}
 
 	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
 
-	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
-}
-
-// Happy path for transitioning to waiting
-func TestHandleNodeStateChance_WaitingError(t *testing.T) {
-	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
-	}
-
-	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-
-	testState, err := storage.NewState(privKey)
-	if err != nil {
-		t.Errorf("Failed to create test state: %v", err)
-		t.FailNow()
-	}
-
-	nodeList := make([]*id.ID, testParams.TeamSize)
-	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
-		if err != nil {
-			t.Errorf("Couldn't add node: %v", err)
-			t.FailNow()
-		}
-	}
-
-	// Unfilled poll s.t. we can add a node to the waiting pool
-	// fixme: this test required a crafted (full) pool, which is no longer possible..
-
-	testPool := NewWaitingPool()
-	testUpdate := node.UpdateNotification{
-		Node: nodeList[0],
-		FromActivity: current.NOT_STARTED,
-		ToActivity:   current.WAITING}
-
-	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
-
-	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
-	if err != nil {
-		return
-	}
-
-	t.Errorf("Should fail when trying to insert node into a full pool")
 }
 
 // Happy path
@@ -150,14 +105,14 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 
 	for i := range nodeList {
 		testUpdate := node.UpdateNotification{
-			Node: nodeList[i],
+			Node:         nodeList[i],
 			FromActivity: current.NOT_STARTED,
 			ToActivity:   current.WAITING,
 		}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
 		}
@@ -168,13 +123,13 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 		_ = testState.GetNodeMap().GetNode(nodeList[i]).SetRound(roundState)
 
 		testUpdate := node.UpdateNotification{
-			Node: nodeList[i],
+			Node:         nodeList[i],
 			FromActivity: current.WAITING,
 			ToActivity:   current.STANDBY}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Error in standby happy path: %v", err)
 		}
@@ -224,13 +179,13 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 	// Iterate through all the nodes so that all the nodes are ready for transition
 	for i := range nodeList {
 		testUpdate := node.UpdateNotification{
-			Node: nodeList[i],
+			Node:         nodeList[i],
 			FromActivity: current.WAITING,
 			ToActivity:   current.STANDBY}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
 		}
@@ -278,14 +233,14 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 
 	for i := range nodeList {
 		testUpdate := node.UpdateNotification{
-			Node: nodeList[i],
+			Node:         nodeList[i],
 			FromActivity: current.NOT_STARTED,
 			ToActivity:   current.WAITING,
 		}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
 		}
@@ -296,13 +251,13 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 		_ = testState.GetNodeMap().GetNode(nodeList[i]).SetRound(roundState)
 
 		testUpdate := node.UpdateNotification{
-			Node: nodeList[i],
+			Node:         nodeList[i],
 			FromActivity: current.REALTIME,
 			ToActivity:   current.COMPLETED}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Expected happy path for completed: %v", err)
 		}
@@ -345,13 +300,13 @@ func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
 	// Iterate through all the nodes so that all the nodes are ready for transition
 	for i := range nodeList {
 		testUpdate := node.UpdateNotification{
-			Node: nodeList[i],
+			Node:         nodeList[i],
 			FromActivity: current.WAITING,
 			ToActivity:   current.COMPLETED}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
 		}
@@ -395,12 +350,12 @@ func TestHandleNodeStateChange_Error(t *testing.T) {
 	testPool := NewWaitingPool()
 
 	testUpdate := node.UpdateNotification{
-		Node: nodeList[0],
+		Node:         nodeList[0],
 		FromActivity: current.WAITING,
 		ToActivity:   current.ERROR}
 	testState.GetNodeMap().GetNode(testUpdate.Node).GetPollingLock().Lock()
 
-	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}

@@ -18,10 +18,8 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
 
 	latencyMap := createLatencyTable()
-	// fixme: have a less arbitrary timeout (possibly add to params?)
 	pool.CleanOfflineNodes(params.NodeCleanUpInterval * time.Minute)
 
-	// fixme: find an appropriate number for the threshold. For testability it needs to be programmable
 	nodes, err := pool.PickNRandAtThreshold(int(params.Threshold), int(params.TeamSize))
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)

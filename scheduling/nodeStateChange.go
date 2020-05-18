@@ -15,12 +15,12 @@ import (
 	"time"
 )
 
-// HandleNodeStateChange handles the node state changes.
+// HandleNodeUpdates handles the node state changes.
 //  A node in waiting is added to the pool in preparation for precomputing.
 //  A node in standby is added to a round in preparation for realtime.
 //  A node in completed waits for all other nodes in the team to transition
 //   before the round is updated.
-func HandleNodeStateChange(update node.UpdateNotification, pool *waitingPool,
+func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 	state *storage.NetworkState, realtimeDelay time.Duration) error {
 	// Check the round's error state
 	n := state.GetNodeMap().GetNode(update.Node)
@@ -37,10 +37,10 @@ func HandleNodeStateChange(update node.UpdateNotification, pool *waitingPool,
 	}
 
 	//ban the node if it is supposed to be banned
-	if update.ToStatus == node.Banned{
-		if hasRound{
+	if update.ToStatus == node.Banned {
+		if hasRound {
 			return killRound(state, r, n)
-		}else{
+		} else {
 			pool.Ban(n)
 			return nil
 		}
@@ -116,8 +116,7 @@ func HandleNodeStateChange(update node.UpdateNotification, pool *waitingPool,
 	return nil
 }
 
-
-func killRound(state *storage.NetworkState, r *round.State, n *node.State)error{
+func killRound(state *storage.NetworkState, r *round.State, n *node.State) error {
 	_ = r.Update(states.FAILED, time.Now())
 	n.ClearRound()
 	err := state.AddRoundUpdate(r.BuildRoundInfo())

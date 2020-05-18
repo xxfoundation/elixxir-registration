@@ -20,10 +20,14 @@ import (
 // Happy path
 func TestStartRound(t *testing.T) {
 	// Build params for scheduling
+	// Build scheduling params
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:            10,
+		BatchSize:           32,
+		RandomOrdering:      false,
+		Threshold:           1,
+		Secure:              false,
+		NodeCleanUpInterval: 3,
 	}
 
 	// Build network state
@@ -37,6 +41,8 @@ func TestStartRound(t *testing.T) {
 	// Build node list
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
+	// Build pool
+	testPool := NewWaitingPool()
 
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
@@ -48,13 +54,8 @@ func TestStartRound(t *testing.T) {
 		}
 		nodeState := testState.GetNodeMap().GetNode(nid)
 		nodeStateList[i] = nodeState
-
+		testPool.Add(nodeState)
 	}
-
-	// Build pool
-	// fixme: this test required a crafted (full) pool, which is no longer possible..
-
-	testPool := NewWaitingPool()
 
 	roundID := NewRoundID(0)
 
@@ -80,9 +81,12 @@ func TestStartRound(t *testing.T) {
 func TestStartRound_BadState(t *testing.T) {
 	// Build params for scheduling
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:            10,
+		BatchSize:           32,
+		RandomOrdering:      false,
+		Threshold:           1,
+		Secure:              false,
+		NodeCleanUpInterval: 3,
 	}
 
 	// Build network state
@@ -92,6 +96,9 @@ func TestStartRound_BadState(t *testing.T) {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
 	}
+
+	// Build pool
+	testPool := NewWaitingPool()
 
 	// Build node list
 	nodeList := make([]*id.ID, testParams.TeamSize)
@@ -106,13 +113,8 @@ func TestStartRound_BadState(t *testing.T) {
 		}
 		nodeState := testState.GetNodeMap().GetNode(nid)
 		nodeStateList[i] = nodeState
-
+		testPool.Add(nodeState)
 	}
-
-	// Build pool
-	// fixme: this test required a crafted (full) pool, which is no longer possible..
-
-	testPool := NewWaitingPool()
 
 	roundID := NewRoundID(0)
 
@@ -141,10 +143,14 @@ func TestStartRound_BadState(t *testing.T) {
 // Error path
 func TestStartRound_BadNode(t *testing.T) {
 	// Build params for scheduling
+	// Build params for scheduling
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:            10,
+		BatchSize:           32,
+		RandomOrdering:      false,
+		Threshold:           1,
+		Secure:              false,
+		NodeCleanUpInterval: 3,
 	}
 
 	// Build network state
@@ -154,6 +160,9 @@ func TestStartRound_BadNode(t *testing.T) {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
 	}
+
+	// Build pool
+	testPool := NewWaitingPool()
 
 	// Build node list
 	nodeList := make([]*id.ID, testParams.TeamSize)
@@ -168,13 +177,8 @@ func TestStartRound_BadNode(t *testing.T) {
 		}
 		nodeState := testState.GetNodeMap().GetNode(nid)
 		nodeStateList[i] = nodeState
-
+		testPool.Add(nodeState)
 	}
-
-	// Build pool
-	// fixme: this test required a crafted (full) pool, which is no longer possible..
-
-	testPool := NewWaitingPool()
 
 	roundID := NewRoundID(0)
 	badState := round.NewState_Testing(roundID.Get(), states.COMPLETED, t)

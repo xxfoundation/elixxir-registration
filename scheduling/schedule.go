@@ -7,6 +7,7 @@ package scheduling
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/primitives/id"
@@ -21,7 +22,7 @@ import (
 const newRoundChanLen = 100
 
 type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
-state *storage.NetworkState) (protoRound, error)
+	state *storage.NetworkState) (protoRound, error)
 
 // Scheduler constructs the teaming parameters and sets up the scheduling
 func Scheduler(serialParam []byte, state *storage.NetworkState) error {
@@ -56,9 +57,9 @@ func scheduler(params Params, state *storage.NetworkState) error {
 	//select the correct round creator
 	var createRound roundCreator
 
-	if params.Secure{
+	if params.Secure {
 		createRound = createSecureRound
-	}else{
+	} else {
 		createRound = createSimpleRound
 	}
 
@@ -91,15 +92,16 @@ func scheduler(params Params, state *storage.NetworkState) error {
 			return err
 		case update = <-state.GetNodeUpdateChannel():
 		}
-
+		fmt.Println("handling updates")
 		//handle the node's state change
-		err := HandleNodeStateChange(update, pool, state, rtDelay)
+		err := HandleNodeUpdates(update, pool, state, rtDelay)
 		if err != nil {
 			return err
 		}
 
 		//create a new round if the pool is full
 		if pool.Len() == int(params.TeamSize) {
+			fmt.Println("creating round")
 			newRound, err := createRound(params, pool, roundID.Next(), state)
 			if err != nil {
 				return err

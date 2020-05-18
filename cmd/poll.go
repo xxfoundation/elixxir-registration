@@ -66,7 +66,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		return
 	}
 
-
 	// Commit updates reported by the node if node involved in the current round
 	jww.DEBUG.Printf("Updating state for node %s: %+v",
 		auth.Sender.GetId(), msg)

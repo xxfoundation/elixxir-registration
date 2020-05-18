@@ -24,7 +24,7 @@ func TestNodeState_Update_Same(t *testing.T) {
 	ns := State{
 		activity: current.WAITING,
 		lastPoll: time.Now(),
-		status:Active,
+		status:   Active,
 	}
 
 	time.Sleep(10 * time.Millisecond)
@@ -48,8 +48,8 @@ func TestNodeState_Update_Same(t *testing.T) {
 
 	// Returns default updateNotification object on failed update
 	if !reflect.DeepEqual(old, UpdateNotification{}) {
-		t.Errorf("Node state returned the wrong old state." +
-			"\n\tExpected: %v" +
+		t.Errorf("Node state returned the wrong old state."+
+			"\n\tExpected: %v"+
 			"\n\tReceived: %v", current.NOT_STARTED, old.ToActivity)
 	}
 

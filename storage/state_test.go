@@ -412,7 +412,7 @@ func TestNetworkState_GetNodeMap(t *testing.T) {
 func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 	// Test values
 	testNun := node.UpdateNotification{
-		Node: id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
+		Node:         id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
 		FromActivity: current.NOT_STARTED,
 		ToActivity:   current.WAITING,
 	}
@@ -450,7 +450,7 @@ func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
 	// Test values
 	testNun := node.UpdateNotification{
-		Node: id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
+		Node:         id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
 		FromActivity: current.NOT_STARTED,
 		ToActivity:   current.WAITING,
 	}

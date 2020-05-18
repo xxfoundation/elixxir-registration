@@ -14,5 +14,3 @@ type UpdateNotification struct {
 	FromActivity current.Activity
 	ToActivity   current.Activity
 }
-
-

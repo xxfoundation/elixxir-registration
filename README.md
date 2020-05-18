@@ -72,6 +72,30 @@ groups:
 schedulingAlgorithm: "single"
 
 # Path to file with config for scheduling algorithm within the user directory 
-schedulingConfigPath: "schedulingConfig.json"
+schedulingConfigPath: "Scheduling_Simple_NonRandom.json"
 ```
 
+### SchedulingConfig template:
+```json
+{
+  "TeamSize": 4,
+  "BatchSize": 32,
+  "RandomOrdering": false,
+  "MinimumDelay": 60,
+  "RealtimeDelay": 120,
+  "Threshold":     10,
+  "NodeCleanUpInterval": 3,  
+  "Secure": 		     true
+
+}
+```
+
+### RegCodes Template
+```json
+[{"RegCode": "qpol", "Order": "0"},
+{"RegCode": "yiiq", "Order": "1"},
+{"RegCode": "vydz", "Order": "2"},
+{"RegCode": "gwxs", "Order": "3"},
+{"RegCode": "nahv", "Order": "4"},
+{"RegCode": "plmd", "Order": "5"}
+```
