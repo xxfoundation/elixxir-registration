@@ -55,6 +55,8 @@ keyPath: ""
 # Path to the permissioning server certificate file
 certPath: ""
 
+# Time interval (in minutes) in which the database is 
+# checked for banned nodes
 NodeTrackerInterval: "3"
 
 # E2E/CMIX Primes
