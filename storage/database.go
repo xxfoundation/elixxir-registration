@@ -216,9 +216,9 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 	if (address == "" || port == "") || err != nil {
 
 		if err != nil {
-			jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
+			jww.WARN.Printf("Unable to initialize database backend: %+v", err)
 		} else {
-			jww.ERROR.Printf("Database backend connection information not provided")
+			jww.WARN.Printf("Database backend connection information not provided")
 		}
 
 		defer jww.INFO.Println("Map backend initialized successfully!")
