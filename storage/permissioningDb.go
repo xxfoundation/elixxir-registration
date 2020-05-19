@@ -10,6 +10,7 @@ package storage
 
 import (
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/registration/storage/node"
 	"time"
 )
 
@@ -48,6 +49,7 @@ func (m *DatabaseImpl) RegisterNode(id *id.ID, code, serverAddr, serverCert,
 		GatewayAddress:     gatewayAddress,
 		NodeCertificate:    serverCert,
 		GatewayCertificate: gatewayCert,
+		Status:             uint8(node.Active),
 		DateRegistered:     time.Now(),
 	}
 	return m.db.Model(&newNode).Update(&newNode).Error
@@ -58,4 +60,11 @@ func (m *DatabaseImpl) GetNode(code string) (*Node, error) {
 	newNode := &Node{}
 	err := m.db.First(&newNode, "code = ?", code).Error
 	return newNode, err
+}
+
+// Return all nodes in storage with the given Status
+func (m *DatabaseImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
+	var nodes []*Node
+	err := m.db.Where("status = ?", status).Find(&nodes).Error
+	return nodes, err
 }

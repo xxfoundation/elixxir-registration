@@ -83,7 +83,7 @@ func TestEmptyDataBase(t *testing.T) {
 	}
 
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0:6969")
+		"regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -109,7 +109,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	}
 	//impl.nodeCompleted = make(chan string, 1)
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0:6969")
+		"regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -146,7 +146,7 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 
 	// Initialize the database
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0:6969")
+		"regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -175,7 +175,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	// Initialize the database
 	var err error
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0:6969")
+		"regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	} //Insert a sample regCode
@@ -218,7 +218,7 @@ func TestDoubleRegistration(t *testing.T) {
 	// Initialize the database
 	var err error
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0:6969")
+		"regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -264,7 +264,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	// Initialize the database
 	var err error
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0:6969")
+		"regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -388,7 +388,7 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 
 	// Initialize the database
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0:6969")
+		"regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}

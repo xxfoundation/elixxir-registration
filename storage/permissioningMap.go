@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/registration/storage/node"
 )
 
 // Insert Application object along with associated unregistered Node
@@ -91,6 +92,7 @@ func (m *MapImpl) RegisterNode(id *id.ID, code, serverCert, serverAddress,
 		info.GatewayCertificate = gatewayCert
 		info.GatewayAddress = gatewayAddress
 		info.NodeCertificate = serverCert
+		info.Status = uint8(node.Active)
 		m.mut.Unlock()
 		return nil
 	}
@@ -109,4 +111,15 @@ func (m *MapImpl) GetNode(code string) (*Node, error) {
 	}
 	m.mut.Unlock()
 	return info, nil
+}
+
+// Return all nodes in storage with the given Status
+func (m *MapImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
+	nodes := make([]*Node, 0)
+	for _, v := range m.nodes {
+		if node.Status(v.Status) == status {
+			nodes = append(nodes, v)
+		}
+	}
+	return nodes, nil
 }

@@ -14,6 +14,30 @@ import (
 	"time"
 )
 
+type Status uint8
+
+const (
+	Unregistered = Status(iota) // Default state, equivalent to NULL
+	Active                      // Operational, active node which will be considered for team
+	Inactive                    // Inactive for a certain amount of time, not considered for teams
+	Banned                      // Stop any teams and ban from teams until manually overridden
+)
+
+func (s Status) String() string {
+	switch s {
+	case Unregistered:
+		return "Unregistered"
+	case Active:
+		return "Active"
+	case Inactive:
+		return "Inactive"
+	case Banned:
+		return "Banned"
+	default:
+		return "Unknown"
+	}
+}
+
 // Tracks state of an individual Node in the network
 type StateMap struct {
 	mux sync.RWMutex

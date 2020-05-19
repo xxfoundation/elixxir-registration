@@ -46,6 +46,8 @@ type nodeRegistration interface {
 		gatewayAddress, gatewayCert string) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*Node, error)
+	// Return all nodes in storage with the given Status
+	GetNodesByStatus(status node.Status) ([]*Node, error)
 	// Insert Application object along with associated unregistered Node
 	InsertApplication(application Application, unregisteredNode Node) error
 	// Insert NodeMetric object
@@ -137,7 +139,7 @@ type Node struct {
 	// Date/time that the node was registered
 	DateRegistered time.Time
 	// Node's network status
-	Status uint8
+	Status uint8 `gorm:"NOT NULL"`
 
 	// Unique ID of the Node's Application
 	ApplicationId uint64 `gorm:"UNIQUE_INDEX;NOT NULL;type:bigint REFERENCES applications(id)"`
@@ -191,11 +193,12 @@ type RoundMetric struct {
 }
 
 // Initialize the Database interface with database backend
-func NewDatabase(username, password, database, address string) (Storage, error) {
+func NewDatabase(username, password, database, address, port string) (Storage,
+	error) {
 	// Create the database connection
 	connectString := fmt.Sprintf(
-		"host=%s port=5432 user=%s dbname=%s sslmode=disable",
-		address, username, database)
+		"host=%s port=%s user=%s dbname=%s sslmode=disable",
+		address, port, username, database)
 	// Handle empty database password
 	if len(password) > 0 {
 		connectString += fmt.Sprintf(" password=%s", password)
