@@ -10,8 +10,6 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
 	github.com/jinzhu/gorm v1.9.12
 	github.com/jinzhu/now v1.1.1 // indirect
-	github.com/json-iterator/go v1.1.9 // indirect
-	github.com/kr/pretty v0.2.0 // indirect
 	github.com/lib/pq v1.5.2 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/mitchellh/go-homedir v1.1.0
