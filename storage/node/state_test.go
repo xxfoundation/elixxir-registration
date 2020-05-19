@@ -454,3 +454,17 @@ func TestState_GetStatus(t *testing.T) {
 			"\n\tReceived: %v", ourStatus, ns.GetStatus())
 	}
 }
+
+//
+func TestState_Ban(t *testing.T) {
+	testID := id.NewIdFromUInt(50, id.Node, t)
+	ns := State{
+		id: testID,
+	}
+
+	// Test
+	testUpdate, err := ns.Ban()
+	if err != nil {
+		t.Errorf("Unexpected error in happy path: ")
+	}
+}

@@ -195,7 +195,7 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 }
 
 // Happy path
-func TestHandleNodeStateChange_Completed(t *testing.T) {
+func TestHandleNodeUpdates_Completed(t *testing.T) {
 	testParams := Params{
 		TeamSize:       5,
 		BatchSize:      32,
@@ -266,7 +266,7 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 }
 
 // Error path: attempt to handle a node transition when nodes never had rounds
-func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
+func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 	testParams := Params{
 		TeamSize:       5,
 		BatchSize:      32,
@@ -314,7 +314,7 @@ func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
 	}
 }
 
-func TestHandleNodeStateChange_Error(t *testing.T) {
+func TestHandleNodeUpdates_Error(t *testing.T) {
 	testParams := Params{
 		TeamSize:       5,
 		BatchSize:      32,
@@ -359,4 +359,67 @@ func TestHandleNodeStateChange_Error(t *testing.T) {
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
+}
+
+// Happy path: Test that a node with a banned update status are removed from the pool
+func TestHandleNodeUpdates_BannedNode(t *testing.T) {
+	testParams := Params{
+		TeamSize:       5,
+		BatchSize:      32,
+		RandomOrdering: false,
+	}
+
+	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+
+	testState, err := storage.NewState(privKey)
+	if err != nil {
+		t.Errorf("Failed to create test state: %v", err)
+		t.FailNow()
+	}
+
+	testPool := NewWaitingPool()
+
+	nodeList := make([]*id.ID, testParams.TeamSize)
+	nodeStateList := make([]*node.State, testParams.TeamSize)
+	for i := uint64(0); i < uint64(len(nodeList)); i++ {
+		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		if err != nil {
+			t.Errorf("Couldn't add node: %v", err)
+			t.FailNow()
+		}
+
+		// Add node to pool
+		ns := testState.GetNodeMap().GetNode(nodeList[i])
+		nodeStateList = append(nodeStateList, ns)
+		testPool.Add(ns)
+	}
+
+	// Test that a node with no round gets removed from the pool
+	testUpdate := node.UpdateNotification{
+		Node:     nodeList[0],
+		ToStatus: node.Banned,
+	}
+
+
+
+	// Ban the first node in the state map
+	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
+	if err != nil {
+		t.Errorf("Happy path received error: %v", err)
+	}
+
+
+	if testPool.Len() == int(testParams.TeamSize) {
+		t.Errorf("Node expected to be banned, decreasing pool size." +
+			"\n\tExpected size: %v" +
+			"\n\tReceived size: %v", testParams.TeamSize-1, testPool.Len())
+	}
+
+	r := round.NewState_Testing(42, 0, t)
+
+
+	err = nodeStateList[1].SetRound(r)
+
 }
