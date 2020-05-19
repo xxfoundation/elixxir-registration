@@ -55,6 +55,8 @@ keyPath: ""
 # Path to the permissioning server certificate file
 certPath: ""
 
+NodeTrackerInterval: "3"
+
 # E2E/CMIX Primes
 groups:
   cmix:
