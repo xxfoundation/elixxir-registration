@@ -144,6 +144,17 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
+		// Run the independent node tracker in own go thread
+		go func() {
+			for {
+				// Keep track of banned nodes
+				err = BannedNodeTracker(impl.State)
+				if err != nil {
+					jww.FATAL.Panicf("BannedNodeTracker failed: %v", err)
+				}
+			}
+		}()
+
 		jww.INFO.Printf("Waiting for for %v nodes to register so "+
 			"rounds can start", RegParams.minimumNodes)
 

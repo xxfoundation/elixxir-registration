@@ -318,6 +318,14 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 }
 
 func TestPoll_BannedNode(t *testing.T) {
+	//Create database
+	var err error
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0", "-1")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
+
 	testID := id.NewIdFromUInt(0, id.Node, t)
 	testString := "test"
 	// Start registration server

@@ -123,17 +123,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		beginScheduling: make(chan struct{}),
 	}
 
-	// Run the independent node tracker in own go thread
-	go func() {
-		for {
-			// Keep track of banned nodes
-			err = BannedNodeTracker(regImpl.State)
-			if err != nil {
-				jww.FATAL.Panicf("BannedNodeTracker failed: %v", err)
-			}
-		}
-	}()
-
 	// Create timer and channel to be used by routine that clears the number of
 	// registrations every time the ticker activates
 	done := make(chan bool)
@@ -227,7 +216,7 @@ func BannedNodeTracker(state *storage.NetworkState) error {
 		ns := state.GetNodeMap().GetNode(nodeId)
 		var nun node.UpdateNotification
 		// If the node is already banned do not attempt to re-ban
-		if ns.IsBanned() {
+		if ns == nil || ns.IsBanned() {
 			continue
 		}
 
