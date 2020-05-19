@@ -85,7 +85,7 @@ var rootCmd = &cobra.Command{
 		rawAddr := viper.GetString("dbAddress")
 
 		var addr, port string
-		if rawAddr!=""{
+		if rawAddr != "" {
 			addr, port, err = net.SplitHostPort(rawAddr)
 			if err != nil {
 				jww.FATAL.Panicf("Unable to get database port: %+v", err)

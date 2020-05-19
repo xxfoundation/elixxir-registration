@@ -199,7 +199,7 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 	var err error
 	var db *gorm.DB
 	//connect to the database if the correct information is provided
-	if address!="" && port !=""{
+	if address != "" && port != "" {
 		// Create the database connection
 		connectString := fmt.Sprintf(
 			"host=%s port=%s user=%s dbname=%s sslmode=disable",
@@ -213,11 +213,11 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 
 	// Return the map-backend interface
 	// in the event there is a database error or information is not provided
-	if (address=="" || port =="") || err!=nil {
+	if (address == "" || port == "") || err != nil {
 
-		if err!=nil{
+		if err != nil {
 			jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
-		}else{
+		} else {
 			jww.ERROR.Printf("Database backend connection information not provided")
 		}
 
