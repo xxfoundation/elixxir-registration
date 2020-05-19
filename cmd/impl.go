@@ -225,7 +225,6 @@ func BannedNodeTracker(state *storage.NetworkState) error {
 		}
 		// Get the node from the nodeMap
 		ns := state.GetNodeMap().GetNode(nodeId)
-
 		var nun node.UpdateNotification
 		// If the node is already banned do not attempt to re-ban
 		if ns.IsBanned() {
