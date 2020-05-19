@@ -195,20 +195,34 @@ type RoundMetric struct {
 // Initialize the Database interface with database backend
 func NewDatabase(username, password, database, address, port string) (Storage,
 	error) {
-	// Create the database connection
-	connectString := fmt.Sprintf(
-		"host=%s port=%s user=%s dbname=%s sslmode=disable",
-		address, port, username, database)
-	// Handle empty database password
-	if len(password) > 0 {
-		connectString += fmt.Sprintf(" password=%s", password)
+
+	var err error
+	var db *gorm.DB
+	//connect to the database if the correct information is provided
+	if address != "" && port != "" {
+		// Create the database connection
+		connectString := fmt.Sprintf(
+			"host=%s port=%s user=%s dbname=%s sslmode=disable",
+			address, port, username, database)
+		// Handle empty database password
+		if len(password) > 0 {
+			connectString += fmt.Sprintf(" password=%s", password)
+		}
+		db, err = gorm.Open("postgres", connectString)
 	}
-	db, err := gorm.Open("postgres", connectString)
-	if err != nil {
-		// Return the map-backend interface
-		// in the event there is a database error
-		jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
-		jww.INFO.Println("Map backend initialized successfully!")
+
+	// Return the map-backend interface
+	// in the event there is a database error or information is not provided
+	if (address == "" || port == "") || err != nil {
+
+		if err != nil {
+			jww.ERROR.Printf("Unable to initialize database backend: %+v", err)
+		} else {
+			jww.ERROR.Printf("Database backend connection information not provided")
+		}
+
+		defer jww.INFO.Println("Map backend initialized successfully!")
+
 		return Storage{
 			clientRegistration: clientRegistration(&MapImpl{
 				clients: make(map[string]*RegistrationCode),

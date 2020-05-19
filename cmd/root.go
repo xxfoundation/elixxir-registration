@@ -82,10 +82,16 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Set up database connection
-		addr, port, err := net.SplitHostPort(viper.GetString("dbAddress"))
-		if err != nil {
-			jww.FATAL.Panicf("Unable to get database port: %+v", err)
+		rawAddr := viper.GetString("dbAddress")
+
+		var addr, port string
+		if rawAddr != "" {
+			addr, port, err = net.SplitHostPort(rawAddr)
+			if err != nil {
+				jww.FATAL.Panicf("Unable to get database port: %+v", err)
+			}
 		}
+
 		storage.PermissioningDb, err = storage.NewDatabase(
 			viper.GetString("dbUsername"),
 			viper.GetString("dbPassword"),
