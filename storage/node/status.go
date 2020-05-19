@@ -5,6 +5,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 package node
 
+// Contains the enumeration of a node.State's status field.
+//This differs from state as it is not driven by the node's
+//internal activities, but rather the status as relates to
+// the network.
+
 type Status uint8
 
 const (
@@ -14,6 +19,7 @@ const (
 	Banned                      // Stop any teams and ban from teams until manually overridden
 )
 
+// Stringer for the status type
 func (s Status) String() string {
 	switch s {
 	case Unregistered:

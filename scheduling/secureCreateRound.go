@@ -13,7 +13,6 @@ import (
 )
 
 // createSimpleRound builds the team for a round of a pool and round id
-
 func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
 

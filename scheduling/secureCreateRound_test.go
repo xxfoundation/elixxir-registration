@@ -157,8 +157,7 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 
 }
 
-//todo: figure out how to test the efficient teaming
-
+// Test that a team of 4 nodes is assembled in an efficient order
 func TestCreateRound_EfficientTeam(t *testing.T) {
 	testpool := NewWaitingPool()
 

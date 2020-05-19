@@ -246,6 +246,7 @@ func (n *State) SetRound(r *round.State) error {
 	return nil
 }
 
+// Handles the node update in the case of a node with an inactive state
 func (n *State) updateInactive(newActivity current.Activity) (bool, UpdateNotification, error) {
 	switch newActivity {
 	case current.WAITING:
@@ -265,7 +266,7 @@ func (n *State) updateInactive(newActivity current.Activity) (bool, UpdateNotifi
 	default:
 		return false, UpdateNotification{}, errors.Errorf("Report "+
 			"for state %s rejected due to Node being inactive, Node must "+
-			"activate ny polling warning state", newActivity)
+			"activate by polling warning state", newActivity)
 	}
 }
 
