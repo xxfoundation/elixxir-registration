@@ -40,9 +40,8 @@ func TestCreateRound_NonRandom(t *testing.T) {
 	// Build node list
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
-	// Build pool
-	// fixme: this test required a crafted (full) pool, which is no longer possible..
 
+	// Build pool
 	testPool := NewWaitingPool()
 
 	for i := 0; i < int(testParams.TeamSize); i++ {
@@ -88,6 +87,68 @@ func TestCreateRound_NonRandom(t *testing.T) {
 
 }
 
+// Happy path
+func TestCreateRound_Random(t *testing.T) {
+	// Build params for scheduling
+	testParams := Params{
+		TeamSize:            5,
+		BatchSize:           32,
+		RandomOrdering:      true,
+		Threshold:           0,
+		NodeCleanUpInterval: 3,
+		Secure:              false,
+	}
+
+	// Build network state
+	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	testState, err := storage.NewState(privKey)
+	if err != nil {
+		t.Errorf("Failed to create test state: %v", err)
+		t.FailNow()
+	}
+
+	// Build node list
+	nodeList := make([]*id.ID, testParams.TeamSize)
+	nodeStateList := make([]*node.State, testParams.TeamSize)
+
+	// Build pool
+	testPool := NewWaitingPool()
+
+	for i := 0; i < int(testParams.TeamSize); i++ {
+		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
+		nodeList[i] = nid
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		if err != nil {
+			t.Errorf("Couldn't add node: %v", err)
+			t.FailNow()
+		}
+		nodeState := testState.GetNodeMap().GetNode(nid)
+		nodeStateList[i] = nodeState
+		testPool.Add(nodeState)
+	}
+
+	roundID := NewRoundID(0)
+
+	testProtoRound, err := createSimpleRound(testParams, testPool, roundID.Get(), testState)
+	if err != nil {
+		t.Errorf("Happy path of createSimpleRound failed: %v", err)
+	}
+
+	if testProtoRound.ID != roundID.Get() {
+		t.Errorf("ProtoRound's id returned unexpected value!"+
+			"\n\tExpected: %d"+
+			"\n\tReceived: %d", roundID.Get(), testProtoRound.ID)
+	}
+
+	if testParams.BatchSize != testProtoRound.BatchSize {
+		t.Errorf("ProtoRound's batchsize returned unexpected value!"+
+			"\n\tExpected: %v"+
+			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.BatchSize)
+
+	}
+
+}
+
 // Error path: Provide a node ordering that is invalid
 func TestCreateRound_BadOrdering(t *testing.T) {
 	// Build scheduling params
@@ -118,8 +179,6 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	}
 
 	// Build pool
-	// fixme: this test required a crafted (full) pool, which is no longer possible..
-
 	testPool := NewWaitingPool()
 
 	roundID := NewRoundID(0)

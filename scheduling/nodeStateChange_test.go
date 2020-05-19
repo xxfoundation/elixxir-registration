@@ -168,8 +168,6 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 	//roundID := NewRoundID(0)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	// fixme: this test required a crafted (full) pool, which is no longer possible..
-
 	testPool := NewWaitingPool()
 
 	// Explicitly don't give node a round to reach an error state
@@ -293,7 +291,6 @@ func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 
 	//roundID := NewRoundID(0)
 
-	// fixme: this test required a crafted (full) pool, which is no longer possible..
 	// Unfilled poll s.t. we can add a node to the waiting pool
 	testPool := NewWaitingPool()
 
@@ -379,6 +376,7 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 
 	testPool := NewWaitingPool()
 
+	// Build mock nodes and place in map
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
@@ -401,8 +399,6 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 		ToStatus: node.Banned,
 	}
 
-
-
 	// Ban the first node in the state map
 	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
 	err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
@@ -410,16 +406,40 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 		t.Errorf("Happy path received error: %v", err)
 	}
 
-
 	if testPool.Len() == int(testParams.TeamSize) {
-		t.Errorf("Node expected to be banned, decreasing pool size." +
-			"\n\tExpected size: %v" +
+		t.Errorf("Node expected to be banned, decreasing pool size."+
+			"\n\tExpected size: %v"+
 			"\n\tReceived size: %v", testParams.TeamSize-1, testPool.Len())
 	}
 
 	r := round.NewState_Testing(42, 0, t)
 
+	// Get a node and set the round of the node
+	ns := testState.GetNodeMap().GetNode(nodeList[1])
+	err = ns.SetRound(r)
+	if err != nil {
+		t.Errorf("Unable to set round for mock node: %v", err)
+	}
 
-	err = nodeStateList[1].SetRound(r)
+	// Craft a node update
+	testUpdate = node.UpdateNotification{
+		Node:     nodeList[1],
+		ToStatus: node.Banned,
+	}
+
+	// Ban the the second node in the state map
+	testState.GetNodeMap().GetNode(nodeList[1]).GetPollingLock().Lock()
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
+	if err != nil {
+		t.Errorf("Happy path received error: %v", err)
+	}
+
+	// Test that a node with a round gets has it's round unset
+	ok, receivedRound := ns.GetCurrentRound()
+	if ok {
+		t.Errorf("Did not expect node with round after being banned."+
+			"\n\tExpected nil round."+
+			"\n\tReceived: %v", receivedRound)
+	}
 
 }

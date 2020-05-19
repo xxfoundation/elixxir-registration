@@ -462,9 +462,39 @@ func TestState_Ban(t *testing.T) {
 		id: testID,
 	}
 
-	// Test
-	testUpdate, err := ns.Ban()
+	// Test that a node gets updated after banning
+	_, err := ns.Ban()
 	if err != nil {
 		t.Errorf("Unexpected error in happy path: ")
+	}
+
+	if ns.status != Banned {
+		t.Errorf("Node status not updated after banning."+
+			"\n\tExpected: %v"+
+			"\n\tReceived: %v", Banned, ns.status)
+	}
+
+	// Attempt to ban an already banned node
+	_, err = ns.Ban()
+	if err == nil {
+		t.Errorf("Should not be able to call ban on a banned node")
+	}
+
+}
+
+func TestState_IsBanned(t *testing.T) {
+	testID := id.NewIdFromUInt(50, id.Node, t)
+	ns := State{
+		id: testID,
+	}
+
+	// Test that a node gets updated after banning
+	_, err := ns.Ban()
+	if err != nil {
+		t.Errorf("Unexpected error in happy path: ")
+	}
+
+	if !ns.IsBanned() {
+		t.Errorf("IsBanned should return true after node has been banned")
 	}
 }

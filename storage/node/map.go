@@ -44,6 +44,7 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering string) error {
 			ordering:     ordering,
 			id:           id,
 			status:       Active,
+			mux:          sync.RWMutex{},
 		}
 
 	return nil

@@ -62,20 +62,25 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 	case current.PRECOMPUTING:
 		// Do nothing
 	case current.STANDBY:
-
+		// Check that node in standby actually does have a round
 		if !hasRound {
 			return errors.Errorf("Node %s without round should "+
 				"not be in %s state", update.Node, states.PRECOMPUTING)
 		}
 
+		// Check if the round is ready for all the nodes
+		// in order to transition
 		stateComplete := r.NodeIsReadyForTransition()
 		if stateComplete {
+			// Update the round for realtime transition
 			err := r.Update(states.REALTIME, time.Now().Add(realtimeDelay))
 			if err != nil {
 				return errors.WithMessagef(err,
 					"Could not move round %v from %s to %s",
 					r.GetRoundID(), states.PRECOMPUTING, states.REALTIME)
 			}
+
+			// Build the round info and add to the networkState
 			err = state.AddRoundUpdate(r.BuildRoundInfo())
 			if err != nil {
 				return errors.WithMessagef(err, "Could not issue "+
@@ -86,22 +91,28 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 	case current.REALTIME:
 		// Do nothing
 	case current.COMPLETED:
-
+		// Check that node in standby actually does have a round
 		if !hasRound {
 			return errors.Errorf("Node %s without round should "+
 				"not be in %s state", update.Node, states.COMPLETED)
 		}
 
+		// Clear the round
 		n.ClearRound()
 
+		// Check if the round is ready for all the nodes
+		// in order to transition
 		stateComplete := r.NodeIsReadyForTransition()
 		if stateComplete {
+			// Update the round for realtime transition
 			err := r.Update(states.COMPLETED, time.Now())
 			if err != nil {
 				return errors.WithMessagef(err,
 					"Could not move round %v from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
+
+			// Build the round info and add to the networkState
 			err = state.AddRoundUpdate(r.BuildRoundInfo())
 			if err != nil {
 				return errors.WithMessagef(err, "Could not issue "+
@@ -110,15 +121,19 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			}
 		}
 	case current.ERROR:
+		// If in an error state, kill the round
 		return killRound(state, r, n)
 	}
 
 	return nil
 }
 
+// killRound sets the round to failed and clears the node's round
 func killRound(state *storage.NetworkState, r *round.State, n *node.State) error {
 	_ = r.Update(states.FAILED, time.Now())
 	n.ClearRound()
+
+	// Build the round info and update the network state
 	err := state.AddRoundUpdate(r.BuildRoundInfo())
 	if err != nil {
 		return errors.WithMessagef(err, "Could not issue "+

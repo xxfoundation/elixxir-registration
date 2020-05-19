@@ -38,6 +38,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	nodeStateList := make([]*node.State, params.TeamSize)
 	orderedNodeList := make([]*id.ID, params.TeamSize)
 
+	// In the case of random ordering
 	if params.RandomOrdering {
 
 		// Input an incrementing array of ints
@@ -57,6 +58,8 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 			orderedNodeList[randomIndex[i]] = nid.GetID()
 		}
 	} else {
+		// Otherwise go in the order derived
+		// from the pool picking and the node's ordering
 		for i, nid := range nodes {
 			n := nodeMap.GetNode(nid.GetID())
 			nodeStateList[i] = n
@@ -71,6 +74,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 		}
 	}
 
+	// Construct the protoround object
 	newRound.Topology = connect.NewCircuit(orderedNodeList)
 	newRound.ID = roundID
 	newRound.BatchSize = params.BatchSize

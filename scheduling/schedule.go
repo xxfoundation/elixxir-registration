@@ -7,7 +7,6 @@ package scheduling
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/primitives/id"
@@ -88,11 +87,13 @@ func scheduler(params Params, state *storage.NetworkState) error {
 	for true {
 		var update node.UpdateNotification
 		select {
+		// If receive an error over a channel, return an error
 		case err := <-errorChan:
 			return err
+		// when we get a node update, move base the select statement
 		case update = <-state.GetNodeUpdateChannel():
 		}
-		fmt.Println("handling updates")
+
 		//handle the node's state change
 		err := HandleNodeUpdates(update, pool, state, rtDelay)
 		if err != nil {
@@ -101,7 +102,6 @@ func scheduler(params Params, state *storage.NetworkState) error {
 
 		//create a new round if the pool is full
 		if pool.Len() == int(params.TeamSize) {
-			fmt.Println("creating round")
 			newRound, err := createRound(params, pool, roundID.Next(), state)
 			if err != nil {
 				return err

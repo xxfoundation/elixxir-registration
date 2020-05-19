@@ -47,7 +47,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 
 	// Check if the node has been deemed out of network
 	if n.IsBanned() {
-		// TODO: Have this error gone through with a fine tooth comb. Consider placing in prims
 		return nil, errors.Errorf("Node %s has been banned from the network", nid)
 	}
 

@@ -17,9 +17,13 @@ import (
 func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
 
+	// Create a latencyTable (todo: have this table be based on better data)
 	latencyMap := createLatencyTable()
+
+	// Clean offline nodes from the pool
 	pool.CleanOfflineNodes(params.NodeCleanUpInterval * time.Minute)
 
+	// Pick nodes from the pool
 	nodes, err := pool.PickNRandAtThreshold(int(params.Threshold), int(params.TeamSize))
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)
@@ -27,6 +31,7 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 
 	jww.TRACE.Printf("Beginning permutations")
 	start := time.Now()
+
 	// Make all permutations of nodes
 	permutations := Permute(nodes)
 
