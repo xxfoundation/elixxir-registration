@@ -57,7 +57,7 @@ certPath: ""
 
 # Time interval (in minutes) in which the database is 
 # checked for banned nodes
-NodeTrackerInterval: "3"
+BanTrackerInterval: "3"
 
 # E2E/CMIX Primes
 groups:

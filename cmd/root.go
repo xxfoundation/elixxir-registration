@@ -146,7 +146,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Determine how long between polling for banned nodes
-		interval := viper.GetInt("NodeTrackerInterval")
+		interval := viper.GetInt("BanTrackerInterval")
 		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
 
 		// Run the independent node tracker in own go thread
