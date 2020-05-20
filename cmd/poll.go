@@ -45,6 +45,9 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		return
 	}
 
+	// Increment the Node's poll count
+	n.IncrementNumPolls()
+
 	// Check if the node has been deemed out of network
 	if n.IsBanned() {
 		return nil, errors.Errorf("Node %s has been banned from the network", nid)

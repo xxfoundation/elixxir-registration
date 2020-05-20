@@ -55,6 +55,9 @@ keyPath: ""
 # Path to the permissioning server certificate file
 certPath: ""
 
+# Time interval (in seconds) between committing Node statistics to storage
+nodeMetricInterval: 180
+
 # E2E/CMIX Primes
 groups:
   cmix:
@@ -97,5 +100,5 @@ schedulingConfigPath: "Scheduling_Simple_NonRandom.json"
 {"RegCode": "vydz", "Order": "2"},
 {"RegCode": "gwxs", "Order": "3"},
 {"RegCode": "nahv", "Order": "4"},
-{"RegCode": "plmd", "Order": "5"}
+{"RegCode": "plmd", "Order": "5"}]
 ```

@@ -34,6 +34,9 @@ type State struct {
 	// Timestamp of the last time this Node polled
 	lastPoll time.Time
 
+	// Number of polls made by the node during the current monitoring period
+	numPolls uint64
+
 	// Order string to be used in team configuration
 	ordering string
 
@@ -48,9 +51,24 @@ type State struct {
 	// released in the scheduling algorithm which blocks all future polls until
 	// processing completes
 	//FIXME: it is possible that polling lock and registration lock
-	// do the same job and could conflict. reconsiderations of this logic
-	// may be fruitfull
+	// do the same job and could conflict. reconsideration of this logic
+	// may be fruitful
 	pollingLock sync.Mutex
+}
+
+// Getter for numPolls
+func (n *State) NumPolls() uint64 {
+	return n.numPolls
+}
+
+// Increment function for numPolls
+func (n *State) IncrementNumPolls() {
+	n.numPolls += 1
+}
+
+// Reset function for numPolls
+func (n *State) ResetNumPolls() {
+	n.numPolls = 0
 }
 
 // sets the Node to banned and then returns an update notification for signaling

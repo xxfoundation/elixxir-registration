@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -157,8 +158,21 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
 		}()
 
-		// Block forever to prevent the program ending
-		select {}
+		// Determine how long between storing Node metrics
+		nodeMetricInterval := time.Duration(
+			viper.GetInt64("nodeMetricInterval")) * time.Second
+		nodeTimer := time.NewTicker(nodeMetricInterval)
+
+		// Run the Node metric tracker forever
+		for {
+			select {
+			case <-nodeTimer.C:
+				err = impl.State.GetNodeMap().WriteNodeMetrics(nodeMetricInterval)
+				if err != nil {
+					jww.FATAL.Panicf("Unable to store node metrics: %+v", err)
+				}
+			}
+		}
 	},
 }
 

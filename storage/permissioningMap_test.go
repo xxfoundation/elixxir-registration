@@ -56,7 +56,7 @@ func TestMapImpl_InsertRoundMetric(t *testing.T) {
 		RealtimeEnd:   time.Now(),
 		BatchSize:     420,
 	}
-	newTopology := []string{"Node1", "Node2"}
+	newTopology := [][]byte{[]byte("Node1"), []byte("Node2")}
 
 	err := m.InsertRoundMetric(newMetric, newTopology)
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/registration/storage"
 	"sync"
 	"time"
 )
@@ -55,6 +56,34 @@ func (nsm *StateMap) GetNode(id *id.ID) *State {
 	nsm.mux.RLock()
 	defer nsm.mux.RUnlock()
 	return nsm.nodeStates[*id]
+}
+
+// Commits metrics for all current Nodes to storage
+// Takes the time period between writing metrics as an argument
+func (nsm *StateMap) WriteNodeMetrics(interval time.Duration) error {
+	for nodeId, nodeState := range nsm.nodeStates {
+
+		// Build the NodeMetric
+		currentTime := time.Now()
+		metric := storage.NodeMetric{
+			NodeId: nodeId.String(),
+			// Subtract duration from current time to get start time
+			StartTime: currentTime.Add(-interval),
+			EndTime:   currentTime,
+			NumPings:  nodeState.numPolls,
+		}
+
+		// Store the NodeMetric
+		err := storage.PermissioningDb.InsertNodeMetric(metric)
+		if err != nil {
+			return err
+		}
+
+		// Reset Node polling data
+		nodeState.ResetNumPolls()
+	}
+
+	return nil
 }
 
 // Returns the number of elements in the NodeMapo

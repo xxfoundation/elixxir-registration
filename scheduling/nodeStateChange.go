@@ -7,6 +7,7 @@ package scheduling
 
 import (
 	"github.com/pkg/errors"
+	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
@@ -113,12 +114,16 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			}
 
 			// Build the round info and add to the networkState
-			err = state.AddRoundUpdate(r.BuildRoundInfo())
+			roundInfo := r.BuildRoundInfo()
+			err = state.AddRoundUpdate(roundInfo)
 			if err != nil {
 				return errors.WithMessagef(err, "Could not issue "+
 					"update for round %v transitioning from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
+
+			// Commit metrics about the round to storage
+			return StoreRoundMetric(roundInfo)
 		}
 	case current.ERROR:
 		// If in an error state, kill the round
@@ -126,6 +131,19 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 	}
 
 	return nil
+}
+
+// Insert metrics about the newly-completed round into storage
+func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
+	metric := storage.RoundMetric{
+		PrecompStart:  time.Unix(int64(roundInfo.Timestamps[current.PRECOMPUTING]), 0),
+		PrecompEnd:    time.Unix(int64(roundInfo.Timestamps[current.WAITING]), 0),
+		RealtimeStart: time.Unix(int64(roundInfo.Timestamps[current.REALTIME]), 0),
+		RealtimeEnd:   time.Unix(int64(roundInfo.Timestamps[current.COMPLETED]), 0),
+		BatchSize:     roundInfo.BatchSize,
+	}
+
+	return storage.PermissioningDb.InsertRoundMetric(metric, roundInfo.Topology)
 }
 
 // killRound sets the round to failed and clears the node's round
