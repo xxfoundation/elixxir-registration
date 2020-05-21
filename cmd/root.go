@@ -161,18 +161,46 @@ var rootCmd = &cobra.Command{
 		// Determine how long between storing Node metrics
 		nodeMetricInterval := time.Duration(
 			viper.GetInt64("nodeMetricInterval")) * time.Second
-		nodeTimer := time.NewTicker(nodeMetricInterval)
+		nodeTicker := time.NewTicker(nodeMetricInterval)
 
-		// Run the Node metric tracker forever
-		for {
-			select {
-			case <-nodeTimer.C:
-				err = impl.State.GetNodeMap().WriteNodeMetrics(nodeMetricInterval)
-				if err != nil {
-					jww.FATAL.Panicf("Unable to store node metrics: %+v", err)
+		// Run the Node metric tracker forever in another thread
+		go func() {
+			for {
+				// Store the metric start time
+				startTime := time.Now()
+				select {
+				// Wait for the ticker to fire
+				case <-nodeTicker.C:
+
+					// Iterate over the Node States
+					nodeStates := impl.State.GetNodeMap().GetNodeStates()
+					for _, nodeState := range nodeStates {
+
+						// Build the NodeMetric
+						currentTime := time.Now()
+						metric := storage.NodeMetric{
+							NodeId:    nodeState.GetID().String(),
+							StartTime: startTime,
+							EndTime:   currentTime,
+							NumPings:  nodeState.NumPolls(),
+						}
+
+						// Store the NodeMetric
+						err := storage.PermissioningDb.InsertNodeMetric(metric)
+						if err != nil {
+							jww.FATAL.Panicf(
+								"Unable to store node metric: %+v", err)
+						}
+
+						// Reset Node polling data
+						nodeState.ResetNumPolls()
+					}
 				}
 			}
-		}
+		}()
+
+		// Block forever to prevent the program ending
+		select {}
 	},
 }
 

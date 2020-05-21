@@ -10,7 +10,6 @@ import (
 	"errors"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/registration/storage"
 	"sync"
 	"time"
 )
@@ -37,6 +36,7 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering string) error {
 		return errors.New("cannot add a Node which already exists")
 	}
 
+	numPolls := uint64(0)
 	nsm.nodeStates[*id] =
 		&State{
 			activity:     current.NOT_STARTED,
@@ -45,6 +45,7 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering string) error {
 			ordering:     ordering,
 			id:           id,
 			status:       Active,
+			numPolls:     &numPolls,
 			mux:          sync.RWMutex{},
 		}
 
@@ -58,32 +59,18 @@ func (nsm *StateMap) GetNode(id *id.ID) *State {
 	return nsm.nodeStates[*id]
 }
 
-// Commits metrics for all current Nodes to storage
-// Takes the time period between writing metrics as an argument
-func (nsm *StateMap) WriteNodeMetrics(interval time.Duration) error {
-	for nodeId, nodeState := range nsm.nodeStates {
+// Returns a list of all node States in the nsm
+func (nsm *StateMap) GetNodeStates() []*State {
+	nodeStates := make([]*State, len(nsm.nodeStates))
+	idx := 0
 
-		// Build the NodeMetric
-		currentTime := time.Now()
-		metric := storage.NodeMetric{
-			NodeId: nodeId.String(),
-			// Subtract duration from current time to get start time
-			StartTime: currentTime.Add(-interval),
-			EndTime:   currentTime,
-			NumPings:  nodeState.numPolls,
-		}
-
-		// Store the NodeMetric
-		err := storage.PermissioningDb.InsertNodeMetric(metric)
-		if err != nil {
-			return err
-		}
-
-		// Reset Node polling data
-		nodeState.ResetNumPolls()
+	nsm.mux.RLock()
+	defer nsm.mux.RUnlock()
+	for _, nodeState := range nsm.nodeStates {
+		nodeStates[idx] = nodeState
+		idx++
 	}
-
-	return nil
+	return nodeStates
 }
 
 // Returns the number of elements in the NodeMapo

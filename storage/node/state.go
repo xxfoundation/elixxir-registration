@@ -14,6 +14,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/transition"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -35,7 +36,7 @@ type State struct {
 	lastPoll time.Time
 
 	// Number of polls made by the node during the current monitoring period
-	numPolls uint64
+	numPolls *uint64
 
 	// Order string to be used in team configuration
 	ordering string
@@ -58,17 +59,17 @@ type State struct {
 
 // Getter for numPolls
 func (n *State) NumPolls() uint64 {
-	return n.numPolls
+	return atomic.LoadUint64(n.numPolls)
 }
 
 // Increment function for numPolls
 func (n *State) IncrementNumPolls() {
-	n.numPolls += 1
+	atomic.AddUint64(n.numPolls, 1)
 }
 
 // Reset function for numPolls
 func (n *State) ResetNumPolls() {
-	n.numPolls = 0
+	atomic.SwapUint64(n.numPolls, 0)
 }
 
 // sets the Node to banned and then returns an update notification for signaling
@@ -100,7 +101,7 @@ func (n *State) Ban() (UpdateNotification, error) {
 }
 
 // updates to the passed in activity if it is different from the known activity
-// returns true if the state changed and the state was it was reguardless
+// returns true if the state changed and the state was it was regardless
 func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, error) {
 	// Get and lock n state
 	n.mux.Lock()
