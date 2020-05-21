@@ -183,3 +183,28 @@ func TestStateMap_Len(t *testing.T) {
 		}
 	}
 }
+
+// Happy path
+func TestStateMap_GetNodeStates(t *testing.T) {
+	sm := &StateMap{
+		nodeStates: make(map[id.ID]*State),
+	}
+
+	err := sm.AddNode(id.NewIdFromBytes([]byte("test"), t), "test")
+	if err != nil {
+		t.Errorf("Unable to add node: %+v", err)
+	}
+	err = sm.AddNode(id.NewIdFromBytes([]byte("test2"), t), "test2")
+	if err != nil {
+		t.Errorf("Unable to add node: %+v", err)
+	}
+	err = sm.AddNode(id.NewIdFromBytes([]byte("test3"), t), "test3")
+	if err != nil {
+		t.Errorf("Unable to add node: %+v", err)
+	}
+
+	nodeStates := sm.GetNodeStates()
+	if len(nodeStates) != 3 {
+		t.Errorf("Incorrect number of nodes returned, got %d", len(nodeStates))
+	}
+}

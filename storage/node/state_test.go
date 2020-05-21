@@ -59,6 +59,24 @@ func TestNodeState_Update_Same(t *testing.T) {
 	}
 }
 
+// Happy path
+func TestState_GetAndResetNumPolls(t *testing.T) {
+	numPolls := uint64(0)
+	s := State{
+		numPolls: &numPolls,
+	}
+
+	s.IncrementNumPolls()
+
+	if s.GetAndResetNumPolls() != 1 {
+		t.Errorf("Returned incorrect number of polls")
+	}
+
+	if *s.numPolls != uint64(0) {
+		t.Errorf("Number of polls should have been reset to zero")
+	}
+}
+
 // tests that State update functions properly when the state it is updated
 // to is not the one it is not at
 func TestNodeState_Update_Invalid(t *testing.T) {

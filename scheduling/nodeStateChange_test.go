@@ -199,6 +199,12 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 		BatchSize:      32,
 		RandomOrdering: false,
 	}
+	var err error
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0", "-1")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
