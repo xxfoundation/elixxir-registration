@@ -513,4 +513,7 @@ func TestUpdateNDF(t *testing.T) {
 			"\n\texpected: %#v\n\treceived: %#v", expectedGatewayAddress, newGatewayAddress)
 	}
 
+	//Kill the connections for the next test
+	impl.Comms.Shutdown()
+
 }
