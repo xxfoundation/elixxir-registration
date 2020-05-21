@@ -39,6 +39,12 @@ type State struct {
 	//id of the node
 	id *id.ID
 
+	//address of node
+	nodeAddress string
+
+	//address of gateway
+	gatewayAddress string
+
 	// when a node poll is received, this nodes polling lock is. If
 	// there is no update, it is released in this endpoint, otherwise it is
 	// released in the scheduling algorithm which blocks all future polls until
@@ -133,6 +139,35 @@ func (n *State) GetLastPoll() time.Time {
 func (n *State) GetPollingLock() *sync.Mutex {
 	return &n.pollingLock
 }
+
+// Updates the address if it is warented
+func (n *State) UpdateNodeAddresses(node string) bool {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+
+
+	if n.nodeAddress != node{
+		n.nodeAddress = node
+		return true
+	}
+
+	return false
+}
+
+// Updates the address if it is warented
+func (n *State) UpdateGatewayAddresses(gateway string) bool {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+
+
+	if n.gatewayAddress != gateway{
+		n.gatewayAddress = gateway
+		return true
+	}
+
+	return false
+}
+
 
 // gets the ordering string for use in team formation
 func (n *State) GetOrdering() string {

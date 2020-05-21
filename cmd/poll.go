@@ -9,19 +9,23 @@
 package cmd
 
 import (
+	"bytes"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/current"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/version"
+	"strconv"
+	"strings"
 	"sync/atomic"
 )
 
 // Server->Permissioning unified poll function
-func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
-	auth *connect.Auth) (response *pb.PermissionPollResponse, err error) {
+func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
+	serverAddress string) (response *pb.PermissionPollResponse, err error) {
 
 	// Initialize the response
 	response = &pb.PermissionPollResponse{}
@@ -44,6 +48,73 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 		return response, connect.AuthError(auth.Sender.GetId())
 	}
 
+	//get the nodeState and update
+	nid := auth.Sender.GetId()
+
+	n := m.State.GetNodeMap().GetNode(nid)
+	if n == nil {
+		err = errors.Errorf("node %s could not be found in internal state tracker", nid)
+		return
+	}
+
+	//update addresses if nessessary
+	nodeAddress := strings.Join([]string{serverAddress, strconv.Itoa(int(msg.ServerPort))}, ":")
+	gatewayAddress := msg.GatewayAddress
+
+	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
+	gatewayUpdate :=  n.UpdateGatewayAddresses(nodeAddress)
+
+	var currentNDF *ndf.NetworkDefinition
+
+	if nodeUpdate || gatewayUpdate{
+		currentNDF = m.State.GetFullNdf().Get()
+		if nodeUpdate{
+			//find node in ndf
+			replaced := false
+			// TODO: have a faster search with an efficency greater than O(n)
+			for idx, n := range currentNDF.Nodes{
+				if bytes.Equal(n.ID,nid[:]){
+					currentNDF.Nodes[idx].Address=nodeAddress
+					replaced = true
+					break
+				}
+			}
+
+			if !replaced{
+				return response, errors.Errorf("Could not find node %s in "+
+					"the state map in order to update its IP address", nid)
+			}
+		}
+
+		if gatewayUpdate{
+			gid := nid.DeepCopy()
+			gid.SetType(id.Gateway)
+			currentNDF := m.State.GetFullNdf().Get()
+			//find node in ndf
+			replaced := false
+			// TODO: have a faster search with an efficency greater than O(n)
+			for idx, g := range currentNDF.Gateways{
+				if bytes.Equal(g.ID,nid[:]){
+					currentNDF.Gateways[idx].Address=gatewayAddress
+					replaced = true
+					break
+				}
+			}
+
+			if !replaced{
+				return response, errors.Errorf("Could not find gateway %s in "+
+					"the state map in order to update its IP address", gid)
+			}
+		}
+
+		// update the internal state with the newly-updated ndf
+		err = m.State.UpdateNdf(currentNDF)
+		if err != nil {
+			return response, err
+		}
+	}
+
+
 	// Return updated NDF if provided hash does not match current NDF hash
 	if isSame := m.State.GetFullNdf().CompareHash(msg.Full.Hash); !isSame {
 		jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
@@ -62,15 +133,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 	// Commit updates reported by the node if node involved in the current round
 	jww.DEBUG.Printf("Updating state for node %s: %+v",
 		auth.Sender.GetId(), msg)
-
-	//get the nodeState and update
-	nid := auth.Sender.GetId()
-
-	n := m.State.GetNodeMap().GetNode(nid)
-	if n == nil {
-		err = errors.Errorf("node %s could not be found in internal state tracker", nid)
-		return
-	}
 
 	// when a node poll is received, the nodes polling lock is taken here. If
 	// there is no update, it is released in this endpoint, otherwise it is

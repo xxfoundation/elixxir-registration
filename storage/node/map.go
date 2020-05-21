@@ -52,7 +52,7 @@ func NewStateMap() *StateMap {
 }
 
 // Adds a new node state to the structure. Will not overwrite an existing one.
-func (nsm *StateMap) AddNode(id *id.ID, ordering string) error {
+func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string) error {
 	nsm.mux.Lock()
 	defer nsm.mux.Unlock()
 
@@ -67,6 +67,8 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering string) error {
 			lastPoll:     time.Now(),
 			ordering:     ordering,
 			id:           id,
+			nodeAddress: nAddr,
+			gatewayAddress: gwAddr,
 		}
 
 	return nil

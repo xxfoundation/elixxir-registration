@@ -244,7 +244,7 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 
 	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth, serverAddress string) (*pb.PermissionPollResponse, error) {
 
-		response, err := instance.Poll(msg, auth)
+		response, err := instance.Poll(msg, auth, serverAddress)
 		if err != nil {
 			jww.ERROR.Printf("Poll error: %+v", err)
 		}
