@@ -62,7 +62,7 @@ func (n *State) IncrementNumPolls() {
 	atomic.AddUint64(n.numPolls, 1)
 }
 
-// Reset function for numPolls
+// Returns the current value of numPolls and then resets numPolls to zero
 func (n *State) GetAndResetNumPolls() uint64 {
 	return atomic.SwapUint64(n.numPolls, 0)
 }
