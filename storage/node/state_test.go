@@ -498,3 +498,127 @@ func TestState_IsBanned(t *testing.T) {
 		t.Errorf("IsBanned should return true after node has been banned")
 	}
 }
+
+// Happy path
+func TestState_UpdateInactive(t *testing.T) {
+	testID := id.NewIdFromUInt(50, id.Node, t)
+
+	oldActivity := current.ERROR
+	newActivity := current.WAITING
+	oldStatus := Inactive
+
+	//  Create an inactive node
+	ns := State{
+		id:       testID,
+		activity: oldActivity,
+		status:   oldStatus,
+	}
+
+	// Update the inactive node
+	ok, receivedNun, err := ns.updateInactive(newActivity)
+	if err != nil || !ok {
+		t.Errorf("Unexpected error in happy path: %v", err)
+	}
+
+	expectedNun := UpdateNotification{
+		Node:         ns.id,
+		FromStatus:   Inactive,
+		ToStatus:     Active,
+		FromActivity: oldActivity,
+		ToActivity:   current.WAITING,
+	}
+
+	// Check that the node's status has been updated
+	if ns.status != Active {
+		t.Errorf("Node expected to have %v status."+
+			"\n\tReceived status: %v", Active, ns.status)
+	}
+
+	// Check that the node's activity has been updated
+	if ns.activity != newActivity {
+		t.Errorf("Node expected to have %v activity."+
+			"\n\tReceived activity: %v", newActivity, ns.activity)
+	}
+
+	// check that the update notification is as expected
+	if !reflect.DeepEqual(receivedNun, expectedNun) {
+		t.Errorf("Update notification did not match expected."+
+			"\n\tExpected: %v"+
+			"\n\tReceived: %v", expectedNun, receivedNun)
+	}
+
+}
+
+// Error path
+func TestState_UpdateInactive_Error(t *testing.T) {
+	testID := id.NewIdFromUInt(50, id.Node, t)
+
+	oldActivity := current.REALTIME
+	newActivity := current.ERROR
+
+	//  Create an inactive node
+	ns := State{
+		id:       testID,
+		activity: oldActivity,
+		status:   Inactive,
+	}
+
+	// Update the inactive node
+	ok, _, _ := ns.updateInactive(newActivity)
+	if ok {
+		t.Errorf("Expected false update when updating to %v", newActivity)
+	}
+
+	// Check that the node's status has not been updated
+	if ns.status != Inactive {
+		t.Errorf("Node expected to have %v status."+
+			"\n\tReceived status: %v", Inactive, ns.status)
+	}
+
+	// Check that the node's activity has not been updated
+	if ns.activity == newActivity {
+		t.Errorf("Node expected to have %v activity."+
+			"\n\tReceived activity: %v", oldActivity, ns.activity)
+	}
+
+}
+
+// Error path
+func TestState_UpdateInactive_InvalidActivity(t *testing.T) {
+	testID := id.NewIdFromUInt(50, id.Node, t)
+
+	oldActivity := current.REALTIME
+	newActivity := current.REALTIME
+
+	//  Create an inactive node
+	ns := State{
+		id:       testID,
+		activity: oldActivity,
+		status:   Inactive,
+	}
+
+	// Update the inactive node
+	ok, _, err := ns.updateInactive(newActivity)
+	if ok {
+		t.Errorf("Expected false update when updating to %v", newActivity)
+	}
+
+	// Expected error case, node that's inactive must poll with error state
+	if err == nil {
+		t.Errorf("Expected error case: Inactive node cannot update to any state other than"+
+			" %v.", current.WAITING)
+	}
+
+	// Check that the node's status has not been updated
+	if ns.status != Inactive {
+		t.Errorf("Node expected to have %v status."+
+			"\n\tReceived status: %v", Inactive, ns.status)
+	}
+
+	// Check that the node's activity has not been updated
+	if ns.activity != oldActivity {
+		t.Errorf("Node expected to have %v activity."+
+			"\n\tReceived activity: %v", oldActivity, ns.activity)
+	}
+
+}
