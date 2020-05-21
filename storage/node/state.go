@@ -39,10 +39,10 @@ type State struct {
 	//id of the node
 	id *id.ID
 
-	//address of node
+	// Address of node
 	nodeAddress string
 
-	//address of gateway
+	// Address of gateway
 	gatewayAddress string
 
 	// when a node poll is received, this nodes polling lock is. If
@@ -140,13 +140,12 @@ func (n *State) GetPollingLock() *sync.Mutex {
 	return &n.pollingLock
 }
 
-// Updates the address if it is warented
+// UpdateNodeAddresses updates the address if it is warranted.
 func (n *State) UpdateNodeAddresses(node string) bool {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 
-
-	if n.nodeAddress != node{
+	if n.nodeAddress != node {
 		n.nodeAddress = node
 		return true
 	}
@@ -154,20 +153,18 @@ func (n *State) UpdateNodeAddresses(node string) bool {
 	return false
 }
 
-// Updates the address if it is warented
+// UpdateGatewayAddresses updates the address if it is warranted
 func (n *State) UpdateGatewayAddresses(gateway string) bool {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 
-
-	if n.gatewayAddress != gateway{
+	if n.gatewayAddress != gateway {
 		n.gatewayAddress = gateway
 		return true
 	}
 
 	return false
 }
-
 
 // gets the ordering string for use in team formation
 func (n *State) GetOrdering() string {
