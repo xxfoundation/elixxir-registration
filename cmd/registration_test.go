@@ -15,6 +15,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
 	"os"
+	"sync"
 	"testing"
 	"time"
 )
@@ -27,6 +28,8 @@ var testParams Params
 var gatewayCert []byte
 
 var nodeComm *nodeComms.Comms
+
+var dblck sync.Mutex
 
 func TestMain(m *testing.M) {
 	jww.SetStdoutThreshold(jww.LevelDebug)
@@ -82,6 +85,8 @@ func TestEmptyDataBase(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
+	dblck.Lock()
+	defer dblck.Unlock()
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
 		"regCodes", "0.0.0.0", "-1")
 	if err != nil {
@@ -106,6 +111,9 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
+	dblck.Lock()
+	defer dblck.Unlock()
+
 	//impl.nodeCompleted = make(chan string, 1)
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
 		"regCodes", "0.0.0.0", "-1")
@@ -142,6 +150,8 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to start: %+v", err)
 	}
+	dblck.Lock()
+	defer dblck.Unlock()
 
 	// Initialize the database
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
@@ -173,6 +183,9 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 func TestCompleteRegistration_HappyPath(t *testing.T) {
 	// Initialize the database
 	var err error
+	dblck.Lock()
+	defer dblck.Unlock()
+
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
 		"regCodes", "0.0.0.0", "-1")
 	if err != nil {
@@ -216,6 +229,9 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 func TestDoubleRegistration(t *testing.T) {
 	// Initialize the database
 	var err error
+	dblck.Lock()
+	defer dblck.Unlock()
+
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
 		"regCodes", "0.0.0.0", "-1")
 	if err != nil {
@@ -262,6 +278,8 @@ func TestDoubleRegistration(t *testing.T) {
 func TestTopology_MultiNodes(t *testing.T) {
 	// Initialize the database
 	var err error
+	dblck.Lock()
+	defer dblck.Unlock()
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
 		"regCodes", "0.0.0.0", "-1")
 	if err != nil {
@@ -384,6 +402,8 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
+	dblck.Lock()
+	defer dblck.Unlock()
 
 	// Initialize the database
 	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
