@@ -62,12 +62,12 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string) error {
 
 	nsm.nodeStates[*id] =
 		&State{
-			activity:     current.NOT_STARTED,
-			currentRound: nil,
-			lastPoll:     time.Now(),
-			ordering:     ordering,
-			id:           id,
-			nodeAddress: nAddr,
+			activity:       current.NOT_STARTED,
+			currentRound:   nil,
+			lastPoll:       time.Now(),
+			ordering:       ordering,
+			id:             id,
+			nodeAddress:    nAddr,
 			gatewayAddress: gwAddr,
 		}
 

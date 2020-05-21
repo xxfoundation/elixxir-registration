@@ -41,7 +41,7 @@ func TestCreateRound_NonRandom(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -115,7 +115,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
 		// Input an invalid ordering to node
-		err := testState.GetNodeMap().AddNode(nodeList[i], "BadNumber")
+		err := testState.GetNodeMap().AddNode(nodeList[i], "BadNumber", "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -165,7 +165,7 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()

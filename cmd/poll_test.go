@@ -17,6 +17,7 @@ import (
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/primitives/utils"
+	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
@@ -50,6 +51,12 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 			Address:        "420",
 			TlsCertificate: "",
 		},
+		Gateways: []ndf.Gateway{
+			{ID: id.NewIdFromUInt(0, id.Gateway, t).Bytes()},
+		},
+		Nodes: []ndf.Node{
+			{ID: id.NewIdFromUInt(0, id.Node, t).Bytes()},
+		},
 	})
 
 	// Make a simple auth object that will pass the checks
@@ -65,9 +72,11 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		Partial: &pb.NDFHash{
 			Hash: []byte(testString),
 		},
-		LastUpdate: 0,
-		Activity:   uint32(current.WAITING),
-		Error:      nil,
+		LastUpdate:     0,
+		Activity:       uint32(current.WAITING),
+		Error:          nil,
+		GatewayVersion: "0.0.0",
+		ServerVersion:  "0.0.0",
 	}
 
 	err = impl.State.AddRoundUpdate(
@@ -80,13 +89,13 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		t.Errorf("Could not add round update: %s", err)
 	}
 
-	err = impl.State.GetNodeMap().AddNode(testID, "")
+	err = impl.State.GetNodeMap().AddNode(testID, "", "", "")
 
 	if err != nil {
 		t.Errorf("Could nto add node: %s", err)
 	}
 
-	response, err := impl.Poll(testMsg, testAuth)
+	response, err := impl.Poll(testMsg, testAuth, "0.0.0.0")
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -122,12 +131,17 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
+	testVersion, _ := version.ParseVersion("0.0.0")
 	impl := &RegistrationImpl{
 		State:    state,
 		NdfReady: &ndfReady,
+		params: &Params{
+			minGatewayVersion: testVersion,
+			minServerVersion:  testVersion,
+		},
 	}
 
-	_, err = impl.Poll(nil, nil)
+	_, err = impl.Poll(nil, nil, "")
 	if err == nil || err.Error() != ndf.NO_NDF {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -143,9 +157,14 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
+	testVersion, _ := version.ParseVersion("0.0.0")
 	impl := RegistrationImpl{
 		State:    state,
 		NdfReady: &ndfReady,
+		params: &Params{
+			minGatewayVersion: testVersion,
+			minServerVersion:  testVersion,
+		},
 	}
 
 	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
@@ -163,7 +182,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 		Sender:          testHost,
 	}
 
-	_, err = impl.Poll(nil, testAuth)
+	_, err = impl.Poll(nil, testAuth, "0.0.0.0")
 	if err == nil || err.Error() != connect.AuthError(testAuth.Sender.GetId()).Error() {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
