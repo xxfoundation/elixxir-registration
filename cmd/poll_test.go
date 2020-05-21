@@ -21,6 +21,7 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -216,7 +217,10 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
+	var l sync.Mutex
 	go func() {
+		l.Lock()
+		defer l.Unlock()
 		fmt.Println("A")
 		//Register 1st node
 		err = impl.RegisterNode(id.NewIdFromString("B", id.Node, t),
@@ -254,7 +258,9 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	case <-impl.beginScheduling:
 	}
 
+	l.Lock()
 	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
+	l.Unlock()
 	if err != nil {
 		t.Errorf("failed to update ndf: %v", err)
 	}
