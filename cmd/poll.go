@@ -10,7 +10,6 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
@@ -19,7 +18,6 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/version"
-	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -58,9 +56,34 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return nil, err
 	}
 
-	err = m.updateNDF(*nid, n, msg, serverAddress)
-	if err != nil {
-		return nil, err
+	// Get server and gateway addresses
+	serverPortString := strconv.Itoa(int(msg.ServerPort))
+	nodeAddress := strings.Join([]string{serverAddress, serverPortString}, ":")
+	gatewayAddress := msg.GatewayAddress
+
+	// Update server and gateway addresses in state, if necessary
+	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
+	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
+
+	// If state required changes, then check the NDF
+	if nodeUpdate || gatewayUpdate {
+		currentNDF := m.State.GetFullNdf().Get()
+
+		if nodeUpdate {
+			if err = updateNdfNodeAddr(nid, serverAddress, currentNDF); err != nil {
+				return
+			}
+		}
+		if gatewayUpdate {
+			if err = updateNdfGatewayAddr(nid, gatewayAddress, currentNDF); err != nil {
+				return
+			}
+		}
+
+		// Update the internal state with the newly-updated ndf
+		if err = m.State.UpdateNdf(currentNDF); err != nil {
+			return
+		}
 	}
 
 	// Return updated NDF if provided hash does not match current NDF hash
@@ -170,77 +193,51 @@ func checkVersion(requiredGateway, requiredServer version.Version,
 	return nil
 }
 
-// updateNDF updates the gateway and node addresses in the NDF, if needed.
-func (m *RegistrationImpl) updateNDF(nid id.ID, n *node.State,
-	msg *pb.PermissioningPoll, serverAddress string) error {
+// updateNdfNodeAddr searches the NDF nodes for a matching node ID and updates
+// its address to the required address.
+func updateNdfNodeAddr(nid *id.ID, requiredAddr string, ndf *ndf.NetworkDefinition) error {
+	replaced := false
 
-	// Get server and gateway addresses
-	serverPortString := strconv.Itoa(int(msg.ServerPort))
-	nodeAddress := strings.Join([]string{serverAddress, serverPortString}, ":")
-	gatewayAddress := msg.GatewayAddress
-
-	// Update server and gateway addresses in state, if necessary
-	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
-	gatewayUpdate := n.UpdateGatewayAddresses(nodeAddress)
-
-	var currentNDF *ndf.NetworkDefinition
-
-	// If state required changes, then check the NDF
-	if nodeUpdate || gatewayUpdate {
-		currentNDF = m.State.GetFullNdf().Get()
-
-		// Find the node in the NDF and update its address
-		if nodeUpdate {
-			replaced := false
-
-			// TODO: Have a faster search with an efficiency greater than O(n)
-			// Search the list of node for the node ID
-			for idx, nn := range currentNDF.Nodes {
-				if bytes.Equal(nn.ID, nid[:]) {
-					currentNDF.Nodes[idx].Address = nodeAddress
-					replaced = true
-					break
-				}
-			}
-
-			fmt.Printf("currentNDF.Nodes: %+v\n", currentNDF.Nodes)
-			fmt.Printf("nid: %+v\n", nid[:])
-
-			// Return an error if no matching node is found
-			if !replaced {
-				return errors.Errorf("Could not find node %s in "+
-					"the state map in order to update its IP address", nid.String())
-			}
+	// TODO: Have a faster search with an efficiency greater than O(n)
+	// Search the list of NDF nodes for a matching ID and update the address
+	for i, n := range ndf.Nodes {
+		if bytes.Equal(n.ID, nid[:]) {
+			ndf.Nodes[i].Address = requiredAddr
+			replaced = true
+			break
 		}
+	}
 
-		// Find the gateway in the NDF and update its address
-		if gatewayUpdate {
-			gid := nid.DeepCopy()
-			gid.SetType(id.Gateway)
-			replaced := false
+	// Return an error if no matching node is found
+	if !replaced {
+		return errors.Errorf("Could not find node %s in the state map in "+
+			"order to update its address", nid.String())
+	}
 
-			// TODO: Have a faster search with an efficiency greater than O(n)
-			// Search the list of gateways for the gateway ID
-			for idx, g := range currentNDF.Gateways {
-				if bytes.Equal(g.ID, gid[:]) {
-					currentNDF.Gateways[idx].Address = gatewayAddress
-					replaced = true
-					break
-				}
-			}
+	return nil
+}
 
-			// Return an error if no matching gateway is found
-			if !replaced {
-				return errors.Errorf("Could not find gateway %s in "+
-					"the state map in order to update its IP address", gid)
-			}
+// updateNdfGatewayAddr searches the NDF gateways for a matching gateway ID and
+// updates its address to the required address.
+func updateNdfGatewayAddr(nid *id.ID, requiredAddr string, ndf *ndf.NetworkDefinition) error {
+	replaced := false
+	gid := nid.DeepCopy()
+	gid.SetType(id.Gateway)
+
+	// TODO: Have a faster search with an efficiency greater than O(n)
+	// Search the list of NDF gateways for a matching ID and update the address
+	for i, gw := range ndf.Gateways {
+		if bytes.Equal(gw.ID, gid[:]) {
+			ndf.Gateways[i].Address = requiredAddr
+			replaced = true
+			break
 		}
+	}
 
-		// Update the internal state with the newly-updated ndf
-		err := m.State.UpdateNdf(currentNDF)
-		if err != nil {
-			return err
-		}
+	// Return an error if no matching gateway is found
+	if !replaced {
+		return errors.Errorf("Could not find gateway %s in the state map "+
+			"in order to update its address", gid.String())
 	}
 
 	return nil

@@ -21,8 +21,6 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
-	"strconv"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -427,8 +425,7 @@ func TestCheckVersion_InvalidVersionServer(t *testing.T) {
 	}
 }
 
-// Tests that updateNDF() correctly updates the node and gateway addresses.
-func TestUpdateNDF(t *testing.T) {
+/*func TestUpdateNDF(t *testing.T) {
 	testID := id.NewIdFromUInt(0, id.Node, t)
 	testString := "test"
 	// Start registration server
@@ -516,4 +513,121 @@ func TestUpdateNDF(t *testing.T) {
 	//Kill the connections for the next test
 	impl.Comms.Shutdown()
 
+}*/
+
+// Tests that updateNdfNodeAddr() correctly updates the correct node address.
+func TestUpdateNdfNodeAddr(t *testing.T) {
+	nID := id.NewIdFromUInt(225, id.Node, t)
+	requiredAddr := "1.1.1.1:1234"
+	testNDF := &ndf.NetworkDefinition{
+		Nodes: []ndf.Node{{
+			ID:      id.NewIdFromUInt(0, id.Node, t)[:],
+			Address: "0.0.0.1",
+		}, {
+			ID:      id.NewIdFromUInt(1, id.Node, t)[:],
+			Address: "0.0.0.2",
+		}, {
+			ID:      id.NewIdFromUInt(3, id.Node, t)[:],
+			Address: "0.0.0.3",
+		}},
+	}
+
+	testNDF.Nodes[2].ID = nID[:]
+
+	err := updateNdfNodeAddr(nID, requiredAddr, testNDF)
+
+	if err != nil {
+		t.Errorf("updateNdfNodeAddr() unexpectedly produced an error: %+v", err)
+	}
+
+	if testNDF.Nodes[2].Address != requiredAddr {
+		t.Errorf("updateNdfNodeAddr() did not update the node address "+
+			"correectly\n\texpected: %+v\n\treceived: %+v",
+			requiredAddr, testNDF.Nodes[2].Address)
+	}
+}
+
+// Tests that updateNdfGatewayAddr() correctly updates the correct gateway
+// address.
+func TestUpdateNdfGatewayAddr(t *testing.T) {
+	gwID := id.NewIdFromUInt(742, id.Gateway, t)
+	requiredAddr := "1.1.1.1:1234"
+	testNDF := &ndf.NetworkDefinition{
+		Gateways: []ndf.Gateway{{
+			ID:      id.NewIdFromUInt(0, id.Gateway, t)[:],
+			Address: "0.0.0.1",
+		}, {
+			ID:      id.NewIdFromUInt(1, id.Gateway, t)[:],
+			Address: "0.0.0.2",
+		}, {
+			ID:      id.NewIdFromUInt(2, id.Gateway, t)[:],
+			Address: "0.0.0.3",
+		}},
+	}
+
+	testNDF.Gateways[2].ID = gwID[:]
+
+	err := updateNdfGatewayAddr(gwID, requiredAddr, testNDF)
+
+	if err != nil {
+		t.Errorf("updateNdfGatewayAddr() unexpectedly produced an error: %+v",
+			err)
+	}
+
+	if testNDF.Gateways[2].Address != requiredAddr {
+		t.Errorf("updateNdfGatewayAddr() did not update the gateway address "+
+			"correectly\n\texpected: %+v\n\treceived: %+v",
+			requiredAddr, testNDF.Gateways[2].Address)
+	}
+}
+
+// Tests that updateNdfNodeAddr() correctly updates the correct node address.
+func TestUpdateNdfNodeAddr_Error(t *testing.T) {
+	nID := id.NewIdFromUInt(225, id.Node, t)
+	requiredAddr := "1.1.1.1:1234"
+	testNDF := &ndf.NetworkDefinition{
+		Nodes: []ndf.Node{{
+			ID:      id.NewIdFromUInt(0, id.Node, t)[:],
+			Address: "0.0.0.1",
+		}, {
+			ID:      id.NewIdFromUInt(1, id.Node, t)[:],
+			Address: "0.0.0.2",
+		}, {
+			ID:      id.NewIdFromUInt(3, id.Node, t)[:],
+			Address: "0.0.0.3",
+		}},
+	}
+
+	err := updateNdfNodeAddr(nID, requiredAddr, testNDF)
+
+	if err == nil {
+		t.Errorf("updateNdfNodeAddr() did not produce an error when the node " +
+			"ID doesn't exist.")
+	}
+}
+
+// Tests that updateNdfGatewayAddr() correctly updates the correct gateway
+// address.
+func TestUpdateNdfGatewayAddr_Error(t *testing.T) {
+	gwID := id.NewIdFromUInt(742, id.Gateway, t)
+	requiredAddr := "1.1.1.1:1234"
+	testNDF := &ndf.NetworkDefinition{
+		Gateways: []ndf.Gateway{{
+			ID:      id.NewIdFromUInt(0, id.Gateway, t)[:],
+			Address: "0.0.0.1",
+		}, {
+			ID:      id.NewIdFromUInt(1, id.Gateway, t)[:],
+			Address: "0.0.0.2",
+		}, {
+			ID:      id.NewIdFromUInt(2, id.Gateway, t)[:],
+			Address: "0.0.0.3",
+		}},
+	}
+
+	err := updateNdfGatewayAddr(gwID, requiredAddr, testNDF)
+
+	if err == nil {
+		t.Errorf("updateNdfGatewayAddr() did not produce an error when the " +
+			"gateway ID doesn't exist.")
+	}
 }
