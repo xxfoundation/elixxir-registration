@@ -15,6 +15,7 @@ import (
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/ndf"
+	"gitlab.com/elixxir/primitives/version"
 	"sync/atomic"
 )
 
@@ -24,6 +25,13 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll,
 
 	// Initialize the response
 	response = &pb.PermissionPollResponse{}
+
+	// Check for correct version
+	err = checkVersion(m.params.minGatewayVersion, m.params.minServerVersion,
+		msg)
+	if err != nil {
+		return nil, err
+	}
 
 	// Ensure the NDF is ready to be returned
 	regComplete := atomic.LoadUint32(m.NdfReady)
@@ -116,4 +124,38 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 	//Send the json of the ndf
 	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
 	return m.State.GetFullNdf().Get().Marshal()
+}
+
+// checkVersion checks if the PermissioningPoll message server and gateway
+// versions are compatible with the required version.
+func checkVersion(requiredGateway, requiredServer version.Version,
+	msg *pb.PermissioningPoll) error {
+
+	// Parse the gateway version string
+	gatewayVersion, err := version.ParseVersion(msg.GetGatewayVersion())
+	if err != nil {
+		return errors.Errorf("Failed to parse gateway version %#v: %+v",
+			gatewayVersion, err)
+	}
+
+	// Parse the server version string
+	serverVersion, err := version.ParseVersion(msg.GetServerVersion())
+	if err != nil {
+		return errors.Errorf("Failed to parse server version %#v: %+v",
+			serverVersion, err)
+	}
+
+	// Check that the gateway version is compatible with the required version
+	if !version.IsCompatible(requiredGateway, gatewayVersion) {
+		return errors.Errorf("The gateway version %#v is incompatible with "+
+			"the required version %#v.", gatewayVersion, requiredGateway)
+	}
+
+	// Check that the server version is compatible with the required version
+	if !version.IsCompatible(requiredServer, serverVersion) {
+		return errors.Errorf("The server version %#v is incompatible with "+
+			"the required version %#v.", serverVersion, requiredServer)
+	}
+
+	return nil
 }

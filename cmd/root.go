@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/utils"
+	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/scheduling/simple"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -125,6 +126,21 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Could not load Scheduling Config file: %v", err)
 		}
 
+		// Parse version strings
+		minGatewayVersionString := viper.GetString("minGatewayVersion")
+		minGatewayVersion, err := version.ParseVersion(minGatewayVersionString)
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse minGatewayVersion %#v: %+v",
+				minGatewayVersionString, err)
+		}
+
+		minServerVersionString := viper.GetString("minServerVersion")
+		minServerVersion, err := version.ParseVersion(minServerVersionString)
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse minServerVersion %#v: %+v",
+				minServerVersionString, err)
+		}
+
 		// Populate params
 		RegParams = Params{
 			Address:                   localAddress,
@@ -140,6 +156,8 @@ var rootCmd = &cobra.Command{
 			registrationCountDuration: registrationCountDuration,
 			udbId:                     udbId,
 			minimumNodes:              viper.GetUint32("minimumNodes"),
+			minGatewayVersion:         minGatewayVersion,
+			minServerVersion:          minServerVersion,
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")

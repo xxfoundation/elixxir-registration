@@ -20,6 +20,7 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
+	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"sync"
 	"time"
@@ -67,6 +68,8 @@ type Params struct {
 	registrationCountDuration time.Duration
 	minimumNodes              uint32
 	udbId                     []byte
+	minGatewayVersion         version.Version
+	minServerVersion          version.Version
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -239,7 +242,7 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 		return response, err
 	}
 
-	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
+	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth, serverAddress string) (*pb.PermissionPollResponse, error) {
 
 		response, err := instance.Poll(msg, auth)
 		if err != nil {
