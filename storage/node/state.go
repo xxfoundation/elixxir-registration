@@ -57,19 +57,14 @@ type State struct {
 	pollingLock sync.Mutex
 }
 
-// Getter for numPolls
-func (n *State) NumPolls() uint64 {
-	return atomic.LoadUint64(n.numPolls)
-}
-
 // Increment function for numPolls
 func (n *State) IncrementNumPolls() {
 	atomic.AddUint64(n.numPolls, 1)
 }
 
 // Reset function for numPolls
-func (n *State) ResetNumPolls() {
-	atomic.SwapUint64(n.numPolls, 0)
+func (n *State) GetAndResetNumPolls() uint64 {
+	return atomic.SwapUint64(n.numPolls, 0)
 }
 
 // sets the Node to banned and then returns an update notification for signaling

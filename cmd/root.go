@@ -182,7 +182,7 @@ var rootCmd = &cobra.Command{
 							NodeId:    nodeState.GetID().String(),
 							StartTime: startTime,
 							EndTime:   currentTime,
-							NumPings:  nodeState.NumPolls(),
+							NumPings:  nodeState.GetAndResetNumPolls(),
 						}
 
 						// Store the NodeMetric
@@ -191,9 +191,6 @@ var rootCmd = &cobra.Command{
 							jww.FATAL.Panicf(
 								"Unable to store node metric: %+v", err)
 						}
-
-						// Reset Node polling data
-						nodeState.ResetNumPolls()
 					}
 				}
 			}
