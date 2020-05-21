@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -143,6 +144,25 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			jww.FATAL.Panicf(err.Error())
 		}
+
+		// Determine how long between polling for banned nodes
+		interval := viper.GetInt("BanTrackerInterval")
+		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
+
+		// Run the independent node tracker in own go thread
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					// Keep track of banned nodes
+					err = BannedNodeTracker(impl.State)
+					if err != nil {
+						jww.FATAL.Panicf("BannedNodeTracker failed: %v", err)
+					}
+				}
+
+			}
+		}()
 
 		jww.INFO.Printf("Waiting for for %v nodes to register so "+
 			"rounds can start", RegParams.minimumNodes)

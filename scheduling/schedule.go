@@ -57,8 +57,11 @@ func scheduler(params Params, state *storage.NetworkState) error {
 	var createRound roundCreator
 
 	if params.Secure {
+		jww.INFO.Printf("Using Secure Teaming Algorithm")
 		createRound = createSecureRound
 	} else {
+		jww.INFO.Printf("Using Simple Teaming Algorithm")
+
 		createRound = createSimpleRound
 	}
 
