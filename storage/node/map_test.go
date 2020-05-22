@@ -33,7 +33,7 @@ func TestStateMap_AddNode_Happy(t *testing.T) {
 
 	nid := id.NewIdFromUInt(2, id.Node, t)
 
-	err := sm.AddNode(nid, "")
+	err := sm.AddNode(nid, "", "", "")
 
 	if err != nil {
 		t.Errorf("Error returned on valid addition of Node: %s", err)
@@ -74,7 +74,7 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 
 	time.Sleep(1 * time.Millisecond)
 
-	err := sm.AddNode(nid, "")
+	err := sm.AddNode(nid, "", "", "")
 
 	if err == nil {
 		t.Errorf("Error not returned on invalid addition of Node: %s", err)

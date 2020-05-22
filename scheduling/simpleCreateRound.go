@@ -63,6 +63,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 		for i, nid := range nodes {
 			n := nodeMap.GetNode(nid.GetID())
 			nodeStateList[i] = n
+
 			position, err := strconv.Atoi(n.GetOrdering())
 			if err != nil {
 				return protoRound{}, errors.WithMessagef(err,

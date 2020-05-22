@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/utils"
+	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -83,10 +84,16 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Set up database connection
-		addr, port, err := net.SplitHostPort(viper.GetString("dbAddress"))
-		if err != nil {
-			jww.FATAL.Panicf("Unable to get database port: %+v", err)
+		rawAddr := viper.GetString("dbAddress")
+
+		var addr, port string
+		if rawAddr != "" {
+			addr, port, err = net.SplitHostPort(rawAddr)
+			if err != nil {
+				jww.FATAL.Panicf("Unable to get database port: %+v", err)
+			}
 		}
+
 		storage.PermissioningDb, err = storage.NewDatabase(
 			viper.GetString("dbUsername"),
 			viper.GetString("dbPassword"),
@@ -120,6 +127,21 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Could not load Scheduling Config file: %v", err)
 		}
 
+		// Parse version strings
+		minGatewayVersionString := viper.GetString("minGatewayVersion")
+		minGatewayVersion, err := version.ParseVersion(minGatewayVersionString)
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse minGatewayVersion %#v: %+v",
+				minGatewayVersionString, err)
+		}
+
+		minServerVersionString := viper.GetString("minServerVersion")
+		minServerVersion, err := version.ParseVersion(minServerVersionString)
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse minServerVersion %#v: %+v",
+				minServerVersionString, err)
+		}
+
 		// Populate params
 		RegParams = Params{
 			Address:                   localAddress,
@@ -135,6 +157,8 @@ var rootCmd = &cobra.Command{
 			registrationCountDuration: registrationCountDuration,
 			udbId:                     udbId,
 			minimumNodes:              viper.GetUint32("minimumNodes"),
+			minGatewayVersion:         minGatewayVersion,
+			minServerVersion:          minServerVersion,
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -144,6 +168,25 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			jww.FATAL.Panicf(err.Error())
 		}
+
+		// Determine how long between polling for banned nodes
+		interval := viper.GetInt("BanTrackerInterval")
+		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
+
+		// Run the independent node tracker in own go thread
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					// Keep track of banned nodes
+					err = BannedNodeTracker(impl.State)
+					if err != nil {
+						jww.FATAL.Panicf("BannedNodeTracker failed: %v", err)
+					}
+				}
+
+			}
+		}()
 
 		jww.INFO.Printf("Waiting for for %v nodes to register so "+
 			"rounds can start", RegParams.minimumNodes)

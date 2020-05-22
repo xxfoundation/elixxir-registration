@@ -58,6 +58,10 @@ certPath: ""
 # Time interval (in seconds) between committing Node statistics to storage
 nodeMetricInterval: 180
 
+# Time interval (in minutes) in which the database is 
+# checked for banned nodes
+BanTrackerInterval: "3"
+
 # E2E/CMIX Primes
 groups:
   cmix:

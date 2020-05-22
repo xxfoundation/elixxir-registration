@@ -75,7 +75,7 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 	}
 
 	//add the node to the node map to track its state
-	err = m.State.GetNodeMap().AddNode(ID, nodeInfo.Order)
+	err = m.State.GetNodeMap().AddNode(ID, nodeInfo.Order, ServerAddr, GatewayAddr)
 	if err != nil {
 		return errors.WithMessage(err, "Could not register node with "+
 			"state tracker")

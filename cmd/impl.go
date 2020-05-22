@@ -20,7 +20,9 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
+	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"sync"
 	"time"
 )
@@ -67,6 +69,8 @@ type Params struct {
 	registrationCountDuration time.Duration
 	minimumNodes              uint32
 	udbId                     []byte
+	minGatewayVersion         version.Version
+	minServerVersion          version.Version
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -196,6 +200,45 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	return regImpl, nil
 }
 
+// Tracks nodes banned from the network. Sends an update to the scheduler
+func BannedNodeTracker(state *storage.NetworkState) error {
+	// Search the database for any banned nodes
+	bannedNodes, err := storage.PermissioningDb.GetNodesByStatus(node.Banned)
+	if err != nil {
+		return errors.Errorf("Failed to get nodes by %s status: %v", node.Banned, err)
+	}
+
+	// Parse through the returned node list
+	for _, n := range bannedNodes {
+		// Convert the id into an id.ID
+		nodeId, err := id.Unmarshal(n.Id)
+		if err != nil {
+			return errors.Errorf("Failed to convert node %s to id.ID: %v", n.Id, err)
+		}
+		// Get the node from the nodeMap
+		ns := state.GetNodeMap().GetNode(nodeId)
+		var nun node.UpdateNotification
+		// If the node is already banned do not attempt to re-ban
+		if ns == nil || ns.IsBanned() {
+			continue
+		}
+
+		// Ban the node, propagating the ban to the node's state
+		nun, err = ns.Ban()
+		if err != nil {
+			return errors.WithMessage(err, "Could not ban node")
+		}
+
+		/// Send the node's update notification to the scheduler
+		err = state.SendUpdateNotification(nun)
+		if err != nil {
+			return errors.WithMessage(err, "Could not send update notification")
+		}
+	}
+
+	return nil
+}
+
 // NewImplementation returns a registration server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
@@ -239,9 +282,9 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 		return response, err
 	}
 
-	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
+	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth, serverAddress string) (*pb.PermissionPollResponse, error) {
 
-		response, err := instance.Poll(msg, auth)
+		response, err := instance.Poll(msg, auth, serverAddress)
 		if err != nil {
 			jww.ERROR.Printf("Poll error: %+v", err)
 		}
