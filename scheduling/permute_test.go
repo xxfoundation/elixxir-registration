@@ -12,6 +12,7 @@ import (
 	"testing"
 )
 
+// Happy path
 func TestPermute(t *testing.T) {
 
 	testState := setupNodeMap(t)

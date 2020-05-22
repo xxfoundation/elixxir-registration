@@ -45,8 +45,8 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string) error {
 			id:             id,
 			nodeAddress:    nAddr,
 			gatewayAddress: gwAddr,
-			status:       Active,
-			mux:          sync.RWMutex{},
+			status:         Active,
+			mux:            sync.RWMutex{},
 		}
 
 	return nil

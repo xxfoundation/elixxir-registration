@@ -5,6 +5,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 package scheduling
 
+// Contains the handler for node updates
+
 import (
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/current"

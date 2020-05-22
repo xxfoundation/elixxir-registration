@@ -5,6 +5,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 package node
 
+// Contains the node's update notification object
+
 import (
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"

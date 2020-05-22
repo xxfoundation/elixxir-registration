@@ -1,4 +1,11 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright © 2020 Privategrity Corporation                                   /
+//                                                                             /
+// All rights reserved.                                                        /
+////////////////////////////////////////////////////////////////////////////////
 package scheduling
+
+// Contains the scheduling params object and the internal protoround object
 
 import (
 	"gitlab.com/elixxir/comms/connect"
