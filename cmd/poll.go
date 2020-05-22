@@ -173,11 +173,20 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 func checkVersion(requiredGateway, requiredServer version.Version,
 	msg *pb.PermissioningPoll) error {
 
-	// Parse the gateway version string
-	gatewayVersion, err := version.ParseVersion(msg.GetGatewayVersion())
-	if err != nil {
-		return errors.Errorf("Failed to parse gateway version %#v: %+v",
-			msg.GetGatewayVersion(), err)
+	if msg.GetGatewayVersion() != "" {
+		// Parse the gateway version string
+		gatewayVersion, err := version.ParseVersion(msg.GetGatewayVersion())
+		if err != nil {
+			return errors.Errorf("Failed to parse gateway version %#v: %+v",
+				msg.GetGatewayVersion(), err)
+		}
+
+		// Check that the gateway version is compatible with the required version
+		if !version.IsCompatible(requiredGateway, gatewayVersion) {
+			return errors.Errorf("The gateway version %#v is incompatible with "+
+				"the required version %#v.", gatewayVersion.String(), requiredGateway.String())
+		}
+
 	}
 
 	// Parse the server version string
