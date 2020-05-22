@@ -241,7 +241,7 @@ func (n *State) UpdateGatewayAddresses(gateway string) bool {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 
-	if n.gatewayAddress != gateway{
+	if gateway != "" && n.gatewayAddress != gateway {
 		n.gatewayAddress = gateway
 		return true
 	}
