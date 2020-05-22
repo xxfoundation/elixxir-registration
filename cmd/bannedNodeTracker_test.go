@@ -102,7 +102,7 @@ func createNode(testState *storage.NetworkState, order, regCode string, appId in
 	nodeId := id.NewIdFromBytes(idBytes, t)
 
 	// Add node to the mao
-	err = testState.GetNodeMap().AddNode(nodeId, order)
+	err = testState.GetNodeMap().AddNode(nodeId, order, "", "")
 	if err != nil {
 		t.Errorf("Failed to add node to node map: %v", err)
 	}

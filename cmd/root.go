@@ -19,7 +19,6 @@ import (
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/primitives/version"
-	"gitlab.com/elixxir/registration/scheduling/simple"
 	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"

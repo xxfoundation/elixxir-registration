@@ -39,7 +39,7 @@ func TestCreateRound(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i%5)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i%5)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -85,7 +85,7 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 	for i := uint64(0); i < 5; i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i%5)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i%5)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -135,7 +135,7 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 	for i := uint64(0); i < 5; i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i%5)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i%5)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -188,7 +188,7 @@ func TestCreateRound_EfficientTeam(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(regions[i]))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(regions[i]), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()

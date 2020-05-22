@@ -117,7 +117,7 @@ func TestCreateRound_Random(t *testing.T) {
 	for i := 0; i < int(testParams.TeamSize); i++ {
 		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()

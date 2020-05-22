@@ -396,14 +396,14 @@ func TestPoll_BannedNode(t *testing.T) {
 		t.Errorf("Could not add round update: %s", err)
 	}
 
-	err = impl.State.GetNodeMap().AddNode(testID, "")
+	err = impl.State.GetNodeMap().AddNode(testID, "", "", "")
 	if err != nil {
 		t.Errorf("Could nto add node: %s", err)
 	}
 
 	impl.State.GetNodeMap().GetNode(testID).Ban()
 
-	_, err = impl.Poll(testMsg, testAuth)
+	_, err = impl.Poll(testMsg, testAuth, "")
 	if err != nil {
 		return
 	}
