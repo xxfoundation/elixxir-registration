@@ -285,7 +285,7 @@ func setupNode(t *testing.T, testState *storage.NetworkState, newId uint64) *nod
 
 	// Construct a node state
 	nid := id.NewIdFromUInt(newId, id.Node, t)
-	err := testState.GetNodeMap().AddNode(nid, "0")
+	err := testState.GetNodeMap().AddNode(nid, "0", "", "")
 	if err != nil {
 		t.Errorf("Failed to add node to state: %v", err)
 	}
