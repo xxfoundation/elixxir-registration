@@ -196,12 +196,6 @@ func checkVersion(requiredGateway, requiredServer version.Version,
 			msg.GetServerVersion(), err)
 	}
 
-	// Check that the gateway version is compatible with the required version
-	if !version.IsCompatible(requiredGateway, gatewayVersion) {
-		return errors.Errorf("The gateway version %#v is incompatible with "+
-			"the required version %#v.", gatewayVersion.String(), requiredGateway.String())
-	}
-
 	// Check that the server version is compatible with the required version
 	if !version.IsCompatible(requiredServer, serverVersion) {
 		return errors.Errorf("The server version %#v is incompatible with "+
