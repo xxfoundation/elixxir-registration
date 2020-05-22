@@ -411,10 +411,10 @@ func TestNetworkState_GetNodeMap(t *testing.T) {
 // channel and that GetNodeUpdateChannel() receives and returns it.
 func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 	// Test values
-	testNun := NodeUpdateNotification{
-		Node: id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
-		From: current.NOT_STARTED,
-		To:   current.WAITING,
+	testNun := node.UpdateNotification{
+		Node:         id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
+		FromActivity: current.NOT_STARTED,
+		ToActivity:   current.WAITING,
 	}
 
 	// Generate new NetworkState
@@ -424,7 +424,7 @@ func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 	}
 
 	go func() {
-		err = state.NodeUpdateNotification(testNun.Node, testNun.From, testNun.To)
+		err = state.SendUpdateNotification(testNun)
 		if err != nil {
 			t.Errorf("NodeUpdateNotification() produced an unexpected error:"+
 				"\n%+v", err)
@@ -435,10 +435,10 @@ func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 
 	select {
 	case testUpdate := <-nodeUpdateNotifier:
-		if !reflect.DeepEqual(*testUpdate, testNun) {
+		if !reflect.DeepEqual(testUpdate, testNun) {
 			t.Errorf("GetNodeUpdateChannel() received the wrong "+
 				"NodeUpdateNotification.\n\texpected: %v\n\t received: %v",
-				testNun, *testUpdate)
+				testNun, testUpdate)
 		}
 	case <-time.After(time.Millisecond):
 		t.Error("Failed to receive node update.")
@@ -449,10 +449,10 @@ func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 // channel buffer is already filled.
 func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
 	// Test values
-	testNun := NodeUpdateNotification{
-		Node: id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
-		From: current.NOT_STARTED,
-		To:   current.WAITING,
+	testNun := node.UpdateNotification{
+		Node:         id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
+		FromActivity: current.NOT_STARTED,
+		ToActivity:   current.WAITING,
 	}
 	expectedError := errors.New("Could not send update notification")
 
@@ -464,11 +464,11 @@ func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
 
 	// Fill buffer
 	for i := 0; i < updateBufferLength; i++ {
-		state.update <- &testNun
+		state.update <- testNun
 	}
 
 	go func() {
-		err = state.NodeUpdateNotification(testNun.Node, testNun.From, testNun.To)
+		err = state.SendUpdateNotification(testNun)
 		if strings.Compare(err.Error(), expectedError.Error()) != 0 {
 			t.Errorf("NodeUpdateNotification() did not produce an error "+
 				"when the channel buffer is full.\n\texpected: %v\n\treceived: %v",

@@ -20,6 +20,7 @@ import (
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/scheduling/simple"
+	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"net"
@@ -28,6 +29,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -168,6 +170,25 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
+		// Determine how long between polling for banned nodes
+		interval := viper.GetInt("BanTrackerInterval")
+		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
+
+		// Run the independent node tracker in own go thread
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					// Keep track of banned nodes
+					err = BannedNodeTracker(impl.State)
+					if err != nil {
+						jww.FATAL.Panicf("BannedNodeTracker failed: %v", err)
+					}
+				}
+
+			}
+		}()
+
 		jww.INFO.Printf("Waiting for for %v nodes to register so "+
 			"rounds can start", RegParams.minimumNodes)
 
@@ -177,17 +198,7 @@ var rootCmd = &cobra.Command{
 
 		// Begin scheduling algorithm
 		go func() {
-			var err error
-			algo := viper.GetString("schedulingAlgorithm")
-			jww.INFO.Printf("Beginning %s scheduling algorithm", algo)
-			switch algo {
-			case "simple":
-				err = simple.Scheduler(SchedulingConfig, impl.State)
-			case "secure":
-				err = errors.New("secure scheduling algorithm not yet implemented")
-			default:
-				err = errors.Errorf("schedulding algorithem %s unknown", algo)
-			}
+			err = scheduling.Scheduler(SchedulingConfig, impl.State)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
 		}()
 

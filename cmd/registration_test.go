@@ -107,6 +107,7 @@ func TestEmptyDataBase(t *testing.T) {
 // Happy path: looking for a code that is in the database
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	// Start registration server
+	testParams.Address = "0.0.0.0:5901"
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf(err.Error())

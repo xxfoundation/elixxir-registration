@@ -15,8 +15,6 @@ import (
 	"gitlab.com/elixxir/comms/network/dataStructures"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -37,7 +35,7 @@ type NetworkState struct {
 	roundUpdateID   uint64
 	roundUpdateLock sync.Mutex
 	roundData       *dataStructures.Data
-	update          chan *NodeUpdateNotification // For triggering updates to top level
+	update          chan node.UpdateNotification // For triggering updates to top level
 
 	// Node NetworkState
 	nodes *node.StateMap
@@ -45,14 +43,6 @@ type NetworkState struct {
 	// NDF state
 	partialNdf *dataStructures.Ndf
 	fullNdf    *dataStructures.Ndf
-}
-
-// NodeUpdateNotification structure used to notify the control thread that the
-// round state has updated.
-type NodeUpdateNotification struct {
-	Node *id.ID
-	From current.Activity
-	To   current.Activity
 }
 
 // NewState returns a new NetworkState object.
@@ -69,7 +59,7 @@ func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 	state := &NetworkState{
 		rounds:        round.NewStateMap(),
 		roundUpdates:  dataStructures.NewUpdates(),
-		update:        make(chan *NodeUpdateNotification, updateBufferLength),
+		update:        make(chan node.UpdateNotification, updateBufferLength),
 		nodes:         node.NewStateMap(),
 		fullNdf:       fullNdf,
 		partialNdf:    partialNdf,
@@ -178,15 +168,9 @@ func (s *NetworkState) GetNodeMap() *node.StateMap {
 
 // NodeUpdateNotification sends a notification to the control thread of an
 // update to a nodes state.
-func (s *NetworkState) NodeUpdateNotification(node *id.ID, from, to current.Activity) error {
-	nun := NodeUpdateNotification{
-		Node: node,
-		From: from,
-		To:   to,
-	}
-
+func (s *NetworkState) SendUpdateNotification(nun node.UpdateNotification) error {
 	select {
-	case s.update <- &nun:
+	case s.update <- nun:
 		return nil
 	default:
 		return errors.New("Could not send update notification")
@@ -194,6 +178,6 @@ func (s *NetworkState) NodeUpdateNotification(node *id.ID, from, to current.Acti
 }
 
 // GetNodeUpdateChannel returns a channel to receive node updates on.
-func (s *NetworkState) GetNodeUpdateChannel() <-chan *NodeUpdateNotification {
+func (s *NetworkState) GetNodeUpdateChannel() <-chan node.UpdateNotification {
 	return s.update
 }

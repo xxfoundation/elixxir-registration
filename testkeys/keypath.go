@@ -63,6 +63,15 @@ func GetClientNdf() string {
 	return filepath.Join(getDirForFile(), "clientNDF.json")
 }
 
-func GetSchedulingConfig() string {
-	return filepath.Join(getDirForFile(), "schedulingConfig.json")
+func GetSchedulingSimple(isRandom bool) string {
+	if isRandom {
+		return filepath.Join(getDirForFile(), "Scheduling_Simple_Random.json")
+
+	}
+	return filepath.Join(getDirForFile(), "Scheduling_Simple_NonRandom.json")
+}
+
+func GetSchedulingSecure() string {
+
+	return filepath.Join(getDirForFile(), "Scheduling_Simple_NonRandom.json")
 }

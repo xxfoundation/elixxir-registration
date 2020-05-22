@@ -3,13 +3,12 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
-package simple
+package scheduling
 
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -18,25 +17,11 @@ import (
 
 // scheduler.go contains the business logic for scheduling a round
 
-type Params struct {
-	TeamSize       uint32
-	BatchSize      uint32
-	RandomOrdering bool
-	MinimumDelay   time.Duration
-	//delay in ms for a realtime round to start
-	RealtimeDelay uint32
-}
-
-//internal structure which describes a round to be created
-type protoRound struct {
-	topology      *connect.Circuit
-	ID            id.Round
-	nodeStateList []*node.State
-	batchSize     uint32
-}
-
 //size of round creation channel, just sufficiently large enough to not be jammed
 const newRoundChanLen = 100
+
+type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
+	state *storage.NetworkState) (protoRound, error)
 
 // Scheduler constructs the teaming parameters and sets up the scheduling
 func Scheduler(serialParam []byte, state *storage.NetworkState) error {
@@ -54,7 +39,7 @@ func Scheduler(serialParam []byte, state *storage.NetworkState) error {
 func scheduler(params Params, state *storage.NetworkState) error {
 
 	// pool which tracks nodes which are not in a team
-	pool := newWaitingPool(int(params.TeamSize))
+	pool := NewWaitingPool()
 
 	//tracks and incrememnts the round id
 	roundID := NewRoundID(0)
@@ -67,6 +52,18 @@ func scheduler(params Params, state *storage.NetworkState) error {
 
 	//calculate the realtime delay from params
 	rtDelay := time.Duration(params.RealtimeDelay) * time.Millisecond
+
+	//select the correct round creator
+	var createRound roundCreator
+
+	if params.Secure {
+		jww.INFO.Printf("Using Secure Teaming Algorithm")
+		createRound = createSecureRound
+	} else {
+		jww.INFO.Printf("Using Simple Teaming Algorithm")
+
+		createRound = createSimpleRound
+	}
 
 	//begin the thread that starts rounds
 	go func() {
@@ -91,15 +88,17 @@ func scheduler(params Params, state *storage.NetworkState) error {
 
 	//start receiving updates from nodes
 	for true {
-		var update *storage.NodeUpdateNotification
+		var update node.UpdateNotification
 		select {
+		// If receive an error over a channel, return an error
 		case err := <-errorChan:
 			return err
+		// when we get a node update, move base the select statement
 		case update = <-state.GetNodeUpdateChannel():
 		}
 
 		//handle the node's state change
-		err := HandleNodeStateChange(update, pool, state, rtDelay)
+		err := HandleNodeUpdates(update, pool, state, rtDelay)
 		if err != nil {
 			return err
 		}

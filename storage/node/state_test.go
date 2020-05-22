@@ -12,6 +12,7 @@ import (
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
 	"math"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -23,6 +24,7 @@ func TestNodeState_Update_Same(t *testing.T) {
 	ns := State{
 		activity: current.WAITING,
 		lastPoll: time.Now(),
+		status:   Active,
 	}
 
 	time.Sleep(10 * time.Millisecond)
@@ -44,12 +46,15 @@ func TestNodeState_Update_Same(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old != current.WAITING {
-		t.Errorf("Node state returned the wrong old state")
+	// Returns default updateNotification object on failed update
+	if !reflect.DeepEqual(old, UpdateNotification{}) {
+		t.Errorf("Node state returned the wrong old state."+
+			"\n\tExpected: %v"+
+			"\n\tReceived: %v", current.NOT_STARTED, old.ToActivity)
 	}
 
 	if ns.activity != current.WAITING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.WAITING, ns.activity)
 	}
 }
@@ -85,12 +90,13 @@ func TestNodeState_Update_Invalid(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old != current.WAITING {
+	// Returns default (NotStarted) on a failed update
+	if old.FromActivity != current.NOT_STARTED {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.WAITING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.WAITING, ns.activity)
 	}
 }
@@ -111,7 +117,7 @@ func TestNodeState_Update_Valid_RequiresRound_RoundNil(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("Node state update returned no error on invalid state change")
-	} else if !strings.Contains(err.Error(), "requires the node be assigned a round") {
+	} else if !strings.Contains(err.Error(), "requires the Node be assigned a round") {
 		t.Errorf("Node state update returned the wrong error on "+
 			"state change requiring round but without one: %s", err)
 	}
@@ -126,12 +132,12 @@ func TestNodeState_Update_Valid_RequiresRound_RoundNil(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old != current.WAITING {
+	if !reflect.DeepEqual(old, UpdateNotification{}) {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.WAITING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.WAITING, ns.activity)
 	}
 }
@@ -168,12 +174,13 @@ func TestNodeState_Update_Valid_RequiresRound_Round_InvalidState(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old != current.WAITING {
+	// Returns default updateNotification object on failed update
+	if !reflect.DeepEqual(old, UpdateNotification{}) {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.WAITING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.WAITING, ns.activity)
 	}
 }
@@ -207,12 +214,12 @@ func TestNodeState_Update_Valid_RequiresRound_Round_ValidState(t *testing.T) {
 		t.Errorf("Node state should have updated")
 	}
 
-	if old != current.WAITING {
+	if old.FromActivity != current.WAITING {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.PRECOMPUTING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.PRECOMPUTING, ns.activity)
 	}
 }
@@ -234,7 +241,7 @@ func TestNodeState_Update_Valid_RequiresNoRound_HasRound(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("Node state update returned no error on invalid state change")
-	} else if !strings.Contains(err.Error(), "requires the node not be assigned a round") {
+	} else if !strings.Contains(err.Error(), "requires the Node not be assigned a round") {
 		t.Errorf("Node state update returned the wrong error on "+
 			"state change requiring no round but has one: %s", err)
 	}
@@ -249,12 +256,13 @@ func TestNodeState_Update_Valid_RequiresNoRound_HasRound(t *testing.T) {
 		t.Errorf("Node state should not have updated")
 	}
 
-	if old != current.COMPLETED {
+	// Returns default updateNotification object on failed update
+	if !reflect.DeepEqual(old, UpdateNotification{}) {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.COMPLETED {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.COMPLETED, ns.activity)
 	}
 }
@@ -287,12 +295,12 @@ func TestNodeState_Update_Valid_RequiresNoRound_NoRound(t *testing.T) {
 		t.Errorf("Node state should  have updated")
 	}
 
-	if old != current.COMPLETED {
+	if old.FromActivity != current.COMPLETED {
 		t.Errorf("Node state returned the wrong old state")
 	}
 
 	if ns.activity != current.WAITING {
-		t.Errorf("Internal node activity is not correct: "+
+		t.Errorf("Internal Node activity is not correct: "+
 			"Expected: %s, Recieved: %s", current.WAITING, ns.activity)
 	}
 }
@@ -434,4 +442,183 @@ func TestNodeState_GetID(t *testing.T) {
 		t.Errorf("Recieved incorrect id from GetID, "+
 			"Expected: %s, Recieved: %s", testID, retrievedID)
 	}
+}
+
+func TestState_GetStatus(t *testing.T) {
+	ourStatus := Status(0)
+	ns := State{status: ourStatus}
+
+	if ns.GetStatus() != ourStatus {
+		t.Errorf("Getter did not get expected value!"+
+			"\n\tExpected: %v"+
+			"\n\tReceived: %v", ourStatus, ns.GetStatus())
+	}
+}
+
+//
+func TestState_Ban(t *testing.T) {
+	testID := id.NewIdFromUInt(50, id.Node, t)
+	ns := State{
+		id: testID,
+	}
+
+	// Test that a node gets updated after banning
+	_, err := ns.Ban()
+	if err != nil {
+		t.Errorf("Unexpected error in happy path: ")
+	}
+
+	if ns.status != Banned {
+		t.Errorf("Node status not updated after banning."+
+			"\n\tExpected: %v"+
+			"\n\tReceived: %v", Banned, ns.status)
+	}
+
+	// Attempt to ban an already banned node
+	_, err = ns.Ban()
+	if err == nil {
+		t.Errorf("Should not be able to call ban on a banned node")
+	}
+
+}
+
+func TestState_IsBanned(t *testing.T) {
+	testID := id.NewIdFromUInt(50, id.Node, t)
+	ns := State{
+		id: testID,
+	}
+
+	// Test that a node gets updated after banning
+	_, err := ns.Ban()
+	if err != nil {
+		t.Errorf("Unexpected error in happy path: ")
+	}
+
+	if !ns.IsBanned() {
+		t.Errorf("IsBanned should return true after node has been banned")
+	}
+}
+
+// Happy path
+func TestState_UpdateInactive(t *testing.T) {
+	testID := id.NewIdFromUInt(50, id.Node, t)
+
+	oldActivity := current.ERROR
+	newActivity := current.WAITING
+	oldStatus := Inactive
+
+	//  Create an inactive node
+	ns := State{
+		id:       testID,
+		activity: oldActivity,
+		status:   oldStatus,
+	}
+
+	// Update the inactive node
+	ok, receivedNun, err := ns.updateInactive(newActivity)
+	if err != nil || !ok {
+		t.Errorf("Unexpected error in happy path: %v", err)
+	}
+
+	expectedNun := UpdateNotification{
+		Node:         ns.id,
+		FromStatus:   Inactive,
+		ToStatus:     Active,
+		FromActivity: oldActivity,
+		ToActivity:   current.WAITING,
+	}
+
+	// Check that the node's status has been updated
+	if ns.status != Active {
+		t.Errorf("Node expected to have %v status."+
+			"\n\tReceived status: %v", Active, ns.status)
+	}
+
+	// Check that the node's activity has been updated
+	if ns.activity != newActivity {
+		t.Errorf("Node expected to have %v activity."+
+			"\n\tReceived activity: %v", newActivity, ns.activity)
+	}
+
+	// check that the update notification is as expected
+	if !reflect.DeepEqual(receivedNun, expectedNun) {
+		t.Errorf("Update notification did not match expected."+
+			"\n\tExpected: %v"+
+			"\n\tReceived: %v", expectedNun, receivedNun)
+	}
+
+}
+
+// Error path
+func TestState_UpdateInactive_Error(t *testing.T) {
+	testID := id.NewIdFromUInt(50, id.Node, t)
+
+	oldActivity := current.REALTIME
+	newActivity := current.ERROR
+
+	//  Create an inactive node
+	ns := State{
+		id:       testID,
+		activity: oldActivity,
+		status:   Inactive,
+	}
+
+	// Update the inactive node
+	ok, _, _ := ns.updateInactive(newActivity)
+	if ok {
+		t.Errorf("Expected false update when updating to %v", newActivity)
+	}
+
+	// Check that the node's status has not been updated
+	if ns.status != Inactive {
+		t.Errorf("Node expected to have %v status."+
+			"\n\tReceived status: %v", Inactive, ns.status)
+	}
+
+	// Check that the node's activity has not been updated
+	if ns.activity == newActivity {
+		t.Errorf("Node expected to have %v activity."+
+			"\n\tReceived activity: %v", oldActivity, ns.activity)
+	}
+
+}
+
+// Error path
+func TestState_UpdateInactive_InvalidActivity(t *testing.T) {
+	testID := id.NewIdFromUInt(50, id.Node, t)
+
+	oldActivity := current.REALTIME
+	newActivity := current.REALTIME
+
+	//  Create an inactive node
+	ns := State{
+		id:       testID,
+		activity: oldActivity,
+		status:   Inactive,
+	}
+
+	// Update the inactive node
+	ok, _, err := ns.updateInactive(newActivity)
+	if ok {
+		t.Errorf("Expected false update when updating to %v", newActivity)
+	}
+
+	// Expected error case, node that's inactive must poll with error state
+	if err == nil {
+		t.Errorf("Expected error case: Inactive node cannot update to any state other than"+
+			" %v.", current.WAITING)
+	}
+
+	// Check that the node's status has not been updated
+	if ns.status != Inactive {
+		t.Errorf("Node expected to have %v status."+
+			"\n\tReceived status: %v", Inactive, ns.status)
+	}
+
+	// Check that the node's activity has not been updated
+	if ns.activity != oldActivity {
+		t.Errorf("Node expected to have %v activity."+
+			"\n\tReceived activity: %v", oldActivity, ns.activity)
+	}
+
 }

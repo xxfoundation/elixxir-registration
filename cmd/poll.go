@@ -45,8 +45,14 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	nid := auth.Sender.GetId()
 	n := m.State.GetNodeMap().GetNode(nid)
 	if n == nil {
-		return nil, errors.Errorf("Node %s could not be found in internal state "+
+		err = errors.Errorf("Node %s could not be found in internal state "+
 			"tracker", nid)
+		return
+	}
+
+	// Check if the node has been deemed out of network
+	if n.IsBanned() {
+		return nil, errors.Errorf("Node %s has been banned from the network", nid)
 	}
 
 	// Check for correct version
@@ -116,11 +122,11 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// any associated round allows for that change. If the change was not
 	// acceptable, it is not recorded and an error is returned, which is
 	// propagated to the node
-	update, oldActivity, err := n.Update(current.Activity(msg.Activity))
+	update, updateNotification, err := n.Update(current.Activity(msg.Activity))
 
 	//if an update ocured, report it to the control thread
 	if update {
-		err = m.State.NodeUpdateNotification(nid, oldActivity, current.Activity(msg.Activity))
+		err = m.State.SendUpdateNotification(updateNotification)
 	} else {
 		n.GetPollingLock().Unlock()
 	}

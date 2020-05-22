@@ -342,6 +342,75 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	impl.Comms.Shutdown()
 }
 
+func TestPoll_BannedNode(t *testing.T) {
+	//Create database
+	var err error
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0", "-1")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
+
+	testID := id.NewIdFromUInt(0, id.Node, t)
+	testString := "test"
+	// Start registration server
+	testParams.KeyPath = testkeys.GetCAKeyPath()
+	impl, err := StartRegistration(testParams)
+	if err != nil {
+		t.Errorf("Unable to start registration: %+v", err)
+	}
+	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
+
+	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+		Registration: ndf.Registration{
+			Address:        "420",
+			TlsCertificate: "",
+		},
+	})
+
+	// Make a simple auth object that will pass the checks
+	testHost, _ := connect.NewHost(testID, testString,
+		make([]byte, 0), false, true)
+	testAuth := &connect.Auth{
+		IsAuthenticated: true,
+		Sender:          testHost,
+	}
+	testMsg := &pb.PermissioningPoll{
+		Full: &pb.NDFHash{
+			Hash: []byte(testString)},
+		Partial: &pb.NDFHash{
+			Hash: []byte(testString),
+		},
+		LastUpdate: 0,
+		Activity:   uint32(current.WAITING),
+		Error:      nil,
+	}
+
+	err = impl.State.AddRoundUpdate(
+		&pb.RoundInfo{
+			ID:    1,
+			State: uint32(states.PRECOMPUTING),
+		})
+
+	if err != nil {
+		t.Errorf("Could not add round update: %s", err)
+	}
+
+	err = impl.State.GetNodeMap().AddNode(testID, "")
+	if err != nil {
+		t.Errorf("Could nto add node: %s", err)
+	}
+
+	impl.State.GetNodeMap().GetNode(testID).Ban()
+
+	_, err = impl.Poll(testMsg, testAuth)
+	if err != nil {
+		return
+	}
+
+	t.Errorf("Expected error state: Node with out of network status should return an error")
+}
+
 // Check that checkVersion() correctly determines the message versions to be
 // compatible with the required versions.
 func TestCheckVersion(t *testing.T) {

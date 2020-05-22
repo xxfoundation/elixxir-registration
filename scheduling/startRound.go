@@ -3,7 +3,7 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
-package simple
+package scheduling
 
 import (
 	"github.com/pkg/errors"
@@ -12,12 +12,11 @@ import (
 	"time"
 )
 
-// startRound is a function which takes the info from createRound and updates the
+// startRound is a function which takes the info from createSimpleRound and updates the
 //  node and network states in order to begin the round
 func startRound(round protoRound, state *storage.NetworkState, errChan chan<- error) error {
-
 	// Add the round to the manager
-	r, err := state.GetRoundMap().AddRound(round.ID, round.batchSize, round.topology)
+	r, err := state.GetRoundMap().AddRound(round.ID, round.BatchSize, round.Topology)
 	if err != nil {
 		err = errors.WithMessagef(err, "Failed to create new round %v", round.ID)
 		errChan <- err
@@ -42,7 +41,7 @@ func startRound(round protoRound, state *storage.NetworkState, errChan chan<- er
 	}
 
 	// Tag all nodes to the round
-	for _, n := range round.nodeStateList {
+	for _, n := range round.NodeStateList {
 		err := n.SetRound(r)
 		if err != nil {
 			err = errors.WithMessagef(err, "could not add round %v to node %s", r.GetRoundID(), n.GetID())
