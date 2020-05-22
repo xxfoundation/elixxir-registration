@@ -239,7 +239,7 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 		return response, err
 	}
 
-	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
+	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth, serverAddress string) (*pb.PermissionPollResponse, error) {
 
 		response, err := instance.Poll(msg, auth)
 		if err != nil {
