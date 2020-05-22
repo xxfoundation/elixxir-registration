@@ -190,15 +190,15 @@ func TestStateMap_GetNodeStates(t *testing.T) {
 		nodeStates: make(map[id.ID]*State),
 	}
 
-	err := sm.AddNode(id.NewIdFromBytes([]byte("test"), t), "test")
+	err := sm.AddNode(id.NewIdFromBytes([]byte("test"), t), "test", "", "")
 	if err != nil {
 		t.Errorf("Unable to add node: %+v", err)
 	}
-	err = sm.AddNode(id.NewIdFromBytes([]byte("test2"), t), "test2")
+	err = sm.AddNode(id.NewIdFromBytes([]byte("test2"), t), "test2", "", "")
 	if err != nil {
 		t.Errorf("Unable to add node: %+v", err)
 	}
-	err = sm.AddNode(id.NewIdFromBytes([]byte("test3"), t), "test3")
+	err = sm.AddNode(id.NewIdFromBytes([]byte("test3"), t), "test3", "", "")
 	if err != nil {
 		t.Errorf("Unable to add node: %+v", err)
 	}
