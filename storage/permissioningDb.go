@@ -10,6 +10,7 @@ package storage
 
 import (
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
 	"time"
@@ -23,6 +24,7 @@ func (m *DatabaseImpl) InsertApplication(application Application, unregisteredNo
 
 // Insert NodeMetric object
 func (m *DatabaseImpl) InsertNodeMetric(metric NodeMetric) error {
+	jww.DEBUG.Printf("Attempting to insert node metric: %+v", metric)
 	return m.db.Create(metric).Error
 }
 
@@ -41,6 +43,7 @@ func (m *DatabaseImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) 
 		newTopology[i] = topologyObj
 	}
 	metric.Topologies = newTopology
+	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
 	return m.db.Save(metric).Error
 }
 

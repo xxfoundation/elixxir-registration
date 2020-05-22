@@ -50,8 +50,8 @@ func (m *MapImpl) InsertNodeMetric(metric NodeMetric) error {
 
 	// Add to map
 	metric.Id = m.nodeMetricCounter
+	jww.DEBUG.Printf("Attempting to insert node metric: %+v", metric)
 	m.nodeMetrics[m.nodeMetricCounter] = &metric
-
 	return nil
 }
 
@@ -80,8 +80,8 @@ func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error
 	}
 
 	// Add to map
+	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
 	m.roundMetrics[m.roundMetricCounter] = &metric
-
 	return nil
 }
 
