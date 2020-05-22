@@ -48,7 +48,8 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 
 	bestTime := math.MaxInt32
 	var bestOrder []*node.State
-	// Fixme: way to do this more efficiently?
+	// TODO: consider a way to do this more efficiently? Although possibly not needed
+	//  as right now it runs in the microsecond range with 4 nodes (data from TestCreateRound_EfficientTeam)
 	for _, nodes := range permutations {
 		totalLatency := 0
 		for i := 0; i < len(nodes); i++ {
@@ -91,7 +92,7 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 
 	}
 
-	jww.DEBUG.Printf("Permute/Find best team took: %v", time.Now().Sub(start))
+	jww.DEBUG.Printf("Permuting and finding the best team took: %v", time.Now().Sub(start))
 
 	// Create proto
 	newRound := createProtoRound(params, state, bestOrder, roundID)
