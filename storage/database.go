@@ -53,7 +53,7 @@ type nodeRegistration interface {
 	// Insert NodeMetric object
 	InsertNodeMetric(metric NodeMetric) error
 	// Insert RoundMetric object
-	InsertRoundMetric(metric RoundMetric, topology []string) error
+	InsertRoundMetric(metric RoundMetric, topology [][]byte) error
 }
 
 type clientRegistration interface {

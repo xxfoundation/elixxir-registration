@@ -56,7 +56,7 @@ func (m *MapImpl) InsertNodeMetric(metric NodeMetric) error {
 }
 
 // Insert RoundMetric object
-func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology []string) error {
+func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -67,8 +67,12 @@ func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology []string) error
 	// Build Topology objects
 	metric.Topologies = make([]Topology, len(topology))
 	for i, node := range topology {
+		nodeId, err := id.Unmarshal(node)
+		if err != nil {
+			return errors.New(err.Error())
+		}
 		topologyObj := Topology{
-			NodeId:        node,
+			NodeId:        nodeId.String(),
 			RoundMetricId: m.roundMetricCounter,
 			Order:         uint8(i),
 		}

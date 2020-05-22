@@ -36,6 +36,7 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string) error {
 		return errors.New("cannot add a Node which already exists")
 	}
 
+	numPolls := uint64(0)
 	nsm.nodeStates[*id] =
 		&State{
 			activity:       current.NOT_STARTED,
@@ -45,8 +46,9 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string) error {
 			id:             id,
 			nodeAddress:    nAddr,
 			gatewayAddress: gwAddr,
-			status:       Active,
-			mux:          sync.RWMutex{},
+			status:         Active,
+			numPolls:       &numPolls,
+			mux:            sync.RWMutex{},
 		}
 
 	return nil
@@ -57,6 +59,20 @@ func (nsm *StateMap) GetNode(id *id.ID) *State {
 	nsm.mux.RLock()
 	defer nsm.mux.RUnlock()
 	return nsm.nodeStates[*id]
+}
+
+// Returns a list of all node States in the nsm
+func (nsm *StateMap) GetNodeStates() []*State {
+	nodeStates := make([]*State, len(nsm.nodeStates))
+	idx := 0
+
+	nsm.mux.RLock()
+	defer nsm.mux.RUnlock()
+	for _, nodeState := range nsm.nodeStates {
+		nodeStates[idx] = nodeState
+		idx++
+	}
+	return nodeStates
 }
 
 // Returns the number of elements in the NodeMapo

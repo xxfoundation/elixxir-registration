@@ -9,6 +9,7 @@
 package storage
 
 import (
+	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
 	"time"
@@ -26,11 +27,15 @@ func (m *DatabaseImpl) InsertNodeMetric(metric NodeMetric) error {
 }
 
 // Insert RoundMetric object
-func (m *DatabaseImpl) InsertRoundMetric(metric RoundMetric, topology []string) error {
+func (m *DatabaseImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error {
 	newTopology := make([]Topology, len(topology))
 	for i, node := range topology {
+		nodeId, err := id.Unmarshal(node)
+		if err != nil {
+			return errors.New(err.Error())
+		}
 		topologyObj := Topology{
-			NodeId: node,
+			NodeId: nodeId.String(),
 			Order:  uint8(i),
 		}
 		newTopology[i] = topologyObj
