@@ -201,6 +201,44 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
 		}()
 
+		// Determine how long between storing Node metrics
+		nodeMetricInterval := time.Duration(
+			viper.GetInt64("nodeMetricInterval")) * time.Second
+		nodeTicker := time.NewTicker(nodeMetricInterval)
+
+		// Run the Node metric tracker forever in another thread
+		go func() {
+			for {
+				// Store the metric start time
+				startTime := time.Now()
+				select {
+				// Wait for the ticker to fire
+				case <-nodeTicker.C:
+
+					// Iterate over the Node States
+					nodeStates := impl.State.GetNodeMap().GetNodeStates()
+					for _, nodeState := range nodeStates {
+
+						// Build the NodeMetric
+						currentTime := time.Now()
+						metric := storage.NodeMetric{
+							NodeId:    nodeState.GetID().String(),
+							StartTime: startTime,
+							EndTime:   currentTime,
+							NumPings:  nodeState.GetAndResetNumPolls(),
+						}
+
+						// Store the NodeMetric
+						err := storage.PermissioningDb.InsertNodeMetric(metric)
+						if err != nil {
+							jww.FATAL.Panicf(
+								"Unable to store node metric: %+v", err)
+						}
+					}
+				}
+			}
+		}()
+
 		// Block forever to prevent the program ending
 		select {}
 	},
