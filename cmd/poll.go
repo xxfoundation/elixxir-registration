@@ -188,19 +188,17 @@ func checkVersion(requiredGateway, requiredServer version.Version,
 		}
 	}
 
-	if msg.GetServerVersion() != "" {
-		// Parse the server version string
-		serverVersion, err := version.ParseVersion(msg.GetServerVersion())
-		if err != nil {
-			return errors.Errorf("Failed to parse server version %#v: %+v",
-				msg.GetServerVersion(), err)
-		}
+	// Parse the server version string
+	serverVersion, err := version.ParseVersion(msg.GetServerVersion())
+	if err != nil {
+		return errors.Errorf("Failed to parse server version %#v: %+v",
+			msg.GetServerVersion(), err)
+	}
 
-		// Check that the server version is compatible with the required version
-		if !version.IsCompatible(requiredServer, serverVersion) {
-			return errors.Errorf("The server version %#v is incompatible with "+
-				"the required version %#v.", serverVersion.String(), requiredServer.String())
-		}
+	// Check that the server version is compatible with the required version
+	if !version.IsCompatible(requiredServer, serverVersion) {
+		return errors.Errorf("The server version %#v is incompatible with "+
+			"the required version %#v.", serverVersion.String(), requiredServer.String())
 	}
 
 	return nil
