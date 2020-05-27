@@ -29,6 +29,13 @@ publicAdress: "0.0.0.0:11420"
 # The listening port of this  server
 port: 11420
 
+# The minimum version required of gateways to connect
+minGatewayVersion: "0.0.0"
+
+# The minimum version required of servers to connect
+minServerVersion:  "0.0.0"
+
+
 # Database connection information
 dbUsername: "cmix"
 dbPassword: ""
