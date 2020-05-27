@@ -6,7 +6,7 @@
 
 //this file defines the structure which creates and tracks the RoundID
 
-package simple
+package scheduling
 
 //tracks the round ID. Only allows itself to incremented forward by 1
 import "gitlab.com/elixxir/primitives/id"

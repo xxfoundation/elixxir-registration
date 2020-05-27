@@ -50,13 +50,13 @@ func (m *MapImpl) InsertNodeMetric(metric NodeMetric) error {
 
 	// Add to map
 	metric.Id = m.nodeMetricCounter
+	jww.DEBUG.Printf("Attempting to insert node metric: %+v", metric)
 	m.nodeMetrics[m.nodeMetricCounter] = &metric
-
 	return nil
 }
 
 // Insert RoundMetric object
-func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology []string) error {
+func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -67,8 +67,12 @@ func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology []string) error
 	// Build Topology objects
 	metric.Topologies = make([]Topology, len(topology))
 	for i, node := range topology {
+		nodeId, err := id.Unmarshal(node)
+		if err != nil {
+			return errors.New(err.Error())
+		}
 		topologyObj := Topology{
-			NodeId:        node,
+			NodeId:        nodeId.String(),
 			RoundMetricId: m.roundMetricCounter,
 			Order:         uint8(i),
 		}
@@ -76,8 +80,8 @@ func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology []string) error
 	}
 
 	// Add to map
+	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
 	m.roundMetrics[m.roundMetricCounter] = &metric
-
 	return nil
 }
 

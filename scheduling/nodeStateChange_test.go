@@ -3,7 +3,7 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
-package simple
+package scheduling
 
 import (
 	"crypto/rand"
@@ -12,6 +12,7 @@ import (
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
 	"strconv"
 	"testing"
@@ -36,7 +37,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -51,66 +52,19 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := newWaitingPool(int(testParams.TeamSize))
+	testPool := NewWaitingPool()
 
-	testUpdate := &storage.NodeUpdateNotification{
-		Node: nodeList[0],
-		From: current.NOT_STARTED,
-		To:   current.WAITING}
+	testUpdate := node.UpdateNotification{
+		Node:         nodeList[0],
+		FromActivity: current.NOT_STARTED,
+		ToActivity:   current.WAITING}
 
 	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
 
-	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
-}
-
-// Happy path for transitioning to waiting
-func TestHandleNodeStateChance_WaitingError(t *testing.T) {
-	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
-	}
-
-	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-
-	testState, err := storage.NewState(privKey)
-	if err != nil {
-		t.Errorf("Failed to create test state: %v", err)
-		t.FailNow()
-	}
-
-	nodeList := make([]*id.ID, testParams.TeamSize)
-	for i := uint64(0); i < uint64(len(nodeList)); i++ {
-		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
-		if err != nil {
-			t.Errorf("Couldn't add node: %v", err)
-			t.FailNow()
-		}
-	}
-
-	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
-
-	testUpdate := &storage.NodeUpdateNotification{
-		Node: nodeList[0],
-		From: current.NOT_STARTED,
-		To:   current.WAITING}
-
-	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
-
-	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
-	if err != nil {
-		return
-	}
-
-	t.Errorf("Should fail when trying to insert node into a full pool")
 }
 
 // Happy path
@@ -131,7 +85,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize-1)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -147,18 +101,18 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	}
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := newWaitingPool(int(testParams.TeamSize))
+	testPool := NewWaitingPool()
 
 	for i := range nodeList {
-		testUpdate := &storage.NodeUpdateNotification{
-			Node: nodeList[i],
-			From: current.NOT_STARTED,
-			To:   current.WAITING,
+		testUpdate := node.UpdateNotification{
+			Node:         nodeList[i],
+			FromActivity: current.NOT_STARTED,
+			ToActivity:   current.WAITING,
 		}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
 		}
@@ -168,14 +122,14 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	for i := range nodeList {
 		_ = testState.GetNodeMap().GetNode(nodeList[i]).SetRound(roundState)
 
-		testUpdate := &storage.NodeUpdateNotification{
-			Node: nodeList[i],
-			From: current.WAITING,
-			To:   current.STANDBY}
+		testUpdate := node.UpdateNotification{
+			Node:         nodeList[i],
+			FromActivity: current.WAITING,
+			ToActivity:   current.STANDBY}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Error in standby happy path: %v", err)
 		}
@@ -204,7 +158,7 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -214,10 +168,7 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 	//roundID := NewRoundID(0)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
+	testPool := NewWaitingPool()
 
 	// Explicitly don't give node a round to reach an error state
 	//roundState := round.NewState_Testing(roundID.Get(), 0, t)
@@ -225,14 +176,14 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 
 	// Iterate through all the nodes so that all the nodes are ready for transition
 	for i := range nodeList {
-		testUpdate := &storage.NodeUpdateNotification{
-			Node: nodeList[i],
-			From: current.WAITING,
-			To:   current.STANDBY}
+		testUpdate := node.UpdateNotification{
+			Node:         nodeList[i],
+			FromActivity: current.WAITING,
+			ToActivity:   current.STANDBY}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
 		}
@@ -242,11 +193,17 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 }
 
 // Happy path
-func TestHandleNodeStateChange_Completed(t *testing.T) {
+func TestHandleNodeUpdates_Completed(t *testing.T) {
 	testParams := Params{
 		TeamSize:       5,
 		BatchSize:      32,
 		RandomOrdering: false,
+	}
+	var err error
+	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
+		"regCodes", "0.0.0.0", "-1")
+	if err != nil {
+		t.Errorf("%+v", err)
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
@@ -260,7 +217,7 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -276,18 +233,18 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 	}
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := newWaitingPool(int(testParams.TeamSize))
+	testPool := NewWaitingPool()
 
 	for i := range nodeList {
-		testUpdate := &storage.NodeUpdateNotification{
-			Node: nodeList[i],
-			From: current.NOT_STARTED,
-			To:   current.WAITING,
+		testUpdate := node.UpdateNotification{
+			Node:         nodeList[i],
+			FromActivity: current.NOT_STARTED,
+			ToActivity:   current.WAITING,
 		}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
 		}
@@ -297,14 +254,14 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 	for i := range nodeList {
 		_ = testState.GetNodeMap().GetNode(nodeList[i]).SetRound(roundState)
 
-		testUpdate := &storage.NodeUpdateNotification{
-			Node: nodeList[i],
-			From: current.REALTIME,
-			To:   current.COMPLETED}
+		testUpdate := node.UpdateNotification{
+			Node:         nodeList[i],
+			FromActivity: current.REALTIME,
+			ToActivity:   current.COMPLETED}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err != nil {
 			t.Errorf("Expected happy path for completed: %v", err)
 		}
@@ -313,7 +270,7 @@ func TestHandleNodeStateChange_Completed(t *testing.T) {
 }
 
 // Error path: attempt to handle a node transition when nodes never had rounds
-func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
+func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 	testParams := Params{
 		TeamSize:       5,
 		BatchSize:      32,
@@ -331,7 +288,7 @@ func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -341,21 +298,18 @@ func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
 	//roundID := NewRoundID(0)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
-	}
+	testPool := NewWaitingPool()
 
 	// Iterate through all the nodes so that all the nodes are ready for transition
 	for i := range nodeList {
-		testUpdate := &storage.NodeUpdateNotification{
-			Node: nodeList[i],
-			From: current.WAITING,
-			To:   current.COMPLETED}
+		testUpdate := node.UpdateNotification{
+			Node:         nodeList[i],
+			FromActivity: current.WAITING,
+			ToActivity:   current.COMPLETED}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
 		}
@@ -363,7 +317,7 @@ func TestHandleNodeStateChange_Completed_NoRound(t *testing.T) {
 	}
 }
 
-func TestHandleNodeStateChange_Error(t *testing.T) {
+func TestHandleNodeUpdates_Error(t *testing.T) {
 	testParams := Params{
 		TeamSize:       5,
 		BatchSize:      32,
@@ -381,7 +335,7 @@ func TestHandleNodeStateChange_Error(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -396,16 +350,148 @@ func TestHandleNodeStateChange_Error(t *testing.T) {
 	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
-	testPool := newWaitingPool(int(testParams.TeamSize))
+	testPool := NewWaitingPool()
 
-	testUpdate := &storage.NodeUpdateNotification{
-		Node: nodeList[0],
-		From: current.WAITING,
-		To:   current.ERROR}
+	testUpdate := node.UpdateNotification{
+		Node:         nodeList[0],
+		FromActivity: current.WAITING,
+		ToActivity:   current.ERROR}
 	testState.GetNodeMap().GetNode(testUpdate.Node).GetPollingLock().Lock()
 
-	err = HandleNodeStateChange(testUpdate, testPool, testState, 0)
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
+	}
+}
+
+// Happy path: Test that a node with a banned update status are removed from the pool
+func TestHandleNodeUpdates_BannedNode(t *testing.T) {
+	testParams := Params{
+		TeamSize:       5,
+		BatchSize:      32,
+		RandomOrdering: false,
+	}
+
+	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+
+	testState, err := storage.NewState(privKey)
+	if err != nil {
+		t.Errorf("Failed to create test state: %v", err)
+		t.FailNow()
+	}
+
+	testPool := NewWaitingPool()
+
+	// Build mock nodes and place in map
+	nodeList := make([]*id.ID, testParams.TeamSize)
+	nodeStateList := make([]*node.State, testParams.TeamSize)
+	for i := uint64(0); i < uint64(len(nodeList)); i++ {
+		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		if err != nil {
+			t.Errorf("Couldn't add node: %v", err)
+			t.FailNow()
+		}
+
+		// Add node to pool
+		ns := testState.GetNodeMap().GetNode(nodeList[i])
+		nodeStateList = append(nodeStateList, ns)
+		testPool.Add(ns)
+	}
+
+	// Test that a node with no round gets removed from the pool
+	testUpdate := node.UpdateNotification{
+		Node:     nodeList[0],
+		ToStatus: node.Banned,
+	}
+
+	// Ban the first node in the state map
+	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
+	if err != nil {
+		t.Errorf("Happy path received error: %v", err)
+	}
+
+	if testPool.Len() == int(testParams.TeamSize) {
+		t.Errorf("Node expected to be banned, decreasing pool size."+
+			"\n\tExpected size: %v"+
+			"\n\tReceived size: %v", testParams.TeamSize-1, testPool.Len())
+	}
+
+	r := round.NewState_Testing(42, 0, t)
+
+	// Get a node and set the round of the node
+	ns := testState.GetNodeMap().GetNode(nodeList[1])
+	err = ns.SetRound(r)
+	if err != nil {
+		t.Errorf("Unable to set round for mock node: %v", err)
+	}
+
+	// Craft a node update
+	testUpdate = node.UpdateNotification{
+		Node:     nodeList[1],
+		ToStatus: node.Banned,
+	}
+
+	// Ban the the second node in the state map
+	testState.GetNodeMap().GetNode(nodeList[1]).GetPollingLock().Lock()
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0)
+	if err != nil {
+		t.Errorf("Happy path received error: %v", err)
+	}
+
+	// Test that a node with a round gets has it's round unset
+	ok, receivedRound := ns.GetCurrentRound()
+	if ok {
+		t.Errorf("Did not expect node with round after being banned."+
+			"\n\tExpected nil round."+
+			"\n\tReceived: %v", receivedRound)
+	}
+
+}
+
+// Happy path
+func TestKillRound(t *testing.T) {
+	testParams := Params{
+		TeamSize:       5,
+		BatchSize:      32,
+		RandomOrdering: false,
+	}
+
+	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+
+	testState, err := storage.NewState(privKey)
+	if err != nil {
+		t.Errorf("Failed to create test state: %v", err)
+		t.FailNow()
+	}
+
+	testPool := NewWaitingPool()
+
+	// Build mock nodes and place in map
+	nodeList := make([]*id.ID, testParams.TeamSize)
+	nodeStateList := make([]*node.State, testParams.TeamSize)
+	for i := uint64(0); i < uint64(len(nodeList)); i++ {
+		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		if err != nil {
+			t.Errorf("Couldn't add node: %v", err)
+			t.FailNow()
+		}
+
+		// Add node to pool
+		ns := testState.GetNodeMap().GetNode(nodeList[i])
+		nodeStateList = append(nodeStateList, ns)
+		testPool.Add(ns)
+	}
+
+	r := round.NewState_Testing(42, 0, t)
+
+	ns := testState.GetNodeMap().GetNode(nodeList[0])
+
+	//
+	err = killRound(testState, r, ns)
+	if err != nil {
+		t.Errorf("Unexpected error in happy path: %v", err)
 	}
 }

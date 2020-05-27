@@ -3,7 +3,7 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
-package simple
+package scheduling
 
 import (
 	"crypto/rand"
@@ -20,10 +20,14 @@ import (
 // Happy path
 func TestStartRound(t *testing.T) {
 	// Build params for scheduling
+	// Build scheduling params
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:            10,
+		BatchSize:           32,
+		RandomOrdering:      false,
+		Threshold:           1,
+		Secure:              false,
+		NodeCleanUpInterval: 3,
 	}
 
 	// Build network state
@@ -37,31 +41,27 @@ func TestStartRound(t *testing.T) {
 	// Build node list
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
+	// Build pool
+	testPool := NewWaitingPool()
 
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
 		}
 		nodeState := testState.GetNodeMap().GetNode(nid)
 		nodeStateList[i] = nodeState
-
-	}
-
-	// Build pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
+		testPool.Add(nodeState)
 	}
 
 	roundID := NewRoundID(0)
 
-	testProtoRound, err := createRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
-		t.Errorf("Happy path of createRound failed: %v", err)
+		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 
 	errorChan := make(chan error, 1)
@@ -81,9 +81,12 @@ func TestStartRound(t *testing.T) {
 func TestStartRound_BadState(t *testing.T) {
 	// Build params for scheduling
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:            10,
+		BatchSize:           32,
+		RandomOrdering:      false,
+		Threshold:           1,
+		Secure:              false,
+		NodeCleanUpInterval: 3,
 	}
 
 	// Build network state
@@ -94,26 +97,23 @@ func TestStartRound_BadState(t *testing.T) {
 		t.FailNow()
 	}
 
+	// Build pool
+	testPool := NewWaitingPool()
+
 	// Build node list
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
 		}
 		nodeState := testState.GetNodeMap().GetNode(nid)
 		nodeStateList[i] = nodeState
-
-	}
-
-	// Build pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
+		testPool.Add(nodeState)
 	}
 
 	roundID := NewRoundID(0)
@@ -122,9 +122,9 @@ func TestStartRound_BadState(t *testing.T) {
 	badState := round.NewState_Testing(roundID.Get(), states.COMPLETED, t)
 	testState.GetRoundMap().AddRound_Testing(badState, t)
 
-	testProtoRound, err := createRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
-		t.Errorf("Happy path of createRound failed: %v", err)
+		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 
 	errorChan := make(chan error, 1)
@@ -143,10 +143,14 @@ func TestStartRound_BadState(t *testing.T) {
 // Error path
 func TestStartRound_BadNode(t *testing.T) {
 	// Build params for scheduling
+	// Build params for scheduling
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:            10,
+		BatchSize:           32,
+		RandomOrdering:      false,
+		Threshold:           1,
+		Secure:              false,
+		NodeCleanUpInterval: 3,
 	}
 
 	// Build network state
@@ -157,37 +161,34 @@ func TestStartRound_BadNode(t *testing.T) {
 		t.FailNow()
 	}
 
+	// Build pool
+	testPool := NewWaitingPool()
+
 	// Build node list
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)))
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
 		}
 		nodeState := testState.GetNodeMap().GetNode(nid)
 		nodeStateList[i] = nodeState
-
-	}
-
-	// Build pool
-	testPool := &waitingPoll{
-		pool:     nodeList,
-		position: int(testParams.TeamSize),
+		testPool.Add(nodeState)
 	}
 
 	roundID := NewRoundID(0)
 	badState := round.NewState_Testing(roundID.Get(), states.COMPLETED, t)
 
-	testProtoRound, err := createRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
 	if err != nil {
-		t.Errorf("Happy path of createRound failed: %v", err)
+		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 	// Manually set the round of a node
-	testProtoRound.nodeStateList[0].SetRound(badState)
+	testProtoRound.NodeStateList[0].SetRound(badState)
 
 	errorChan := make(chan error, 1)
 

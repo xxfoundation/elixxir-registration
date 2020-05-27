@@ -14,30 +14,6 @@ import (
 	"time"
 )
 
-type Status uint8
-
-const (
-	Unregistered = Status(iota) // Default state, equivalent to NULL
-	Active                      // Operational, active node which will be considered for team
-	Inactive                    // Inactive for a certain amount of time, not considered for teams
-	Banned                      // Stop any teams and ban from teams until manually overridden
-)
-
-func (s Status) String() string {
-	switch s {
-	case Unregistered:
-		return "Unregistered"
-	case Active:
-		return "Active"
-	case Inactive:
-		return "Inactive"
-	case Banned:
-		return "Banned"
-	default:
-		return "Unknown"
-	}
-}
-
 // Tracks state of an individual Node in the network
 type StateMap struct {
 	mux sync.RWMutex
@@ -51,22 +27,28 @@ func NewStateMap() *StateMap {
 	}
 }
 
-// Adds a new node state to the structure. Will not overwrite an existing one.
-func (nsm *StateMap) AddNode(id *id.ID, ordering string) error {
+// Adds a new Node state to the structure. Will not overwrite an existing one.
+func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string) error {
 	nsm.mux.Lock()
 	defer nsm.mux.Unlock()
 
 	if _, ok := nsm.nodeStates[*id]; ok {
-		return errors.New("cannot add a node which already exists")
+		return errors.New("cannot add a Node which already exists")
 	}
 
+	numPolls := uint64(0)
 	nsm.nodeStates[*id] =
 		&State{
-			activity:     current.NOT_STARTED,
-			currentRound: nil,
-			lastPoll:     time.Now(),
-			ordering:     ordering,
-			id:           id,
+			activity:       current.NOT_STARTED,
+			currentRound:   nil,
+			lastPoll:       time.Now(),
+			ordering:       ordering,
+			id:             id,
+			nodeAddress:    nAddr,
+			gatewayAddress: gwAddr,
+			status:         Active,
+			numPolls:       &numPolls,
+			mux:            sync.RWMutex{},
 		}
 
 	return nil
@@ -77,6 +59,20 @@ func (nsm *StateMap) GetNode(id *id.ID) *State {
 	nsm.mux.RLock()
 	defer nsm.mux.RUnlock()
 	return nsm.nodeStates[*id]
+}
+
+// Returns a list of all node States in the nsm
+func (nsm *StateMap) GetNodeStates() []*State {
+	nodeStates := make([]*State, len(nsm.nodeStates))
+	idx := 0
+
+	nsm.mux.RLock()
+	defer nsm.mux.RUnlock()
+	for _, nodeState := range nsm.nodeStates {
+		nodeStates[idx] = nodeState
+		idx++
+	}
+	return nodeStates
 }
 
 // Returns the number of elements in the NodeMapo

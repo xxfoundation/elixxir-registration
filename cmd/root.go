@@ -18,7 +18,8 @@ import (
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/utils"
-	"gitlab.com/elixxir/registration/scheduling/simple"
+	"gitlab.com/elixxir/primitives/version"
+	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"net"
@@ -27,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -125,6 +127,21 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Could not load Scheduling Config file: %v", err)
 		}
 
+		// Parse version strings
+		minGatewayVersionString := viper.GetString("minGatewayVersion")
+		minGatewayVersion, err := version.ParseVersion(minGatewayVersionString)
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse minGatewayVersion %#v: %+v",
+				minGatewayVersionString, err)
+		}
+
+		minServerVersionString := viper.GetString("minServerVersion")
+		minServerVersion, err := version.ParseVersion(minServerVersionString)
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse minServerVersion %#v: %+v",
+				minServerVersionString, err)
+		}
+
 		// Populate params
 		RegParams = Params{
 			Address:                   localAddress,
@@ -140,6 +157,8 @@ var rootCmd = &cobra.Command{
 			registrationCountDuration: registrationCountDuration,
 			udbId:                     udbId,
 			minimumNodes:              viper.GetUint32("minimumNodes"),
+			minGatewayVersion:         minGatewayVersion,
+			minServerVersion:          minServerVersion,
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -150,6 +169,25 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
+		// Determine how long between polling for banned nodes
+		interval := viper.GetInt("BanTrackerInterval")
+		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
+
+		// Run the independent node tracker in own go thread
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					// Keep track of banned nodes
+					err = BannedNodeTracker(impl.State)
+					if err != nil {
+						jww.FATAL.Panicf("BannedNodeTracker failed: %v", err)
+					}
+				}
+
+			}
+		}()
+
 		jww.INFO.Printf("Waiting for for %v nodes to register so "+
 			"rounds can start", RegParams.minimumNodes)
 
@@ -159,18 +197,46 @@ var rootCmd = &cobra.Command{
 
 		// Begin scheduling algorithm
 		go func() {
-			var err error
-			algo := viper.GetString("schedulingAlgorithm")
-			jww.INFO.Printf("Beginning %s scheduling algorithm", algo)
-			switch algo {
-			case "simple":
-				err = simple.Scheduler(SchedulingConfig, impl.State)
-			case "secure":
-				err = errors.New("secure scheduling algorithm not yet implemented")
-			default:
-				err = errors.Errorf("schedulding algorithem %s unknown", algo)
-			}
+			err = scheduling.Scheduler(SchedulingConfig, impl.State)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
+		}()
+
+		// Determine how long between storing Node metrics
+		nodeMetricInterval := time.Duration(
+			viper.GetInt64("nodeMetricInterval")) * time.Second
+		nodeTicker := time.NewTicker(nodeMetricInterval)
+
+		// Run the Node metric tracker forever in another thread
+		go func() {
+			for {
+				// Store the metric start time
+				startTime := time.Now()
+				select {
+				// Wait for the ticker to fire
+				case <-nodeTicker.C:
+
+					// Iterate over the Node States
+					nodeStates := impl.State.GetNodeMap().GetNodeStates()
+					for _, nodeState := range nodeStates {
+
+						// Build the NodeMetric
+						currentTime := time.Now()
+						metric := storage.NodeMetric{
+							NodeId:    nodeState.GetID().String(),
+							StartTime: startTime,
+							EndTime:   currentTime,
+							NumPings:  nodeState.GetAndResetNumPolls(),
+						}
+
+						// Store the NodeMetric
+						err := storage.PermissioningDb.InsertNodeMetric(metric)
+						if err != nil {
+							jww.FATAL.Panicf(
+								"Unable to store node metric: %+v", err)
+						}
+					}
+				}
+			}
 		}()
 
 		// Block forever to prevent the program ending

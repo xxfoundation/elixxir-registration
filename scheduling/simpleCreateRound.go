@@ -3,7 +3,7 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
-package simple
+package scheduling
 
 import (
 	"github.com/pkg/errors"
@@ -13,17 +13,23 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
+	"time"
 )
 
-// createRound.go contains the logic to construct a team for a round and
-//  add that round to the network state
+// createSimpleRound.go contains the logic to construct a team for a round and
+// add that round to the network state
 
-// createRound.go builds a team for a round out of a pool and round id and places
-//  this round into the network state
-func createRound(params Params, pool *waitingPoll, roundID id.Round,
+// createSimpleRound.go builds a team for a round out of a pool and round id and places
+// this round into the network state
+func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
-	//get the nodes for the team
-	nodes := pool.Clear()
+	//remove any offline nodes from consideration
+	pool.CleanOfflineNodes(time.Duration(params.NodeCleanUpInterval) * time.Minute)
+
+	nodes, err := pool.PickNRandAtThreshold(int(params.TeamSize), int(params.TeamSize))
+	if err != nil {
+		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)
+	}
 
 	var newRound protoRound
 
@@ -32,6 +38,7 @@ func createRound(params Params, pool *waitingPoll, roundID id.Round,
 	nodeStateList := make([]*node.State, params.TeamSize)
 	orderedNodeList := make([]*id.ID, params.TeamSize)
 
+	// In the case of random ordering
 	if params.RandomOrdering {
 
 		// Input an incrementing array of ints
@@ -44,32 +51,35 @@ func createRound(params Params, pool *waitingPoll, roundID id.Round,
 		// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
 		shuffle.Shuffle(&randomIndex)
 		for i, nid := range nodes {
-			n := nodeMap.GetNode(nid)
+			n := nodeMap.GetNode(nid.GetID())
 			nodeStateList[i] = n
 			// Use the shuffled array as an indexing order for
 			//  the nodes' topological order
-			orderedNodeList[randomIndex[i]] = nid
+			orderedNodeList[randomIndex[i]] = nid.GetID()
 		}
 	} else {
+		// Otherwise go in the order derived
+		// from the pool picking and the node's ordering
 		for i, nid := range nodes {
-			n := nodeMap.GetNode(nid)
+			n := nodeMap.GetNode(nid.GetID())
 			nodeStateList[i] = n
+
 			position, err := strconv.Atoi(n.GetOrdering())
 			if err != nil {
 				return protoRound{}, errors.WithMessagef(err,
 					"Could not parse ordering info ('%s') from node %s",
-					n.GetOrdering(), nid)
+					n.GetOrdering(), nid.GetID().String())
 			}
 
-			orderedNodeList[position] = nid
+			orderedNodeList[position] = nid.GetID()
 		}
 	}
 
-	newRound.topology = connect.NewCircuit(orderedNodeList)
+	// Construct the protoround object
+	newRound.Topology = connect.NewCircuit(orderedNodeList)
 	newRound.ID = roundID
-	newRound.batchSize = params.BatchSize
-	newRound.nodeStateList = nodeStateList
-
+	newRound.BatchSize = params.BatchSize
+	newRound.NodeStateList = nodeStateList
 	return newRound, nil
 
 }
