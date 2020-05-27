@@ -155,6 +155,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 
 		// Send the json of the client
 		jww.DEBUG.Printf("Returning a new NDF to client!")
+		jww.TRACE.Printf("Sending the following ndf: %v", m.State.GetPartialNdf().Get())
 		return m.State.GetPartialNdf().Get().Marshal()
 	}
 

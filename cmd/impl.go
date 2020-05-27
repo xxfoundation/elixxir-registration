@@ -148,6 +148,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			return nil, errors.Errorf("Failed to parse permissioning server cert: %+v. "+
 				"Permissioning cert is %+v", err, regImpl.permissioningCert)
 		}
+
 	}
 
 	// Construct the NDF
