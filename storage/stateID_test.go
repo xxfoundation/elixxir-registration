@@ -32,19 +32,19 @@ func TestLoadRoundID(t *testing.T) {
 		t.Fatalf("Failed to write test file: %+v", err)
 	}
 
-	testRID, err := loadOrCreateStateID(expectedPath)
+	testSID, err := loadOrCreateStateID(expectedPath)
 	if err != nil {
 		t.Errorf("loadOrCreateStateID() produced an unexpected error: %+v", err)
 	}
 
-	if expectedID != testRID.id {
+	if expectedID != testSID.id {
 		t.Errorf("loadOrCreateStateID() returned a roundID with an incorrect ID."+
-			"\n\t expected: %+v\n\treceived: %+v", expectedID, testRID.id)
+			"\n\t expected: %+v\n\treceived: %+v", expectedID, testSID.id)
 	}
 
-	if expectedPath != testRID.path {
+	if expectedPath != testSID.path {
 		t.Errorf("loadOrCreateStateID() returned a roundID with an incorrect path."+
-			"\n\t expected: %+v\n\treceived: %+v", expectedPath, testRID.path)
+			"\n\t expected: %+v\n\treceived: %+v", expectedPath, testSID.path)
 	}
 }
 
@@ -53,19 +53,19 @@ func TestLoadRoundID_EmptyPath(t *testing.T) {
 	expectedPath := ""
 	expectedID := uint64(0)
 
-	testRID, err := loadOrCreateStateID(expectedPath)
+	testSID, err := loadOrCreateStateID(expectedPath)
 	if err != nil {
 		t.Errorf("loadOrCreateStateID() produced an unexpected error: %+v", err)
 	}
 
-	if expectedID != testRID.id {
+	if expectedID != testSID.id {
 		t.Errorf("loadOrCreateStateID() returned a roundID with an incorrect ID."+
-			"\n\t expected: %+v\n\treceived: %+v", expectedID, testRID.id)
+			"\n\t expected: %+v\n\treceived: %+v", expectedID, testSID.id)
 	}
 
-	if expectedPath != testRID.path {
+	if expectedPath != testSID.path {
 		t.Errorf("loadOrCreateStateID() returned a roundID with an incorrect path."+
-			"\n\t expected: %+v\n\treceived: %+v", expectedPath, testRID.path)
+			"\n\t expected: %+v\n\treceived: %+v", expectedPath, testSID.path)
 	}
 }
 
@@ -101,7 +101,7 @@ func TestRoundID_Increment(t *testing.T) {
 	testID := uint64(9843)
 	testPath := "testRoundID.txt"
 	incrementAmount := uint64(10)
-	testRID := stateID{
+	testSID := stateID{
 		id:   testID,
 		path: testPath,
 	}
@@ -114,9 +114,9 @@ func TestRoundID_Increment(t *testing.T) {
 	}()
 
 	for i := uint64(0); i < incrementAmount; i++ {
-		oldID, err := testRID.increment()
+		oldID, err := testSID.increment()
 		if err != nil {
-			t.Errorf("increment() produced an unexpected error on  index %d: "+
+			t.Errorf("increment() produced an unexpected error on index %d: "+
 				"%+v", i, err)
 		}
 
@@ -127,17 +127,17 @@ func TestRoundID_Increment(t *testing.T) {
 		}
 
 		// Test that the ID in memory was correctly incremented
-		if testRID.id != testID+i+1 {
+		if testSID.id != testID+i+1 {
 			t.Errorf("increment() did not increment the ID in memory correctly."+
-				"\n\texpected: %+v\n\treceived: %+v", testID+i+1, testRID.id)
+				"\n\texpected: %+v\n\treceived: %+v", testID+i+1, testSID.id)
 		}
 
 		// Test that the ID on disk was correctly incremented
-		ridBytes, err := utils.ReadFile(testPath)
+		sidBytes, err := utils.ReadFile(testPath)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
-		idUint, err := strconv.ParseUint(string(ridBytes), 10, 64)
+		idUint, err := strconv.ParseUint(string(sidBytes), 10, 64)
 		if err != nil {
 			t.Fatalf("%+v", err)
 		}
@@ -155,13 +155,13 @@ func TestRoundID_Increment_EmptyPath(t *testing.T) {
 	testID := uint64(9843)
 	testPath := ""
 	incrementAmount := uint64(10)
-	testRID := stateID{
+	testSID := stateID{
 		id:   testID,
 		path: testPath,
 	}
 
 	for i := uint64(0); i < incrementAmount; i++ {
-		oldID, err := testRID.increment()
+		oldID, err := testSID.increment()
 		if err != nil {
 			t.Errorf("increment() produced an unexpected error on "+
 				"index %d: %+v", i, err)
@@ -174,10 +174,10 @@ func TestRoundID_Increment_EmptyPath(t *testing.T) {
 		}
 
 		// Test that the ID in memory was correctly incremented
-		if testRID.id != testID+i+1 {
+		if testSID.id != testID+i+1 {
 			t.Errorf("increment() did not increment the ID in memory correctly."+
 				"\n\texpected: %+v\n\treceived: %+v",
-				testID+i+1, testRID.id)
+				testID+i+1, testSID.id)
 		}
 	}
 }
@@ -187,7 +187,7 @@ func TestRoundID_Increment_EmptyPath(t *testing.T) {
 func TestRoundID_Increment_FileError(t *testing.T) {
 	testID := uint64(9843)
 	testPath := "~a/testRoundID.txt"
-	testRID := stateID{
+	testSID := stateID{
 		id:   testID,
 		path: testPath,
 	}
@@ -199,31 +199,31 @@ func TestRoundID_Increment_FileError(t *testing.T) {
 		}
 	}()
 
-	_, err := testRID.increment()
+	_, err := testSID.increment()
 	if err == nil {
 		t.Errorf("increment() did not produce an error on an invalid path.")
 	}
 
-	if testRID.id != testID {
+	if testSID.id != testID {
 		t.Errorf("increment() unexpectedly incremented the ID on error."+
-			"\n\texpected: %+v\n\treceived: %+v", testID, testRID.id)
+			"\n\texpected: %+v\n\treceived: %+v", testID, testSID.id)
 	}
 }
 
 // Tests that increment() blocks when the thread is locked.
 func TestRoundID_Increment_Lock(t *testing.T) {
 	expectedID := uint64(9843)
-	testRID := stateID{
+	testSID := stateID{
 		id:   expectedID,
 		path: "testRoundID.txt",
 	}
 
 	result := make(chan bool)
 
-	testRID.Lock()
+	testSID.Lock()
 
 	go func() {
-		_, _ = testRID.increment()
+		_, _ = testSID.increment()
 		result <- true
 	}()
 
@@ -238,12 +238,12 @@ func TestRoundID_Increment_Lock(t *testing.T) {
 // Tests that get() returns the correct value.
 func TestRoundID_Get(t *testing.T) {
 	expectedID := uint64(9843)
-	testRID := stateID{
+	testSID := stateID{
 		id:   expectedID,
 		path: "testRoundID.txt",
 	}
 
-	testID := testRID.get()
+	testID := testSID.get()
 
 	if expectedID != testID {
 		t.Errorf("get() returned an incorrect ID."+
@@ -254,17 +254,17 @@ func TestRoundID_Get(t *testing.T) {
 // Tests that get() blocks when the thread is locked.
 func TestRoundID_Get_Lock(t *testing.T) {
 	expectedID := uint64(9843)
-	testRID := stateID{
+	testSID := stateID{
 		id:   expectedID,
 		path: "testRoundID.txt",
 	}
 
 	result := make(chan bool)
 
-	testRID.Lock()
+	testSID.Lock()
 
 	go func() {
-		_ = testRID.get()
+		_ = testSID.get()
 		result <- true
 	}()
 
@@ -273,5 +273,55 @@ func TestRoundID_Get_Lock(t *testing.T) {
 		t.Errorf("get() did not correctly lock the thread.")
 	case <-time.After(time.Second):
 		return
+	}
+}
+
+// Tests that calling loadOrCreateStateID() multiple times on a previously
+// incremented ID files results in the correct ID. This simulates what the ID
+// file will do in production.
+func TestRoundID_Prod(t *testing.T) {
+	testID := uint64(9843)
+	testPath := "testRoundID.txt"
+	idString := []byte(strconv.FormatUint(testID, 10))
+	incrementAmount := uint64(10)
+	idTracker := testID
+
+	defer func() {
+		err := os.RemoveAll(testPath)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+	}()
+
+	err := utils.WriteFile(testPath, idString, utils.FilePerms, utils.DirPerms)
+	if err != nil {
+		t.Fatalf("Failed to write test file: %+v", err)
+	}
+
+	for i := 0; i < 5; i++ {
+		testSID, err2 := loadOrCreateStateID(testPath)
+		if err2 != nil {
+			t.Errorf("loadOrCreateStateID() produced an unexpected error: %+v", err2)
+		}
+
+		if testSID.id != idTracker {
+			t.Errorf("loadOrCreateStateID() produced a state ID with an incorrect "+
+				"index\n\texpected: %+v\n\treceived: %+v", idTracker, testSID.id)
+		}
+
+		for j := uint64(0); j < incrementAmount; j++ {
+			_, err = testSID.increment()
+			if err != nil {
+				t.Errorf("increment() produced an unexpected error on index %d: "+
+					"%+v", j, err)
+			}
+		}
+
+		idTracker += incrementAmount
+
+		if testSID.id != idTracker {
+			t.Errorf("increment() did not increment the id correctly"+
+				"\n\texpected: %+v\n\treceived: %+v", idTracker, testSID.id)
+		}
 	}
 }
