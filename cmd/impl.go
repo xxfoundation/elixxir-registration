@@ -71,6 +71,8 @@ type Params struct {
 	udbId                     []byte
 	minGatewayVersion         version.Version
 	minServerVersion          version.Version
+	roundIdPath               string
+	updateIdPath              string
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -108,7 +110,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	//initilize the state tracking object
-	state, err := storage.NewState(pk)
+	state, err := storage.NewState(pk, params.roundIdPath, params.updateIdPath)
 	if err != nil {
 		return nil, err
 	}

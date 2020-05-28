@@ -128,7 +128,7 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk)
+	state, err := storage.NewState(pk, "", "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -154,7 +154,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
-	state, err := storage.NewState(getTestKey())
+	state, err := storage.NewState(getTestKey(), "", "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
