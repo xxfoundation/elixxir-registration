@@ -84,11 +84,17 @@ func NewState(pk *rsa.PrivateKey, roundIdPath, updateIdPath string) (*NetworkSta
 		roundUpdateID: updateRoundID,
 	}
 
-	// Insert dummy update
-	err = state.AddRoundUpdate(&pb.RoundInfo{})
-	if err != nil {
-		return nil, err
+	// Updates are handled in the uint space, as a result, the designator for
+	// update 0 also designates that no updates are known by the server. To
+	// avoid this collision, permissioning will skip this update as well.
+	if updateRoundID.get() == 0 {
+		// Insert dummy update
+		err = state.AddRoundUpdate(&pb.RoundInfo{})
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return state, nil
 }
 

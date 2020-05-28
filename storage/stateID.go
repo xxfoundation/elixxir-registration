@@ -42,7 +42,8 @@ func loadOrCreateStateID(path string) (*stateID, error) {
 			return nil, errors.Errorf("Could not convert ID to uint: %+v", err)
 		}
 	} else {
-		jww.WARN.Printf("roundID path empty, reading ID from file skipped.")
+		jww.WARN.Printf("Could not open state ID path %s because file does "+
+			"not exist, reading ID from file skipped. state ID set to 0.", path)
 	}
 
 	return &stateID{
@@ -71,7 +72,7 @@ func (rid *stateID) increment() (uint64, error) {
 			return 0, err
 		}
 	} else {
-		jww.WARN.Printf("roundID path empty, updating ID file skipped.")
+		jww.WARN.Printf("The state ID path is empty, updating ID file skipped.")
 	}
 
 	// Update the ID in memory
