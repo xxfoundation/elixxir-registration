@@ -278,8 +278,8 @@ func TestRoundID_Get_Lock(t *testing.T) {
 
 // Tests that calling loadOrCreateStateID() multiple times on a previously
 // incremented ID files results in the correct ID. This simulates what the ID
-// file will do in production.
-func TestRoundID_Prod(t *testing.T) {
+// file will do in integration.
+func TestRoundID_IntegrationSim(t *testing.T) {
 	testID := uint64(9843)
 	testPath := "testRoundID.txt"
 	idString := []byte(strconv.FormatUint(testID, 10))
@@ -301,27 +301,76 @@ func TestRoundID_Prod(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		testSID, err2 := loadOrCreateStateID(testPath)
 		if err2 != nil {
-			t.Errorf("loadOrCreateStateID() produced an unexpected error: %+v", err2)
+			t.Errorf("loadOrCreateStateID() produced an unexpected error at "+
+				"index %d: %+v", i, err2)
 		}
 
 		if testSID.id != idTracker {
-			t.Errorf("loadOrCreateStateID() produced a state ID with an incorrect "+
-				"index\n\texpected: %+v\n\treceived: %+v", idTracker, testSID.id)
+			t.Errorf("loadOrCreateStateID() produced a state ID with an "+
+				"incorrect ID at index %d.\n\texpected: %+v\n\treceived: %+v",
+				i, idTracker, testSID.id)
 		}
 
 		for j := uint64(0); j < incrementAmount; j++ {
 			_, err = testSID.increment()
 			if err != nil {
-				t.Errorf("increment() produced an unexpected error on index %d: "+
-					"%+v", j, err)
+				t.Errorf("increment() produced an unexpected error on index "+
+					"%d: %+v", j, err)
 			}
 		}
 
 		idTracker += incrementAmount
 
 		if testSID.id != idTracker {
-			t.Errorf("increment() did not increment the id correctly"+
-				"\n\texpected: %+v\n\treceived: %+v", idTracker, testSID.id)
+			t.Errorf("increment() did not increment the id correctly at index "+
+				"%d.\n\texpected: %+v\n\treceived: %+v",
+				i, idTracker, testSID.id)
+		}
+	}
+}
+
+// Tests that calling loadOrCreateStateID() multiple times on a previously
+// incremented ID files results in the correct ID. This simulates what the ID
+// file will do in integration.
+func TestRoundID_IntegrationSim_NoFile(t *testing.T) {
+	testPath := "testRoundID.txt"
+	incrementAmount := uint64(10)
+	idTracker := uint64(0)
+
+	defer func() {
+		err := os.RemoveAll(testPath)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+	}()
+
+	for i := 0; i < 5; i++ {
+		testSID, err2 := loadOrCreateStateID(testPath)
+		if err2 != nil {
+			t.Errorf("loadOrCreateStateID() produced an unexpected error at "+
+				"index %d: %+v", i, err2)
+		}
+
+		if testSID.id != idTracker {
+			t.Errorf("loadOrCreateStateID() produced a state ID with an "+
+				"incorrect ID at index %d.\n\texpected: %+v\n\treceived: %+v",
+				i, idTracker, testSID.id)
+		}
+
+		for j := uint64(0); j < incrementAmount; j++ {
+			_, err := testSID.increment()
+			if err != nil {
+				t.Errorf("increment() produced an unexpected error on index "+
+					"%d: %+v", j, err)
+			}
+		}
+
+		idTracker += incrementAmount
+
+		if testSID.id != idTracker {
+			t.Errorf("increment() did not increment the id correctly at index "+
+				"%d.\n\texpected: %+v\n\treceived: %+v",
+				i, idTracker, testSID.id)
 		}
 	}
 }

@@ -100,14 +100,14 @@ func scheduler(params Params, state *storage.NetworkState) error {
 			return err
 		}
 
-		// Increment round ID
-		currentID, err := state.IncrementRoundID()
-		if err != nil {
-			return err
-		}
-
 		//create a new round if the pool is full
 		if pool.Len() == int(params.TeamSize) {
+			// Increment round ID
+			currentID, err := state.IncrementRoundID()
+			if err != nil {
+				return err
+			}
+
 			newRound, err := createRound(params, pool, currentID, state)
 			if err != nil {
 				return err

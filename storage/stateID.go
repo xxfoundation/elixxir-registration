@@ -43,7 +43,8 @@ func loadOrCreateStateID(path string) (*stateID, error) {
 		}
 	} else {
 		jww.WARN.Printf("Could not open state ID path %s because file does "+
-			"not exist, reading ID from file skipped. state ID set to 0.", path)
+			"not exist, reading ID from file skipped. state ID set to %d.",
+			path, idUint)
 	}
 
 	return &stateID{
