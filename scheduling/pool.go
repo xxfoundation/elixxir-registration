@@ -8,6 +8,7 @@ package scheduling
 import (
 	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/shuffle"
 	"gitlab.com/elixxir/registration/storage/node"
 	"sync"
@@ -87,6 +88,7 @@ func (wp *waitingPool) CleanOfflineNodes(timeout time.Duration) {
 	})
 
 	for _, ns := range toRemove {
+		jww.TRACE.Printf("Node %v is offline. Removing from waiting pool", ns.GetID())
 		ns.ClearRound()
 		wp.pool.Remove(ns)
 		wp.offline.Insert(ns)
@@ -97,6 +99,7 @@ func (wp *waitingPool) CleanOfflineNodes(timeout time.Duration) {
 // SetNodeToOnline removes a node from the offline pool and
 //  inserts it into the online pool
 func (wp *waitingPool) SetNodeToOnline(ns *node.State) {
+	jww.TRACE.Printf("Node %v is online. Returning to waiting pool", ns.GetID())
 	wp.mux.Lock()
 	defer wp.mux.Unlock()
 
