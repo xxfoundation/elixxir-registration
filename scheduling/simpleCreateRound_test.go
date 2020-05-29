@@ -31,7 +31,7 @@ func TestCreateRound_NonRandom(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -59,17 +59,20 @@ func TestCreateRound_NonRandom(t *testing.T) {
 
 	expectedTopology := connect.NewCircuit(nodeList)
 
-	roundID := NewRoundID(0)
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
 
-	testProtoRound, err := createSimpleRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 
-	if testProtoRound.ID != roundID.Get() {
+	if testProtoRound.ID != roundID {
 		t.Errorf("ProtoRound's id returned unexpected value!"+
 			"\n\tExpected: %d"+
-			"\n\tReceived: %d", roundID.Get(), testProtoRound.ID)
+			"\n\tReceived: %d", roundID, testProtoRound.ID)
 	}
 
 	if !reflect.DeepEqual(testProtoRound.Topology, expectedTopology) {
@@ -101,7 +104,7 @@ func TestCreateRound_Random(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -127,17 +130,20 @@ func TestCreateRound_Random(t *testing.T) {
 		testPool.Add(nodeState)
 	}
 
-	roundID := NewRoundID(0)
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
 
-	testProtoRound, err := createSimpleRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 
-	if testProtoRound.ID != roundID.Get() {
+	if testProtoRound.ID != roundID {
 		t.Errorf("ProtoRound's id returned unexpected value!"+
 			"\n\tExpected: %d"+
-			"\n\tReceived: %d", roundID.Get(), testProtoRound.ID)
+			"\n\tReceived: %d", roundID, testProtoRound.ID)
 	}
 
 	if testParams.BatchSize != testProtoRound.BatchSize {
@@ -160,7 +166,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -181,10 +187,13 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	// Build pool
 	testPool := NewWaitingPool()
 
-	roundID := NewRoundID(0)
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
 
 	// Invalid ordering will cause this to fail
-	_, err = createSecureRound(testParams, testPool, roundID.Get(), testState)
+	_, err = createSecureRound(testParams, testPool, roundID, testState)
 	if err != nil {
 		return
 	}
@@ -208,7 +217,7 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -234,9 +243,12 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 
 	initialTopology := connect.NewCircuit(nodeList)
 
-	roundID := NewRoundID(0)
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -248,10 +260,10 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 			"Possile shuffling is broken")
 	}
 
-	if testProtoRound.ID != roundID.Get() {
+	if testProtoRound.ID != roundID {
 		t.Errorf("ProtoRound's id returned unexpected value!"+
 			"\n\tExpected: %d"+
-			"\n\tReceived: %d", roundID.Get(), testProtoRound.ID)
+			"\n\tReceived: %d", roundID, testProtoRound.ID)
 	}
 
 	if testParams.BatchSize != testProtoRound.BatchSize {

@@ -20,6 +20,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
 	mrand "math/rand"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -49,7 +50,7 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey)
+	state, err := NewState(privateKey, "", "")
 	if err != nil {
 		t.Errorf("NewState() produced an unexpected error:\n%v", err)
 	}
@@ -109,7 +110,7 @@ func TestNewState_PrivateKeyError(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey)
+	state, err := NewState(privateKey, "", "")
 
 	// Test NewState() output
 	if err == nil || err.Error() != expectedErr {
@@ -223,7 +224,7 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	state.roundUpdateID = 1
+	state.roundUpdateID.id = 1
 
 	// Call AddRoundUpdate()
 	err = state.AddRoundUpdate(testRoundInfo)
@@ -489,10 +490,62 @@ func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 	}
 
 	// Generate new NetworkState using the private key
-	state, err := NewState(privateKey)
+	state, err := NewState(privateKey, "", "")
 	if err != nil {
 		return state, privateKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
 	}
 
 	return state, privateKey, nil
+}
+
+// Tests that IncrementRoundID() increments the ID correctly.
+func TestNetworkState_IncrementRoundID(t *testing.T) {
+	testID := uint64(9843)
+	testPath := "testRoundID.txt"
+	incrementAmount := uint64(10)
+	testState := NetworkState{
+		roundID: &stateID{
+			id:   testID,
+			path: testPath,
+		},
+	}
+
+	defer func() {
+		err := os.RemoveAll(testPath)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+	}()
+
+	for i := uint64(0); i < incrementAmount; i++ {
+		oldID, err := testState.IncrementRoundID()
+		if err != nil {
+			t.Errorf("IncrementRoundID() produced an unexpected error on "+
+				"index %d: %+v", i, err)
+		}
+
+		// Test that the correct old ID was returned
+		if oldID != id.Round(testID+i) {
+			t.Errorf("IncrementRoundID() did not return the correct old ID."+
+				"\n\texpected: %+v\n\treceived: %+v", id.Round(testID+i), oldID)
+		}
+	}
+}
+
+// Tests that GetRoundID() returns the correct value.
+func TestNetworkState_GetRoundID(t *testing.T) {
+	expectedID := id.Round(9843)
+	testState := NetworkState{
+		roundID: &stateID{
+			id:   uint64(expectedID),
+			path: "testRoundID.txt",
+		},
+	}
+
+	testID := testState.GetRoundID()
+
+	if expectedID != testID {
+		t.Errorf("GetRoundID() returned an incorrect ID."+
+			"\n\texpected: %+v\n\treceived: %+v", expectedID, testID)
+	}
 }
