@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -84,6 +85,39 @@ func scheduler(params Params, state *storage.NetworkState) error {
 
 		jww.ERROR.Printf("Round creation thread should never exit: %s", err)
 
+	}()
+
+
+	schedulingTicker := time.NewTicker(15*time.Second)
+
+	realtimeNodes := make([]*node.State, 0)
+	precompNodes := make([]*node.State, 0)
+
+	go func() {
+		for {
+			select {
+			case <-schedulingTicker.C:
+				nodeStates := state.GetNodeMap().GetNodeStates()
+				for _, nodeState := range nodeStates {
+					switch nodeState.GetActivity() {
+					case current.WAITING:
+
+					case current.REALTIME:
+						realtimeNodes = append(realtimeNodes, nodeState)
+					case current.PRECOMPUTING:
+						precompNodes = append(precompNodes, nodeState)
+					}
+
+
+
+				}
+
+			}
+
+			jww.INFO.Printf("Teams in realtime: %v", len(realtimeNodes) / int(params.TeamSize))
+			jww.INFO.Printf("Teams in precomp: %v",  len(precompNodes)  / int(params.TeamSize))
+			jww.INFO.Printf("Teams in waiting: %v", pool.Len())
+		}
 	}()
 
 	//start receiving updates from nodes
