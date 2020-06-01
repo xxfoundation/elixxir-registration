@@ -60,7 +60,11 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 		if hasRound {
 			n.ClearRound()
 		}
-		pool.Add(n)
+		if update.FromStatus == node.Inactive && update.ToStatus == node.Active {
+			pool.SetNodeToOnline(n)
+		} else {
+			pool.Add(n)
+		}
 
 	case current.PRECOMPUTING:
 		// Do nothing
