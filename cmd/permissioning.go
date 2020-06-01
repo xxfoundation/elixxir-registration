@@ -101,18 +101,25 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	networkDef := m.State.GetFullNdf().Get()
 	gateway, node, order, err := assembleNdf(regCode)
 	if err != nil {
-		jww.ERROR.Printf("unable to assemble topology: %+v", err)
-		return errors.Errorf("Could not complete registration")
+		err := errors.Errorf("unable to assemble topology: %+v", err)
+		jww.ERROR.Print(err.Error())
+		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
-	// fixme: consider removing. this allows clients to remain agnostic of teaming order
-	//  by forcing team order == ndf order for simple non-random
-	if order >= len(networkDef.Nodes) {
-		appendNdf(networkDef, order)
+	if order != -1{
+		// fixme: consider removing. this allows clients to remain agnostic of teaming order
+		//  by forcing team order == ndf order for simple non-random
+		if order >= len(networkDef.Nodes) {
+			appendNdf(networkDef, order)
+		}
+
+		networkDef.Gateways[order] = gateway
+		networkDef.Nodes[order] = node
+	}else{
+		networkDef.Gateways = append(networkDef.Gateways, gateway)
+		networkDef.Nodes = append(networkDef.Nodes, node)
 	}
 
-	networkDef.Gateways[order] = gateway
-	networkDef.Nodes[order] = node
 
 	// update the internal state with the newly-updated ndf
 	err = m.State.UpdateNdf(networkDef)
@@ -123,8 +130,9 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	// Output the current topology to a JSON file
 	err = outputToJSON(networkDef, m.ndfOutputPath)
 	if err != nil {
-		jww.ERROR.Printf("unable to output NDF JSON file: %+v", err)
-		return errors.Errorf("Could not complete registration")
+		err := errors.Errorf("unable to output NDF JSON file: %+v", err)
+		jww.ERROR.Print(err.Error())
+		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
 	// Kick off the network if the minimum number of nodes has been met
@@ -182,7 +190,7 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 
 	order, err := strconv.Atoi(nodeInfo.Order)
 	if err != nil {
-		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf("Unable to read node's info: %v", err)
+		return  gateway, node, -1, nil
 	}
 
 	return gateway, node, order, nil
