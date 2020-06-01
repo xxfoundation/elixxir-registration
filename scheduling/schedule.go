@@ -13,6 +13,7 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/elixxir/registration/storage/round"
 	"time"
 )
 
@@ -87,12 +88,11 @@ func scheduler(params Params, state *storage.NetworkState) error {
 
 	}()
 
-
-	schedulingTicker := time.NewTicker(15*time.Second)
+	schedulingTicker := time.NewTicker(15 * time.Second)
 
 	realtimeNodes := make([]*node.State, 0)
 	precompNodes := make([]*node.State, 0)
-
+	waitingNodes := make([]*node.State, 0)
 	go func() {
 		for {
 			select {
@@ -101,22 +101,35 @@ func scheduler(params Params, state *storage.NetworkState) error {
 				for _, nodeState := range nodeStates {
 					switch nodeState.GetActivity() {
 					case current.WAITING:
-
+						waitingNodes = append(waitingNodes, nodeState)
 					case current.REALTIME:
 						realtimeNodes = append(realtimeNodes, nodeState)
 					case current.PRECOMPUTING:
 						precompNodes = append(precompNodes, nodeState)
 					}
 
-
-
 				}
 
 			}
+			realTimeMap := make(map[*round.State]bool)
+			for _, realtime := range realtimeNodes {
+				_, ourRound := realtime.GetCurrentRound()
+				realTimeMap[ourRound] = true
+				ourRound.GetRoundState()
+			}
 
-			jww.INFO.Printf("Teams in realtime: %v", len(realtimeNodes) / int(params.TeamSize))
-			jww.INFO.Printf("Teams in precomp: %v",  len(precompNodes)  / int(params.TeamSize))
-			jww.INFO.Printf("Teams in waiting: %v", pool.Len())
+			for rnd := range realTimeMap {
+				jww.INFO.Printf("Realtime Round: %v", rnd.BuildRoundInfo().String())
+			}
+
+			jww.INFO.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
+			jww.INFO.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
+			jww.INFO.Printf("Teams in in waiting: %v", len(waitingNodes)/int(params.TeamSize))
+			jww.INFO.Printf("Teams in pool: %v", pool.Len())
+			realtimeNodes = make([]*node.State, 0)
+			precompNodes = make([]*node.State, 0)
+			waitingNodes = make([]*node.State, 0)
+
 		}
 	}()
 
