@@ -76,8 +76,8 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		LastUpdate:     0,
 		Activity:       uint32(current.WAITING),
 		Error:          nil,
-		GatewayVersion: "0.0.0",
-		ServerVersion:  "0.0.0",
+		GatewayVersion: "1.1.0",
+		ServerVersion:  "1.1.0",
 	}
 
 	err = impl.State.AddRoundUpdate(
