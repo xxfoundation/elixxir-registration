@@ -105,8 +105,8 @@ type Application struct {
 	GeoBin string
 	// GPS location of the Node
 	GpsLocation string
-	// Specifies the group the node was assigned
-	Group string
+	// Specifies the team the node was assigned
+	Team string
 	// Specifies which network the node is in
 	Network string
 
