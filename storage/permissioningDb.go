@@ -37,7 +37,7 @@ func (m *DatabaseImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) 
 			return errors.New(err.Error())
 		}
 		topologyObj := Topology{
-			NodeId: nodeId.String(),
+			NodeId: nodeId.Bytes(),
 			Order:  uint8(i),
 		}
 		newTopology[i] = topologyObj

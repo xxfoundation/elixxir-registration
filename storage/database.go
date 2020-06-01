@@ -123,7 +123,7 @@ type Node struct {
 	// Registration code acts as the primary key
 	Code string `gorm:"primary_key"`
 	// Node order string, this is a tag used by the algorithm
-	Order string
+	Sequence string
 
 	// Unique Node ID
 	Id []byte `gorm:"UNIQUE_INDEX;default: null"`
@@ -156,7 +156,7 @@ type NodeMetric struct {
 	// Auto-incrementing primary key (Do not set)
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
 	// Node has many NodeMetrics
-	NodeId string `gorm:"NOT NULL;type:text REFERENCES nodes(Id)"`
+	NodeId []byte `gorm:"NOT NULL;type:bytea REFERENCES nodes(Id)"`
 	// Start time of monitoring period
 	StartTime time.Time `gorm:"NOT NULL"`
 	// End time of monitoring period
@@ -168,7 +168,7 @@ type NodeMetric struct {
 // Junction table for the many-to-many relationship between Nodes & RoundMetrics
 type Topology struct {
 	// Composite primary key
-	NodeId        string `gorm:"primary_key;type:text REFERENCES nodes(Id)"`
+	NodeId        []byte `gorm:"primary_key;type:bytea REFERENCES nodes(Id)"`
 	RoundMetricId uint64 `gorm:"primary_key;type:bigint REFERENCES round_metrics(Id)"`
 
 	// Order in the topology of a Node for a given Round
@@ -285,7 +285,7 @@ func PopulateNodeRegistrationCodes(infos []node.Info) {
 			Id: uint64(i),
 		}, Node{
 			Code:          info.RegCode,
-			Order:         info.Order,
+			Sequence:      info.Order,
 			ApplicationId: uint64(i),
 		})
 		if err != nil {

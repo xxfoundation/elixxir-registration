@@ -125,7 +125,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	applicationId := uint64(10)
 	newNode := storage.Node{
 		Code:          "AAAA",
-		Order:         "0",
+		Sequence:      "0",
 		ApplicationId: applicationId,
 	}
 	newApplication := storage.Application{Id: applicationId}

@@ -75,7 +75,7 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 	}
 
 	//add the node to the node map to track its state
-	err = m.State.GetNodeMap().AddNode(ID, nodeInfo.Order, ServerAddr, GatewayAddr)
+	err = m.State.GetNodeMap().AddNode(ID, nodeInfo.Sequence, ServerAddr, GatewayAddr)
 	if err != nil {
 		return errors.WithMessage(err, "Could not register node with "+
 			"state tracker")
@@ -180,7 +180,7 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 		TlsCertificate: nodeInfo.GatewayCertificate,
 	}
 
-	order, err := strconv.Atoi(nodeInfo.Order)
+	order, err := strconv.Atoi(nodeInfo.Sequence)
 	if err != nil {
 		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf("Unable to read node's info: %v", err)
 	}

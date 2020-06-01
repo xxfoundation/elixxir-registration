@@ -18,7 +18,7 @@ func TestMapImpl_InsertNodeMetric(t *testing.T) {
 	m := &MapImpl{nodeMetrics: make(map[uint64]*NodeMetric)}
 
 	newMetric := NodeMetric{
-		NodeId:    "TEST",
+		NodeId:    []byte("TEST"),
 		StartTime: time.Now(),
 		EndTime:   time.Now(),
 		NumPings:  1000,
@@ -99,7 +99,7 @@ func TestMapImpl_InsertApplication(t *testing.T) {
 	applicationId := uint64(10)
 	newNode := Node{
 		Code:          "TEST",
-		Order:         "BLARG",
+		Sequence:      "BLARG",
 		ApplicationId: applicationId,
 	}
 	newApplication := Application{Id: applicationId}
@@ -110,9 +110,9 @@ func TestMapImpl_InsertApplication(t *testing.T) {
 		t.Errorf("Expected to successfully insert node registration code")
 	}
 
-	if m.nodes[newNode.Code].Order != newNode.Order {
+	if m.nodes[newNode.Code].Sequence != newNode.Sequence {
 		t.Errorf("Order string incorret; Expected: %s, Recieved: %s",
-			newNode.Order, m.nodes[newNode.Code].Order)
+			newNode.Sequence, m.nodes[newNode.Code].Sequence)
 	}
 }
 
@@ -127,7 +127,7 @@ func TestMapImpl_InsertApplication_Duplicate(t *testing.T) {
 	applicationId := uint64(10)
 	newNode := Node{
 		Code:          "TEST",
-		Order:         "BLARG",
+		Sequence:      "BLARG",
 		ApplicationId: applicationId,
 	}
 	newApplication := Application{Id: applicationId}

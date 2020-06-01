@@ -23,7 +23,7 @@ func (m *MapImpl) InsertApplication(application Application,
 
 	jww.INFO.Printf("Adding application: %d", application.Id)
 	jww.INFO.Printf("Adding node registration code: %s with Order Info: %s",
-		unregisteredNode.Code, unregisteredNode.Order)
+		unregisteredNode.Code, unregisteredNode.Sequence)
 
 	// Enforce unique keys
 	if m.nodes[unregisteredNode.Code] != nil {
@@ -72,7 +72,7 @@ func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error
 			return errors.New(err.Error())
 		}
 		topologyObj := Topology{
-			NodeId:        nodeId.String(),
+			NodeId:        nodeId.Bytes(),
 			RoundMetricId: m.roundMetricCounter,
 			Order:         uint8(i),
 		}

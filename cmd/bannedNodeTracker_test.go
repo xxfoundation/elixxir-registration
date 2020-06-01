@@ -86,7 +86,7 @@ func createNode(testState *storage.NetworkState, order, regCode string, appId in
 	testNode := storage.Node{
 		Id:            idBytes,
 		Code:          regCode,
-		Order:         order,
+		Sequence:      order,
 		ApplicationId: applicationId,
 		Status:        uint8(status),
 	}
