@@ -41,6 +41,35 @@ func TestReceiveSIGUSR1Signal(t *testing.T) {
 	}
 }
 
+func TestReceiveSIGUSR2Signal(t *testing.T) {
+	called := make(chan bool, 1)
+	testfn := func() {
+		called <- true
+	}
+
+	go ReceiveUSR2Signal(testfn)
+	// Give a little bit of time for the subthread to start picking up
+	// the signal
+	time.Sleep(100 * time.Millisecond)
+
+	syscall.Kill(syscall.Getpid(), syscall.SIGUSR2)
+
+	res := false
+	// Sleep multiple times to give the kernel more tries to
+	// deliver the signal.
+	for i := 0; i < 10; i++ {
+		select {
+		case res = <-called:
+			break
+		case <-time.After(100 * time.Millisecond):
+		}
+	}
+
+	if res != true {
+		t.Errorf("Signal USR1 was not handled!")
+	}
+}
+
 func TestReceiveExitSignal(t *testing.T) {
 	called := make(chan bool, 1)
 	testfn := func() int {

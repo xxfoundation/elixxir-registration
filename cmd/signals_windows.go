@@ -22,10 +22,22 @@ import (
 	"syscall"
 )
 
-// ReceiveUSR1Signal calls the provided function when receiving SIGUSR1.
-// It will call the provided function every time it receives it
+// ReceiveSignal is a dummy function because windows doesn't have the support
+// we need.
+func ReceiveSignal(sigFn func(), sig os.Signal) {
+	jww.WARN.Printf("Windows does not support all signals, ignored!")
+}
+
+// ReceiveUSR1Signal is a dummy function because windows doesn't have the
+// support we need.
 func ReceiveUSR1Signal(usr1Fn func()) {
 	jww.WARN.Printf("Windows does not support SIGUSR1 signals, ignored!")
+}
+
+// ReceiveUSR2Signal is a dummy function because windows doesn't have the
+// support we need.
+func ReceiveUSR2Signal(usr1Fn func()) {
+	jww.WARN.Printf("Windows does not support SIGUSR2 signals, ignored!")
 }
 
 // ReceiveExitSignal calls the provided exit function and exits
