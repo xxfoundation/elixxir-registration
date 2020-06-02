@@ -4,7 +4,7 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// +build !windows
+// +build windows
 
 // signals.go handles signals specific to the permissioning server:
 //   - SIGUSR1, which stops round creation
@@ -25,19 +25,7 @@ import (
 // ReceiveUSR1Signal calls the provided function when receiving SIGUSR1.
 // It will call the provided function every time it receives it
 func ReceiveUSR1Signal(usr1Fn func()) {
-	// Set up channel on which to send signal notifications.
-	// We must use a buffered channel or risk missing the signal
-	// if we're not ready to receive when the signal is sent.
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGUSR1)
-
-	// Block until a signal is received, then call the function
-	// provided
-	for {
-		<-c
-		jww.INFO.Printf("Received SIGUSR1 signal...")
-		usr1Fn()
-	}
+	jww.WARN.Printf("Windows does not support SIGUSR1 signals, ignored!")
 }
 
 // ReceiveExitSignal calls the provided exit function and exits
