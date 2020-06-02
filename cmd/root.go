@@ -206,6 +206,17 @@ var rootCmd = &cobra.Command{
 			viper.GetInt64("nodeMetricInterval")) * time.Second
 		nodeTicker := time.NewTicker(nodeMetricInterval)
 
+		// Set up signal handler for stopping round creation
+		ReceiveUSR1Signal(func() {
+			jww.ERROR.Printf("Unimplemented: Stop round creation!")
+		})
+
+		// Set up Signal Hangler for safe program exit
+		ReceiveExitSignal(func() int {
+			jww.ERROR.Printf("Unimplemented: Stop round creation!")
+			return -1
+		})
+
 		// Run the Node metric tracker forever in another thread
 		go func() {
 			for {
