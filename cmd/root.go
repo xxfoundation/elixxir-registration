@@ -221,7 +221,7 @@ var rootCmd = &cobra.Command{
 
 						// Build the NodeMetric
 						currentTime := time.Now()
-						metric := storage.NodeMetric{
+						metric := &storage.NodeMetric{
 							NodeId:    nodeState.GetID().Bytes(),
 							StartTime: startTime,
 							EndTime:   currentTime,
