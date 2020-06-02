@@ -18,6 +18,7 @@ import (
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
 	"sync/atomic"
 )
@@ -83,6 +84,56 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 
 	// Notify registration thread
 	return m.completeNodeRegistration(RegistrationCode)
+}
+
+// Loads all registered nodes and puts them into the host object and node map.
+// Should be run on startup.
+func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
+	nodes, err := storage.PermissioningDb.GetNodesByStatus(node.Active)
+	if err != nil {
+		return err
+	}
+
+	for _, n := range nodes {
+		nid, err := id.Unmarshal(n.Id)
+
+		//add the node to the host object for authenticated communications
+		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), false, true)
+		if err != nil {
+			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
+		}
+
+		//add the node to the node map to track its state
+		err = m.State.GetNodeMap().AddNode(nid, n.Order, n.ServerAddress, n.GatewayAddress)
+		if err != nil {
+			return errors.WithMessage(err, "Could not register node with "+
+				"state tracker")
+		}
+	}
+
+	bannedNodes, err := storage.PermissioningDb.GetNodesByStatus(node.Banned)
+	if err != nil {
+		return err
+	}
+
+	for _, n := range bannedNodes {
+		nid, err := id.Unmarshal(n.Id)
+
+		//add the node to the host object for authenticated communications
+		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), false, true)
+		if err != nil {
+			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
+		}
+
+		//add the node to the node map to track its state
+		err = m.State.GetNodeMap().AddBannedNode(nid, n.Order, n.ServerAddress, n.GatewayAddress)
+		if err != nil {
+			return errors.WithMessage(err, "Could not register node with "+
+				"state tracker")
+		}
+	}
+
+	return nil
 }
 
 // Handles including new registrations in the network

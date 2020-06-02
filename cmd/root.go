@@ -169,6 +169,11 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
+		err = impl.LoadAllRegisteredNodes()
+		if err != nil {
+			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
+		}
+
 		// Determine how long between polling for banned nodes
 		interval := viper.GetInt("BanTrackerInterval")
 		ticker := time.NewTicker(time.Duration(interval) * time.Minute)

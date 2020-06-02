@@ -40,7 +40,7 @@ type MapImpl struct {
 // Global variable for database interaction
 var PermissioningDb Storage
 
-type nodeRegistration interface {
+type NodeRegistration interface {
 	// If Node registration code is valid, add Node information
 	RegisterNode(id *id.ID, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
@@ -56,7 +56,7 @@ type nodeRegistration interface {
 	InsertRoundMetric(metric RoundMetric, topology [][]byte) error
 }
 
-type clientRegistration interface {
+type ClientRegistration interface {
 	// Inserts Client registration code with given number of uses
 	InsertClientRegCode(code string, uses int) error
 	// If Client registration code is valid, decrements remaining uses
@@ -69,8 +69,8 @@ type clientRegistration interface {
 
 // Interface database storage operations
 type Storage struct {
-	clientRegistration
-	nodeRegistration
+	ClientRegistration
+	NodeRegistration
 }
 
 // Struct representing a RegistrationCode table in the database
@@ -224,11 +224,11 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 		defer jww.INFO.Println("Map backend initialized successfully!")
 
 		return Storage{
-			clientRegistration: clientRegistration(&MapImpl{
+			ClientRegistration: ClientRegistration(&MapImpl{
 				clients: make(map[string]*RegistrationCode),
 				users:   make(map[string]bool),
 			}),
-			nodeRegistration: nodeRegistration(&MapImpl{
+			NodeRegistration: NodeRegistration(&MapImpl{
 				applications: make(map[uint64]*Application),
 				nodes:        make(map[string]*Node),
 				nodeMetrics:  make(map[uint64]*NodeMetric),
@@ -260,8 +260,8 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 
 	jww.INFO.Println("Database backend initialized successfully!")
 	return Storage{
-		clientRegistration: di,
-		nodeRegistration:   di,
+		ClientRegistration: di,
+		NodeRegistration:   di,
 	}, nil
 
 }
