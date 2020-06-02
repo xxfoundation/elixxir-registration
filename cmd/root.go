@@ -195,9 +195,11 @@ var rootCmd = &cobra.Command{
 		jww.INFO.Printf("Minnimum number of nodes %v have registered,"+
 			"begining scheduling and round creation", RegParams.minimumNodes)
 
+		schedulingKillChan := make(chan chan struct{})
+
 		// Begin scheduling algorithm
 		go func() {
-			err = scheduling.Scheduler(SchedulingConfig, impl.State)
+			err = scheduling.Scheduler(SchedulingConfig, impl.State, schedulingKillChan)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
 		}()
 
