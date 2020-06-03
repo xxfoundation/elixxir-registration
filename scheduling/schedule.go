@@ -103,8 +103,14 @@ func scheduler(params Params, state *storage.NetworkState) error {
 			return err
 		}
 
+		//remove offline nodes from pool to more accurately determine if pool is eligible for round creation
+		pool.CleanOfflineNodes(params.NodeCleanUpInterval * time.Minute)
+
+		// Remove this later!
+		jww.CRITICAL.Printf("pool len: %v, teamSize: %v", pool.Len(), params.TeamSize)
 		//create a new round if the pool is full
-		if pool.Len() == int(params.TeamSize) {
+		if pool.Len() >= int(params.TeamSize) {
+			jww.CRITICAL.Printf("There are enough nodes in the pool; creating round")
 			newRound, err := createRound(params, pool, roundID.Next(), state)
 			if err != nil {
 				return err

@@ -126,6 +126,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// acceptable, it is not recorded and an error is returned, which is
 	// propagated to the node
 	update, updateNotification, err := n.Update(current.Activity(msg.Activity))
+	// Probably makes sense to update pool here?
 
 	//if an update ocured, report it to the control thread
 	if update {

@@ -13,7 +13,6 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
-	"time"
 )
 
 // createSimpleRound.go contains the logic to construct a team for a round and
@@ -23,8 +22,6 @@ import (
 // this round into the network state
 func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
-	//remove any offline nodes from consideration
-	pool.CleanOfflineNodes(time.Duration(params.NodeCleanUpInterval) * time.Minute)
 
 	nodes, err := pool.PickNRandAtThreshold(int(params.TeamSize), int(params.TeamSize))
 	if err != nil {
