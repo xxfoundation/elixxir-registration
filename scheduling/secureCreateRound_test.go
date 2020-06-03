@@ -3,7 +3,6 @@ package scheduling
 import (
 	"container/ring"
 	"crypto/rand"
-	"fmt"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
@@ -184,7 +183,7 @@ func TestCreateRound_EfficientTeam(t *testing.T) {
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 
 	// Craft regions for nodes
-	regions := []string{"NA_WEST", "NA_EAST", "EUROPE_WEST",  "EUROPE_EAST"}
+	regions := []string{"NA_WEST", "NA_EAST", "EUROPE_WEST", "EUROPE_EAST"}
 
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
@@ -210,7 +209,7 @@ func TestCreateRound_EfficientTeam(t *testing.T) {
 	var regionOrder []string
 	// Ideal: 0 -> 1 -> 3 -> 2 (with any starting node)
 	for _, n := range testProtoRound.NodeStateList {
-		order:= n.GetOrdering()
+		order := n.GetOrdering()
 		if err != nil {
 			t.Errorf("Failed to convert node's order. Ordering: %s", n.GetOrdering())
 		}
@@ -218,8 +217,6 @@ func TestCreateRound_EfficientTeam(t *testing.T) {
 		ourRing = ourRing.Next()
 		regionOrder = append(regionOrder, order)
 	}
-
-	fmt.Println(regionOrder)
 
 	// Ideal iteration(s). It is possible that the ideal
 	// order can go in 'reverse' order, as it is just a loop
@@ -235,12 +232,10 @@ func TestCreateRound_EfficientTeam(t *testing.T) {
 		ourRing = ourRing.Next()
 	}
 
-
 	// Check if in the "reverse" order
 	if ourRing.Next().Value == idealOrderRev[1] {
 		isReverse = true
 	}
-
 
 	// Parse the buffer for correctness depending on order
 	if isReverse {
