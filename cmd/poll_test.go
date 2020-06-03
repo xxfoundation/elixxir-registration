@@ -76,8 +76,8 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		LastUpdate:     0,
 		Activity:       uint32(current.WAITING),
 		Error:          nil,
-		GatewayVersion: "0.0.0",
-		ServerVersion:  "0.0.0",
+		GatewayVersion: "1.1.0",
+		ServerVersion:  "1.1.0",
 	}
 
 	err = impl.State.AddRoundUpdate(
@@ -428,6 +428,41 @@ func TestCheckVersion(t *testing.T) {
 	}
 }
 
+// Check that checkVersion() skips checking versions when the gateway version is
+// blank.
+func TestCheckVersion_EmptyVersions(t *testing.T) {
+	testMsg := &pb.PermissioningPoll{
+		ServerVersion:  "1.5.6",
+		GatewayVersion: "",
+	}
+
+	requiredServer, _ := version.ParseVersion("1.3.2")
+	requiredGateway, _ := version.ParseVersion("1.3.2")
+
+	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	if err != nil {
+		t.Errorf("checkVersion() unexpectedly errored on empty version "+
+			"strings: %+v", err)
+	}
+}
+
+// Check that checkVersion() correctly determines the message versions to be
+// compatible with the required version when they are equal.
+func TestCheckVersion_Edge(t *testing.T) {
+	testMsg := &pb.PermissioningPoll{
+		ServerVersion:  "1.3.2b",
+		GatewayVersion: "1.3.2c",
+	}
+
+	requiredServer, _ := version.ParseVersion("1.3.2")
+	requiredGateway, _ := version.ParseVersion("1.3.2")
+
+	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	if err != nil {
+		t.Errorf("checkVersion() unexpectedly errored: %+v", err)
+	}
+}
+
 // Check that checkVersion() returns an error if the gateway version cannot be
 // parsed.
 func TestCheckVersion_ParseErrorGateway(t *testing.T) {
@@ -441,8 +476,7 @@ func TestCheckVersion_ParseErrorGateway(t *testing.T) {
 
 	err := checkVersion(requiredGateway, requiredServer, testMsg)
 	if err == nil {
-		t.Errorf("checkVersion() did not error on invalid gateway version: %+v",
-			err)
+		t.Errorf("checkVersion() did not error on invalid gateway version.")
 	}
 }
 
@@ -459,8 +493,7 @@ func TestCheckVersion_ParseErrorServer(t *testing.T) {
 
 	err := checkVersion(requiredGateway, requiredServer, testMsg)
 	if err == nil {
-		t.Errorf("checkVersion() did not error on invalid server version: %+v",
-			err)
+		t.Errorf("checkVersion() did not error on invalid server version.")
 	}
 }
 
@@ -475,10 +508,18 @@ func TestCheckVersion_InvalidVersionGateway(t *testing.T) {
 	requiredServer, _ := version.ParseVersion("1.3.2")
 	requiredGateway, _ := version.ParseVersion("4.3.2")
 
+	expectedError := "The gateway version \"" + testMsg.GatewayVersion +
+		"\" is incompatible with the required version \"" +
+		requiredGateway.String() + "\"."
+
 	err := checkVersion(requiredGateway, requiredServer, testMsg)
-	if err == nil {
-		t.Errorf("checkVersion() did not error on incompatible gateway "+
-			"version: %+v", err)
+	if err != nil && err.Error() != expectedError {
+		t.Errorf("checkVersion() did not produce the correct error on "+
+			"incompatible gateway version.\n\texpected: %+v\n\treceived: %+v",
+			expectedError, err)
+	} else if err == nil {
+		t.Errorf("checkVersion() did not error on incompatible gateway " +
+			"version.")
 	}
 }
 
@@ -493,10 +534,44 @@ func TestCheckVersion_InvalidVersionServer(t *testing.T) {
 	requiredServer, _ := version.ParseVersion("1.15.2")
 	requiredGateway, _ := version.ParseVersion("1.3.2")
 
+	expectedError := "The server version \"" + testMsg.ServerVersion +
+		"\" is incompatible with the required version \"" +
+		requiredServer.String() + "\"."
+
 	err := checkVersion(requiredGateway, requiredServer, testMsg)
-	if err == nil {
-		t.Errorf("checkVersion() did not error on incompatible server "+
-			"version: %+v", err)
+	if err != nil && err.Error() != expectedError {
+		t.Errorf("checkVersion() did not produce the correct error on "+
+			"incompatible server version.\n\texpected: %+v\n\treceived: %+v",
+			expectedError, err)
+	} else if err == nil {
+		t.Errorf("checkVersion() did not error on incompatible server " +
+			"version.")
+	}
+}
+
+// Check that checkVersion() returns an error for an incompatible gateway
+// version when both gateway and server are of incompatible versions.
+func TestCheckVersion_InvalidVersionGatewayAndServer(t *testing.T) {
+	testMsg := &pb.PermissioningPoll{
+		ServerVersion:  "0.6.7b",
+		GatewayVersion: "1.0.a",
+	}
+
+	requiredServer, _ := version.ParseVersion("1.1.0")
+	requiredGateway, _ := version.ParseVersion("1.1.0")
+
+	expectedError := "The gateway version \"" + testMsg.GatewayVersion +
+		"\" is incompatible with the required version \"" +
+		requiredGateway.String() + "\"."
+
+	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	if err != nil && err.Error() != expectedError {
+		t.Errorf("checkVersion() did not produce the correct error on "+
+			"incompatible gateway version.\n\texpected: %+v\n\treceived: %+v",
+			expectedError, err)
+	} else if err == nil {
+		t.Errorf("checkVersion() did not error on incompatible gateway " +
+			"version.")
 	}
 }
 

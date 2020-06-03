@@ -280,7 +280,8 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 // Adds Node registration codes to the database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
 	// TODO: This will eventually need to be updated to intake applications too
-	for i, info := range infos {
+	i := 1
+	for _, info := range infos {
 		err := PermissioningDb.InsertApplication(&Application{
 			Id: uint64(i),
 		}, &Node{
@@ -292,5 +293,6 @@ func PopulateNodeRegistrationCodes(infos []node.Info) {
 			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
 				err)
 		}
+		i++
 	}
 }

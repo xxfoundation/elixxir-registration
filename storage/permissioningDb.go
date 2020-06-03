@@ -73,6 +73,6 @@ func (m *DatabaseImpl) GetNode(code string) (*Node, error) {
 // Return all nodes in storage with the given Status
 func (m *DatabaseImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 	var nodes []*Node
-	err := m.db.Where("status = ?", status).Find(&nodes).Error
+	err := m.db.Where("status = ?", uint8(status)).Find(&nodes).Error
 	return nodes, err
 }

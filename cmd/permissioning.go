@@ -60,8 +60,8 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 	}
 
 	// Attempt to insert Node into the database
-	err = storage.PermissioningDb.RegisterNode(ID,
-		RegistrationCode, signedNodeCert, ServerAddr, GatewayAddr, signedGatewayCert)
+	err = storage.PermissioningDb.RegisterNode(ID, RegistrationCode, ServerAddr,
+		signedNodeCert, GatewayAddr, signedGatewayCert)
 	if err != nil {
 		return errors.Errorf("unable to insert node: %+v", err)
 	}
@@ -106,7 +106,7 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
-	if order != -1{
+	if order != -1 {
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
 		if order >= len(networkDef.Nodes) {
@@ -115,11 +115,10 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 		networkDef.Gateways[order] = gateway
 		networkDef.Nodes[order] = node
-	}else{
+	} else {
 		networkDef.Gateways = append(networkDef.Gateways, gateway)
 		networkDef.Nodes = append(networkDef.Nodes, node)
 	}
-
 
 	// update the internal state with the newly-updated ndf
 	err = m.State.UpdateNdf(networkDef)
@@ -190,7 +189,7 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 
 	order, err := strconv.Atoi(nodeInfo.Sequence)
 	if err != nil {
-		return  gateway, node, -1, nil
+		return gateway, node, -1, nil
 	}
 
 	return gateway, node, order, nil
