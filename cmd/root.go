@@ -209,15 +209,21 @@ var rootCmd = &cobra.Command{
 		nodeTicker := time.NewTicker(nodeMetricInterval)
 
 		// Set up signal handler for stopping round creation
-		ReceiveUSR1Signal(func() {
-			jww.ERROR.Printf("Unimplemented: Stop round creation!")
-		})
-
-		// Set up Signal Hangler for safe program exit
-		ReceiveExitSignal(func() int {
-			jww.ERROR.Printf("Unimplemented: Stop round creation!")
+		killer := func() int {
+			k := make(chan struct{})
+			jww.INFO.Printf("Stopping round creation...")
+			select {
+			case <-k:
+				jww.INFO.Printf("stopped!\n")
+				return 0
+			case <-time.After(10 * time.Second):
+				jww.ERROR.Print("couldn't stop round creation!")
+			}
 			return -1
-		})
+		}
+		ReceiveUSR1Signal(func() { killer() })
+		// Set up Signal Hangler for safe program exit
+		ReceiveExitSignal(killer)
 
 		// Run the Node metric tracker forever in another thread
 		go func() {
