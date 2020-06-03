@@ -62,15 +62,16 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			return errors.Errorf("Node %s without round should "+
 				"not be moving to the %s state", update.Node, states.PRECOMPUTING)
 		}
-		stateComplete := r.NodeIsReadyForTransition()
-		if stateComplete {
-			err := r.Update(states.PRECOMPUTING, time.Now())
-			if err != nil {
-				return errors.WithMessagef(err,
-					"Could not move round %v from %s to %s",
-					r.GetRoundID(), states.PENDING, states.PRECOMPUTING)
-			}
-		}
+		// fixme: nodes selected from pool are assigned to precomp in start round, inherently are synced
+		//stateComplete := r.NodeIsReadyForTransition()
+		//if stateComplete {
+		//	err := r.Update(states.PRECOMPUTING, time.Now())
+		//	if err != nil {
+		//		return errors.WithMessagef(err,
+		//			"Could not move round %v from %s to %s",
+		//			r.GetRoundID(), states.PENDING, states.PRECOMPUTING)
+		//	}
+		//}
 	case current.STANDBY:
 		// Check that node in standby actually does have a round
 		if !hasRound {

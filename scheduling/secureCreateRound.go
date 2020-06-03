@@ -1,6 +1,7 @@
 package scheduling
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
@@ -32,7 +33,7 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 
 	// Make all permutations of nodes
 	permutations := Permute(nodes)
-
+	fmt.Printf("finished permute \n")
 	// This assumes order is geographic region, where (arbitrarily)
 	// NA_WEST - Western United States and Canada
 	// NA_EAST - Eastern United States and Canada, Latin America
@@ -44,7 +45,7 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 	//  https://docs.google.com/document/d/1oyjIDlqC54u_eoFzQP9SVNU2IqjnQOjpUYd9aqbg5X0/edit#
 
 	jww.DEBUG.Printf("Looking for most efficient teaming order")
-
+	fmt.Println("amount of permutations: ", len(permutations))
 	bestTime := math.MaxInt32
 	var bestOrder []*node.State
 	// TODO: consider a way to do this more efficiently? Although possibly not needed
@@ -58,6 +59,7 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 				return protoRound{}, err
 
 			}
+
 
 			// Get the ordering of the next node, circling back if at the last node
 			nextNode := nodes[(i+1)%len(nodes)]
@@ -86,14 +88,12 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 		}
 
 	}
-
 	jww.DEBUG.Printf("Permuting and finding the best team took: %v", time.Now().Sub(start))
 
 	// Create proto
 	newRound := createProtoRound(params, state, bestOrder, roundID)
 
 	jww.TRACE.Printf("Built round %d", roundID)
-
 	return newRound, nil
 }
 
