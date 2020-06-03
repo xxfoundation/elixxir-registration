@@ -122,6 +122,8 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	}
 	//endregion
 
+	// TODO: check servers get an NDF
+
 	//region Cleanup
 	// Shutdown registration
 	//impl.Comms.Shutdown()

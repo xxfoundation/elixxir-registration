@@ -109,6 +109,11 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
 			return errors.WithMessage(err, "Could not register node with "+
 				"state tracker")
 		}
+
+		err = m.completeNodeRegistration(n.Code)
+		if err != nil {
+			return err
+		}
 	}
 
 	bannedNodes, err := storage.PermissioningDb.GetNodesByStatus(node.Banned)
@@ -130,6 +135,11 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
 		if err != nil {
 			return errors.WithMessage(err, "Could not register node with "+
 				"state tracker")
+		}
+
+		err = m.completeNodeRegistration(n.Code)
+		if err != nil {
+			return err
 		}
 	}
 
