@@ -153,7 +153,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 	metric := &storage.RoundMetric{
 		PrecompStart:  time.Unix(int64(roundInfo.Timestamps[current.PRECOMPUTING]), 0),
-		PrecompEnd:    time.Unix(int64(roundInfo.Timestamps[current.WAITING]), 0),
+		PrecompEnd:    time.Unix(int64(roundInfo.Timestamps[states.QUEUED]), 0),
 		RealtimeStart: time.Unix(int64(roundInfo.Timestamps[current.REALTIME]), 0),
 		RealtimeEnd:   time.Unix(int64(roundInfo.Timestamps[current.COMPLETED]), 0),
 		BatchSize:     roundInfo.BatchSize,
@@ -161,8 +161,18 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 
 	precompDuration := metric.PrecompEnd.Sub(metric.PrecompStart)
 	realTimeDuration := metric.RealtimeEnd.Sub(metric.RealtimeStart)
+
 	jww.INFO.Printf("Precomp took: %v", precompDuration)
 	jww.INFO.Printf("Realtime took: %v", realTimeDuration)
+
+	// Attempt 2 to get data
+	precompStart := time.Unix(0, int64(roundInfo.Timestamps[current.PRECOMPUTING]))
+	precompEnd := time.Unix(0, int64(roundInfo.Timestamps[current.WAITING]))
+	rtStart := time.Unix(0, int64(roundInfo.Timestamps[current.REALTIME]))
+	rtEnd := time.Unix(0, int64(roundInfo.Timestamps[current.COMPLETED]))
+	jww.INFO.Printf("Precomp for round %v took: %v", roundInfo.GetRoundId(), precompEnd.Sub(precompStart))
+	jww.INFO.Printf("Realtime for round %v took: %v", roundInfo.GetRoundId(), rtEnd.Sub(rtStart))
+
 	return storage.PermissioningDb.InsertRoundMetric(metric, roundInfo.Topology)
 }
 
