@@ -13,7 +13,6 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/elixxir/registration/storage/round"
 	"time"
 )
 
@@ -88,50 +87,8 @@ func scheduler(params Params, state *storage.NetworkState) error {
 
 	}()
 
-	schedulingTicker := time.NewTicker(15 * time.Second)
-
-	realtimeNodes := make([]*node.State, 0)
-	precompNodes := make([]*node.State, 0)
-	waitingNodes := make([]*node.State, 0)
-	go func() {
-		for {
-			select {
-			case <-schedulingTicker.C:
-				nodeStates := state.GetNodeMap().GetNodeStates()
-				for _, nodeState := range nodeStates {
-					switch nodeState.GetActivity() {
-					case current.WAITING:
-						waitingNodes = append(waitingNodes, nodeState)
-					case current.REALTIME:
-						realtimeNodes = append(realtimeNodes, nodeState)
-					case current.PRECOMPUTING:
-						precompNodes = append(precompNodes, nodeState)
-					}
-
-				}
-
-			}
-			realTimeMap := make(map[*round.State]bool)
-			for _, realtime := range realtimeNodes {
-				_, ourRound := realtime.GetCurrentRound()
-				realTimeMap[ourRound] = true
-				ourRound.GetRoundState()
-			}
-
-			for rnd := range realTimeMap {
-				jww.INFO.Printf("Realtime Round: %v", rnd.BuildRoundInfo().String())
-			}
-
-			jww.INFO.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
-			jww.INFO.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
-			jww.INFO.Printf("Teams in in waiting: %v", len(waitingNodes)/int(params.TeamSize))
-			jww.INFO.Printf("Teams in pool: %v", pool.Len())
-			realtimeNodes = make([]*node.State, 0)
-			precompNodes = make([]*node.State, 0)
-			waitingNodes = make([]*node.State, 0)
-
-		}
-	}()
+	// Uncomment when need to debug status of rounds
+	//go trackRounds(params, state, pool)
 
 	//start receiving updates from nodes
 	for true {
@@ -164,4 +121,47 @@ func scheduler(params Params, state *storage.NetworkState) error {
 	}
 
 	return errors.New("single scheduler should never exit")
+}
+
+// Tracks rounds, periodically outputs how many teams are in various rounds
+func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool)  {
+	// Period of polling the state map for logs
+	schedulingTicker := time.NewTicker(15 * time.Second)
+
+	realtimeNodes := make([]*node.State, 0)
+	precompNodes := make([]*node.State, 0)
+	waitingNodes := make([]*node.State, 0)
+
+	for {
+		select {
+		case <-schedulingTicker.C:
+			// Parse through the node map to collect nodes into round state arrays
+			nodeStates := state.GetNodeMap().GetNodeStates()
+			for _, nodeState := range nodeStates {
+				switch nodeState.GetActivity() {
+				case current.WAITING:
+					waitingNodes = append(waitingNodes, nodeState)
+				case current.REALTIME:
+					realtimeNodes = append(realtimeNodes, nodeState)
+				case current.PRECOMPUTING:
+					precompNodes = append(precompNodes, nodeState)
+				}
+
+			}
+
+		}
+
+		// Output data into logs
+		jww.TRACE.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Teams in in waiting: %v", len(waitingNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Teams in pool: %v", pool.Len())
+
+		// Reset the data for next periodic poll
+		realtimeNodes = make([]*node.State, 0)
+		precompNodes = make([]*node.State, 0)
+		waitingNodes = make([]*node.State, 0)
+
+	}
+
 }
