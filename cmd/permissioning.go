@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/tls"
@@ -150,7 +151,9 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 // helper function which appends the ndf to the maximum order
 func appendNdf(definition *ndf.NetworkDefinition, order int) {
-	lengthDifference := (order % len(definition.Nodes)) + 1
+
+	lengthDifference := order - len(definition.Nodes) + 1
+	fmt.Println(lengthDifference)
 	gwExtension := make([]ndf.Gateway, lengthDifference)
 	nodeExtension := make([]ndf.Node, lengthDifference)
 	definition.Nodes = append(definition.Nodes, nodeExtension...)

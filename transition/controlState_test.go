@@ -65,7 +65,7 @@ func TestTransitions_NeedsRound(t *testing.T) {
 func TestTransitions_RequiredRoundState(t *testing.T) {
 	testTransition := newTransitions()
 
-	expectedRoundState := []states.Round{nilRoundState, nilRoundState, 1, 1, 4, 4, nilRoundState}
+	expectedRoundState := []states.Round{nilRoundState, nilRoundState, 1, 1, 3, 4, nilRoundState}
 	receivedRoundState := make([]states.Round, len(expectedRoundState))
 
 	for i := uint32(0); i < uint32(current.CRASH); i++ {

@@ -165,7 +165,6 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 	jww.TRACE.Printf("Precomp for round %v took: %v", roundInfo.GetRoundId(), precompDuration)
 	jww.TRACE.Printf("Realtime for round %v took: %v", roundInfo.GetRoundId(), realTimeDuration)
 
-
 	return storage.PermissioningDb.InsertRoundMetric(metric, roundInfo.Topology)
 }
 

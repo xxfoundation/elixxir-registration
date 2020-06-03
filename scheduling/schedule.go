@@ -124,7 +124,7 @@ func scheduler(params Params, state *storage.NetworkState) error {
 }
 
 // Tracks rounds, periodically outputs how many teams are in various rounds
-func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool)  {
+func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) {
 	// Period of polling the state map for logs
 	schedulingTicker := time.NewTicker(15 * time.Second)
 
