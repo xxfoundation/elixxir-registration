@@ -396,8 +396,6 @@ func initLog() {
 			jww.SetLogThreshold(jww.LevelInfo)
 			jww.SetStdoutThreshold(jww.LevelInfo)
 		}
-		jww.SetLogThreshold(jww.LevelTrace)
-		jww.SetStdoutThreshold(jww.LevelTrace)
 
 		// Create log file, overwrites if existing
 		logPath := viper.GetString("logPath")
