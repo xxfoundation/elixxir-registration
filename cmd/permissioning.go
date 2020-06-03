@@ -32,6 +32,7 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 		return errors.Errorf(
 			"Registration code %+v is invalid or not currently enabled: %+v", RegistrationCode, err)
 	}
+	jww.INFO.Printf("nodeInfo: %v", nodeInfo.Id)
 	if !bytes.Equal(nodeInfo.Id, []byte("")) {
 		return errors.Errorf(
 			"Node with registration code %+v has already been registered", RegistrationCode)
@@ -75,7 +76,7 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 	}
 
 	//add the node to the node map to track its state
-	err = m.State.GetNodeMap().AddNode(ID, nodeInfo.Order, ServerAddr, GatewayAddr)
+	err = m.State.GetNodeMap().AddNode(ID, nodeInfo.Sequence, ServerAddr, GatewayAddr)
 	if err != nil {
 		return errors.WithMessage(err, "Could not register node with "+
 			"state tracker")
@@ -101,18 +102,24 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	networkDef := m.State.GetFullNdf().Get()
 	gateway, node, order, err := assembleNdf(regCode)
 	if err != nil {
-		jww.ERROR.Printf("unable to assemble topology: %+v", err)
-		return errors.Errorf("Could not complete registration")
+		err := errors.Errorf("unable to assemble topology: %+v", err)
+		jww.ERROR.Print(err.Error())
+		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
-	// fixme: consider removing. this allows clients to remain agnostic of teaming order
-	//  by forcing team order == ndf order for simple non-random
-	if order >= len(networkDef.Nodes) {
-		appendNdf(networkDef, order)
-	}
+	if order != -1 {
+		// fixme: consider removing. this allows clients to remain agnostic of teaming order
+		//  by forcing team order == ndf order for simple non-random
+		if order >= len(networkDef.Nodes) {
+			appendNdf(networkDef, order)
+		}
 
-	networkDef.Gateways[order] = gateway
-	networkDef.Nodes[order] = node
+		networkDef.Gateways[order] = gateway
+		networkDef.Nodes[order] = node
+	} else {
+		networkDef.Gateways = append(networkDef.Gateways, gateway)
+		networkDef.Nodes = append(networkDef.Nodes, node)
+	}
 
 	// update the internal state with the newly-updated ndf
 	err = m.State.UpdateNdf(networkDef)
@@ -123,8 +130,9 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	// Output the current topology to a JSON file
 	err = outputToJSON(networkDef, m.ndfOutputPath)
 	if err != nil {
-		jww.ERROR.Printf("unable to output NDF JSON file: %+v", err)
-		return errors.Errorf("Could not complete registration")
+		err := errors.Errorf("unable to output NDF JSON file: %+v", err)
+		jww.ERROR.Print(err.Error())
+		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
 	// Kick off the network if the minimum number of nodes has been met
@@ -180,9 +188,9 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 		TlsCertificate: nodeInfo.GatewayCertificate,
 	}
 
-	order, err := strconv.Atoi(nodeInfo.Order)
+	order, err := strconv.Atoi(nodeInfo.Sequence)
 	if err != nil {
-		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf("Unable to read node's info: %v", err)
+		return gateway, node, -1, nil
 	}
 
 	return gateway, node, order, nil

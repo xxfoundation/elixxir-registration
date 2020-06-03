@@ -8,6 +8,7 @@ package scheduling
 // Contains the handler for node updates
 import (
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
@@ -149,13 +150,18 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 
 // Insert metrics about the newly-completed round into storage
 func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
-	metric := storage.RoundMetric{
+	metric := &storage.RoundMetric{
 		PrecompStart:  time.Unix(int64(roundInfo.Timestamps[current.PRECOMPUTING]), 0),
 		PrecompEnd:    time.Unix(int64(roundInfo.Timestamps[current.WAITING]), 0),
 		RealtimeStart: time.Unix(int64(roundInfo.Timestamps[current.REALTIME]), 0),
 		RealtimeEnd:   time.Unix(int64(roundInfo.Timestamps[current.COMPLETED]), 0),
 		BatchSize:     roundInfo.BatchSize,
 	}
+
+	precompDuration := metric.PrecompEnd.Sub(metric.PrecompStart)
+	realTimeDuration := metric.RealtimeEnd.Sub(metric.RealtimeStart)
+	jww.INFO.Printf("Precomp took: %v", precompDuration)
+	jww.INFO.Printf("Realtime took: %v", realTimeDuration)
 	return storage.PermissioningDb.InsertRoundMetric(metric, roundInfo.Topology)
 }
 
