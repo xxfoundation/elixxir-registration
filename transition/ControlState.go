@@ -32,7 +32,7 @@ func newTransitions() Transitions {
 	t[current.NOT_STARTED] = NewTransitionValidation(No, nilRoundState)
 	t[current.WAITING] = NewTransitionValidation(No, nilRoundState, current.NOT_STARTED, current.COMPLETED, current.ERROR)
 	t[current.PRECOMPUTING] = NewTransitionValidation(Yes, states.PRECOMPUTING, current.WAITING)
-	t[current.STANDBY] = NewTransitionValidation(Yes, states.PRECOMPUTING, current.PRECOMPUTING)
+	t[current.STANDBY] = NewTransitionValidation(Yes, states.QUEUED, current.PRECOMPUTING)
 	t[current.REALTIME] = NewTransitionValidation(Yes, states.REALTIME, current.STANDBY)
 	t[current.COMPLETED] = NewTransitionValidation(Yes, states.REALTIME, current.REALTIME)
 	t[current.ERROR] = NewTransitionValidation(Maybe, nilRoundState, current.NOT_STARTED,
