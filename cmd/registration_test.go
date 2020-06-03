@@ -11,6 +11,7 @@ import (
 	nodeComms "gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/utils"
+	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
@@ -49,6 +50,16 @@ func TestMain(m *testing.M) {
 		fmt.Printf("Could not get gateway cert: %+v\n", err)
 	}
 
+	minGatewayVersion, err := version.ParseVersion("1.1.0")
+	if err != nil {
+		fmt.Printf("Could not parse gateway version: %+v\n", err)
+	}
+
+	minServerVersion, err := version.ParseVersion("1.1.0")
+	if err != nil {
+		fmt.Printf("Could not parse server version: %+v\n", err)
+	}
+
 	testParams = Params{
 		Address:                   permAddr,
 		CertPath:                  testkeys.GetCACertPath(),
@@ -58,6 +69,8 @@ func TestMain(m *testing.M) {
 		maxRegistrationAttempts:   5,
 		registrationCountDuration: time.Hour,
 		minimumNodes:              3,
+		minGatewayVersion:         minGatewayVersion,
+		minServerVersion:          minServerVersion,
 	}
 	nodeComm = nodeComms.StartNode(&id.TempGateway, nodeAddr, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
@@ -123,12 +136,12 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	}
 	//Insert a sample regCode
 	applicationId := uint64(10)
-	newNode := storage.Node{
+	newNode := &storage.Node{
 		Code:          "AAAA",
-		Order:         "0",
+		Sequence:      "0",
 		ApplicationId: applicationId,
 	}
-	newApplication := storage.Application{Id: applicationId}
+	newApplication := &storage.Application{Id: applicationId}
 	err = storage.PermissioningDb.InsertApplication(newApplication, newNode)
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)

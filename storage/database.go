@@ -49,11 +49,11 @@ type NodeRegistration interface {
 	// Return all nodes in storage with the given Status
 	GetNodesByStatus(status node.Status) ([]*Node, error)
 	// Insert Application object along with associated unregistered Node
-	InsertApplication(application Application, unregisteredNode Node) error
+	InsertApplication(application *Application, unregisteredNode *Node) error
 	// Insert NodeMetric object
-	InsertNodeMetric(metric NodeMetric) error
+	InsertNodeMetric(metric *NodeMetric) error
 	// Insert RoundMetric object
-	InsertRoundMetric(metric RoundMetric, topology [][]byte) error
+	InsertRoundMetric(metric *RoundMetric, topology [][]byte) error
 }
 
 type ClientRegistration interface {
@@ -105,8 +105,8 @@ type Application struct {
 	GeoBin string
 	// GPS location of the Node
 	GpsLocation string
-	// Specifies the group the node was assigned
-	Group string
+	// Specifies the team the node was assigned
+	Team string
 	// Specifies which network the node is in
 	Network string
 
@@ -123,7 +123,7 @@ type Node struct {
 	// Registration code acts as the primary key
 	Code string `gorm:"primary_key"`
 	// Node order string, this is a tag used by the algorithm
-	Order string
+	Sequence string
 
 	// Unique Node ID
 	Id []byte `gorm:"UNIQUE_INDEX;default: null"`
@@ -156,7 +156,7 @@ type NodeMetric struct {
 	// Auto-incrementing primary key (Do not set)
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
 	// Node has many NodeMetrics
-	NodeId string `gorm:"NOT NULL;type:text REFERENCES nodes(Id)"`
+	NodeId []byte `gorm:"NOT NULL;type:bytea REFERENCES nodes(Id)"`
 	// Start time of monitoring period
 	StartTime time.Time `gorm:"NOT NULL"`
 	// End time of monitoring period
@@ -168,7 +168,7 @@ type NodeMetric struct {
 // Junction table for the many-to-many relationship between Nodes & RoundMetrics
 type Topology struct {
 	// Composite primary key
-	NodeId        string `gorm:"primary_key;type:text REFERENCES nodes(Id)"`
+	NodeId        []byte `gorm:"primary_key;type:bytea REFERENCES nodes(Id)"`
 	RoundMetricId uint64 `gorm:"primary_key;type:bigint REFERENCES round_metrics(Id)"`
 
 	// Order in the topology of a Node for a given Round
@@ -280,17 +280,19 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 // Adds Node registration codes to the database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
 	// TODO: This will eventually need to be updated to intake applications too
-	for i, info := range infos {
-		err := PermissioningDb.InsertApplication(Application{
+	i := 1
+	for _, info := range infos {
+		err := PermissioningDb.InsertApplication(&Application{
 			Id: uint64(i),
-		}, Node{
+		}, &Node{
 			Code:          info.RegCode,
-			Order:         info.Order,
+			Sequence:      info.Order,
 			ApplicationId: uint64(i),
 		})
 		if err != nil {
 			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
 				err)
 		}
+		i++
 	}
 }

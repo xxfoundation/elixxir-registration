@@ -137,7 +137,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 
 // Insert metrics about the newly-completed round into storage
 func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
-	metric := storage.RoundMetric{
+	metric := &storage.RoundMetric{
 		PrecompStart:  time.Unix(int64(roundInfo.Timestamps[current.PRECOMPUTING]), 0),
 		PrecompEnd:    time.Unix(int64(roundInfo.Timestamps[current.WAITING]), 0),
 		RealtimeStart: time.Unix(int64(roundInfo.Timestamps[current.REALTIME]), 0),

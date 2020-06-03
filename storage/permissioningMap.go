@@ -18,14 +18,13 @@ import (
 )
 
 // Insert Application object along with associated unregistered Node
-func (m *MapImpl) InsertApplication(application Application,
-	unregisteredNode Node) error {
+func (m *MapImpl) InsertApplication(application *Application, unregisteredNode *Node) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
 	jww.INFO.Printf("Adding application: %d", application.Id)
 	jww.INFO.Printf("Adding node registration code: %s with Order Info: %s",
-		unregisteredNode.Code, unregisteredNode.Order)
+		unregisteredNode.Code, unregisteredNode.Sequence)
 
 	// Enforce unique keys
 	if m.nodes[unregisteredNode.Code] != nil {
@@ -37,13 +36,13 @@ func (m *MapImpl) InsertApplication(application Application,
 			application.Id)
 	}
 
-	m.nodes[unregisteredNode.Code] = &unregisteredNode
-	m.applications[application.Id] = &application
+	m.nodes[unregisteredNode.Code] = unregisteredNode
+	m.applications[application.Id] = application
 	return nil
 }
 
 // Insert NodeMetric object
-func (m *MapImpl) InsertNodeMetric(metric NodeMetric) error {
+func (m *MapImpl) InsertNodeMetric(metric *NodeMetric) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -53,12 +52,12 @@ func (m *MapImpl) InsertNodeMetric(metric NodeMetric) error {
 	// Add to map
 	metric.Id = m.nodeMetricCounter
 	jww.DEBUG.Printf("Attempting to insert node metric: %+v", metric)
-	m.nodeMetrics[m.nodeMetricCounter] = &metric
+	m.nodeMetrics[m.nodeMetricCounter] = metric
 	return nil
 }
 
 // Insert RoundMetric object
-func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error {
+func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -74,7 +73,7 @@ func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error
 			return errors.New(err.Error())
 		}
 		topologyObj := Topology{
-			NodeId:        nodeId.String(),
+			NodeId:        nodeId.Bytes(),
 			RoundMetricId: m.roundMetricCounter,
 			Order:         uint8(i),
 		}
@@ -83,7 +82,7 @@ func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error
 
 	// Add to map
 	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
-	m.roundMetrics[m.roundMetricCounter] = &metric
+	m.roundMetrics[m.roundMetricCounter] = metric
 	return nil
 }
 

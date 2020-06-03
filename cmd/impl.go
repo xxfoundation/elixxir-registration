@@ -276,7 +276,7 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	impl.Functions.PollNdf = func(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
 
 		response, err := instance.PollNdf(theirNdfHash, auth)
-		if err != nil {
+		if err != nil && err.Error() != ndf.NO_NDF {
 			jww.ERROR.Printf("PollNdf error: %+v", err)
 		}
 
@@ -286,8 +286,8 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth, serverAddress string) (*pb.PermissionPollResponse, error) {
 
 		response, err := instance.Poll(msg, auth, serverAddress)
-		if err != nil {
-			jww.ERROR.Printf("Poll error: %+v", err)
+		if err != nil && err.Error() != ndf.NO_NDF {
+			jww.ERROR.Printf("Unified Poll error: %+v", err)
 		}
 
 		return response, err
