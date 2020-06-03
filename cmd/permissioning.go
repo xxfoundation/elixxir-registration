@@ -104,7 +104,7 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
 		}
 
 		//add the node to the node map to track its state
-		err = m.State.GetNodeMap().AddNode(nid, n.Order, n.ServerAddress, n.GatewayAddress)
+		err = m.State.GetNodeMap().AddNode(nid, n.Sequence, n.ServerAddress, n.GatewayAddress)
 		if err != nil {
 			return errors.WithMessage(err, "Could not register node with "+
 				"state tracker")
@@ -126,7 +126,7 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
 		}
 
 		//add the node to the node map to track its state
-		err = m.State.GetNodeMap().AddBannedNode(nid, n.Order, n.ServerAddress, n.GatewayAddress)
+		err = m.State.GetNodeMap().AddBannedNode(nid, n.Sequence, n.ServerAddress, n.GatewayAddress)
 		if err != nil {
 			return errors.WithMessage(err, "Could not register node with "+
 				"state tracker")
