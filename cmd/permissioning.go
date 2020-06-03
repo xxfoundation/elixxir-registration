@@ -89,6 +89,8 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 // Loads all registered nodes and puts them into the host object and node map.
 // Should be run on startup.
 func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
+	// TODO: This code could probably use some cleanup
+	// TODO: We might consider refactoring the ban timer code and this code to share stuff, they might have similar goals.
 	nodes, err := storage.PermissioningDb.GetNodesByStatus(node.Active)
 	if err != nil {
 		return err
@@ -210,7 +212,14 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 // helper function which appends the ndf to the maximum order
 func appendNdf(definition *ndf.NetworkDefinition, order int) {
-	lengthDifference := (order % len(definition.Nodes)) + 1
+	// Avoid causing a divide by zero panic if both order and definition.Nodes is zero, 0 % 0 is incalculable
+	lengthDifference := 0
+	if order == 0 && len(definition.Nodes) == 0 {
+		lengthDifference = 1
+	} else {
+		lengthDifference = (order % len(definition.Nodes)) + 1
+	}
+
 	gwExtension := make([]ndf.Gateway, lengthDifference)
 	nodeExtension := make([]ndf.Node, lengthDifference)
 	definition.Nodes = append(definition.Nodes, nodeExtension...)

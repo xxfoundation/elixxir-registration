@@ -60,6 +60,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	testParams := Params{
 		CertPath:                  testkeys.GetCACertPath(),
 		KeyPath:                   testkeys.GetCAKeyPath(),
+		NdfOutputPath:             testkeys.GetNDFPath(),
 		maxRegistrationAttempts:   5,
 		registrationCountDuration: time.Hour,
 	}
@@ -122,7 +123,10 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	}
 	//endregion
 
-	// TODO: check servers get an NDF
+	// TODO: check servers get a valid NDF
+	// Why? When I first made this code, it failed to add the nodes from the database into the NDF. Ideally this
+	// would've been caught in testing, but I hadn't thought about that. It does seem like something pertinent to test
+	// but at the time of me writing this code, we don't have the time to really do that.
 
 	//region Cleanup
 	// Shutdown registration
