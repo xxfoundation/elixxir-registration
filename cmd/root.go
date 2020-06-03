@@ -211,6 +211,7 @@ var rootCmd = &cobra.Command{
 		// Set up signal handler for stopping round creation
 		killer := func() int {
 			k := make(chan struct{})
+			schedulingKillChan <- k
 			jww.INFO.Printf("Stopping round creation...")
 			select {
 			case <-k:
