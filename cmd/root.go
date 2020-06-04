@@ -232,7 +232,7 @@ var rootCmd = &cobra.Command{
 			jww.INFO.Printf("Stopping all long-running threads")
 			// Try a non-blocking send for the registration capacity
 			select {
-			case *quitRegistrationCapacity <- true:
+			case quitRegistrationCapacity <- true:
 			default:
 			}
 			impl.quitChansLock.Lock()
