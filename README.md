@@ -87,6 +87,9 @@ schedulingAlgorithm: "single"
 
 # Path to file with config for scheduling algorithm within the user directory 
 schedulingConfigPath: "Scheduling_Simple_NonRandom.json"
+
+# Time that the registration server waits before timing out while killing the round scheduling thread
+schedulingKillTimeout: 10s
 ```
 
 ### SchedulingConfig template:

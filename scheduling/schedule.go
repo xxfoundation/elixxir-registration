@@ -65,8 +65,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		createRound = createSimpleRound
 	}
 
-
-
 	//begin the thread that starts rounds
 	go func() {
 		lastRound := time.Now()
@@ -97,7 +95,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		var update node.UpdateNotification
 		select {
 		// receive a signal to kill the scheduler
-		case killed = <- killchan:
+		case killed = <-killchan:
 		// If receive an error over a channel, return an error
 		case err := <-errorChan:
 			return err
@@ -112,12 +110,12 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		}
 
 		//if a round has finished, decrement num rounds
-		if endRound{
+		if endRound {
 			numRounds--
 		}
 
 		//create a new round if the pool is full
-		if pool.Len() == int(params.TeamSize) && killed==nil{
+		if pool.Len() == int(params.TeamSize) && killed == nil {
 			newRound, err := createRound(params, pool, roundID.Next(), state)
 			if err != nil {
 				return err
@@ -130,9 +128,9 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 		// if the scheduler is to be killed and no rounds are in progress,
 		// kill the scheduler
-		if killed!=nil && numRounds==0{
+		if killed != nil && numRounds == 0 {
 			close(newRoundChan)
-			killed<-struct{}{}
+			killed <- struct{}{}
 			return nil
 		}
 
