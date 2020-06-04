@@ -24,19 +24,19 @@ type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error)
 
 // Scheduler constructs the teaming parameters and sets up the scheduling
-func Scheduler(serialParam []byte, state *storage.NetworkState, quitChan chan struct{}, killchan chan chan struct{}) error {
+func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan chan struct{}) error {
 	var params Params
 	err := json.Unmarshal(serialParam, &params)
 	if err != nil {
 		return errors.WithMessage(err, "Could not extract parameters")
 	}
 
-	return scheduler(params, state, quitChan, killchan)
+	return scheduler(params, state, killchan)
 }
 
 // scheduler is a utility function which builds a round by handling a node's
 // state changes then creating a team from the nodes in the pool
-func scheduler(params Params, state *storage.NetworkState, quitChan chan struct{}, killchan chan chan struct{}) error {
+func scheduler(params Params, state *storage.NetworkState, killchan chan chan struct{}) error {
 
 	// pool which tracks nodes which are not in a team
 	pool := NewWaitingPool()
@@ -69,21 +69,10 @@ func scheduler(params Params, state *storage.NetworkState, quitChan chan struct{
 	go func() {
 		lastRound := time.Now()
 		var err error
-	newRoundLoop:
 		for newRound := range newRoundChan {
-			select {
-			case <-quitChan:
-				break newRoundLoop
-			default:
-			}
-
 			// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
 			if timeDiff := time.Now().Sub(lastRound); timeDiff < params.MinimumDelay*time.Millisecond {
-				select {
-				case <-quitChan:
-					break newRoundLoop
-				case <-time.After(timeDiff):
-				}
+				time.Sleep(timeDiff)
 			}
 			lastRound = time.Now()
 

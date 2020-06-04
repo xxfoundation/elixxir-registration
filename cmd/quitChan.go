@@ -17,6 +17,14 @@ type QuitChans struct {
 	quitChansLock sync.Mutex
 }
 
+func (qcs *QuitChans) QuitAll() {
+	qcs.quitChansLock.Lock()
+	defer qcs.quitChansLock.Unlock()
+	for _, quitChan := range qcs.quitChans {
+		quitChan <- struct{}{}
+	}
+}
+
 // Makes and registers a simple quit channel that will get notified on sigusr2
 func (qcs *QuitChans) MakeQuitChan() QuitChan {
 	qcs.quitChansLock.Lock()

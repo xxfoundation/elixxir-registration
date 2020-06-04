@@ -28,7 +28,10 @@ import (
 )
 
 //generally large buffer, should be roughly as many nodes as are expected
-const nodeCompletionChanLen = 1000
+const (
+	nodeCompletionChanLen        = 1000
+	defaultSchedulingKillTimeout = 10 * time.Second
+)
 
 // The main registration instance object
 type RegistrationImpl struct {
@@ -68,6 +71,7 @@ type Params struct {
 	publicAddress             string
 	maxRegistrationAttempts   uint64
 	registrationCountDuration time.Duration
+	schedulingKillTimeout     time.Duration
 	minimumNodes              uint32
 	udbId                     []byte
 	minGatewayVersion         version.Version
@@ -89,7 +93,12 @@ func toGroup(grp map[string]string) (*ndf.Group, error) {
 }
 
 // Configure and start the Permissioning Server
-func StartRegistration(params Params) (*RegistrationImpl, error, chan bool) {
+func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error) {
+
+	// Set default scheduling kill timeout if not set
+	if params.schedulingKillTimeout == 0 {
+		params.schedulingKillTimeout = defaultSchedulingKillTimeout
+	}
 
 	// Initialize variables
 	regRemaining := uint64(0)
@@ -99,19 +108,19 @@ func StartRegistration(params Params) (*RegistrationImpl, error, chan bool) {
 	key, err := utils.ReadFile(params.KeyPath)
 	if err != nil {
 		return nil, errors.Errorf("failed to read key at %+v: %+v",
-			params.KeyPath, err), nil
+			params.KeyPath, err)
 	}
 
 	pk, err := rsa.LoadPrivateKeyFromPem(key)
 	if err != nil {
 		return nil, errors.Errorf("Failed to parse permissioning server key: %+v. "+
-			"PermissioningKey is %+v", err, pk), nil
+			"PermissioningKey is %+v", err, pk)
 	}
 
 	//initilize the state tracking object
 	state, err := storage.NewState(pk)
 	if err != nil {
-		return nil, err, nil
+		return nil, err
 	}
 
 	// Build default parameters
@@ -129,7 +138,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error, chan bool) {
 
 	// Create timer and channel to be used by routine that clears the number of
 	// registrations every time the ticker activates
-	done := make(chan bool)
 	go func() {
 		ticker := time.NewTicker(params.registrationCountDuration)
 		regImpl.registrationCapacityRestRunner(ticker, done)
@@ -139,7 +147,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error, chan bool) {
 		// Read in TLS keys from files
 		cert, err := utils.ReadFile(params.CertPath)
 		if err != nil {
-			return nil, errors.Errorf("failed to read certificate at %+v: %+v", params.CertPath, err), done
+			return nil, errors.Errorf("failed to read certificate at %+v: %+v", params.CertPath, err)
 		}
 
 		// Set globals for permissioning server
@@ -147,7 +155,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error, chan bool) {
 		regImpl.permissioningCert, err = tls.LoadCertificate(string(cert))
 		if err != nil {
 			return nil, errors.Errorf("Failed to parse permissioning server cert: %+v. "+
-				"Permissioning cert is %+v", err, regImpl.permissioningCert), done
+				"Permissioning cert is %+v", err, regImpl.permissioningCert)
 		}
 
 	}
@@ -173,7 +181,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error, chan bool) {
 	if RegParams.NsCertPath != "" && RegParams.NsAddress != "" {
 		nsCert, err := utils.ReadFile(RegParams.NsCertPath)
 		if err != nil {
-			return nil, errors.Errorf("unable to read notification certificate"), done
+			return nil, errors.Errorf("unable to read notification certificate")
 		}
 		networkDef.Notification = ndf.Notification{
 			Address:        RegParams.NsAddress,
@@ -186,7 +194,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error, chan bool) {
 	// update the internal state with the newly-formed NDF
 	err = regImpl.State.UpdateNdf(networkDef)
 	if err != nil {
-		return nil, err, done
+		return nil, err
 	}
 
 	// Start the communication server
@@ -199,7 +207,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error, chan bool) {
 		regImpl.Comms.DisableAuth()
 	}
 
-	return regImpl, nil, done
+	return regImpl, nil
 }
 
 // Tracks nodes banned from the network. Sends an update to the scheduler

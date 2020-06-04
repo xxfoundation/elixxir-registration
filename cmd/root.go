@@ -142,6 +142,10 @@ var rootCmd = &cobra.Command{
 				minServerVersionString, err)
 		}
 
+		// Get the amount of time to wait for scheduling to end
+		// This should default to 10 seconds in StartRegistration if not set
+		schedulingKillTimeout := viper.GetDuration("schedulingKillTimeout")
+
 		// Populate params
 		RegParams = Params{
 			Address:                   localAddress,
@@ -155,6 +159,7 @@ var rootCmd = &cobra.Command{
 			NsCertPath:                nsCertPath,
 			maxRegistrationAttempts:   maxRegistrationAttempts,
 			registrationCountDuration: registrationCountDuration,
+			schedulingKillTimeout:     schedulingKillTimeout,
 			udbId:                     udbId,
 			minimumNodes:              viper.GetUint32("minimumNodes"),
 			minGatewayVersion:         minGatewayVersion,
@@ -164,7 +169,8 @@ var rootCmd = &cobra.Command{
 		jww.INFO.Println("Starting Permissioning Server...")
 
 		// Start registration server
-		impl, err, quitRegistrationCapacity := StartRegistration(RegParams)
+		quitRegistrationCapacity := make(chan bool)
+		impl, err := StartRegistration(RegParams, quitRegistrationCapacity)
 		if err != nil {
 			jww.FATAL.Panicf(err.Error())
 		}
@@ -202,7 +208,7 @@ var rootCmd = &cobra.Command{
 
 		// Begin scheduling algorithm
 		go func(quitChan QuitChan) {
-			err = scheduling.Scheduler(SchedulingConfig, impl.State, quitChan, schedulingKillChan)
+			err = scheduling.Scheduler(SchedulingConfig, impl.State, schedulingKillChan)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
 		}(impl.MakeQuitChan())
 
@@ -220,7 +226,7 @@ var rootCmd = &cobra.Command{
 			case <-k:
 				jww.INFO.Printf("stopped!\n")
 				return 0
-			case <-time.After(10 * time.Second):
+			case <-time.After(schedulingKillTimeout):
 				jww.ERROR.Print("couldn't stop round creation!")
 			}
 			return -1
@@ -230,23 +236,26 @@ var rootCmd = &cobra.Command{
 		// Set up signal handler for stopping all long-running threads
 		quitter := func(impl *RegistrationImpl) {
 			jww.INFO.Printf("Stopping all long-running threads")
+
+			jww.INFO.Printf("Stopping long-running round creation...")
+			schedulingTimeout := time.NewTimer(schedulingKillTimeout)
+			k := make(chan struct{})
+			schedulingKillChan <- k
+
 			// Try a non-blocking send for the registration capacity
 			select {
 			case quitRegistrationCapacity <- true:
 			default:
 			}
-			impl.quitChansLock.Lock()
-			defer impl.quitChansLock.Unlock()
-			for _, quitChan := range impl.quitChans {
-				quitChan <- struct{}{}
-			}
-			k := make(chan struct{})
-			schedulingKillChan <- k
-			jww.INFO.Printf("Stopping long-running round creation...")
+
+			// Quit everything else
+			impl.QuitAll()
+
+			// See if round creation got destroyed
 			select {
 			case <-k:
 				jww.INFO.Printf("Stopped long-running round creation")
-			case <-time.After(10 * time.Second):
+			case <-schedulingTimeout.C:
 				jww.ERROR.Print("Round creation stop timed out")
 			}
 		}
