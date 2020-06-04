@@ -14,6 +14,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
@@ -120,12 +121,40 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// processing completes
 	n.GetPollingLock().Lock()
 
+	// If there is an error, we must verify the signature before an update occurs
+	// We do not want to update if the signature is invalid
+	if msg.Error != nil {
+		ok, r := n.GetCurrentRound()
+		if !ok {
+			return response, errors.New("Node cannot submit a rounderror when it is not participating in a round")
+		} else if msg.Error.Id != uint64(r.GetRoundID()) {
+			return response, errors.New("This error is not associated with the round the submitting node is participating in")
+		}
+
+		errorNodeId, err := id.Unmarshal(msg.Error.NodeId)
+		if err != nil {
+			return response, errors.WithMessage(err, "Could not unmarshal node ID from error in poll")
+		}
+		h, ok := m.Comms.GetHost(errorNodeId)
+		if !ok {
+			return response, errors.Errorf("Host %+v was not found in host map", errorNodeId)
+		}
+		nodePK := h.GetPubKey()
+		err = signature.Verify(msg.Error, nodePK)
+		if err != nil {
+			return response, errors.WithMessage(err, "Failed to verify error signature")
+		}
+	}
+
 	// update does edge checking. It ensures the state change recieved was a
 	// valid one and the state fo the node and
 	// any associated round allows for that change. If the change was not
 	// acceptable, it is not recorded and an error is returned, which is
 	// propagated to the node
 	update, updateNotification, err := n.Update(current.Activity(msg.Activity))
+	if update && err == nil && updateNotification.ToActivity == current.ERROR {
+		updateNotification.Error = msg.Error
+	}
 
 	//if an update ocured, report it to the control thread
 	if update {

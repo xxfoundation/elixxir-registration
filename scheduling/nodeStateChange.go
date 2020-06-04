@@ -8,9 +8,13 @@ package scheduling
 // Contains the handler for node updates
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/primitives/current"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -42,7 +46,16 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 	//ban the node if it is supposed to be banned
 	if update.ToStatus == node.Banned {
 		if hasRound {
-			return killRound(state, r, n)
+			banError := &pb.RoundError{
+				Id:     uint64(r.GetRoundID()),
+				NodeId: id.Permissioning.Marshal(),
+				Error:  fmt.Sprintf("Round killed due to particiption of banned node %s", update.Node),
+			}
+			err := signature.Sign(banError, state.GetPrivateKey())
+			if err != nil {
+				jww.FATAL.Panicf("Failed to sign error message for banned node %s: %+v", update.Node, err)
+			}
+			return killRound(state, r, n, banError)
 		} else {
 			pool.Ban(n)
 			return nil
@@ -129,7 +142,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 		}
 	case current.ERROR:
 		// If in an error state, kill the round
-		return killRound(state, r, n)
+		return killRound(state, r, n, update.Error)
 	}
 
 	return nil
@@ -149,7 +162,9 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 }
 
 // killRound sets the round to failed and clears the node's round
-func killRound(state *storage.NetworkState, r *round.State, n *node.State) error {
+func killRound(state *storage.NetworkState, r *round.State, n *node.State, roundError *pb.RoundError) error {
+	r.AppendError(roundError)
+
 	_ = r.Update(states.FAILED, time.Now())
 	n.ClearRound()
 
@@ -158,6 +173,16 @@ func killRound(state *storage.NetworkState, r *round.State, n *node.State) error
 	if err != nil {
 		return errors.WithMessagef(err, "Could not issue "+
 			"update to kill round %v", r.GetRoundID())
+	}
+	err_str := fmt.Sprintf("RoundError{RoundID: %d, NodeID: %+v, Error: %s}", roundError.Id, roundError.NodeId, roundError.Error)
+
+	metric := &storage.RoundMetric{
+		Error: err_str,
+	}
+
+	err = storage.PermissioningDb.InsertRoundMetric(metric, r.BuildRoundInfo().Topology)
+	if err != nil {
+		return errors.WithMessagef(err, "Could not insert round metric: %+v", err)
 	}
 
 	return nil

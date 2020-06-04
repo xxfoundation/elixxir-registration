@@ -8,6 +8,7 @@ package node
 // Contains the node's update notification object
 
 import (
+	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 )
@@ -20,4 +21,5 @@ type UpdateNotification struct {
 	ToStatus     Status
 	FromActivity current.Activity
 	ToActivity   current.Activity
+	Error        *mixmessages.RoundError
 }
