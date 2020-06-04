@@ -41,7 +41,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	impl, err := StartRegistration(testParams)
+	impl, err, _ := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
@@ -212,7 +212,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	RegParams.minimumNodes = 3
 	fmt.Println("-A")
 	// Start registration server
-	impl, err := StartRegistration(RegParams)
+	impl, err, _ := StartRegistration(RegParams)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -315,7 +315,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	RegParams.minimumNodes = 3
 
 	// Start registration server
-	impl, err := StartRegistration(testParams)
+	impl, err, _ := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -355,7 +355,7 @@ func TestPoll_BannedNode(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	impl, err := StartRegistration(testParams)
+	impl, err, _ := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}

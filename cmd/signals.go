@@ -19,6 +19,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 )
 
@@ -68,4 +69,22 @@ func ReceiveExitSignal(exitFn func() int) {
 	jww.INFO.Printf("Received Exit (SIGTERM or SIGINT) signal...\n")
 	ret := exitFn()
 	os.Exit(ret)
+}
+
+type QuitChan chan struct{}
+
+type QuitChans struct {
+	quitChans     []QuitChan
+	quitChansLock sync.Mutex
+}
+
+// Makes and registers a simple quit channel that will get notified on sigusr2
+func (qcs *QuitChans) MakeQuitChan() QuitChan {
+	qcs.quitChansLock.Lock()
+	defer qcs.quitChansLock.Unlock()
+
+	// Make a channel suitable for one non-blocking send
+	quitChan := make(QuitChan)
+	qcs.quitChans = append(qcs.quitChans, quitChan)
+	return quitChan
 }

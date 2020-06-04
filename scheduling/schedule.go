@@ -24,19 +24,19 @@ type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error)
 
 // Scheduler constructs the teaming parameters and sets up the scheduling
-func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan chan struct{}) error {
+func Scheduler(serialParam []byte, state *storage.NetworkState, quitChan chan struct{}, killchan chan chan struct{}) error {
 	var params Params
 	err := json.Unmarshal(serialParam, &params)
 	if err != nil {
 		return errors.WithMessage(err, "Could not extract parameters")
 	}
 
-	return scheduler(params, state, killchan)
+	return scheduler(params, state, quitChan, killchan)
 }
 
 // scheduler is a utility function which builds a round by handling a node's
 // state changes then creating a team from the nodes in the pool
-func scheduler(params Params, state *storage.NetworkState, killchan chan chan struct{}) error {
+func scheduler(params Params, state *storage.NetworkState, quitChan chan struct{}, killchan chan chan struct{}) error {
 
 	// pool which tracks nodes which are not in a team
 	pool := NewWaitingPool()
@@ -65,16 +65,25 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		createRound = createSimpleRound
 	}
 
-
-
 	//begin the thread that starts rounds
 	go func() {
 		lastRound := time.Now()
 		var err error
+	newRoundLoop:
 		for newRound := range newRoundChan {
+			select {
+			case <-quitChan:
+				break newRoundLoop
+			default:
+			}
+
 			// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
 			if timeDiff := time.Now().Sub(lastRound); timeDiff < params.MinimumDelay*time.Millisecond {
-				time.Sleep(timeDiff)
+				select {
+				case <-quitChan:
+					break newRoundLoop
+				case <-time.After(timeDiff):
+				}
 			}
 			lastRound = time.Now()
 
@@ -97,7 +106,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		var update node.UpdateNotification
 		select {
 		// receive a signal to kill the scheduler
-		case killed = <- killchan:
+		case killed = <-killchan:
 		// If receive an error over a channel, return an error
 		case err := <-errorChan:
 			return err
@@ -112,12 +121,12 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		}
 
 		//if a round has finished, decrement num rounds
-		if endRound{
+		if endRound {
 			numRounds--
 		}
 
 		//create a new round if the pool is full
-		if pool.Len() == int(params.TeamSize) && killed==nil{
+		if pool.Len() == int(params.TeamSize) && killed == nil {
 			newRound, err := createRound(params, pool, roundID.Next(), state)
 			if err != nil {
 				return err
@@ -130,9 +139,9 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 		// if the scheduler is to be killed and no rounds are in progress,
 		// kill the scheduler
-		if killed!=nil && numRounds==0{
+		if killed != nil && numRounds == 0 {
 			close(newRoundChan)
-			killed<-struct{}{}
+			killed <- struct{}{}
 			return nil
 		}
 

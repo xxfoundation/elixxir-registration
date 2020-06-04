@@ -49,6 +49,7 @@ type RegistrationImpl struct {
 	// may be fruitful
 	registrationLock sync.Mutex
 	beginScheduling  chan struct{}
+	QuitChans
 }
 
 //function used to schedule nodes
@@ -88,7 +89,7 @@ func toGroup(grp map[string]string) (*ndf.Group, error) {
 }
 
 // Configure and start the Permissioning Server
-func StartRegistration(params Params) (*RegistrationImpl, error) {
+func StartRegistration(params Params) (*RegistrationImpl, error, chan bool) {
 
 	// Initialize variables
 	regRemaining := uint64(0)
@@ -98,19 +99,19 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	key, err := utils.ReadFile(params.KeyPath)
 	if err != nil {
 		return nil, errors.Errorf("failed to read key at %+v: %+v",
-			params.KeyPath, err)
+			params.KeyPath, err), nil
 	}
 
 	pk, err := rsa.LoadPrivateKeyFromPem(key)
 	if err != nil {
 		return nil, errors.Errorf("Failed to parse permissioning server key: %+v. "+
-			"PermissioningKey is %+v", err, pk)
+			"PermissioningKey is %+v", err, pk), nil
 	}
 
 	//initilize the state tracking object
 	state, err := storage.NewState(pk)
 	if err != nil {
-		return nil, err
+		return nil, err, nil
 	}
 
 	// Build default parameters
@@ -138,7 +139,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		// Read in TLS keys from files
 		cert, err := utils.ReadFile(params.CertPath)
 		if err != nil {
-			return nil, errors.Errorf("failed to read certificate at %+v: %+v", params.CertPath, err)
+			return nil, errors.Errorf("failed to read certificate at %+v: %+v", params.CertPath, err), done
 		}
 
 		// Set globals for permissioning server
@@ -146,7 +147,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		regImpl.permissioningCert, err = tls.LoadCertificate(string(cert))
 		if err != nil {
 			return nil, errors.Errorf("Failed to parse permissioning server cert: %+v. "+
-				"Permissioning cert is %+v", err, regImpl.permissioningCert)
+				"Permissioning cert is %+v", err, regImpl.permissioningCert), done
 		}
 
 	}
@@ -172,7 +173,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	if RegParams.NsCertPath != "" && RegParams.NsAddress != "" {
 		nsCert, err := utils.ReadFile(RegParams.NsCertPath)
 		if err != nil {
-			return nil, errors.Errorf("unable to read notification certificate")
+			return nil, errors.Errorf("unable to read notification certificate"), done
 		}
 		networkDef.Notification = ndf.Notification{
 			Address:        RegParams.NsAddress,
@@ -185,7 +186,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// update the internal state with the newly-formed NDF
 	err = regImpl.State.UpdateNdf(networkDef)
 	if err != nil {
-		return nil, err
+		return nil, err, done
 	}
 
 	// Start the communication server
@@ -198,7 +199,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		regImpl.Comms.DisableAuth()
 	}
 
-	return regImpl, nil
+	return regImpl, nil, done
 }
 
 // Tracks nodes banned from the network. Sends an update to the scheduler

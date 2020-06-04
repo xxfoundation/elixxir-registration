@@ -164,7 +164,7 @@ var rootCmd = &cobra.Command{
 		jww.INFO.Println("Starting Permissioning Server...")
 
 		// Start registration server
-		impl, err := StartRegistration(RegParams)
+		impl, err, quitRegistrationCapacity := StartRegistration(RegParams)
 		if err != nil {
 			jww.FATAL.Panicf(err.Error())
 		}
@@ -174,7 +174,8 @@ var rootCmd = &cobra.Command{
 		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
 
 		// Run the independent node tracker in own go thread
-		go func() {
+		go func(quitChan QuitChan) {
+		nodeTrackerLoop:
 			for {
 				select {
 				case <-ticker.C:
@@ -183,10 +184,12 @@ var rootCmd = &cobra.Command{
 					if err != nil {
 						jww.FATAL.Panicf("BannedNodeTracker failed: %v", err)
 					}
+				case <-quitChan:
+					break nodeTrackerLoop
 				}
 
 			}
-		}()
+		}(impl.MakeQuitChan())
 
 		jww.INFO.Printf("Waiting for for %v nodes to register so "+
 			"rounds can start", RegParams.minimumNodes)
@@ -198,10 +201,10 @@ var rootCmd = &cobra.Command{
 		schedulingKillChan := make(chan chan struct{})
 
 		// Begin scheduling algorithm
-		go func() {
-			err = scheduling.Scheduler(SchedulingConfig, impl.State, schedulingKillChan)
+		go func(quitChan QuitChan) {
+			err = scheduling.Scheduler(SchedulingConfig, impl.State, quitChan, schedulingKillChan)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
-		}()
+		}(impl.MakeQuitChan())
 
 		// Determine how long between storing Node metrics
 		nodeMetricInterval := time.Duration(
@@ -223,11 +226,37 @@ var rootCmd = &cobra.Command{
 			return -1
 		}
 		ReceiveUSR1Signal(func() { killer() })
+
+		// Set up signal handler for stopping all long-running threads
+		quitter := func(impl *RegistrationImpl) {
+			jww.INFO.Printf("Stopping all long-running threads")
+			// Try a non-blocking send for the registration capacity
+			select {
+			case *quitRegistrationCapacity <- true:
+			default:
+			}
+			impl.quitChansLock.Lock()
+			defer impl.quitChansLock.Unlock()
+			for _, quitChan := range impl.quitChans {
+				quitChan <- struct{}{}
+			}
+			k := make(chan struct{})
+			schedulingKillChan <- k
+			jww.INFO.Printf("Stopping long-running round creation...")
+			select {
+			case <-k:
+				jww.INFO.Printf("Stopped long-running round creation")
+			case <-time.After(10 * time.Second):
+				jww.ERROR.Print("Round creation stop timed out")
+			}
+		}
+		ReceiveUSR2Signal(func() { quitter(impl) })
+
 		// Set up Signal Hangler for safe program exit
 		ReceiveExitSignal(killer)
 
 		// Run the Node metric tracker forever in another thread
-		go func() {
+		go func(quitChan QuitChan) {
 			for {
 				// Store the metric start time
 				startTime := time.Now()
@@ -257,7 +286,7 @@ var rootCmd = &cobra.Command{
 					}
 				}
 			}
-		}()
+		}(impl.MakeQuitChan())
 
 		// Block forever to prevent the program ending
 		select {}
