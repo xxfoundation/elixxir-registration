@@ -19,6 +19,7 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/version"
+	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -121,29 +122,9 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// processing completes
 	n.GetPollingLock().Lock()
 
-	// If there is an error, we must verify the signature before an update occurs
-	// We do not want to update if the signature is invalid
-	if msg.Error != nil {
-		ok, r := n.GetCurrentRound()
-		if !ok {
-			return response, errors.New("Node cannot submit a rounderror when it is not participating in a round")
-		} else if msg.Error.Id != uint64(r.GetRoundID()) {
-			return response, errors.New("This error is not associated with the round the submitting node is participating in")
-		}
-
-		errorNodeId, err := id.Unmarshal(msg.Error.NodeId)
-		if err != nil {
-			return response, errors.WithMessage(err, "Could not unmarshal node ID from error in poll")
-		}
-		h, ok := m.Comms.GetHost(errorNodeId)
-		if !ok {
-			return response, errors.Errorf("Host %+v was not found in host map", errorNodeId)
-		}
-		nodePK := h.GetPubKey()
-		err = signature.Verify(msg.Error, nodePK)
-		if err != nil {
-			return response, errors.WithMessage(err, "Failed to verify error signature")
-		}
+	err = verifyError(msg, n, m)
+	if err != nil {
+		return response, err
 	}
 
 	// update does edge checking. It ensures the state change recieved was a
@@ -288,5 +269,35 @@ func updateNdfGatewayAddr(nid *id.ID, requiredAddr string, ndf *ndf.NetworkDefin
 			"in order to update its address", gid.String())
 	}
 
+	return nil
+}
+
+// Verify that the error in permissioningpoll is valid
+// Returns an error if invalid, or nil if valid or no error
+func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) error {
+	// If there is an error, we must verify the signature before an update occurs
+	// We do not want to update if the signature is invalid
+	if msg.Error != nil {
+		ok, r := n.GetCurrentRound()
+		if !ok {
+			return errors.New("Node cannot submit a rounderror when it is not participating in a round")
+		} else if msg.Error.Id != uint64(r.GetRoundID()) {
+			return errors.New("This error is not associated with the round the submitting node is participating in")
+		}
+
+		errorNodeId, err := id.Unmarshal(msg.Error.NodeId)
+		if err != nil {
+			return errors.WithMessage(err, "Could not unmarshal node ID from error in poll")
+		}
+		h, ok := m.Comms.GetHost(errorNodeId)
+		if !ok {
+			return errors.Errorf("Host %+v was not found in host map", errorNodeId)
+		}
+		nodePK := h.GetPubKey()
+		err = signature.Verify(msg.Error, nodePK)
+		if err != nil {
+			return errors.WithMessage(err, "Failed to verify error signature")
+		}
+	}
 	return nil
 }
