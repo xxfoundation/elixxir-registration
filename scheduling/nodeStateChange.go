@@ -174,7 +174,7 @@ func killRound(state *storage.NetworkState, r *round.State, n *node.State, round
 		return errors.WithMessagef(err, "Could not issue "+
 			"update to kill round %v", r.GetRoundID())
 	}
-	err_str := fmt.Sprintf("RoundError{RoundID: %d, NodeID: %+v, Error: %s}", roundError.Id, roundError.NodeId, roundError.Error)
+	err_str := fmt.Sprintf("RoundError{RoundID: %d, NodeID: %s, Error: %s}", roundError.Id, roundError.NodeId, roundError.Error)
 
 	metric := &storage.RoundMetric{
 		Error: err_str,
