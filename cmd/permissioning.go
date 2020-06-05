@@ -217,7 +217,7 @@ func appendNdf(definition *ndf.NetworkDefinition, order int) {
 	if order == 0 && len(definition.Nodes) == 0 {
 		lengthDifference = 1
 	} else {
-		lengthDifference = (order % len(definition.Nodes)) + 1
+		lengthDifference = (order - len(definition.Nodes)) + 1
 	}
 
 	gwExtension := make([]ndf.Gateway, lengthDifference)
