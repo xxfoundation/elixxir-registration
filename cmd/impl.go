@@ -123,7 +123,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		NdfReady:                &ndfReady,
 
 		numRegistered:   0,
-		beginScheduling: make(chan struct{}),
+		beginScheduling: make(chan struct{}, 1),
 	}
 
 	// Create timer and channel to be used by routine that clears the number of

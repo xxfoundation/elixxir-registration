@@ -9,10 +9,12 @@
 package storage
 
 import (
+	"bytes"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
+	"testing"
 )
 
 // Insert Application object along with associated unregistered Node
@@ -85,7 +87,7 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 }
 
 // If Node registration code is valid, add Node information
-func (m *MapImpl) RegisterNode(id *id.ID, code, serverCert, serverAddress,
+func (m *MapImpl) RegisterNode(id *id.ID, code, serverAddress, serverCert,
 	gatewayAddress, gatewayCert string) error {
 	m.mut.Lock()
 	jww.INFO.Printf("Attempting to register node with code: %s", code)
@@ -125,4 +127,26 @@ func (m *MapImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 		}
 	}
 	return nodes, nil
+}
+
+// If Node registration code is valid, add Node information
+func (m *MapImpl) BannedNode(id *id.ID, t interface{}) error {
+	// Ensure we're called from a test only
+	switch t.(type) {
+	case *testing.T:
+	case *testing.M:
+	case *testing.B:
+	default:
+		jww.FATAL.Panicf("BannedNode permissioning map function called outside testing")
+	}
+
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	for _, n := range m.nodes {
+		if bytes.Compare(n.Id, id.Bytes()) == 0 {
+			n.Status = uint8(node.Banned)
+			return nil
+		}
+	}
+	return errors.New("Node could not be found in map")
 }

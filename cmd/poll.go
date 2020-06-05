@@ -174,6 +174,8 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 func checkVersion(requiredGateway, requiredServer version.Version,
 	msg *pb.PermissioningPoll) error {
 
+	// Skip checking gateway if the server is polled before gateway resulting in
+	// a blank gateway version
 	if msg.GetGatewayVersion() != "" {
 		// Parse the gateway version string
 		gatewayVersion, err := version.ParseVersion(msg.GetGatewayVersion())
@@ -185,9 +187,12 @@ func checkVersion(requiredGateway, requiredServer version.Version,
 		// Check that the gateway version is compatible with the required version
 		if !version.IsCompatible(requiredGateway, gatewayVersion) {
 			return errors.Errorf("The gateway version %#v is incompatible with "+
-				"the required version %#v.", gatewayVersion.String(), requiredGateway.String())
+				"the required version %#v.",
+				gatewayVersion.String(), requiredGateway.String())
 		}
-
+	} else {
+		jww.DEBUG.Printf("Gateway version string is empty. Skipping gateway " +
+			"version check.")
 	}
 
 	// Parse the server version string
@@ -200,7 +205,8 @@ func checkVersion(requiredGateway, requiredServer version.Version,
 	// Check that the server version is compatible with the required version
 	if !version.IsCompatible(requiredServer, serverVersion) {
 		return errors.Errorf("The server version %#v is incompatible with "+
-			"the required version %#v.", serverVersion.String(), requiredServer.String())
+			"the required version %#v.",
+			serverVersion.String(), requiredServer.String())
 	}
 
 	return nil
