@@ -24,7 +24,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 
 	github.com/spf13/viper v1.7.0
-	gitlab.com/elixxir/comms v0.0.0-20200529233255-b5081ca469bc
+	gitlab.com/elixxir/comms v0.0.0-20200604183935-9acedd74ff27
 	gitlab.com/elixxir/crypto v0.0.0-20200520215729-26e50fb2df79
 	gitlab.com/elixxir/primitives v0.0.0-20200526195628-be83e386e3a5
 	google.golang.org/genproto v0.0.0-20200515170657-fc4c6c6a6587 // indirect
