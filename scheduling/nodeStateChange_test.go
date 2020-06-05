@@ -66,7 +66,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 		t.Errorf("Happy path received error: %v", err)
 	}
 
-	if roundEnd{
+	if roundEnd {
 		t.Errorf("change to state %s should not cause the round to complete", current.WAITING)
 	}
 }
@@ -121,7 +121,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
 		}
 
-		if roundEnd{
+		if roundEnd {
 			t.Errorf("change to state %s should not cause the round to complete", current.WAITING)
 		}
 	}
@@ -142,7 +142,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 			t.Errorf("Error in standby happy path: %v", err)
 		}
 
-		if roundEnd{
+		if roundEnd {
 			t.Errorf("change to state %s should not cause the round to complete", current.STANDBY)
 		}
 
@@ -200,7 +200,7 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
 		}
 
-		if roundEnd{
+		if roundEnd {
 			t.Errorf("change to state %s should not cause the round to complete", current.STANDBY)
 		}
 
@@ -265,7 +265,7 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
 		}
 
-		if roundEnd{
+		if roundEnd {
 			t.Errorf("change to state %s should not cause the round to complete", current.WAITING)
 		}
 	}
@@ -286,13 +286,12 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 			t.Errorf("Expected happy path for completed: %v", err)
 		}
 
-
-		if i == len(nodeList)-1{
-			if !roundEnd{
+		if i == len(nodeList)-1 {
+			if !roundEnd {
 				t.Errorf("change to state %s on last node should cause round to complete", current.COMPLETED)
 			}
-		}else{
-			if roundEnd{
+		} else {
+			if roundEnd {
 				t.Errorf("change to state %s should not cause the round to complete", current.COMPLETED)
 			}
 		}
@@ -345,7 +344,7 @@ func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
 		}
 
-		if roundEnd{
+		if roundEnd {
 			t.Errorf("change to state %s should not cause the round to complete", current.COMPLETED)
 		}
 
@@ -398,7 +397,7 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 		t.Errorf("Happy path received error: %v", err)
 	}
 
-	if roundEnd{
+	if roundEnd {
 		t.Errorf("change to state %s should not cause the round to complete", current.ERROR)
 	}
 }
@@ -451,7 +450,7 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 		t.Errorf("Happy path received error: %v", err)
 	}
 
-	if roundEnd{
+	if roundEnd {
 		t.Errorf("banning a node should not complete a round")
 	}
 
@@ -483,7 +482,7 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 		t.Errorf("Happy path received error: %v", err)
 	}
 
-	if roundEnd{
+	if roundEnd {
 		t.Errorf("banning a node should not complete a round")
 	}
 
