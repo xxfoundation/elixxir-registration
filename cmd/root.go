@@ -144,7 +144,11 @@ var rootCmd = &cobra.Command{
 
 		// Get the amount of time to wait for scheduling to end
 		// This should default to 10 seconds in StartRegistration if not set
-		schedulingKillTimeout := viper.GetDuration("schedulingKillTimeout")
+		schedulingKillTimeout, err := time.ParseDuration(
+			viper.GetString("schedulingKillTimeout"))
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse duration: %+v", err)
+		}
 
 		// The amount of time to wait for rounds to stop running
 		closeTimeout, err := time.ParseDuration(
@@ -342,14 +346,24 @@ func init() {
 		"Runs without TLS enabled")
 
 	rootCmd.Flags().StringP("close-timeout", "t", "60s",
-		("Amount of time to wait for round creation to stop after" +
+		("Amount of time to wait for rounds to stop running after" +
 			" receiving the SIGUSR1 and SIGTERM signals"))
+
+	rootCmd.Flags().StringP("kill-timeout", "k", "60s",
+		("Amount of time to wait for round creation to stop after" +
+			" receiving the SIGUSR2 and SIGTERM signals"))
 
 	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
 		false, "Disables registration server checking for ndf updates")
 
 	err := viper.BindPFlag("closeTimeout",
 		rootCmd.Flags().Lookup("close-timeout"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
+
+	err = viper.BindPFlag("schedulingKillTimeout",
+		rootCmd.Flags().Lookup("kill-timeout"))
 	if err != nil {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}
