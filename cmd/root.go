@@ -197,7 +197,7 @@ var rootCmd = &cobra.Command{
 			"rounds can start", RegParams.minimumNodes)
 
 		<-impl.beginScheduling
-		jww.INFO.Printf("Minnimum number of nodes %v have registered,"+
+		jww.INFO.Printf("Minimum number of nodes %v have registered,"+
 			"begining scheduling and round creation", RegParams.minimumNodes)
 
 		// Begin scheduling algorithm
