@@ -273,6 +273,8 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("Could not decode ndf: %v\nNdf output: %s", err,
 			string(observedNDFBytes))
 	}
+
+	fmt.Printf("\n\n\nndf: %v\n\n\n", observedNDF.Nodes)
 	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
 		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v, \nNdf: %+v",
 			udbId, observedNDF.UDB.ID, observedNDF)

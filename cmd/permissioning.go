@@ -33,6 +33,7 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 		return errors.Errorf(
 			"Registration code %+v is invalid or not currently enabled: %+v", RegistrationCode, err)
 	}
+
 	if !bytes.Equal(nodeInfo.Id, []byte("")) {
 		return errors.Errorf(
 			"Node with registration code %+v has already been registered", RegistrationCode)
@@ -217,7 +218,7 @@ func appendNdf(definition *ndf.NetworkDefinition, order int) {
 	if order == 0 && len(definition.Nodes) == 0 {
 		lengthDifference = 1
 	} else {
-		lengthDifference = (order % len(definition.Nodes)) + 1
+		lengthDifference = (order - len(definition.Nodes)) + 1
 	}
 
 	gwExtension := make([]ndf.Gateway, lengthDifference)
