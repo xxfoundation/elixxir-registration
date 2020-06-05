@@ -134,7 +134,7 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 		NdfReady:                &ndfReady,
 
 		numRegistered:   0,
-		beginScheduling: make(chan struct{}),
+		beginScheduling: make(chan struct{}, 1),
 	}
 
 	// Create timer and channel to be used by routine that clears the number of
@@ -174,8 +174,8 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 		CMIX:      RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
-		Nodes:    make([]ndf.Node, params.minimumNodes),
-		Gateways: make([]ndf.Gateway, params.minimumNodes),
+		Nodes:    make([]ndf.Node, 0),
+		Gateways: make([]ndf.Gateway, 0),
 	}
 
 	// Assemble notification server information if configured

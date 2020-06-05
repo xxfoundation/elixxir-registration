@@ -54,6 +54,33 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string) error {
 	return nil
 }
 
+// Adds a new Node state to the structure. Will not overwrite an existing one.
+func (nsm *StateMap) AddBannedNode(id *id.ID, ordering, nAddr, gwAddr string) error {
+	nsm.mux.Lock()
+	defer nsm.mux.Unlock()
+
+	if _, ok := nsm.nodeStates[*id]; ok {
+		return errors.New("cannot add a Node which already exists")
+	}
+
+	numPolls := uint64(0)
+	nsm.nodeStates[*id] =
+		&State{
+			activity:       current.NOT_STARTED,
+			currentRound:   nil,
+			lastPoll:       time.Now(),
+			ordering:       ordering,
+			id:             id,
+			nodeAddress:    nAddr,
+			gatewayAddress: gwAddr,
+			status:         Banned,
+			numPolls:       &numPolls,
+			mux:            sync.RWMutex{},
+		}
+
+	return nil
+}
+
 // Returns the State object for the given id if it exists
 func (nsm *StateMap) GetNode(id *id.ID) *State {
 	nsm.mux.RLock()

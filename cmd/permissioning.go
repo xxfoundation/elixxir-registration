@@ -18,6 +18,7 @@ import (
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
 	"sync/atomic"
 )
@@ -32,6 +33,7 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 		return errors.Errorf(
 			"Registration code %+v is invalid or not currently enabled: %+v", RegistrationCode, err)
 	}
+
 	if !bytes.Equal(nodeInfo.Id, []byte("")) {
 		return errors.Errorf(
 			"Node with registration code %+v has already been registered", RegistrationCode)
@@ -83,6 +85,68 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 
 	// Notify registration thread
 	return m.completeNodeRegistration(RegistrationCode)
+}
+
+// Loads all registered nodes and puts them into the host object and node map.
+// Should be run on startup.
+func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
+	// TODO: This code could probably use some cleanup
+	// TODO: We might consider refactoring the ban timer code and this code to share stuff, they might have similar goals.
+	nodes, err := storage.PermissioningDb.GetNodesByStatus(node.Active)
+	if err != nil {
+		return err
+	}
+
+	for _, n := range nodes {
+		nid, err := id.Unmarshal(n.Id)
+
+		//add the node to the host object for authenticated communications
+		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), false, true)
+		if err != nil {
+			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
+		}
+
+		//add the node to the node map to track its state
+		err = m.State.GetNodeMap().AddNode(nid, n.Sequence, n.ServerAddress, n.GatewayAddress)
+		if err != nil {
+			return errors.WithMessage(err, "Could not register node with "+
+				"state tracker")
+		}
+
+		err = m.completeNodeRegistration(n.Code)
+		if err != nil {
+			return err
+		}
+	}
+
+	bannedNodes, err := storage.PermissioningDb.GetNodesByStatus(node.Banned)
+	if err != nil {
+		return err
+	}
+
+	for _, n := range bannedNodes {
+		nid, err := id.Unmarshal(n.Id)
+
+		//add the node to the host object for authenticated communications
+		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), false, true)
+		if err != nil {
+			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
+		}
+
+		//add the node to the node map to track its state
+		err = m.State.GetNodeMap().AddBannedNode(nid, n.Sequence, n.ServerAddress, n.GatewayAddress)
+		if err != nil {
+			return errors.WithMessage(err, "Could not register node with "+
+				"state tracker")
+		}
+
+		err = m.completeNodeRegistration(n.Code)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Handles including new registrations in the network
@@ -149,7 +213,14 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 // helper function which appends the ndf to the maximum order
 func appendNdf(definition *ndf.NetworkDefinition, order int) {
-	lengthDifference := (order % len(definition.Nodes)) + 1
+	// Avoid causing a divide by zero panic if both order and definition.Nodes is zero, 0 % 0 is incalculable
+	lengthDifference := 0
+	if order == 0 && len(definition.Nodes) == 0 {
+		lengthDifference = 1
+	} else {
+		lengthDifference = (order - len(definition.Nodes)) + 1
+	}
+
 	gwExtension := make([]ndf.Gateway, lengthDifference)
 	nodeExtension := make([]ndf.Node, lengthDifference)
 	definition.Nodes = append(definition.Nodes, nodeExtension...)

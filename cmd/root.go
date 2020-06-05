@@ -187,6 +187,11 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
+		err = impl.LoadAllRegisteredNodes()
+		if err != nil {
+			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
+		}
+
 		// Determine how long between polling for banned nodes
 		interval := viper.GetInt("BanTrackerInterval")
 		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
@@ -213,8 +218,8 @@ var rootCmd = &cobra.Command{
 			"rounds can start", RegParams.minimumNodes)
 
 		<-impl.beginScheduling
-		jww.INFO.Printf("Minnimum number of nodes %v have registered,"+
-			"begining scheduling and round creation", RegParams.minimumNodes)
+		jww.INFO.Printf("Minimum number of nodes %v have registered, "+
+			"beginning scheduling and round creation", RegParams.minimumNodes)
 
 		schedulingKillChan := make(chan chan struct{})
 
@@ -486,8 +491,6 @@ func initLog() {
 			jww.SetLogThreshold(jww.LevelInfo)
 			jww.SetStdoutThreshold(jww.LevelInfo)
 		}
-		jww.SetLogThreshold(jww.LevelTrace)
-		jww.SetStdoutThreshold(jww.LevelTrace)
 
 		// Create log file, overwrites if existing
 		logPath := viper.GetString("logPath")

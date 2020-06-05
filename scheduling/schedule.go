@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -90,6 +91,9 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 	numRounds := 0
 
+	// Uncomment when need to debug status of rounds
+	//go trackRounds(params, state, pool)
+
 	//start receiving updates from nodes
 	for true {
 		var update node.UpdateNotification
@@ -137,4 +141,47 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	}
 
 	return errors.New("single scheduler should never exit")
+}
+
+// Tracks rounds, periodically outputs how many teams are in various rounds
+func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) {
+	// Period of polling the state map for logs
+	schedulingTicker := time.NewTicker(15 * time.Second)
+
+	realtimeNodes := make([]*node.State, 0)
+	precompNodes := make([]*node.State, 0)
+	waitingNodes := make([]*node.State, 0)
+
+	for {
+		select {
+		case <-schedulingTicker.C:
+			// Parse through the node map to collect nodes into round state arrays
+			nodeStates := state.GetNodeMap().GetNodeStates()
+			for _, nodeState := range nodeStates {
+				switch nodeState.GetActivity() {
+				case current.WAITING:
+					waitingNodes = append(waitingNodes, nodeState)
+				case current.REALTIME:
+					realtimeNodes = append(realtimeNodes, nodeState)
+				case current.PRECOMPUTING:
+					precompNodes = append(precompNodes, nodeState)
+				}
+
+			}
+
+		}
+
+		// Output data into logs
+		jww.TRACE.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Teams in in waiting: %v", len(waitingNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Teams in pool: %v", pool.Len())
+
+		// Reset the data for next periodic poll
+		realtimeNodes = make([]*node.State, 0)
+		precompNodes = make([]*node.State, 0)
+		waitingNodes = make([]*node.State, 0)
+
+	}
+
 }

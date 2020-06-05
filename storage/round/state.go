@@ -107,7 +107,7 @@ func (s *State) Update(state states.Round, stamp time.Time) error {
 	}
 
 	s.state = state
-	s.base.Timestamps[state] = uint64(stamp.Unix())
+	s.base.Timestamps[state] = uint64(stamp.UnixNano())
 	return nil
 }
 
