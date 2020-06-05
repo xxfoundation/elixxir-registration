@@ -33,6 +33,7 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 		return errors.Errorf(
 			"Registration code %+v is invalid or not currently enabled: %+v", RegistrationCode, err)
 	}
+
 	if !bytes.Equal(nodeInfo.Id, []byte("")) {
 		return errors.Errorf(
 			"Node with registration code %+v has already been registered", RegistrationCode)

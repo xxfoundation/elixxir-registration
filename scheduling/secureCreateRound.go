@@ -8,7 +8,6 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"math"
-	"strconv"
 	"time"
 )
 
@@ -33,19 +32,17 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 
 	// Make all permutations of nodes
 	permutations := Permute(nodes)
-
 	// This assumes order is geographic region, where (arbitrarily)
-	// 0 - Western United States and Canada
-	// 1 - Eastern United States and Canada, Latin America
-	// 2 - Western Europe, Africa
-	// 3 - Eastern Europe, Russia, Middle East
-	// 4 - Asia
+	// NA_WEST - Western United States and Canada
+	// NA_EAST - Eastern United States and Canada, Latin America
+	// EUROPE_WEST - Western Europe, Africa
+	// EUROPE_EAST - Eastern Europe, Russia, Middle East
+	// ASIA - Asia
 	// We shall assume geographical distance causes latency in a naive
 	//  manner, as delineated here:
 	//  https://docs.google.com/document/d/1oyjIDlqC54u_eoFzQP9SVNU2IqjnQOjpUYd9aqbg5X0/edit#
 
 	jww.DEBUG.Printf("Looking for most efficient teaming order")
-
 	bestTime := math.MaxInt32
 	var bestOrder []*node.State
 	// TODO: consider a way to do this more efficiently? Although possibly not needed
@@ -54,21 +51,17 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 		totalLatency := 0
 		for i := 0; i < len(nodes); i++ {
 			// Get the ordering for the current node
-			ourRegion, err := strconv.Atoi(nodes[i].GetOrdering())
+			ourRegion, err := getRegion(nodes[i].GetOrdering())
 			if err != nil {
-				return protoRound{}, errors.WithMessagef(err,
-					"Could not parse ordering info ('%s') from node %s",
-					nodes[i].GetOrdering(), nodes[i].GetID())
+				return protoRound{}, err
 
 			}
 
 			// Get the ordering of the next node, circling back if at the last node
 			nextNode := nodes[(i+1)%len(nodes)]
-			nextRegion, err := strconv.Atoi(nextNode.GetOrdering())
+			nextRegion, err := getRegion(nextNode.GetOrdering())
 			if err != nil {
-				return protoRound{}, errors.WithMessagef(err,
-					"Could not parse ordering info ('%s') from node %s",
-					nextNode.GetOrdering(), nextNode.GetID())
+				return protoRound{}, err
 
 			}
 
@@ -91,14 +84,12 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 		}
 
 	}
-
 	jww.DEBUG.Printf("Permuting and finding the best team took: %v", time.Now().Sub(start))
 
 	// Create proto
 	newRound := createProtoRound(params, state, bestOrder, roundID)
 
 	jww.TRACE.Printf("Built round %d", roundID)
-
 	return newRound, nil
 }
 
@@ -151,4 +142,24 @@ func Abs(x int) int {
 		return -x
 	}
 	return x
+}
+
+// Convert region to a numerical representation
+//  in order to find distances between regions
+func getRegion(region string) (int, error) {
+	switch region {
+	case "NA_WEST":
+		return 0, nil
+	case "NA_EAST":
+		return 1, nil
+	case "EUROPE_WEST":
+		return 2, nil
+	case "EUROPE_EAST":
+		return 3, nil
+	case "ASIA":
+		return 4, nil
+	default:
+		return -1, errors.Errorf("Could not parse region info ('%s')", region)
+
+	}
 }
