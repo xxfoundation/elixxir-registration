@@ -8,6 +8,7 @@ package scheduling
 import (
 	"crypto/rand"
 	"gitlab.com/elixxir/comms/connect"
+	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
@@ -389,7 +390,13 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 	testUpdate := node.UpdateNotification{
 		Node:         nodeList[0],
 		FromActivity: current.WAITING,
-		ToActivity:   current.ERROR}
+		ToActivity:   current.ERROR,
+		Error: &mixmessages.RoundError{
+			Id:     0,
+			NodeId: id.NewIdFromString("test", id.Node, t).Bytes(),
+			Error:  "test",
+		},
+	}
 	testState.GetNodeMap().GetNode(testUpdate.Node).GetPollingLock().Lock()
 
 	roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0)
@@ -535,8 +542,13 @@ func TestKillRound(t *testing.T) {
 
 	ns := testState.GetNodeMap().GetNode(nodeList[0])
 
+	re := &mixmessages.RoundError{
+		Id:     0,
+		NodeId: nil,
+		Error:  "test",
+	}
 	//
-	err = killRound(testState, r, ns)
+	err = killRound(testState, r, ns, re)
 	if err != nil {
 		t.Errorf("Unexpected error in happy path: %v", err)
 	}

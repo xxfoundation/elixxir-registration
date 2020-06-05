@@ -85,11 +85,11 @@ func TestReceiveExitSignal(t *testing.T) {
 	// Sleep multiple times to give the kernel more tries to
 	// deliver the signal.
 	res := false
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 20; i++ {
 		select {
 		case res = <-called:
 			break
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(150 * time.Millisecond):
 		}
 	}
 
