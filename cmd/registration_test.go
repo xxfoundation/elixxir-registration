@@ -93,7 +93,7 @@ func TestEmptyDataBase(t *testing.T) {
 		registrationCountDuration: time.Hour,
 	}
 	// Start registration server
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -121,7 +121,7 @@ func TestEmptyDataBase(t *testing.T) {
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	// Start registration server
 	testParams.Address = "0.0.0.0:5901"
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -160,7 +160,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 //Happy Path:  Insert a reg code along with a node
 func TestRegCodeExists_RegUser(t *testing.T) {
 	//Initialize an implementation and the permissioning server
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf("Unable to start: %+v", err)
 	}
@@ -212,7 +212,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	localParams := testParams
 	localParams.minimumNodes = 1
 	// Start registration server
-	impl, err := StartRegistration(localParams)
+	impl, err := StartRegistration(localParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -260,7 +260,7 @@ func TestDoubleRegistration(t *testing.T) {
 	RegParams = testParams
 
 	// Start registration server
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -311,7 +311,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	localParams.minimumNodes = 2
 
 	// Start registration server
-	impl, err := StartRegistration(localParams)
+	impl, err := StartRegistration(localParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -350,7 +350,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 }
 
 func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -412,7 +412,7 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	}
 
 	// Start registration server
-	impl, err := StartRegistration(testParams2)
+	impl, err := StartRegistration(testParams2, make(chan bool))
 	if err != nil {
 		t.Errorf(err.Error())
 	}

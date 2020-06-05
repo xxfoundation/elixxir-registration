@@ -74,8 +74,10 @@ func TestScheduler_NonRandom(t *testing.T) {
 		}
 	}
 
+	kill := make(chan chan struct{})
+
 	go func() {
-		err = Scheduler(configJson, state)
+		err = Scheduler(configJson, state, kill)
 		if err != nil {
 			t.Errorf("Scheduler failed with error: %v", err)
 		}
