@@ -49,6 +49,7 @@ type RegistrationImpl struct {
 	// may be fruitful
 	registrationLock sync.Mutex
 	beginScheduling  chan struct{}
+	QuitChans
 }
 
 //function used to schedule nodes
@@ -67,6 +68,8 @@ type Params struct {
 	publicAddress             string
 	maxRegistrationAttempts   uint64
 	registrationCountDuration time.Duration
+	schedulingKillTimeout     time.Duration
+	closeTimeout              time.Duration
 	minimumNodes              uint32
 	udbId                     []byte
 	minGatewayVersion         version.Version
@@ -88,7 +91,7 @@ func toGroup(grp map[string]string) (*ndf.Group, error) {
 }
 
 // Configure and start the Permissioning Server
-func StartRegistration(params Params) (*RegistrationImpl, error) {
+func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error) {
 
 	// Initialize variables
 	regRemaining := uint64(0)
@@ -128,7 +131,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Create timer and channel to be used by routine that clears the number of
 	// registrations every time the ticker activates
-	done := make(chan bool)
 	go func() {
 		ticker := time.NewTicker(params.registrationCountDuration)
 		regImpl.registrationCapacityRestRunner(ticker, done)
