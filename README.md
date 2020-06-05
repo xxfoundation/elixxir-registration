@@ -90,6 +90,8 @@ schedulingConfigPath: "Scheduling_Simple_NonRandom.json"
 
 # Time that the registration server waits before timing out while killing the round scheduling thread
 schedulingKillTimeout: 10s
+# Time the registration waits for rounds to close out and stop (optional)
+closeTimeout: 60s
 ```
 
 ### SchedulingConfig template:

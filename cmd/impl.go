@@ -72,6 +72,7 @@ type Params struct {
 	maxRegistrationAttempts   uint64
 	registrationCountDuration time.Duration
 	schedulingKillTimeout     time.Duration
+	closeTimeout              time.Duration
 	minimumNodes              uint32
 	udbId                     []byte
 	minGatewayVersion         version.Version

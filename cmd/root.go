@@ -146,6 +146,13 @@ var rootCmd = &cobra.Command{
 		// This should default to 10 seconds in StartRegistration if not set
 		schedulingKillTimeout := viper.GetDuration("schedulingKillTimeout")
 
+		// The amount of time to wait for rounds to stop running
+		closeTimeout, err := time.ParseDuration(
+			viper.GetString("closeTimeout"))
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse duration: %+v", err)
+		}
+
 		// Populate params
 		RegParams = Params{
 			Address:                   localAddress,
@@ -160,6 +167,7 @@ var rootCmd = &cobra.Command{
 			maxRegistrationAttempts:   maxRegistrationAttempts,
 			registrationCountDuration: registrationCountDuration,
 			schedulingKillTimeout:     schedulingKillTimeout,
+			closeTimeout:              closeTimeout,
 			udbId:                     udbId,
 			minimumNodes:              viper.GetUint32("minimumNodes"),
 			minGatewayVersion:         minGatewayVersion,
@@ -226,7 +234,7 @@ var rootCmd = &cobra.Command{
 			case <-k:
 				jww.INFO.Printf("stopped!\n")
 				return 0
-			case <-time.After(schedulingKillTimeout):
+			case <-time.After(closeTimeout):
 				jww.ERROR.Print("couldn't stop round creation!")
 			}
 			return -1
@@ -333,8 +341,18 @@ func init() {
 	rootCmd.Flags().BoolVar(&noTLS, "noTLS", false,
 		"Runs without TLS enabled")
 
+	rootCmd.Flags().StringP("close-timeout", "t", "60s",
+		("Amount of time to wait for round creation to stop after" +
+			" receiving the SIGUSR1 and SIGTERM signals"))
+
 	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
 		false, "Disables registration server checking for ndf updates")
+
+	err := viper.BindPFlag("closeTimeout",
+		rootCmd.Flags().Lookup("close-timeout"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
 
 }
 
