@@ -209,6 +209,8 @@ func BannedNodeTracker(state *storage.NetworkState) error {
 		return errors.Errorf("Failed to get nodes by %s status: %v", node.Banned, err)
 	}
 
+	def := state.GetFullNdf().Get()
+
 	// Parse through the returned node list
 	for _, n := range bannedNodes {
 		// Convert the id into an id.ID
@@ -216,6 +218,27 @@ func BannedNodeTracker(state *storage.NetworkState) error {
 		if err != nil {
 			return errors.Errorf("Failed to convert node %s to id.ID: %v", n.Id, err)
 		}
+
+		newNodes := []ndf.Node{}
+		for i, node := range def.Nodes {
+			ndf_nid, err := id.Unmarshal(node.ID)
+			if err != nil {
+				return errors.WithMessage(err, "Failed to unmarshal node id from NDF")
+			}
+			if ndf_nid == nodeId {
+				continue
+			} else {
+				newNodes = append(newNodes, def.Nodes[i])
+			}
+		}
+		if len(newNodes) != len(def.Nodes) {
+			def.Nodes = newNodes
+			err = state.UpdateNdf(def)
+			if err != nil {
+				return errors.WithMessage(err, "Failed to update NDF after bans")
+			}
+		}
+
 		// Get the node from the nodeMap
 		ns := state.GetNodeMap().GetNode(nodeId)
 		var nun node.UpdateNotification
