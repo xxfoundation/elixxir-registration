@@ -28,10 +28,7 @@ import (
 )
 
 //generally large buffer, should be roughly as many nodes as are expected
-const (
-	nodeCompletionChanLen        = 1000
-	defaultSchedulingKillTimeout = 10 * time.Second
-)
+const nodeCompletionChanLen = 1000
 
 // The main registration instance object
 type RegistrationImpl struct {
@@ -95,11 +92,6 @@ func toGroup(grp map[string]string) (*ndf.Group, error) {
 
 // Configure and start the Permissioning Server
 func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error) {
-
-	// Set default scheduling kill timeout if not set
-	if params.schedulingKillTimeout == 0 {
-		params.schedulingKillTimeout = defaultSchedulingKillTimeout
-	}
 
 	// Initialize variables
 	regRemaining := uint64(0)
