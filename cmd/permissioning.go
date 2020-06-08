@@ -12,11 +12,9 @@ import (
 	"bytes"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
-	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
@@ -38,32 +36,10 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 		return errors.Errorf(
 			"Node with registration code %+v has already been registered", RegistrationCode)
 	}
-	pk := &m.State.GetPrivateKey().PrivateKey
-	// Load the node and gateway certs
-	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
-	if err != nil {
-		return errors.Errorf("Failed to load node certificate: %v", err)
-	}
-	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCert)
-	if err != nil {
-		return errors.Errorf("Failed to load gateway certificate: %v", err)
-	}
-
-	// Sign the node and gateway certs
-	signedNodeCert, err := certAuthority.Sign(nodeCertificate,
-		m.permissioningCert, pk)
-	if err != nil {
-		return errors.Errorf("failed to sign node certificate: %v", err)
-	}
-	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate,
-		m.permissioningCert, pk)
-	if err != nil {
-		return errors.Errorf("Failed to sign gateway certificate: %v", err)
-	}
 
 	// Attempt to insert Node into the database
 	err = storage.PermissioningDb.RegisterNode(ID, RegistrationCode, ServerAddr,
-		signedNodeCert, GatewayAddr, signedGatewayCert)
+		ServerTlsCert, GatewayAddr, GatewayTlsCert)
 	if err != nil {
 		return errors.Errorf("unable to insert node: %+v", err)
 	}

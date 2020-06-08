@@ -6,9 +6,10 @@ import (
 	"encoding/pem"
 )
 
-//Sign takes in 3 files: one from the client (to be signed) and 2 from us, a cert and a private key
-//It signs the certificate signing request (CSR) with the root CA keypair
-//It returns the signed certificate and the root certificate so the requester can verify
+// Sign takes in 3 files: one from the client (to be signed) and 2 from us, a cert and a private key
+//  It signs the certificate signing request (CSR) with the root CA keypair
+//  It returns the signed certificate and the root certificate so the requester can verify
+// Depreciated function, removed for BetaNet
 func Sign(clientCert *x509.Certificate, caCert *x509.Certificate, caPrivKey interface{}) (string, error) {
 	//Sign the certificate using the caCert as the parent certificate. This takes a generic interface for the public
 	//and private key given as the last 2 args
