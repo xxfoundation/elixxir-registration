@@ -52,7 +52,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	errorChan := make(chan error, 1)
 
 	//calculate the realtime delay from params
-	rtDelay := time.Duration(params.RealtimeDelay) * time.Millisecond
+	rtDelay := params.RealtimeDelay * time.Millisecond
 
 	//select the correct round creator
 	var createRound roundCreator

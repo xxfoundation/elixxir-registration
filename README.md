@@ -101,7 +101,7 @@ closeTimeout: 60s
   "BatchSize": 32,
   "RandomOrdering": false,
   "MinimumDelay": 60,
-  "RealtimeDelay": 120,
+  "RealtimeDelay": 3000,
   "Threshold":     10,
   "NodeCleanUpInterval": 3,  
   "Secure": 		     true
