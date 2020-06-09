@@ -29,7 +29,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -45,7 +45,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 		}
 	}
 
-	roundID := NewRoundID(0).Get()
+	roundID := testState.GetRoundID()
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
@@ -81,7 +81,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -98,9 +98,9 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	}
 	circuit := connect.NewCircuit(nodeList)
 
-	roundID := NewRoundID(0)
+	roundID := testState.GetRoundID()
 
-	roundState, err := testState.GetRoundMap().AddRound(roundID.Get(), testParams.BatchSize, circuit)
+	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, circuit)
 	if err != nil {
 		t.Errorf("Failed to add round: %v", err)
 	}
@@ -162,7 +162,7 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -225,7 +225,7 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -242,9 +242,9 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 	}
 	circuit := connect.NewCircuit(nodeList)
 
-	roundID := NewRoundID(0)
+	roundID := testState.GetRoundID()
 
-	roundState, err := testState.GetRoundMap().AddRound(roundID.Get(), testParams.BatchSize, circuit)
+	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, circuit)
 	if err != nil {
 		t.Errorf("Failed to add round: %v", err)
 	}
@@ -310,7 +310,7 @@ func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -361,7 +361,7 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -377,7 +377,7 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 		}
 	}
 
-	roundID := NewRoundID(0).Get()
+	roundID := testState.GetRoundID()
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
@@ -419,7 +419,7 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -513,7 +513,7 @@ func TestKillRound(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

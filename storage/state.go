@@ -15,6 +15,7 @@ import (
 	"gitlab.com/elixxir/comms/network/dataStructures"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -29,10 +30,13 @@ type NetworkState struct {
 	// NetworkState parameters
 	privateKey *rsa.PrivateKey
 
+	// The ID of the current round
+	roundID *stateID
+
 	// Round state
 	rounds          *round.StateMap
 	roundUpdates    *dataStructures.Updates
-	roundUpdateID   uint64
+	roundUpdateID   *stateID
 	roundUpdateLock sync.Mutex
 	roundData       *dataStructures.Data
 	update          chan node.UpdateNotification // For triggering updates to top level
@@ -46,7 +50,7 @@ type NetworkState struct {
 }
 
 // NewState returns a new NetworkState object.
-func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
+func NewState(pk *rsa.PrivateKey, roundIdPath, updateIdPath string) (*NetworkState, error) {
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
 		return nil, err
@@ -56,7 +60,20 @@ func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 		return nil, err
 	}
 
+	// Create round ID
+	roundID, err := loadOrCreateStateID(roundIdPath)
+	if err != nil {
+		return nil, errors.Errorf("Failed to load round ID from path: %+v", err)
+	}
+
+	// Create increment ID
+	updateRoundID, err := loadOrCreateStateID(updateIdPath)
+	if err != nil {
+		return nil, errors.Errorf("Failed to load update ID from path: %+v", err)
+	}
+
 	state := &NetworkState{
+		roundID:       roundID,
 		rounds:        round.NewStateMap(),
 		roundUpdates:  dataStructures.NewUpdates(),
 		update:        make(chan node.UpdateNotification, updateBufferLength),
@@ -64,14 +81,20 @@ func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 		fullNdf:       fullNdf,
 		partialNdf:    partialNdf,
 		privateKey:    pk,
-		roundUpdateID: 0,
+		roundUpdateID: updateRoundID,
 	}
 
-	// Insert dummy update
-	err = state.AddRoundUpdate(&pb.RoundInfo{})
-	if err != nil {
-		return nil, err
+	// Updates are handled in the uint space, as a result, the designator for
+	// update 0 also designates that no updates are known by the server. To
+	// avoid this collision, permissioning will skip this update as well.
+	if updateRoundID.get() == 0 {
+		// Insert dummy update
+		err = state.AddRoundUpdate(&pb.RoundInfo{})
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	return state, nil
 }
 
@@ -96,18 +119,21 @@ func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
 	s.roundUpdateLock.Lock()
 	defer s.roundUpdateLock.Unlock()
 
+	updateID, err := s.roundUpdateID.increment()
+	if err != nil {
+		return err
+	}
+
 	roundCopy := &pb.RoundInfo{
 		ID:         round.GetID(),
-		UpdateID:   s.roundUpdateID,
+		UpdateID:   updateID,
 		State:      round.GetState(),
 		BatchSize:  round.GetBatchSize(),
 		Topology:   round.GetTopology(),
 		Timestamps: round.GetTimestamps(),
 	}
 
-	s.roundUpdateID++
-
-	err := signature.Sign(roundCopy, s.privateKey)
+	err = signature.Sign(roundCopy, s.privateKey)
 	if err != nil {
 		return errors.WithMessagef(err, "Could not add round update %v "+
 			"due to failed signature", roundCopy.UpdateID)
@@ -180,4 +206,16 @@ func (s *NetworkState) SendUpdateNotification(nun node.UpdateNotification) error
 // GetNodeUpdateChannel returns a channel to receive node updates on.
 func (s *NetworkState) GetNodeUpdateChannel() <-chan node.UpdateNotification {
 	return s.update
+}
+
+// IncrementRoundID increments the round ID in a thread safe manner. If an error
+// occurs while updating the ID file, then it is returned.
+func (s *NetworkState) IncrementRoundID() (id.Round, error) {
+	roundID, err := s.roundID.increment()
+	return id.Round(roundID), err
+}
+
+// GetRoundID returns the round ID in a thread safe manner.
+func (s *NetworkState) GetRoundID() id.Round {
+	return id.Round(s.roundID.get())
 }

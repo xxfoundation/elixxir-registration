@@ -26,7 +26,7 @@ func TestCreateRound(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -49,9 +49,9 @@ func TestCreateRound(t *testing.T) {
 		testpool.Add(nodeState)
 	}
 
-	roundID := NewRoundID(0)
+	roundID := testState.GetRoundID()
 
-	_, err = createSecureRound(testParams, testpool, roundID.Get(), testState)
+	_, err = createSecureRound(testParams, testpool, roundID, testState)
 	if err != nil {
 		t.Errorf("Error in happy path: %v", err)
 	}
@@ -71,7 +71,7 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -95,9 +95,12 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 		testpool.Add(nodeState)
 	}
 
-	roundID := NewRoundID(0)
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
 
-	_, err = createSecureRound(testParams, testpool, roundID.Get(), testState)
+	_, err = createSecureRound(testParams, testpool, roundID, testState)
 	if err != nil {
 		return
 	}
@@ -121,7 +124,7 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -145,9 +148,12 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 		testpool.Add(nodeState)
 	}
 
-	roundID := NewRoundID(0)
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
 
-	_, err = createSecureRound(testParams, testpool, roundID.Get(), testState)
+	_, err = createSecureRound(testParams, testpool, roundID, testState)
 	if err != nil {
 		return
 	}
@@ -172,7 +178,7 @@ func TestCreateRound_EfficientTeam(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -198,9 +204,12 @@ func TestCreateRound_EfficientTeam(t *testing.T) {
 		testpool.Add(nodeState)
 	}
 
-	roundID := NewRoundID(0)
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
 
-	testProtoRound, err := createSecureRound(testParams, testpool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testpool, roundID, testState)
 	if err != nil {
 		t.Errorf("Error in happy path: %v", err)
 	}
