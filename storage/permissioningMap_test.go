@@ -48,8 +48,9 @@ func TestMapImpl_InsertNodeMetric(t *testing.T) {
 func TestMapImpl_InsertRoundMetric(t *testing.T) {
 	m := &MapImpl{roundMetrics: make(map[uint64]*RoundMetric)}
 
+	roundId := uint64(1)
 	newMetric := &RoundMetric{
-		Error:         "TEST",
+		Id:            roundId,
 		PrecompStart:  time.Now(),
 		PrecompEnd:    time.Now(),
 		RealtimeStart: time.Now(),
@@ -64,8 +65,8 @@ func TestMapImpl_InsertRoundMetric(t *testing.T) {
 		t.Errorf("Unable to insert round metric: %+v", err)
 	}
 
-	insertedMetric := m.roundMetrics[m.roundMetricCounter]
-	if insertedMetric.Id != m.roundMetricCounter {
+	insertedMetric := m.roundMetrics[roundId]
+	if insertedMetric.Id != roundId {
 		t.Errorf("Mismatched ID returned!")
 	}
 	if insertedMetric.PrecompStart != newMetric.PrecompStart {
@@ -83,7 +84,46 @@ func TestMapImpl_InsertRoundMetric(t *testing.T) {
 	if insertedMetric.BatchSize != newMetric.BatchSize {
 		t.Errorf("Mismatched BatchSize returned!")
 	}
-	if insertedMetric.Error != newMetric.Error {
+}
+
+// Happy path
+func TestMapImpl_InsertRoundError(t *testing.T) {
+	m := &MapImpl{roundMetrics: make(map[uint64]*RoundMetric)}
+
+	roundId := id.Round(1)
+	newMetric := &RoundMetric{
+		Id:            uint64(roundId),
+		PrecompStart:  time.Now(),
+		PrecompEnd:    time.Now(),
+		RealtimeStart: time.Now(),
+		RealtimeEnd:   time.Now(),
+		BatchSize:     420,
+	}
+	newTopology := [][]byte{id.NewIdFromBytes([]byte("Node1"), t).Bytes(),
+		id.NewIdFromBytes([]byte("Node2"), t).Bytes()}
+	newErrors := []string{"err1", "err2"}
+
+	err := m.InsertRoundMetric(newMetric, newTopology)
+	if err != nil {
+		t.Errorf("Unable to insert round metric: %+v", err)
+	}
+
+	insertedMetric := m.roundMetrics[uint64(roundId)]
+
+	err = m.InsertRoundError(roundId, newErrors[0])
+	if err != nil {
+		t.Errorf("Unable to insert round error: %+v", err)
+	}
+
+	err = m.InsertRoundError(roundId, newErrors[1])
+	if err != nil {
+		t.Errorf("Unable to insert round error: %+v", err)
+	}
+
+	if insertedMetric.RoundErrors[0].Error != newErrors[0] {
+		t.Errorf("Mismatched Error returned!")
+	}
+	if insertedMetric.RoundErrors[1].Error != newErrors[1] {
 		t.Errorf("Mismatched Error returned!")
 	}
 }

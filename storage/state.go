@@ -61,13 +61,13 @@ func NewState(pk *rsa.PrivateKey, roundIdPath, updateIdPath string) (*NetworkSta
 	}
 
 	// Create round ID
-	roundID, err := loadOrCreateStateID(roundIdPath)
+	roundID, err := loadOrCreateStateID(roundIdPath, 1)
 	if err != nil {
 		return nil, errors.Errorf("Failed to load round ID from path: %+v", err)
 	}
 
 	// Create increment ID
-	updateRoundID, err := loadOrCreateStateID(updateIdPath)
+	updateRoundID, err := loadOrCreateStateID(updateIdPath, 0)
 	if err != nil {
 		return nil, errors.Errorf("Failed to load update ID from path: %+v", err)
 	}

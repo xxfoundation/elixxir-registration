@@ -73,7 +73,7 @@ func TestStartRound(t *testing.T) {
 		t.Errorf("Received error from startRound(): %v", err)
 	}
 
-	if testState.GetRoundMap().GetRound(0).GetRoundState() != states.PRECOMPUTING {
+	if testState.GetRoundMap().GetRound(1).GetRoundState() != states.PRECOMPUTING {
 		t.Errorf("In unexpected state after round creation: %v",
 			testState.GetRoundMap().GetRound(0).GetRoundState())
 	}
@@ -140,7 +140,7 @@ func TestStartRound_BadState(t *testing.T) {
 			"should make starting precomputing impossible")
 	}
 
-	if testState.GetRoundMap().GetRound(0).GetRoundState() == states.PRECOMPUTING {
+	if testState.GetRoundMap().GetRound(1).GetRoundState() == states.PRECOMPUTING {
 		t.Errorf("Should not be in precomputing after artificially incrementign round")
 	}
 }

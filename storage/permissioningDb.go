@@ -28,11 +28,23 @@ func (m *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
 	return m.db.Create(metric).Error
 }
 
-// Insert RoundMetric object
+// Insert RoundError object
+func (m *DatabaseImpl) InsertRoundError(roundId id.Round, errStr string) error {
+	roundErr := &RoundError{
+		RoundMetricId: uint64(roundId),
+		Error:         errStr,
+	}
+	jww.DEBUG.Printf("Attempting to insert round error: %+v", roundErr)
+	return m.db.Create(roundErr).Error
+}
+
+// Insert RoundMetric object with associated topology
 func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
-	newTopology := make([]Topology, len(topology))
-	for i, node := range topology {
-		nodeId, err := id.Unmarshal(node)
+
+	// Build the Topology
+	metric.Topologies = make([]Topology, len(topology))
+	for i, nodeIdBytes := range topology {
+		nodeId, err := id.Unmarshal(nodeIdBytes)
 		if err != nil {
 			return errors.New(err.Error())
 		}
@@ -40,9 +52,10 @@ func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte)
 			NodeId: nodeId.Bytes(),
 			Order:  uint8(i),
 		}
-		newTopology[i] = topologyObj
+		metric.Topologies[i] = topologyObj
 	}
-	metric.Topologies = newTopology
+
+	// Save the RoundMetric
 	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
 	return m.db.Save(metric).Error
 }
