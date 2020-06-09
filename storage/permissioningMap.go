@@ -73,7 +73,7 @@ func (m *MapImpl) InsertRoundError(roundId id.Round, errStr string) error {
 	return nil
 }
 
-// Insert RoundMetric object
+// Insert RoundMetric object with associated topology
 func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()

@@ -38,7 +38,7 @@ func (m *DatabaseImpl) InsertRoundError(roundId id.Round, errStr string) error {
 	return m.db.Create(roundErr).Error
 }
 
-// Insert RoundMetric object with associated topology and errors
+// Insert RoundMetric object with associated topology
 func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
 
 	// Build the Topology
