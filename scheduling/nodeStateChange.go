@@ -165,10 +165,10 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 // Insert metrics about the newly-completed round into storage
 func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 	metric := &storage.RoundMetric{
-		PrecompStart:  time.Unix(0, int64(roundInfo.Timestamps[current.PRECOMPUTING])),
-		PrecompEnd:    time.Unix(0, int64(roundInfo.Timestamps[current.STANDBY])),
-		RealtimeStart: time.Unix(0, int64(roundInfo.Timestamps[current.REALTIME])),
-		RealtimeEnd:   time.Unix(0, int64(roundInfo.Timestamps[current.COMPLETED])),
+		PrecompStart:  time.Unix(0, int64(roundInfo.Timestamps[states.PRECOMPUTING])),
+		PrecompEnd:    time.Unix(0, int64(roundInfo.Timestamps[states.STANDBY])),
+		RealtimeStart: time.Unix(0, int64(roundInfo.Timestamps[states.REALTIME])),
+		RealtimeEnd:   time.Unix(0, int64(roundInfo.Timestamps[states.COMPLETED])),
 		BatchSize:     roundInfo.BatchSize,
 	}
 
@@ -187,7 +187,7 @@ func killRound(state *storage.NetworkState, r *round.State, n *node.State, round
 	r.AppendError(roundError)
 	_ = r.Update(states.FAILED, time.Now())
 	n.ClearRound()
-	roundId := roundError.Id
+	roundId := uint64(r.GetRoundID())
 
 	// Build the round info and update the network state
 	err := state.AddRoundUpdate(r.BuildRoundInfo())
@@ -198,9 +198,14 @@ func killRound(state *storage.NetworkState, r *round.State, n *node.State, round
 	errStr := fmt.Sprintf("RoundError{NodeID: %s, Error: %s}",
 		roundError.NodeId, roundError.Error)
 
-	// Attempt to insert an empty RoundMetric for the failed round
+	// Attempt to insert the RoundMetric for the failed round
 	metric := &storage.RoundMetric{
-		Id: roundId,
+		Id:            roundId,
+		PrecompStart:  time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.PRECOMPUTING])),
+		PrecompEnd:    time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.STANDBY])),
+		RealtimeStart: time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.REALTIME])),
+		RealtimeEnd:   time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.FAILED])),
+		BatchSize:     r.BuildRoundInfo().BatchSize,
 	}
 	err = storage.PermissioningDb.InsertRoundMetric(metric,
 		r.BuildRoundInfo().Topology)

@@ -399,6 +399,8 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 	}
 	testState.GetNodeMap().GetNode(testUpdate.Node).GetPollingLock().Lock()
 
+	storage.PermissioningDb, err = storage.NewDatabase("", "", "", "", "")
+
 	roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)

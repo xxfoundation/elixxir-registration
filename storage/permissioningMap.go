@@ -77,10 +77,6 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
-	// Auto-increment key
-	m.roundMetricCounter += 1
-	metric.Id = m.roundMetricCounter
-
 	// Build Topology objects
 	metric.Topologies = make([]Topology, len(topology))
 	for i, nodeIdBytes := range topology {
@@ -90,7 +86,7 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 		}
 		topologyObj := Topology{
 			NodeId:        nodeId.Bytes(),
-			RoundMetricId: m.roundMetricCounter,
+			RoundMetricId: metric.Id,
 			Order:         uint8(i),
 		}
 		metric.Topologies[i] = topologyObj
@@ -98,7 +94,7 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 
 	// Add to map
 	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
-	m.roundMetrics[m.roundMetricCounter] = metric
+	m.roundMetrics[metric.Id] = metric
 	return nil
 }
 

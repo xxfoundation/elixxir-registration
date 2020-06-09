@@ -26,15 +26,14 @@ type DatabaseImpl struct {
 
 // Struct implementing the Database Interface with an underlying Map
 type MapImpl struct {
-	clients            map[string]*RegistrationCode
-	nodes              map[string]*Node
-	users              map[string]bool
-	applications       map[uint64]*Application
-	nodeMetrics        map[uint64]*NodeMetric
-	nodeMetricCounter  uint64
-	roundMetrics       map[uint64]*RoundMetric
-	roundMetricCounter uint64
-	mut                sync.Mutex
+	clients           map[string]*RegistrationCode
+	nodes             map[string]*Node
+	users             map[string]bool
+	applications      map[uint64]*Application
+	nodeMetrics       map[uint64]*NodeMetric
+	nodeMetricCounter uint64
+	roundMetrics      map[uint64]*RoundMetric
+	mut               sync.Mutex
 }
 
 // Global variable for database interaction
