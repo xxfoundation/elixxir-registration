@@ -32,7 +32,7 @@ func TestLoadRoundID(t *testing.T) {
 		t.Fatalf("Failed to write test file: %+v", err)
 	}
 
-	testSID, err := loadOrCreateStateID(expectedPath)
+	testSID, err := loadOrCreateStateID(expectedPath, 0)
 	if err != nil {
 		t.Errorf("loadOrCreateStateID() produced an unexpected error: %+v", err)
 	}
@@ -53,7 +53,7 @@ func TestLoadRoundID_EmptyPath(t *testing.T) {
 	expectedPath := ""
 	expectedID := uint64(0)
 
-	testSID, err := loadOrCreateStateID(expectedPath)
+	testSID, err := loadOrCreateStateID(expectedPath, 0)
 	if err != nil {
 		t.Errorf("loadOrCreateStateID() produced an unexpected error: %+v", err)
 	}
@@ -88,7 +88,7 @@ func TestLoadRoundID_FileContentError(t *testing.T) {
 		t.Fatalf("Failed to write test file: %+v", err)
 	}
 
-	_, err = loadOrCreateStateID(expectedPath)
+	_, err = loadOrCreateStateID(expectedPath, 0)
 	if err == nil {
 		t.Errorf("loadOrCreateStateID() did not produce the expected error."+
 			"\n\texpected: %+v\n\treceived: %+v", expectedError, err)
@@ -299,7 +299,7 @@ func TestRoundID_IntegrationSim(t *testing.T) {
 	}
 
 	for i := 0; i < 5; i++ {
-		testSID, err2 := loadOrCreateStateID(testPath)
+		testSID, err2 := loadOrCreateStateID(testPath, 0)
 		if err2 != nil {
 			t.Errorf("loadOrCreateStateID() produced an unexpected error at "+
 				"index %d: %+v", i, err2)
@@ -345,7 +345,7 @@ func TestRoundID_IntegrationSim_NoFile(t *testing.T) {
 	}()
 
 	for i := 0; i < 5; i++ {
-		testSID, err2 := loadOrCreateStateID(testPath)
+		testSID, err2 := loadOrCreateStateID(testPath, 0)
 		if err2 != nil {
 			t.Errorf("loadOrCreateStateID() produced an unexpected error at "+
 				"index %d: %+v", i, err2)

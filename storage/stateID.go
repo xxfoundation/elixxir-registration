@@ -26,10 +26,8 @@ type stateID struct {
 
 // loadOrCreateStateID loads a new round ID from the specified file path and
 // returns a new roundID with that ID. If no path is provided or the file does
-// not exist, then the ID is set to 0.
-func loadOrCreateStateID(path string) (*stateID, error) {
-	idUint := uint64(0)
-
+// not exist, then the ID is set to startId.
+func loadOrCreateStateID(path string, startId uint64) (*stateID, error) {
 	// Skip reading from the file if no path is provided or file does not exist
 	if path != "" && utils.FileExists(path) {
 		roundIdBytes, err := utils.ReadFile(path)
@@ -37,18 +35,18 @@ func loadOrCreateStateID(path string) (*stateID, error) {
 			return nil, errors.Errorf("Could not load ID from file: %+v", err)
 		}
 		roundIdString := strings.TrimSpace(string(roundIdBytes))
-		idUint, err = strconv.ParseUint(roundIdString, 10, 64)
+		startId, err = strconv.ParseUint(roundIdString, 10, 64)
 		if err != nil {
 			return nil, errors.Errorf("Could not convert ID to uint: %+v", err)
 		}
 	} else {
 		jww.WARN.Printf("Could not open state ID path %s because file does "+
 			"not exist, reading ID from file skipped. state ID set to %d.",
-			path, idUint)
+			path, startId)
 	}
 
 	return &stateID{
-		id:   idUint,
+		id:   startId,
 		path: path,
 	}, nil
 }
