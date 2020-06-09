@@ -157,7 +157,7 @@ func TestState_Update_Forward(t *testing.T) {
 				ns.state)
 		}
 
-		if ns.base.Timestamps[i] != uint64(ts.Unix()) {
+		if ns.base.Timestamps[i] != uint64(ts.UnixNano()) {
 			t.Errorf("Timestamp stored is incorrect. "+
 				"Stored: %v, Expected: %v", ns.base.Timestamps[i], uint64(ts.Unix()))
 		}

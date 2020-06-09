@@ -72,6 +72,8 @@ var rootCmd = &cobra.Command{
 		nsCertPath := viper.GetString("nsCertPath")
 		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
+		roundIdPath := viper.GetString("roundIdPath")
+		updateIdPath := viper.GetString("updateIdPath")
 
 		maxRegistrationAttempts := viper.GetUint64("maxRegistrationAttempts")
 		if maxRegistrationAttempts == 0 {
@@ -142,6 +144,21 @@ var rootCmd = &cobra.Command{
 				minServerVersionString, err)
 		}
 
+		// Get the amount of time to wait for scheduling to end
+		// This should default to 10 seconds in StartRegistration if not set
+		schedulingKillTimeout, err := time.ParseDuration(
+			viper.GetString("schedulingKillTimeout"))
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse duration: %+v", err)
+		}
+
+		// The amount of time to wait for rounds to stop running
+		closeTimeout, err := time.ParseDuration(
+			viper.GetString("closeTimeout"))
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse duration: %+v", err)
+		}
+
 		// Populate params
 		RegParams = Params{
 			Address:                   localAddress,
@@ -155,18 +172,28 @@ var rootCmd = &cobra.Command{
 			NsCertPath:                nsCertPath,
 			maxRegistrationAttempts:   maxRegistrationAttempts,
 			registrationCountDuration: registrationCountDuration,
+			schedulingKillTimeout:     schedulingKillTimeout,
+			closeTimeout:              closeTimeout,
 			udbId:                     udbId,
 			minimumNodes:              viper.GetUint32("minimumNodes"),
 			minGatewayVersion:         minGatewayVersion,
 			minServerVersion:          minServerVersion,
+			roundIdPath:               roundIdPath,
+			updateIdPath:              updateIdPath,
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
 
 		// Start registration server
-		impl, err := StartRegistration(RegParams)
+		quitRegistrationCapacity := make(chan bool)
+		impl, err := StartRegistration(RegParams, quitRegistrationCapacity)
 		if err != nil {
 			jww.FATAL.Panicf(err.Error())
+		}
+
+		err = impl.LoadAllRegisteredNodes()
+		if err != nil {
+			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
 		}
 
 		// Determine how long between polling for banned nodes
@@ -174,7 +201,8 @@ var rootCmd = &cobra.Command{
 		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
 
 		// Run the independent node tracker in own go thread
-		go func() {
+		go func(quitChan QuitChan) {
+		nodeTrackerLoop:
 			for {
 				select {
 				case <-ticker.C:
@@ -183,31 +211,82 @@ var rootCmd = &cobra.Command{
 					if err != nil {
 						jww.FATAL.Panicf("BannedNodeTracker failed: %v", err)
 					}
+				case <-quitChan:
+					break nodeTrackerLoop
 				}
 
 			}
-		}()
+		}(impl.MakeQuitChan())
 
 		jww.INFO.Printf("Waiting for for %v nodes to register so "+
 			"rounds can start", RegParams.minimumNodes)
 
 		<-impl.beginScheduling
-		jww.INFO.Printf("Minnimum number of nodes %v have registered,"+
-			"begining scheduling and round creation", RegParams.minimumNodes)
+		jww.INFO.Printf("Minimum number of nodes %v have registered, "+
+			"beginning scheduling and round creation", RegParams.minimumNodes)
+
+		schedulingKillChan := make(chan chan struct{})
 
 		// Begin scheduling algorithm
-		go func() {
-			err = scheduling.Scheduler(SchedulingConfig, impl.State)
+		go func(quitChan QuitChan) {
+			err = scheduling.Scheduler(SchedulingConfig, impl.State, schedulingKillChan)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
-		}()
+		}(impl.MakeQuitChan())
 
 		// Determine how long between storing Node metrics
 		nodeMetricInterval := time.Duration(
 			viper.GetInt64("nodeMetricInterval")) * time.Second
 		nodeTicker := time.NewTicker(nodeMetricInterval)
 
+		// Set up signal handler for stopping round creation
+		killer := func() int {
+			k := make(chan struct{})
+			schedulingKillChan <- k
+			jww.INFO.Printf("Stopping round creation...")
+			select {
+			case <-k:
+				jww.INFO.Printf("stopped!\n")
+				return 0
+			case <-time.After(closeTimeout):
+				jww.ERROR.Print("couldn't stop round creation!")
+			}
+			return -1
+		}
+		ReceiveUSR1Signal(func() { killer() })
+
+		// Set up signal handler for stopping all long-running threads
+		quitter := func(impl *RegistrationImpl) {
+			jww.INFO.Printf("Stopping all long-running threads")
+
+			jww.INFO.Printf("Stopping long-running round creation...")
+			schedulingTimeout := time.NewTimer(schedulingKillTimeout)
+			k := make(chan struct{})
+			schedulingKillChan <- k
+
+			// Try a non-blocking send for the registration capacity
+			select {
+			case quitRegistrationCapacity <- true:
+			default:
+			}
+
+			// Quit everything else
+			impl.QuitAll()
+
+			// See if round creation got destroyed
+			select {
+			case <-k:
+				jww.INFO.Printf("Stopped long-running round creation")
+			case <-schedulingTimeout.C:
+				jww.ERROR.Print("Round creation stop timed out")
+			}
+		}
+		ReceiveUSR2Signal(func() { quitter(impl) })
+
+		// Set up Signal Hangler for safe program exit
+		ReceiveExitSignal(killer)
+
 		// Run the Node metric tracker forever in another thread
-		go func() {
+		go func(quitChan QuitChan) {
 			for {
 				// Store the metric start time
 				startTime := time.Now()
@@ -221,8 +300,8 @@ var rootCmd = &cobra.Command{
 
 						// Build the NodeMetric
 						currentTime := time.Now()
-						metric := storage.NodeMetric{
-							NodeId:    nodeState.GetID().String(),
+						metric := &storage.NodeMetric{
+							NodeId:    nodeState.GetID().Bytes(),
 							StartTime: startTime,
 							EndTime:   currentTime,
 							NumPings:  nodeState.GetAndResetNumPolls(),
@@ -237,7 +316,7 @@ var rootCmd = &cobra.Command{
 					}
 				}
 			}
-		}()
+		}(impl.MakeQuitChan())
 
 		// Block forever to prevent the program ending
 		select {}
@@ -275,8 +354,28 @@ func init() {
 	rootCmd.Flags().BoolVar(&noTLS, "noTLS", false,
 		"Runs without TLS enabled")
 
+	rootCmd.Flags().StringP("close-timeout", "t", "60s",
+		("Amount of time to wait for rounds to stop running after" +
+			" receiving the SIGUSR1 and SIGTERM signals"))
+
+	rootCmd.Flags().StringP("kill-timeout", "k", "60s",
+		("Amount of time to wait for round creation to stop after" +
+			" receiving the SIGUSR2 and SIGTERM signals"))
+
 	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
 		false, "Disables registration server checking for ndf updates")
+
+	err := viper.BindPFlag("closeTimeout",
+		rootCmd.Flags().Lookup("close-timeout"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
+
+	err = viper.BindPFlag("schedulingKillTimeout",
+		rootCmd.Flags().Lookup("kill-timeout"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
 
 }
 
@@ -396,8 +495,6 @@ func initLog() {
 			jww.SetLogThreshold(jww.LevelInfo)
 			jww.SetStdoutThreshold(jww.LevelInfo)
 		}
-		jww.SetLogThreshold(jww.LevelTrace)
-		jww.SetStdoutThreshold(jww.LevelTrace)
 
 		// Create log file, overwrites if existing
 		logPath := viper.GetString("logPath")

@@ -9,21 +9,22 @@
 package storage
 
 import (
+	"bytes"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
+	"testing"
 )
 
 // Insert Application object along with associated unregistered Node
-func (m *MapImpl) InsertApplication(application Application,
-	unregisteredNode Node) error {
+func (m *MapImpl) InsertApplication(application *Application, unregisteredNode *Node) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
 	jww.INFO.Printf("Adding application: %d", application.Id)
 	jww.INFO.Printf("Adding node registration code: %s with Order Info: %s",
-		unregisteredNode.Code, unregisteredNode.Order)
+		unregisteredNode.Code, unregisteredNode.Sequence)
 
 	// Enforce unique keys
 	if m.nodes[unregisteredNode.Code] != nil {
@@ -35,13 +36,13 @@ func (m *MapImpl) InsertApplication(application Application,
 			application.Id)
 	}
 
-	m.nodes[unregisteredNode.Code] = &unregisteredNode
-	m.applications[application.Id] = &application
+	m.nodes[unregisteredNode.Code] = unregisteredNode
+	m.applications[application.Id] = application
 	return nil
 }
 
 // Insert NodeMetric object
-func (m *MapImpl) InsertNodeMetric(metric NodeMetric) error {
+func (m *MapImpl) InsertNodeMetric(metric *NodeMetric) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -51,29 +52,42 @@ func (m *MapImpl) InsertNodeMetric(metric NodeMetric) error {
 	// Add to map
 	metric.Id = m.nodeMetricCounter
 	jww.DEBUG.Printf("Attempting to insert node metric: %+v", metric)
-	m.nodeMetrics[m.nodeMetricCounter] = &metric
+	m.nodeMetrics[m.nodeMetricCounter] = metric
 	return nil
 }
 
-// Insert RoundMetric object
-func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error {
+// Insert RoundError object
+func (m *MapImpl) InsertRoundError(roundId id.Round, errStr string) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	rid := uint64(roundId)
+
+	m.roundMetrics[rid].RoundErrors = append(
+		m.roundMetrics[rid].RoundErrors,
+		RoundError{
+			Id:            0, // Currently useless in MapImpl
+			RoundMetricId: rid,
+			Error:         errStr,
+		},
+	)
+	return nil
+}
+
+// Insert RoundMetric object with associated topology
+func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
-	// Auto-increment key
-	m.roundMetricCounter += 1
-	metric.Id = m.roundMetricCounter
-
 	// Build Topology objects
 	metric.Topologies = make([]Topology, len(topology))
-	for i, node := range topology {
-		nodeId, err := id.Unmarshal(node)
+	for i, nodeIdBytes := range topology {
+		nodeId, err := id.Unmarshal(nodeIdBytes)
 		if err != nil {
 			return errors.New(err.Error())
 		}
 		topologyObj := Topology{
-			NodeId:        nodeId.String(),
-			RoundMetricId: m.roundMetricCounter,
+			NodeId:        nodeId.Bytes(),
+			RoundMetricId: metric.Id,
 			Order:         uint8(i),
 		}
 		metric.Topologies[i] = topologyObj
@@ -81,12 +95,12 @@ func (m *MapImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error
 
 	// Add to map
 	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
-	m.roundMetrics[m.roundMetricCounter] = &metric
+	m.roundMetrics[metric.Id] = metric
 	return nil
 }
 
 // If Node registration code is valid, add Node information
-func (m *MapImpl) RegisterNode(id *id.ID, code, serverCert, serverAddress,
+func (m *MapImpl) RegisterNode(id *id.ID, code, serverAddress, serverCert,
 	gatewayAddress, gatewayCert string) error {
 	m.mut.Lock()
 	jww.INFO.Printf("Attempting to register node with code: %s", code)
@@ -126,4 +140,26 @@ func (m *MapImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 		}
 	}
 	return nodes, nil
+}
+
+// If Node registration code is valid, add Node information
+func (m *MapImpl) BannedNode(id *id.ID, t interface{}) error {
+	// Ensure we're called from a test only
+	switch t.(type) {
+	case *testing.T:
+	case *testing.M:
+	case *testing.B:
+	default:
+		jww.FATAL.Panicf("BannedNode permissioning map function called outside testing")
+	}
+
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	for _, n := range m.nodes {
+		if bytes.Compare(n.Id, id.Bytes()) == 0 {
+			n.Status = uint8(node.Banned)
+			return nil
+		}
+	}
+	return errors.New("Node could not be found in map")
 }

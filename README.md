@@ -20,6 +20,12 @@ ndfOutputPath: "ndf.json"
 # in a team because some scheduling algorithms may require multiple teams worth of nodes at minimum
 minimumNodes: 3
 
+# Path to the file containing the round ID
+roundIdPath: "roundId.txt"
+
+# Path to the file containing the update ID
+updateIdPath: "updateId.txt"
+
 # UDB ID
 udbID: 1
 
@@ -34,7 +40,6 @@ minGatewayVersion: "0.0.0"
 
 # The minimum version required of servers to connect
 minServerVersion:  "0.0.0"
-
 
 # Database connection information
 dbUsername: "cmix"
@@ -87,6 +92,11 @@ schedulingAlgorithm: "single"
 
 # Path to file with config for scheduling algorithm within the user directory 
 schedulingConfigPath: "Scheduling_Simple_NonRandom.json"
+
+# Time that the registration server waits before timing out while killing the round scheduling thread
+schedulingKillTimeout: 10s
+# Time the registration waits for rounds to close out and stop (optional)
+closeTimeout: 60s
 ```
 
 ### SchedulingConfig template:
@@ -96,7 +106,7 @@ schedulingConfigPath: "Scheduling_Simple_NonRandom.json"
   "BatchSize": 32,
   "RandomOrdering": false,
   "MinimumDelay": 60,
-  "RealtimeDelay": 120,
+  "RealtimeDelay": 3000,
   "Threshold":     10,
   "NodeCleanUpInterval": 3,  
   "Secure": 		     true

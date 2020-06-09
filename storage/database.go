@@ -26,21 +26,20 @@ type DatabaseImpl struct {
 
 // Struct implementing the Database Interface with an underlying Map
 type MapImpl struct {
-	clients            map[string]*RegistrationCode
-	nodes              map[string]*Node
-	users              map[string]bool
-	applications       map[uint64]*Application
-	nodeMetrics        map[uint64]*NodeMetric
-	nodeMetricCounter  uint64
-	roundMetrics       map[uint64]*RoundMetric
-	roundMetricCounter uint64
-	mut                sync.Mutex
+	clients           map[string]*RegistrationCode
+	nodes             map[string]*Node
+	users             map[string]bool
+	applications      map[uint64]*Application
+	nodeMetrics       map[uint64]*NodeMetric
+	nodeMetricCounter uint64
+	roundMetrics      map[uint64]*RoundMetric
+	mut               sync.Mutex
 }
 
 // Global variable for database interaction
 var PermissioningDb Storage
 
-type nodeRegistration interface {
+type NodeRegistration interface {
 	// If Node registration code is valid, add Node information
 	RegisterNode(id *id.ID, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
@@ -49,14 +48,16 @@ type nodeRegistration interface {
 	// Return all nodes in storage with the given Status
 	GetNodesByStatus(status node.Status) ([]*Node, error)
 	// Insert Application object along with associated unregistered Node
-	InsertApplication(application Application, unregisteredNode Node) error
+	InsertApplication(application *Application, unregisteredNode *Node) error
 	// Insert NodeMetric object
-	InsertNodeMetric(metric NodeMetric) error
-	// Insert RoundMetric object
-	InsertRoundMetric(metric RoundMetric, topology [][]byte) error
+	InsertNodeMetric(metric *NodeMetric) error
+	// Insert RoundMetric object with associated topology
+	InsertRoundMetric(metric *RoundMetric, topology [][]byte) error
+	// Insert RoundError object
+	InsertRoundError(roundId id.Round, errStr string) error
 }
 
-type clientRegistration interface {
+type ClientRegistration interface {
 	// Inserts Client registration code with given number of uses
 	InsertClientRegCode(code string, uses int) error
 	// If Client registration code is valid, decrements remaining uses
@@ -69,8 +70,8 @@ type clientRegistration interface {
 
 // Interface database storage operations
 type Storage struct {
-	clientRegistration
-	nodeRegistration
+	ClientRegistration
+	NodeRegistration
 }
 
 // Struct representing a RegistrationCode table in the database
@@ -105,8 +106,8 @@ type Application struct {
 	GeoBin string
 	// GPS location of the Node
 	GpsLocation string
-	// Specifies the group the node was assigned
-	Group string
+	// Specifies the team the node was assigned
+	Team string
 	// Specifies which network the node is in
 	Network string
 
@@ -123,7 +124,7 @@ type Node struct {
 	// Registration code acts as the primary key
 	Code string `gorm:"primary_key"`
 	// Node order string, this is a tag used by the algorithm
-	Order string
+	Sequence string
 
 	// Unique Node ID
 	Id []byte `gorm:"UNIQUE_INDEX;default: null"`
@@ -156,7 +157,7 @@ type NodeMetric struct {
 	// Auto-incrementing primary key (Do not set)
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
 	// Node has many NodeMetrics
-	NodeId string `gorm:"NOT NULL;type:text REFERENCES nodes(Id)"`
+	NodeId []byte `gorm:"NOT NULL;type:bytea REFERENCES nodes(Id)"`
 	// Start time of monitoring period
 	StartTime time.Time `gorm:"NOT NULL"`
 	// End time of monitoring period
@@ -168,7 +169,7 @@ type NodeMetric struct {
 // Junction table for the many-to-many relationship between Nodes & RoundMetrics
 type Topology struct {
 	// Composite primary key
-	NodeId        string `gorm:"primary_key;type:text REFERENCES nodes(Id)"`
+	NodeId        []byte `gorm:"primary_key;type:bytea REFERENCES nodes(Id)"`
 	RoundMetricId uint64 `gorm:"primary_key;type:bigint REFERENCES round_metrics(Id)"`
 
 	// Order in the topology of a Node for a given Round
@@ -177,11 +178,10 @@ type Topology struct {
 
 // Struct representing Round Metrics table in the database
 type RoundMetric struct {
-	// Auto-incrementing primary key (Do not set)
-	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
-	// Nullable error string, if one occurred
-	Error string
+	// Unique ID of the round as assigned by the network
+	Id uint64 `gorm:"primary_key"`
 
+	// Round timestamp information
 	PrecompStart  time.Time `gorm:"NOT NULL"`
 	PrecompEnd    time.Time `gorm:"NOT NULL"`
 	RealtimeStart time.Time `gorm:"NOT NULL"`
@@ -190,6 +190,21 @@ type RoundMetric struct {
 
 	// Each RoundMetric has many Nodes participating in each Round
 	Topologies []Topology `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
+
+	// Each RoundMetric can have many Errors in each Round
+	RoundErrors []RoundError `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
+}
+
+// Struct representing Round Errors table in the database
+type RoundError struct {
+	// Auto-incrementing primary key (Do not set)
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
+
+	// ID of the round for a given run of the network
+	RoundMetricId uint64 `gorm:"NOT NULL;type:bigint REFERENCES round_metrics(Id)"`
+
+	// String of error that occurred during the Round
+	Error string `gorm:"NOT NULL"`
 }
 
 // Initialize the Database interface with database backend
@@ -224,11 +239,11 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 		defer jww.INFO.Println("Map backend initialized successfully!")
 
 		return Storage{
-			clientRegistration: clientRegistration(&MapImpl{
+			ClientRegistration: ClientRegistration(&MapImpl{
 				clients: make(map[string]*RegistrationCode),
 				users:   make(map[string]bool),
 			}),
-			nodeRegistration: nodeRegistration(&MapImpl{
+			NodeRegistration: NodeRegistration(&MapImpl{
 				applications: make(map[uint64]*Application),
 				nodes:        make(map[string]*Node),
 				nodeMetrics:  make(map[uint64]*NodeMetric),
@@ -245,6 +260,7 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 	models := []interface{}{
 		&RegistrationCode{}, &User{},
 		&Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
+		&RoundError{},
 	}
 	for _, model := range models {
 		err = db.AutoMigrate(model).Error
@@ -260,8 +276,8 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 
 	jww.INFO.Println("Database backend initialized successfully!")
 	return Storage{
-		clientRegistration: di,
-		nodeRegistration:   di,
+		ClientRegistration: di,
+		NodeRegistration:   di,
 	}, nil
 
 }
@@ -280,17 +296,19 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 // Adds Node registration codes to the database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
 	// TODO: This will eventually need to be updated to intake applications too
-	for i, info := range infos {
-		err := PermissioningDb.InsertApplication(Application{
+	i := 1
+	for _, info := range infos {
+		err := PermissioningDb.InsertApplication(&Application{
 			Id: uint64(i),
-		}, Node{
+		}, &Node{
 			Code:          info.RegCode,
-			Order:         info.Order,
+			Sequence:      info.Order,
 			ApplicationId: uint64(i),
 		})
 		if err != nil {
 			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
 				err)
 		}
+		i++
 	}
 }

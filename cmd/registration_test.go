@@ -11,6 +11,7 @@ import (
 	nodeComms "gitlab.com/elixxir/comms/node"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/utils"
+	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
@@ -49,6 +50,16 @@ func TestMain(m *testing.M) {
 		fmt.Printf("Could not get gateway cert: %+v\n", err)
 	}
 
+	minGatewayVersion, err := version.ParseVersion("1.1.0")
+	if err != nil {
+		fmt.Printf("Could not parse gateway version: %+v\n", err)
+	}
+
+	minServerVersion, err := version.ParseVersion("1.1.0")
+	if err != nil {
+		fmt.Printf("Could not parse server version: %+v\n", err)
+	}
+
 	testParams = Params{
 		Address:                   permAddr,
 		CertPath:                  testkeys.GetCACertPath(),
@@ -58,6 +69,8 @@ func TestMain(m *testing.M) {
 		maxRegistrationAttempts:   5,
 		registrationCountDuration: time.Hour,
 		minimumNodes:              3,
+		minGatewayVersion:         minGatewayVersion,
+		minServerVersion:          minServerVersion,
 	}
 	nodeComm = nodeComms.StartNode(&id.TempGateway, nodeAddr, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
@@ -80,7 +93,7 @@ func TestEmptyDataBase(t *testing.T) {
 		registrationCountDuration: time.Hour,
 	}
 	// Start registration server
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -108,7 +121,7 @@ func TestEmptyDataBase(t *testing.T) {
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	// Start registration server
 	testParams.Address = "0.0.0.0:5901"
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -123,12 +136,12 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	}
 	//Insert a sample regCode
 	applicationId := uint64(10)
-	newNode := storage.Node{
+	newNode := &storage.Node{
 		Code:          "AAAA",
-		Order:         "0",
+		Sequence:      "0",
 		ApplicationId: applicationId,
 	}
-	newApplication := storage.Application{Id: applicationId}
+	newApplication := &storage.Application{Id: applicationId}
 	err = storage.PermissioningDb.InsertApplication(newApplication, newNode)
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
@@ -147,7 +160,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 //Happy Path:  Insert a reg code along with a node
 func TestRegCodeExists_RegUser(t *testing.T) {
 	//Initialize an implementation and the permissioning server
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf("Unable to start: %+v", err)
 	}
@@ -199,7 +212,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	localParams := testParams
 	localParams.minimumNodes = 1
 	// Start registration server
-	impl, err := StartRegistration(localParams)
+	impl, err := StartRegistration(localParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -247,7 +260,7 @@ func TestDoubleRegistration(t *testing.T) {
 	RegParams = testParams
 
 	// Start registration server
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -298,7 +311,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	localParams.minimumNodes = 2
 
 	// Start registration server
-	impl, err := StartRegistration(localParams)
+	impl, err := StartRegistration(localParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -337,7 +350,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 }
 
 func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -399,7 +412,7 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	}
 
 	// Start registration server
-	impl, err := StartRegistration(testParams2)
+	impl, err := StartRegistration(testParams2, make(chan bool))
 	if err != nil {
 		t.Errorf(err.Error())
 	}

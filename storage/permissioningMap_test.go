@@ -17,8 +17,8 @@ import (
 func TestMapImpl_InsertNodeMetric(t *testing.T) {
 	m := &MapImpl{nodeMetrics: make(map[uint64]*NodeMetric)}
 
-	newMetric := NodeMetric{
-		NodeId:    "TEST",
+	newMetric := &NodeMetric{
+		NodeId:    []byte("TEST"),
 		StartTime: time.Now(),
 		EndTime:   time.Now(),
 		NumPings:  1000,
@@ -48,8 +48,9 @@ func TestMapImpl_InsertNodeMetric(t *testing.T) {
 func TestMapImpl_InsertRoundMetric(t *testing.T) {
 	m := &MapImpl{roundMetrics: make(map[uint64]*RoundMetric)}
 
-	newMetric := RoundMetric{
-		Error:         "TEST",
+	roundId := uint64(1)
+	newMetric := &RoundMetric{
+		Id:            roundId,
 		PrecompStart:  time.Now(),
 		PrecompEnd:    time.Now(),
 		RealtimeStart: time.Now(),
@@ -64,8 +65,8 @@ func TestMapImpl_InsertRoundMetric(t *testing.T) {
 		t.Errorf("Unable to insert round metric: %+v", err)
 	}
 
-	insertedMetric := m.roundMetrics[m.roundMetricCounter]
-	if insertedMetric.Id != m.roundMetricCounter {
+	insertedMetric := m.roundMetrics[roundId]
+	if insertedMetric.Id != roundId {
 		t.Errorf("Mismatched ID returned!")
 	}
 	if insertedMetric.PrecompStart != newMetric.PrecompStart {
@@ -83,7 +84,46 @@ func TestMapImpl_InsertRoundMetric(t *testing.T) {
 	if insertedMetric.BatchSize != newMetric.BatchSize {
 		t.Errorf("Mismatched BatchSize returned!")
 	}
-	if insertedMetric.Error != newMetric.Error {
+}
+
+// Happy path
+func TestMapImpl_InsertRoundError(t *testing.T) {
+	m := &MapImpl{roundMetrics: make(map[uint64]*RoundMetric)}
+
+	roundId := id.Round(1)
+	newMetric := &RoundMetric{
+		Id:            uint64(roundId),
+		PrecompStart:  time.Now(),
+		PrecompEnd:    time.Now(),
+		RealtimeStart: time.Now(),
+		RealtimeEnd:   time.Now(),
+		BatchSize:     420,
+	}
+	newTopology := [][]byte{id.NewIdFromBytes([]byte("Node1"), t).Bytes(),
+		id.NewIdFromBytes([]byte("Node2"), t).Bytes()}
+	newErrors := []string{"err1", "err2"}
+
+	err := m.InsertRoundMetric(newMetric, newTopology)
+	if err != nil {
+		t.Errorf("Unable to insert round metric: %+v", err)
+	}
+
+	insertedMetric := m.roundMetrics[uint64(roundId)]
+
+	err = m.InsertRoundError(roundId, newErrors[0])
+	if err != nil {
+		t.Errorf("Unable to insert round error: %+v", err)
+	}
+
+	err = m.InsertRoundError(roundId, newErrors[1])
+	if err != nil {
+		t.Errorf("Unable to insert round error: %+v", err)
+	}
+
+	if insertedMetric.RoundErrors[0].Error != newErrors[0] {
+		t.Errorf("Mismatched Error returned!")
+	}
+	if insertedMetric.RoundErrors[1].Error != newErrors[1] {
 		t.Errorf("Mismatched Error returned!")
 	}
 }
@@ -97,12 +137,12 @@ func TestMapImpl_InsertApplication(t *testing.T) {
 
 	// Attempt to load in a valid code
 	applicationId := uint64(10)
-	newNode := Node{
+	newNode := &Node{
 		Code:          "TEST",
-		Order:         "BLARG",
+		Sequence:      "BLARG",
 		ApplicationId: applicationId,
 	}
-	newApplication := Application{Id: applicationId}
+	newApplication := &Application{Id: applicationId}
 	err := m.InsertApplication(newApplication, newNode)
 
 	// Verify the insert was successful
@@ -110,9 +150,9 @@ func TestMapImpl_InsertApplication(t *testing.T) {
 		t.Errorf("Expected to successfully insert node registration code")
 	}
 
-	if m.nodes[newNode.Code].Order != newNode.Order {
+	if m.nodes[newNode.Code].Sequence != newNode.Sequence {
 		t.Errorf("Order string incorret; Expected: %s, Recieved: %s",
-			newNode.Order, m.nodes[newNode.Code].Order)
+			newNode.Sequence, m.nodes[newNode.Code].Sequence)
 	}
 }
 
@@ -125,15 +165,15 @@ func TestMapImpl_InsertApplication_Duplicate(t *testing.T) {
 
 	// Load in a registration code
 	applicationId := uint64(10)
-	newNode := Node{
+	newNode := &Node{
 		Code:          "TEST",
-		Order:         "BLARG",
+		Sequence:      "BLARG",
 		ApplicationId: applicationId,
 	}
-	newApplication := Application{Id: applicationId}
+	newApplication := &Application{Id: applicationId}
 
 	// Attempt to load in a duplicate application
-	m.applications[applicationId] = &newApplication
+	m.applications[applicationId] = newApplication
 	err := m.InsertApplication(newApplication, newNode)
 
 	// Verify the insert failed
@@ -142,7 +182,7 @@ func TestMapImpl_InsertApplication_Duplicate(t *testing.T) {
 	}
 
 	// Attempt to load in a duplicate code
-	m.nodes[newNode.Code] = &newNode
+	m.nodes[newNode.Code] = newNode
 	err = m.InsertApplication(newApplication, newNode)
 
 	// Verify the insert failed
@@ -166,8 +206,8 @@ func TestMapImpl_RegisterNode(t *testing.T) {
 	m.nodes[code] = &Node{Code: code}
 
 	// Attempt to insert a node
-	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), code, cert,
-		addr, gwAddr, gwCert)
+	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), code, addr,
+		cert, gwAddr, gwCert)
 
 	// Verify the insert was successful
 	if info := m.nodes[code]; err != nil || info.NodeCertificate != cert ||

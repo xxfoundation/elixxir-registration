@@ -17,32 +17,45 @@ import (
 )
 
 // Insert Application object along with associated unregistered Node
-func (m *DatabaseImpl) InsertApplication(application Application, unregisteredNode Node) error {
-	application.Node = unregisteredNode
+func (m *DatabaseImpl) InsertApplication(application *Application, unregisteredNode *Node) error {
+	application.Node = *unregisteredNode
 	return m.db.Create(application).Error
 }
 
 // Insert NodeMetric object
-func (m *DatabaseImpl) InsertNodeMetric(metric NodeMetric) error {
+func (m *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
 	jww.DEBUG.Printf("Attempting to insert node metric: %+v", metric)
 	return m.db.Create(metric).Error
 }
 
-// Insert RoundMetric object
-func (m *DatabaseImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error {
-	newTopology := make([]Topology, len(topology))
-	for i, node := range topology {
-		nodeId, err := id.Unmarshal(node)
+// Insert RoundError object
+func (m *DatabaseImpl) InsertRoundError(roundId id.Round, errStr string) error {
+	roundErr := &RoundError{
+		RoundMetricId: uint64(roundId),
+		Error:         errStr,
+	}
+	jww.DEBUG.Printf("Attempting to insert round error: %+v", roundErr)
+	return m.db.Create(roundErr).Error
+}
+
+// Insert RoundMetric object with associated topology
+func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
+
+	// Build the Topology
+	metric.Topologies = make([]Topology, len(topology))
+	for i, nodeIdBytes := range topology {
+		nodeId, err := id.Unmarshal(nodeIdBytes)
 		if err != nil {
 			return errors.New(err.Error())
 		}
 		topologyObj := Topology{
-			NodeId: nodeId.String(),
+			NodeId: nodeId.Bytes(),
 			Order:  uint8(i),
 		}
-		newTopology[i] = topologyObj
+		metric.Topologies[i] = topologyObj
 	}
-	metric.Topologies = newTopology
+
+	// Save the RoundMetric
 	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
 	return m.db.Save(metric).Error
 }
@@ -73,6 +86,6 @@ func (m *DatabaseImpl) GetNode(code string) (*Node, error) {
 // Return all nodes in storage with the given Status
 func (m *DatabaseImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 	var nodes []*Node
-	err := m.db.Where("status = ?", status).Find(&nodes).Error
+	err := m.db.Where("status = ?", uint8(status)).Find(&nodes).Error
 	return nodes, err
 }
