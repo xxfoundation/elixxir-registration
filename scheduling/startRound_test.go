@@ -31,7 +31,7 @@ func TestStartRound(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -56,9 +56,12 @@ func TestStartRound(t *testing.T) {
 		testPool.Add(nodeState)
 	}
 
-	roundID := NewRoundID(0)
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -70,7 +73,7 @@ func TestStartRound(t *testing.T) {
 		t.Errorf("Received error from startRound(): %v", err)
 	}
 
-	if testState.GetRoundMap().GetRound(0).GetRoundState() != states.PRECOMPUTING {
+	if testState.GetRoundMap().GetRound(1).GetRoundState() != states.PRECOMPUTING {
 		t.Errorf("In unexpected state after round creation: %v",
 			testState.GetRoundMap().GetRound(0).GetRoundState())
 	}
@@ -90,7 +93,7 @@ func TestStartRound_BadState(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -115,13 +118,16 @@ func TestStartRound_BadState(t *testing.T) {
 		testPool.Add(nodeState)
 	}
 
-	roundID := NewRoundID(0)
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
 
 	// Manually set the state of the round
-	badState := round.NewState_Testing(roundID.Get(), states.COMPLETED, t)
+	badState := round.NewState_Testing(roundID, states.COMPLETED, t)
 	testState.GetRoundMap().AddRound_Testing(badState, t)
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -134,7 +140,7 @@ func TestStartRound_BadState(t *testing.T) {
 			"should make starting precomputing impossible")
 	}
 
-	if testState.GetRoundMap().GetRound(0).GetRoundState() == states.PRECOMPUTING {
+	if testState.GetRoundMap().GetRound(1).GetRoundState() == states.PRECOMPUTING {
 		t.Errorf("Should not be in precomputing after artificially incrementign round")
 	}
 }
@@ -154,7 +160,7 @@ func TestStartRound_BadNode(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey)
+	testState, err := storage.NewState(privKey, "", "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -179,10 +185,13 @@ func TestStartRound_BadNode(t *testing.T) {
 		testPool.Add(nodeState)
 	}
 
-	roundID := NewRoundID(0)
-	badState := round.NewState_Testing(roundID.Get(), states.COMPLETED, t)
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
+	badState := round.NewState_Testing(roundID, states.COMPLETED, t)
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID.Get(), testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}

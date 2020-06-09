@@ -165,10 +165,10 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 // Insert metrics about the newly-completed round into storage
 func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 	metric := &storage.RoundMetric{
-		PrecompStart:  time.Unix(0, int64(roundInfo.Timestamps[current.PRECOMPUTING])),
-		PrecompEnd:    time.Unix(0, int64(roundInfo.Timestamps[current.STANDBY])),
-		RealtimeStart: time.Unix(0, int64(roundInfo.Timestamps[current.REALTIME])),
-		RealtimeEnd:   time.Unix(0, int64(roundInfo.Timestamps[current.COMPLETED])),
+		PrecompStart:  time.Unix(0, int64(roundInfo.Timestamps[states.PRECOMPUTING])),
+		PrecompEnd:    time.Unix(0, int64(roundInfo.Timestamps[states.STANDBY])),
+		RealtimeStart: time.Unix(0, int64(roundInfo.Timestamps[states.REALTIME])),
+		RealtimeEnd:   time.Unix(0, int64(roundInfo.Timestamps[states.COMPLETED])),
 		BatchSize:     roundInfo.BatchSize,
 	}
 
@@ -183,26 +183,38 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 
 // killRound sets the round to failed and clears the node's round
 func killRound(state *storage.NetworkState, r *round.State, n *node.State, roundError *pb.RoundError) error {
-	r.AppendError(roundError)
 
+	r.AppendError(roundError)
 	_ = r.Update(states.FAILED, time.Now())
 	n.ClearRound()
+	roundId := r.GetRoundID()
+
 	// Build the round info and update the network state
 	err := state.AddRoundUpdate(r.BuildRoundInfo())
 	if err != nil {
 		return errors.WithMessagef(err, "Could not issue "+
 			"update to kill round %v", r.GetRoundID())
 	}
-	err_str := fmt.Sprintf("RoundError{RoundID: %d, NodeID: %s, Error: %s}", roundError.Id, roundError.NodeId, roundError.Error)
 
+	// Attempt to insert the RoundMetric for the failed round
 	metric := &storage.RoundMetric{
-		Error: err_str,
+		Id:            uint64(roundId),
+		PrecompStart:  time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.PRECOMPUTING])),
+		PrecompEnd:    time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.STANDBY])),
+		RealtimeStart: time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.REALTIME])),
+		RealtimeEnd:   time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.FAILED])),
+		BatchSize:     r.BuildRoundInfo().BatchSize,
 	}
-
-	err = storage.PermissioningDb.InsertRoundMetric(metric, r.BuildRoundInfo().Topology)
+	err = storage.PermissioningDb.InsertRoundMetric(metric,
+		r.BuildRoundInfo().Topology)
 	if err != nil {
 		return errors.WithMessagef(err, "Could not insert round metric: %+v", err)
 	}
 
-	return nil
+	// Next, attempt to insert the error for the failed round
+	err = storage.PermissioningDb.InsertRoundError(roundId, roundError.Error)
+	if err != nil {
+		err = errors.WithMessagef(err, "Could not insert round error: %+v", err)
+	}
+	return err
 }
