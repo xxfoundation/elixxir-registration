@@ -29,9 +29,9 @@ func (m *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
 }
 
 // Insert RoundError object
-func (m *DatabaseImpl) InsertRoundError(roundId uint64, errStr string) error {
+func (m *DatabaseImpl) InsertRoundError(roundId id.Round, errStr string) error {
 	roundErr := &RoundError{
-		RoundMetricId: roundId,
+		RoundMetricId: uint64(roundId),
 		Error:         errStr,
 	}
 	jww.DEBUG.Printf("Attempting to insert round error: %+v", roundErr)

@@ -57,15 +57,16 @@ func (m *MapImpl) InsertNodeMetric(metric *NodeMetric) error {
 }
 
 // Insert RoundError object
-func (m *MapImpl) InsertRoundError(roundId uint64, errStr string) error {
+func (m *MapImpl) InsertRoundError(roundId id.Round, errStr string) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
+	rid := uint64(roundId)
 
-	m.roundMetrics[roundId].RoundErrors = append(
-		m.roundMetrics[roundId].RoundErrors,
+	m.roundMetrics[rid].RoundErrors = append(
+		m.roundMetrics[rid].RoundErrors,
 		RoundError{
 			Id:            0, // Currently useless in MapImpl
-			RoundMetricId: roundId,
+			RoundMetricId: rid,
 			Error:         errStr,
 		},
 	)

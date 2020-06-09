@@ -187,7 +187,7 @@ func killRound(state *storage.NetworkState, r *round.State, n *node.State, round
 	r.AppendError(roundError)
 	_ = r.Update(states.FAILED, time.Now())
 	n.ClearRound()
-	roundId := uint64(r.GetRoundID())
+	roundId := r.GetRoundID()
 
 	// Build the round info and update the network state
 	err := state.AddRoundUpdate(r.BuildRoundInfo())
@@ -195,12 +195,10 @@ func killRound(state *storage.NetworkState, r *round.State, n *node.State, round
 		return errors.WithMessagef(err, "Could not issue "+
 			"update to kill round %v", r.GetRoundID())
 	}
-	errStr := fmt.Sprintf("RoundError{NodeID: %s, Error: %s}",
-		roundError.NodeId, roundError.Error)
 
 	// Attempt to insert the RoundMetric for the failed round
 	metric := &storage.RoundMetric{
-		Id:            roundId,
+		Id:            uint64(roundId),
 		PrecompStart:  time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.PRECOMPUTING])),
 		PrecompEnd:    time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.STANDBY])),
 		RealtimeStart: time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.REALTIME])),
@@ -214,7 +212,7 @@ func killRound(state *storage.NetworkState, r *round.State, n *node.State, round
 	}
 
 	// Next, attempt to insert the error for the failed round
-	err = storage.PermissioningDb.InsertRoundError(roundId, errStr)
+	err = storage.PermissioningDb.InsertRoundError(roundId, roundError.Error)
 	if err != nil {
 		err = errors.WithMessagef(err, "Could not insert round error: %+v", err)
 	}

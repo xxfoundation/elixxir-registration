@@ -54,7 +54,7 @@ type NodeRegistration interface {
 	// Insert RoundMetric object with associated topology
 	InsertRoundMetric(metric *RoundMetric, topology [][]byte) error
 	// Insert RoundError object
-	InsertRoundError(roundId uint64, errStr string) error
+	InsertRoundError(roundId id.Round, errStr string) error
 }
 
 type ClientRegistration interface {
@@ -260,6 +260,7 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 	models := []interface{}{
 		&RegistrationCode{}, &User{},
 		&Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
+		&RoundError{},
 	}
 	for _, model := range models {
 		err = db.AutoMigrate(model).Error

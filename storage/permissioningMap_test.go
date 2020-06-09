@@ -90,9 +90,9 @@ func TestMapImpl_InsertRoundMetric(t *testing.T) {
 func TestMapImpl_InsertRoundError(t *testing.T) {
 	m := &MapImpl{roundMetrics: make(map[uint64]*RoundMetric)}
 
-	roundId := uint64(1)
+	roundId := id.Round(1)
 	newMetric := &RoundMetric{
-		Id:            roundId,
+		Id:            uint64(roundId),
 		PrecompStart:  time.Now(),
 		PrecompEnd:    time.Now(),
 		RealtimeStart: time.Now(),
@@ -108,7 +108,7 @@ func TestMapImpl_InsertRoundError(t *testing.T) {
 		t.Errorf("Unable to insert round metric: %+v", err)
 	}
 
-	insertedMetric := m.roundMetrics[roundId]
+	insertedMetric := m.roundMetrics[uint64(roundId)]
 
 	err = m.InsertRoundError(roundId, newErrors[0])
 	if err != nil {
