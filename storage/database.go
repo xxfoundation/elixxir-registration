@@ -52,8 +52,10 @@ type NodeRegistration interface {
 	InsertApplication(application *Application, unregisteredNode *Node) error
 	// Insert NodeMetric object
 	InsertNodeMetric(metric *NodeMetric) error
-	// Insert RoundMetric object
+	// Insert RoundMetric object with associated topology
 	InsertRoundMetric(metric *RoundMetric, topology [][]byte) error
+	// Insert RoundError object
+	InsertRoundError(roundId uint64, errStr string) error
 }
 
 type ClientRegistration interface {
@@ -177,11 +179,10 @@ type Topology struct {
 
 // Struct representing Round Metrics table in the database
 type RoundMetric struct {
-	// Auto-incrementing primary key (Do not set)
-	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
-	// Nullable error string, if one occurred
-	Error string
+	// Unique ID of the round as assigned by the network
+	Id uint64 `gorm:"primary_key"`
 
+	// Round timestamp information
 	PrecompStart  time.Time `gorm:"NOT NULL"`
 	PrecompEnd    time.Time `gorm:"NOT NULL"`
 	RealtimeStart time.Time `gorm:"NOT NULL"`
@@ -190,6 +191,21 @@ type RoundMetric struct {
 
 	// Each RoundMetric has many Nodes participating in each Round
 	Topologies []Topology `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
+
+	// Each RoundMetric can have many Errors in each Round
+	RoundErrors []RoundError `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
+}
+
+// Struct representing Round Errors table in the database
+type RoundError struct {
+	// Auto-incrementing primary key (Do not set)
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
+
+	// ID of the round for a given run of the network
+	RoundMetricId uint64 `gorm:"NOT NULL;type:bigint REFERENCES round_metrics(Id)"`
+
+	// String of error that occurred during the Round
+	Error string `gorm:"NOT NULL"`
 }
 
 // Initialize the Database interface with database backend

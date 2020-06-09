@@ -56,6 +56,22 @@ func (m *MapImpl) InsertNodeMetric(metric *NodeMetric) error {
 	return nil
 }
 
+// Insert RoundError object
+func (m *MapImpl) InsertRoundError(roundId uint64, errStr string) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	m.roundMetrics[roundId].RoundErrors = append(
+		m.roundMetrics[roundId].RoundErrors,
+		RoundError{
+			Id:            0, // Currently useless in MapImpl
+			RoundMetricId: roundId,
+			Error:         errStr,
+		},
+	)
+	return nil
+}
+
 // Insert RoundMetric object
 func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
 	m.mut.Lock()
@@ -67,8 +83,8 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 
 	// Build Topology objects
 	metric.Topologies = make([]Topology, len(topology))
-	for i, node := range topology {
-		nodeId, err := id.Unmarshal(node)
+	for i, nodeIdBytes := range topology {
+		nodeId, err := id.Unmarshal(nodeIdBytes)
 		if err != nil {
 			return errors.New(err.Error())
 		}

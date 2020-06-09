@@ -183,26 +183,35 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 
 // killRound sets the round to failed and clears the node's round
 func killRound(state *storage.NetworkState, r *round.State, n *node.State, roundError *pb.RoundError) error {
-	r.AppendError(roundError)
 
+	r.AppendError(roundError)
 	_ = r.Update(states.FAILED, time.Now())
 	n.ClearRound()
+	roundId := roundError.Id
+
 	// Build the round info and update the network state
 	err := state.AddRoundUpdate(r.BuildRoundInfo())
 	if err != nil {
 		return errors.WithMessagef(err, "Could not issue "+
 			"update to kill round %v", r.GetRoundID())
 	}
-	err_str := fmt.Sprintf("RoundError{RoundID: %d, NodeID: %s, Error: %s}", roundError.Id, roundError.NodeId, roundError.Error)
+	errStr := fmt.Sprintf("RoundError{NodeID: %s, Error: %s}",
+		roundError.NodeId, roundError.Error)
 
+	// Attempt to insert an empty RoundMetric for the failed round
 	metric := &storage.RoundMetric{
-		Error: err_str,
+		Id: roundId,
 	}
-
-	err = storage.PermissioningDb.InsertRoundMetric(metric, r.BuildRoundInfo().Topology)
+	err = storage.PermissioningDb.InsertRoundMetric(metric,
+		r.BuildRoundInfo().Topology)
 	if err != nil {
 		return errors.WithMessagef(err, "Could not insert round metric: %+v", err)
 	}
 
-	return nil
+	// Next, attempt to insert the error for the failed round
+	err = storage.PermissioningDb.InsertRoundError(roundId, errStr)
+	if err != nil {
+		err = errors.WithMessagef(err, "Could not insert round error: %+v", err)
+	}
+	return err
 }
