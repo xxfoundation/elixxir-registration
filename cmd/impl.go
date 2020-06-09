@@ -49,6 +49,7 @@ type RegistrationImpl struct {
 	// may be fruitful
 	registrationLock sync.Mutex
 	beginScheduling  chan struct{}
+	QuitChans
 }
 
 //function used to schedule nodes
@@ -67,6 +68,8 @@ type Params struct {
 	publicAddress             string
 	maxRegistrationAttempts   uint64
 	registrationCountDuration time.Duration
+	schedulingKillTimeout     time.Duration
+	closeTimeout              time.Duration
 	minimumNodes              uint32
 	udbId                     []byte
 	minGatewayVersion         version.Version
@@ -88,7 +91,7 @@ func toGroup(grp map[string]string) (*ndf.Group, error) {
 }
 
 // Configure and start the Permissioning Server
-func StartRegistration(params Params) (*RegistrationImpl, error) {
+func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error) {
 
 	// Initialize variables
 	regRemaining := uint64(0)
@@ -123,12 +126,11 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		NdfReady:                &ndfReady,
 
 		numRegistered:   0,
-		beginScheduling: make(chan struct{}),
+		beginScheduling: make(chan struct{}, 1),
 	}
 
 	// Create timer and channel to be used by routine that clears the number of
 	// registrations every time the ticker activates
-	done := make(chan bool)
 	go func() {
 		ticker := time.NewTicker(params.registrationCountDuration)
 		regImpl.registrationCapacityRestRunner(ticker, done)
@@ -164,8 +166,8 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		CMIX:      RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
-		Nodes:    make([]ndf.Node, params.minimumNodes),
-		Gateways: make([]ndf.Gateway, params.minimumNodes),
+		Nodes:    make([]ndf.Node, 0),
+		Gateways: make([]ndf.Gateway, 0),
 	}
 
 	// Assemble notification server information if configured

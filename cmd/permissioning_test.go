@@ -64,8 +64,9 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		maxRegistrationAttempts:   5,
 		registrationCountDuration: time.Hour,
 	}
+	bc := make(chan bool, 1)
 	// Start registration server
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, bc)
 	if err != nil {
 		t.Error(err)
 	}

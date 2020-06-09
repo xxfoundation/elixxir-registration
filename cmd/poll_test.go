@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/comms/registration"
+	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
@@ -20,6 +22,7 @@ import (
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/testkeys"
 	"sync"
 	"sync/atomic"
@@ -41,7 +44,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
@@ -212,7 +215,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	RegParams.minimumNodes = 3
 	fmt.Println("-A")
 	// Start registration server
-	impl, err := StartRegistration(RegParams)
+	impl, err := StartRegistration(RegParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -270,6 +273,8 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("Could not decode ndf: %v\nNdf output: %s", err,
 			string(observedNDFBytes))
 	}
+
+	fmt.Printf("\n\n\nndf: %v\n\n\n", observedNDF.Nodes)
 	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
 		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v, \nNdf: %+v",
 			udbId, observedNDF.UDB.ID, observedNDF)
@@ -315,7 +320,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	RegParams.minimumNodes = 3
 
 	// Start registration server
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -355,7 +360,7 @@ func TestPoll_BannedNode(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	impl, err := StartRegistration(testParams)
+	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
@@ -779,5 +784,87 @@ func TestUpdateNdfGatewayAddr_Error(t *testing.T) {
 	if err == nil {
 		t.Errorf("updateNdfGatewayAddr() did not produce an error when the " +
 			"gateway ID doesn't exist.")
+	}
+}
+
+func TestVerifyError(t *testing.T) {
+	nodeCert, err := utils.ReadFile(testkeys.GetNodeCertPath())
+	if err != nil {
+		fmt.Printf("Could not get node cert: %+v\n", err)
+	}
+
+	nodeKey, err = utils.ReadFile(testkeys.GetNodeKeyPath())
+	if err != nil {
+		fmt.Printf("Could not get node key: %+v\n", err)
+	}
+
+	// Read in private key
+	key, err := utils.ReadFile(testkeys.GetCAKeyPath())
+	if err != nil {
+		t.Errorf("failed to read key at %+v: %+v",
+			testkeys.GetCAKeyPath(), err)
+	}
+
+	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	if err != nil {
+		t.Errorf("Failed to parse permissioning server key: %+v. "+
+			"PermissioningKey is %+v", err, pk)
+	}
+	// Start registration server
+	ndfReady := uint32(0)
+	state, err := storage.NewState(pk)
+	if err != nil {
+		t.Errorf("Unable to create state: %+v", err)
+	}
+	testVersion, _ := version.ParseVersion("0.0.0")
+	impl := &RegistrationImpl{
+		State:    state,
+		NdfReady: &ndfReady,
+		params: &Params{
+			minGatewayVersion: testVersion,
+			minServerVersion:  testVersion,
+		},
+		Comms: &registration.Comms{
+			ProtoComms: &connect.ProtoComms{},
+		},
+	}
+
+	errNodeId := id.NewIdFromString("node", id.Node, t)
+	_, err = impl.Comms.AddHost(errNodeId, "0.0.0.0:8000", nodeCert, false, false)
+	if err != nil {
+		t.Error("Failed to add host")
+	}
+
+	errMsg := &pb.RoundError{
+		Id:        0,
+		NodeId:    errNodeId.Marshal(),
+		Error:     "test err",
+		Signature: nil,
+	}
+
+	loadedKey, err := rsa.LoadPrivateKeyFromPem(nodeKey)
+	if err != nil {
+		t.Error("Failed to load pk")
+	}
+
+	err = signature.Sign(errMsg, loadedKey)
+	if err != nil {
+		t.Error("Failed to sign message")
+	}
+
+	msg := &pb.PermissioningPoll{
+		Error: errMsg,
+	}
+
+	nsm := node.NewStateMap()
+	_ = nsm.AddNode(errNodeId, "", "", "")
+	n := nsm.GetNode(errNodeId)
+	rsm := round.NewStateMap()
+	s, _ := rsm.AddRound(id.Round(0), 4, connect.NewCircuit([]*id.ID{errNodeId}))
+	_ = n.SetRound(s)
+
+	err = verifyError(msg, n, impl)
+	if err != nil {
+		t.Error("Failed to verify error")
 	}
 }
