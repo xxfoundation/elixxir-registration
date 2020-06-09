@@ -92,6 +92,11 @@ schedulingAlgorithm: "single"
 
 # Path to file with config for scheduling algorithm within the user directory 
 schedulingConfigPath: "Scheduling_Simple_NonRandom.json"
+
+# Time that the registration server waits before timing out while killing the round scheduling thread
+schedulingKillTimeout: 10s
+# Time the registration waits for rounds to close out and stop (optional)
+closeTimeout: 60s
 ```
 
 ### SchedulingConfig template:
@@ -101,7 +106,7 @@ schedulingConfigPath: "Scheduling_Simple_NonRandom.json"
   "BatchSize": 32,
   "RandomOrdering": false,
   "MinimumDelay": 60,
-  "RealtimeDelay": 120,
+  "RealtimeDelay": 3000,
   "Threshold":     10,
   "NodeCleanUpInterval": 3,  
   "Secure": 		     true

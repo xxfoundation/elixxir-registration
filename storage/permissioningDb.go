@@ -17,19 +17,19 @@ import (
 )
 
 // Insert Application object along with associated unregistered Node
-func (m *DatabaseImpl) InsertApplication(application Application, unregisteredNode Node) error {
-	application.Node = unregisteredNode
+func (m *DatabaseImpl) InsertApplication(application *Application, unregisteredNode *Node) error {
+	application.Node = *unregisteredNode
 	return m.db.Create(application).Error
 }
 
 // Insert NodeMetric object
-func (m *DatabaseImpl) InsertNodeMetric(metric NodeMetric) error {
+func (m *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
 	jww.DEBUG.Printf("Attempting to insert node metric: %+v", metric)
 	return m.db.Create(metric).Error
 }
 
 // Insert RoundMetric object
-func (m *DatabaseImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) error {
+func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
 	newTopology := make([]Topology, len(topology))
 	for i, node := range topology {
 		nodeId, err := id.Unmarshal(node)
@@ -37,7 +37,7 @@ func (m *DatabaseImpl) InsertRoundMetric(metric RoundMetric, topology [][]byte) 
 			return errors.New(err.Error())
 		}
 		topologyObj := Topology{
-			NodeId: nodeId.String(),
+			NodeId: nodeId.Bytes(),
 			Order:  uint8(i),
 		}
 		newTopology[i] = topologyObj
@@ -73,6 +73,6 @@ func (m *DatabaseImpl) GetNode(code string) (*Node, error) {
 // Return all nodes in storage with the given Status
 func (m *DatabaseImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 	var nodes []*Node
-	err := m.db.Where("status = ?", status).Find(&nodes).Error
+	err := m.db.Where("status = ?", uint8(status)).Find(&nodes).Error
 	return nodes, err
 }

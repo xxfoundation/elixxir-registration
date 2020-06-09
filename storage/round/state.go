@@ -33,6 +33,9 @@ type State struct {
 	// Number of nodes ready for the next transition
 	readyForTransition uint8
 
+	// List of round errors received from nodes
+	roundErrors []*pb.RoundError
+
 	mux sync.RWMutex
 }
 
@@ -107,7 +110,7 @@ func (s *State) Update(state states.Round, stamp time.Time) error {
 	}
 
 	s.state = state
-	s.base.Timestamps[state] = uint64(stamp.Unix())
+	s.base.Timestamps[state] = uint64(stamp.UnixNano())
 	return nil
 }
 
@@ -140,4 +143,18 @@ func (s *State) GetTopology() *connect.Circuit {
 func (s *State) GetRoundID() id.Round {
 	rid := id.Round(s.base.ID)
 	return rid
+}
+
+// Append a round error to our list of stored rounderrors
+func (s *State) AppendError(roundError *pb.RoundError) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	for _, e := range s.roundErrors {
+		if e.String() == roundError.String() {
+			return
+		}
+	}
+
+	s.roundErrors = append(s.roundErrors, roundError)
 }

@@ -83,15 +83,15 @@ func createNode(testState *storage.NetworkState, order, regCode string, appId in
 
 	// Create a node with a banned status
 	applicationId := uint64(appId)
-	testNode := storage.Node{
+	testNode := &storage.Node{
 		Id:            idBytes,
 		Code:          regCode,
-		Order:         order,
+		Sequence:      order,
 		ApplicationId: applicationId,
 		Status:        uint8(status),
 	}
 
-	newApplication := storage.Application{Id: applicationId}
+	newApplication := &storage.Application{Id: applicationId}
 
 	// Insert banned node into database
 	err = storage.PermissioningDb.InsertApplication(newApplication, testNode)

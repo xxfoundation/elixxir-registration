@@ -14,10 +14,12 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/version"
+	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -120,12 +122,20 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// processing completes
 	n.GetPollingLock().Lock()
 
+	err = verifyError(msg, n, m)
+	if err != nil {
+		return response, err
+	}
+
 	// update does edge checking. It ensures the state change recieved was a
 	// valid one and the state fo the node and
 	// any associated round allows for that change. If the change was not
 	// acceptable, it is not recorded and an error is returned, which is
 	// propagated to the node
 	update, updateNotification, err := n.Update(current.Activity(msg.Activity))
+	if update && err == nil && updateNotification.ToActivity == current.ERROR {
+		updateNotification.Error = msg.Error
+	}
 
 	//if an update ocured, report it to the control thread
 	if update {
@@ -174,6 +184,8 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 func checkVersion(requiredGateway, requiredServer version.Version,
 	msg *pb.PermissioningPoll) error {
 
+	// Skip checking gateway if the server is polled before gateway resulting in
+	// a blank gateway version
 	if msg.GetGatewayVersion() != "" {
 		// Parse the gateway version string
 		gatewayVersion, err := version.ParseVersion(msg.GetGatewayVersion())
@@ -185,9 +197,12 @@ func checkVersion(requiredGateway, requiredServer version.Version,
 		// Check that the gateway version is compatible with the required version
 		if !version.IsCompatible(requiredGateway, gatewayVersion) {
 			return errors.Errorf("The gateway version %#v is incompatible with "+
-				"the required version %#v.", gatewayVersion.String(), requiredGateway.String())
+				"the required version %#v.",
+				gatewayVersion.String(), requiredGateway.String())
 		}
-
+	} else {
+		jww.DEBUG.Printf("Gateway version string is empty. Skipping gateway " +
+			"version check.")
 	}
 
 	// Parse the server version string
@@ -200,7 +215,8 @@ func checkVersion(requiredGateway, requiredServer version.Version,
 	// Check that the server version is compatible with the required version
 	if !version.IsCompatible(requiredServer, serverVersion) {
 		return errors.Errorf("The server version %#v is incompatible with "+
-			"the required version %#v.", serverVersion.String(), requiredServer.String())
+			"the required version %#v.",
+			serverVersion.String(), requiredServer.String())
 	}
 
 	return nil
@@ -253,5 +269,35 @@ func updateNdfGatewayAddr(nid *id.ID, requiredAddr string, ndf *ndf.NetworkDefin
 			"in order to update its address", gid.String())
 	}
 
+	return nil
+}
+
+// Verify that the error in permissioningpoll is valid
+// Returns an error if invalid, or nil if valid or no error
+func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) error {
+	// If there is an error, we must verify the signature before an update occurs
+	// We do not want to update if the signature is invalid
+	if msg.Error != nil {
+		ok, r := n.GetCurrentRound()
+		if !ok {
+			return errors.New("Node cannot submit a rounderror when it is not participating in a round")
+		} else if msg.Error.Id != uint64(r.GetRoundID()) {
+			return errors.New("This error is not associated with the round the submitting node is participating in")
+		}
+
+		errorNodeId, err := id.Unmarshal(msg.Error.NodeId)
+		if err != nil {
+			return errors.WithMessage(err, "Could not unmarshal node ID from error in poll")
+		}
+		h, ok := m.Comms.GetHost(errorNodeId)
+		if !ok {
+			return errors.Errorf("Host %+v was not found in host map", errorNodeId)
+		}
+		nodePK := h.GetPubKey()
+		err = signature.Verify(msg.Error, nodePK)
+		if err != nil {
+			return errors.WithMessage(err, "Failed to verify error signature")
+		}
+	}
 	return nil
 }

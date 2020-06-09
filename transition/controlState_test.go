@@ -61,11 +61,11 @@ func TestTransitions_NeedsRound(t *testing.T) {
 	}
 }
 
-// Tests the lok for function for RequiredRoundState produces expected results
+// Tests the look up function for RequiredRoundState produces expected results
 func TestTransitions_RequiredRoundState(t *testing.T) {
 	testTransition := newTransitions()
 
-	expectedRoundState := []states.Round{nilRoundState, nilRoundState, 1, 1, 3, 3, nilRoundState}
+	expectedRoundState := []states.Round{nilRoundState, nilRoundState, 1, 1, 3, 4, nilRoundState}
 	receivedRoundState := make([]states.Round, len(expectedRoundState))
 
 	for i := uint32(0); i < uint32(current.CRASH); i++ {
