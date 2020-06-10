@@ -10,8 +10,10 @@ import (
 	"fmt"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"sync"
 	"testing"
 )
 
@@ -27,13 +29,17 @@ func TestBannedNodeTracker(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	testState, err := storage.NewState(privKey, "", "")
+	impl := &RegistrationImpl{
+		State:   testState,
+		NDFLock: sync.Mutex{},
+	}
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
 	}
 
 	// Call ban on an empty database
-	err = BannedNodeTracker(testState)
+	err = BannedNodeTracker(impl)
 	if err != nil {
 		t.Errorf("Unexpected error in happy path: %v", err)
 	}
@@ -41,11 +47,33 @@ func TestBannedNodeTracker(t *testing.T) {
 	// Create an active and banned node
 	bannedNode := createNode(testState, "0", "AAA", 10, node.Banned, t)
 	activeNode := createNode(testState, "1", "BBB", 20, node.Active, t)
+	curDef := testState.GetFullNdf().Get()
+	curDef.Nodes = append(curDef.Nodes, ndf.Node{
+		ID:             bannedNode.Marshal(),
+		Address:        "",
+		TlsCertificate: "",
+	})
+	curDef.Nodes = append(curDef.Nodes, ndf.Node{
+		ID:             activeNode.Marshal(),
+		Address:        "",
+		TlsCertificate: "",
+	})
+	err = testState.UpdateNdf(curDef)
+	if err != nil {
+		t.Error("Failed to update test state ndf")
+	}
 
 	// Clean out banned nodes
-	err = BannedNodeTracker(testState)
+	fmt.Println("1")
+	err = BannedNodeTracker(impl)
 	if err != nil {
 		t.Errorf("Error with node tracker: %v", err)
+	}
+	fmt.Println("2")
+
+	updatedDef := testState.GetFullNdf().Get()
+	if len(updatedDef.Nodes) != 1 {
+		t.Error("Banned node tracker did not alter ndf")
 	}
 
 	// Check that the banned node has been updated to banned
@@ -62,11 +90,10 @@ func TestBannedNodeTracker(t *testing.T) {
 
 	// Clean out banned nodes again. Check that it does not attempt to
 	// ban an already banned node
-	err = BannedNodeTracker(testState)
+	err = BannedNodeTracker(impl)
 	if err != nil {
 		t.Errorf("Error with node tracker: %v", err)
 	}
-
 }
 
 func createNode(testState *storage.NetworkState, order, regCode string, appId int,

@@ -208,12 +208,17 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 }
 
 // Tracks nodes banned from the network. Sends an update to the scheduler
-func BannedNodeTracker(state *storage.NetworkState) error {
+func BannedNodeTracker(impl *RegistrationImpl) error {
+	state := impl.State
 	// Search the database for any banned nodes
 	bannedNodes, err := storage.PermissioningDb.GetNodesByStatus(node.Banned)
 	if err != nil {
 		return errors.Errorf("Failed to get nodes by %s status: %v", node.Banned, err)
 	}
+
+	impl.NDFLock.Lock()
+	defer impl.NDFLock.Unlock()
+	def := state.GetFullNdf().Get()
 
 	// Parse through the returned node list
 	for _, n := range bannedNodes {
@@ -222,6 +227,28 @@ func BannedNodeTracker(state *storage.NetworkState) error {
 		if err != nil {
 			return errors.Errorf("Failed to convert node %s to id.ID: %v", n.Id, err)
 		}
+
+		var newNodes []ndf.Node
+		// Loop through NDF nodes to remove any that are banned
+		for i, node := range def.Nodes {
+			ndfNodeID, err := id.Unmarshal(node.ID)
+			if err != nil {
+				return errors.WithMessage(err, "Failed to unmarshal node id from NDF")
+			}
+			if ndfNodeID.Cmp(nodeId) {
+				continue
+			} else {
+				newNodes = append(newNodes, def.Nodes[i])
+			}
+		}
+		if len(newNodes) != len(def.Nodes) {
+			def.Nodes = newNodes
+			err = state.UpdateNdf(def)
+			if err != nil {
+				return errors.WithMessage(err, "Failed to update NDF after bans")
+			}
+		}
+
 		// Get the node from the nodeMap
 		ns := state.GetNodeMap().GetNode(nodeId)
 		var nun node.UpdateNotification
