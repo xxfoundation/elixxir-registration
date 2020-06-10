@@ -23,7 +23,7 @@ import (
 
 // The minimum amount of nodes needed
 // to give an ndf is only a single node
-const SingleNodeRegistered  = 1
+const SingleNodeRegistered = 1
 
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
@@ -178,9 +178,9 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
-	// Once a single node has been registered, the ndf may be distributed
+	// Once a single node has been registered, nodes
 	if uint32(m.numRegistered) == SingleNodeRegistered {
-		jww.INFO.Printf("Nodes are now ready to receive an ndf!")
+		jww.INFO.Printf("NDF is available to be received!")
 		atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
 
 	}
@@ -188,7 +188,6 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	// Kick off the network if the minimum number of nodes has been met
 	if uint32(m.numRegistered) == m.params.minimumNodes {
 		jww.INFO.Printf("Minimum number of nodes %d registered for scheduling!", m.numRegistered)
-
 
 		//signal that scheduling should begin
 		m.beginScheduling <- struct{}{}
