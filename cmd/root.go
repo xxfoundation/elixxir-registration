@@ -207,7 +207,7 @@ var rootCmd = &cobra.Command{
 				select {
 				case <-ticker.C:
 					// Keep track of banned nodes
-					err = BannedNodeTracker(impl.State)
+					err = BannedNodeTracker(impl)
 					if err != nil {
 						jww.FATAL.Panicf("BannedNodeTracker failed: %v", err)
 					}

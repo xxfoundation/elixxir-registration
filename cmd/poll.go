@@ -20,8 +20,6 @@ import (
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage/node"
-	"strconv"
-	"strings"
 	"sync/atomic"
 )
 
@@ -68,32 +66,49 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	// Get server and gateway addresses
-	serverPortString := strconv.Itoa(int(msg.ServerPort))
-	nodeAddress := strings.Join([]string{serverAddress, serverPortString}, ":")
+	nodeAddress := serverAddress
 	gatewayAddress := msg.GatewayAddress
 
 	// Update server and gateway addresses in state, if necessary
 	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
 	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
 
+	jww.TRACE.Printf("Received gateway and node update: %s, %s", nodeAddress,
+		gatewayAddress)
+
 	// If state required changes, then check the NDF
 	if nodeUpdate || gatewayUpdate {
+
+		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", nodeAddress,
+			gatewayAddress)
+		m.NDFLock.Lock()
 		currentNDF := m.State.GetFullNdf().Get()
 
 		if nodeUpdate {
 			if err = updateNdfNodeAddr(nid, serverAddress, currentNDF); err != nil {
+				m.NDFLock.Unlock()
 				return
 			}
 		}
 		if gatewayUpdate {
 			if err = updateNdfGatewayAddr(nid, gatewayAddress, currentNDF); err != nil {
+				m.NDFLock.Unlock()
 				return
 			}
 		}
 
 		// Update the internal state with the newly-updated ndf
 		if err = m.State.UpdateNdf(currentNDF); err != nil {
+			m.NDFLock.Unlock()
 			return
+		}
+		m.NDFLock.Unlock()
+
+		// Output the current topology to a JSON file
+		err = outputToJSON(currentNDF, m.ndfOutputPath)
+		if err != nil {
+			err := errors.Errorf("unable to output NDF JSON file: %+v", err)
+			jww.ERROR.Print(err.Error())
 		}
 	}
 
@@ -115,6 +130,11 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// Commit updates reported by the node if node involved in the current round
 	jww.DEBUG.Printf("Updating state for node %s: %+v",
 		auth.Sender.GetId(), msg)
+
+	// if the node is in not started state, do not produce an update
+	if current.Activity(msg.Activity) == current.NOT_STARTED{
+		return
+	}
 
 	// when a node poll is received, the nodes polling lock is taken here. If
 	// there is no update, it is released in this endpoint, otherwise it is

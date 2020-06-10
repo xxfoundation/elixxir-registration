@@ -27,7 +27,7 @@ type Params struct {
 	MinimumDelay time.Duration
 	// delay in ms for a realtime round to start
 	RealtimeDelay time.Duration
-	// Time in minutes between cleaning up offline nodes
+	// Time in seconds between cleaning up offline nodes
 	NodeCleanUpInterval time.Duration
 
 	//SIMPLE ONLY//
