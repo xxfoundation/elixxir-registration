@@ -73,13 +73,13 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
 	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
 
-	jww.INFO.Printf("Received gateway and node update: %s, %s", nodeAddress,
+	jww.TRACE.Printf("Received gateway and node update: %s, %s", nodeAddress,
 		gatewayAddress)
 
 	// If state required changes, then check the NDF
 	if nodeUpdate || gatewayUpdate {
 
-		jww.INFO.Printf("UPDATING gateway and node update: %s, %s", nodeAddress,
+		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", nodeAddress,
 			gatewayAddress)
 		m.NDFLock.Lock()
 		currentNDF := m.State.GetFullNdf().Get()
