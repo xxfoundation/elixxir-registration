@@ -72,6 +72,8 @@ var rootCmd = &cobra.Command{
 		nsCertPath := viper.GetString("nsCertPath")
 		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
+		roundIdPath := viper.GetString("roundIdPath")
+		updateIdPath := viper.GetString("updateIdPath")
 
 		maxRegistrationAttempts := viper.GetUint64("maxRegistrationAttempts")
 		if maxRegistrationAttempts == 0 {
@@ -176,6 +178,8 @@ var rootCmd = &cobra.Command{
 			minimumNodes:              viper.GetUint32("minimumNodes"),
 			minGatewayVersion:         minGatewayVersion,
 			minServerVersion:          minServerVersion,
+			roundIdPath:               roundIdPath,
+			updateIdPath:              updateIdPath,
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
