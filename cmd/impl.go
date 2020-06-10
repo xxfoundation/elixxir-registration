@@ -208,13 +208,16 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 }
 
 // Tracks nodes banned from the network. Sends an update to the scheduler
-func BannedNodeTracker(state *storage.NetworkState) error {
+func BannedNodeTracker(impl *RegistrationImpl) error {
+	state := impl.State
 	// Search the database for any banned nodes
 	bannedNodes, err := storage.PermissioningDb.GetNodesByStatus(node.Banned)
 	if err != nil {
 		return errors.Errorf("Failed to get nodes by %s status: %v", node.Banned, err)
 	}
 
+	impl.NDFLock.Lock()
+	defer impl.NDFLock.Unlock()
 	def := state.GetFullNdf().Get()
 
 	// Parse through the returned node list

@@ -13,6 +13,7 @@ import (
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"sync"
 	"testing"
 )
 
@@ -28,13 +29,17 @@ func TestBannedNodeTracker(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	testState, err := storage.NewState(privKey, "", "")
+	impl := &RegistrationImpl{
+		State:   testState,
+		NDFLock: sync.Mutex{},
+	}
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
 	}
 
 	// Call ban on an empty database
-	err = BannedNodeTracker(testState)
+	err = BannedNodeTracker(impl)
 	if err != nil {
 		t.Errorf("Unexpected error in happy path: %v", err)
 	}
@@ -59,10 +64,12 @@ func TestBannedNodeTracker(t *testing.T) {
 	}
 
 	// Clean out banned nodes
-	err = BannedNodeTracker(testState)
+	fmt.Println("1")
+	err = BannedNodeTracker(impl)
 	if err != nil {
 		t.Errorf("Error with node tracker: %v", err)
 	}
+	fmt.Println("2")
 
 	updatedDef := testState.GetFullNdf().Get()
 	if len(updatedDef.Nodes) != 1 {
@@ -83,11 +90,10 @@ func TestBannedNodeTracker(t *testing.T) {
 
 	// Clean out banned nodes again. Check that it does not attempt to
 	// ban an already banned node
-	err = BannedNodeTracker(testState)
+	err = BannedNodeTracker(impl)
 	if err != nil {
 		t.Errorf("Error with node tracker: %v", err)
 	}
-
 }
 
 func createNode(testState *storage.NetworkState, order, regCode string, appId int,
