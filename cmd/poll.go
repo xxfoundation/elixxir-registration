@@ -131,6 +131,11 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	jww.DEBUG.Printf("Updating state for node %s: %+v",
 		auth.Sender.GetId(), msg)
 
+	// if the node is in not started state, do not produce an update
+	if current.Activity(msg.Activity) == current.NOT_STARTED{
+		return
+	}
+
 	// when a node poll is received, the nodes polling lock is taken here. If
 	// there is no update, it is released in this endpoint, otherwise it is
 	// released in the scheduling algorithm which blocks all future polls until

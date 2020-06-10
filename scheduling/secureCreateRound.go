@@ -18,9 +18,6 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 	// Create a latencyTable (todo: have this table be based on better data)
 	latencyMap := createLatencyTable()
 
-	// Clean offline nodes from the pool
-	pool.CleanOfflineNodes(params.NodeCleanUpInterval * time.Minute)
-
 	// Pick nodes from the pool
 	nodes, err := pool.PickNRandAtThreshold(int(params.Threshold), int(params.TeamSize))
 	if err != nil {

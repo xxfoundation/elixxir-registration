@@ -67,7 +67,15 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 		if hasRound {
 			n.ClearRound()
 		}
-		pool.Add(n)
+		// If the node was in the offline pool, set it to online
+		//  (which also adds it to the online pool)
+		if update.FromStatus == node.Inactive && update.ToStatus == node.Active {
+			pool.SetNodeToOnline(n)
+		} else {
+			// Otherwise, add it to the online pool normally
+			pool.Add(n)
+		}
+
 	case current.PRECOMPUTING:
 		// Check that node in precomputing does have a round
 		if !hasRound {
