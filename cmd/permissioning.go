@@ -178,8 +178,9 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
+	// Once a single node has been registered, the ndf may be distributed
 	if uint32(m.numRegistered) == SingleNodeRegistered {
-		jww.INFO.Printf("Nodes now ready to receive an ndf")
+		jww.INFO.Printf("Nodes are now ready to receive an ndf!")
 		atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
 
 	}
