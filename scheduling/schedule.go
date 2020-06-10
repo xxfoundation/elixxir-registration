@@ -53,16 +53,16 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 	//select the correct round creator
 	var createRound roundCreator
-	var teamFormationThreshold *uint32
+	var teamFormationThreshold uint32
 
 	if params.Secure {
 		jww.INFO.Printf("Using Secure Teaming Algorithm")
 		createRound = createSecureRound
-		teamFormationThreshold = &params.Threshold
+		teamFormationThreshold = params.Threshold
 	} else {
 		jww.INFO.Printf("Using Simple Teaming Algorithm")
 		createRound = createSimpleRound
-		teamFormationThreshold = &params.TeamSize
+		teamFormationThreshold = params.TeamSize
 	}
 
 	//begin the thread that starts rounds
@@ -121,7 +121,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		}
 
 		//create a new round if the pool is full
-		if pool.Len() >= int(*teamFormationThreshold) && killed == nil {
+		if pool.Len() >= int(teamFormationThreshold) && killed == nil {
 			// Increment round ID
 			currentID, err := state.IncrementRoundID()
 			if err != nil {
