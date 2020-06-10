@@ -297,5 +297,12 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 		return response, err
 	}
 
+	impl.Functions.CheckRegistration = func(msg *pb.RegisteredNodeCheck) (confirmation *pb.RegisteredNodeConfirmation, e error) {
+		response := instance.CheckNodeRegistration(msg.RegCode)
+
+		return &pb.RegisteredNodeConfirmation{IsRegistered: response}, nil
+
+	}
+
 	return impl
 }

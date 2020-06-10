@@ -21,9 +21,27 @@ import (
 	"sync/atomic"
 )
 
-// The minimum amount of nodes needed
-// to give an ndf is only a single node
-const SingleNodeRegistered = 1
+// Handle registration check attempt by node. We assume
+//  the code being searched for is the node's.
+// todo: test this function
+func (m *RegistrationImpl) CheckNodeRegistration(registrationCode string) bool {
+
+	// Check that the node hasn't already been registered. If there is an error,
+	//  then the code being checked is either invalid or not registered.
+	nodeInfo, err := storage.PermissioningDb.GetNode(registrationCode)
+	if err != nil {
+		return false
+	}
+
+	// If the node's id is not empty, then the node has been registered
+	if !bytes.Equal(nodeInfo.Id, []byte("")) {
+		return true
+	}
+
+	// Otherwise the code has not been registered
+	return false
+
+}
 
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
@@ -178,15 +196,10 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
-	// Once a single node has been registered, nodes
-	if uint32(m.numRegistered) == SingleNodeRegistered {
-		jww.INFO.Printf("NDF is available to be received!")
-		atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
-
-	}
-
 	// Kick off the network if the minimum number of nodes has been met
 	if uint32(m.numRegistered) == m.params.minimumNodes {
+		atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
+
 		jww.INFO.Printf("Minimum number of nodes %d registered for scheduling!", m.numRegistered)
 
 		//signal that scheduling should begin
