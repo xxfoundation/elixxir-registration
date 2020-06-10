@@ -42,9 +42,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	// pool which tracks nodes which are not in a team
 	pool := NewWaitingPool()
 
-	//tracks and incrememnts the round id
-	roundID := NewRoundID(0)
-
 	//channel to send new rounds over to be created
 	newRoundChan := make(chan protoRound, newRoundChanLen)
 
@@ -52,7 +49,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	errorChan := make(chan error, 1)
 
 	//calculate the realtime delay from params
-	rtDelay := time.Duration(params.RealtimeDelay) * time.Millisecond
+	rtDelay := params.RealtimeDelay * time.Millisecond
 
 	//select the correct round creator
 	var createRound roundCreator
@@ -120,7 +117,13 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 		//create a new round if the pool is full
 		if pool.Len() == int(params.TeamSize) && killed == nil {
-			newRound, err := createRound(params, pool, roundID.Next(), state)
+			// Increment round ID
+			currentID, err := state.IncrementRoundID()
+			if err != nil {
+				return err
+			}
+
+			newRound, err := createRound(params, pool, currentID, state)
 			if err != nil {
 				return err
 			}
