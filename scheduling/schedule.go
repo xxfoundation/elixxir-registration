@@ -53,14 +53,16 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 	//select the correct round creator
 	var createRound roundCreator
+	var teamFormationThreshold *uint32
 
 	if params.Secure {
 		jww.INFO.Printf("Using Secure Teaming Algorithm")
 		createRound = createSecureRound
+		teamFormationThreshold = &params.Threshold
 	} else {
 		jww.INFO.Printf("Using Simple Teaming Algorithm")
-
 		createRound = createSimpleRound
+		teamFormationThreshold = &params.TeamSize
 	}
 
 	//begin the thread that starts rounds
@@ -111,8 +113,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		}
 
 		//remove offline nodes from pool to more accurately determine if pool is eligible for round creation
-		// TODO(nan) Should this be in seconds or minutes?
-		//  Really it would be better for it to be a duration (probably)
 		pool.CleanOfflineNodes(params.NodeCleanUpInterval * time.Second)
 
 		//if a round has finished, decrement num rounds
@@ -121,7 +121,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		}
 
 		//create a new round if the pool is full
-		if pool.Len() >= int(params.TeamSize) && killed == nil {
+		if pool.Len() >= int(*teamFormationThreshold) && killed == nil {
 			// Increment round ID
 			currentID, err := state.IncrementRoundID()
 			if err != nil {
@@ -180,11 +180,11 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 		}
 
 		// Output data into logs
-		jww.TRACE.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
-		jww.TRACE.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
-		jww.TRACE.Printf("Teams in in waiting: %v", len(waitingNodes)/int(params.TeamSize))
-		jww.TRACE.Printf("Teams in pool: %v", pool.Len())
-		jww.TRACE.Printf("Teams in offline pool: %v", pool.OfflineLen())
+		jww.TRACE.Printf("Nodes in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Nodes in precomp: %v", len(precompNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Nodes in waiting: %v", len(waitingNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Nodes in pool: %v", pool.Len())
+		jww.TRACE.Printf("Nodes in offline pool: %v", pool.OfflineLen())
 
 		// Reset the data for next periodic poll
 		realtimeNodes = make([]*node.State, 0)
