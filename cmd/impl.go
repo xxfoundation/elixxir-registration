@@ -50,6 +50,8 @@ type RegistrationImpl struct {
 	registrationLock sync.Mutex
 	beginScheduling  chan struct{}
 	QuitChans
+
+	NDFLock sync.Mutex
 }
 
 //function used to schedule nodes
