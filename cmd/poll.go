@@ -132,7 +132,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		auth.Sender.GetId(), msg)
 
 	// if the node is in not started state, do not produce an update
-	if current.Activity(msg.Activity) == current.NOT_STARTED{
+	if current.Activity(msg.Activity) == current.NOT_STARTED {
 		return
 	}
 
