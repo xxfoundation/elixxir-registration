@@ -20,8 +20,6 @@ import (
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage/node"
-	"strconv"
-	"strings"
 	"sync/atomic"
 )
 
@@ -68,16 +66,21 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	// Get server and gateway addresses
-	serverPortString := strconv.Itoa(int(msg.ServerPort))
-	nodeAddress := strings.Join([]string{serverAddress, serverPortString}, ":")
+	nodeAddress := serverAddress
 	gatewayAddress := msg.GatewayAddress
 
 	// Update server and gateway addresses in state, if necessary
 	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
 	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
 
+	jww.INFO.Printf("Received gateway and node update: %s, %s", nodeAddress,
+		gatewayAddress)
+
 	// If state required changes, then check the NDF
 	if nodeUpdate || gatewayUpdate {
+
+		jww.INFO.Printf("UPDATING gateway and node update: %s, %s", nodeAddress,
+			gatewayAddress)
 		currentNDF := m.State.GetFullNdf().Get()
 
 		if nodeUpdate {
