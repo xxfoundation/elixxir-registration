@@ -349,24 +349,6 @@ func TestTopology_MultiNodes(t *testing.T) {
 	impl.Comms.Shutdown()
 }
 
-func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {
-	impl, err := StartRegistration(testParams, nil)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	testVersion := "0.0.0a"
-	setClientVersion(testVersion)
-	version, err := impl.GetCurrentClientVersion()
-	if err != nil {
-		t.Error(err)
-	}
-	if version != testVersion {
-		t.Errorf("Version was %+v, expected %+v", version, testVersion)
-	}
-	impl.Comms.Shutdown()
-
-}
-
 // Complete test of CheckNodeRegistration
 func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 	// Initialize the database
@@ -417,6 +399,23 @@ func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 
 	//Kill the connections for the next test
 	impl.Comms.Shutdown()
+
+}
+
+func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {
+	impl, err := StartRegistration(testParams, nil)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	testVersion := "0.0.0a"
+	setClientVersion(testVersion)
+	version, err := impl.GetCurrentClientVersion()
+	if err != nil {
+		t.Error(err)
+	}
+	if version != testVersion {
+		t.Errorf("Version was %+v, expected %+v", version, testVersion)
+	}
 
 }
 
