@@ -81,22 +81,34 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 
 		jww.INFO.Printf("UPDATING gateway and node update: %s, %s", nodeAddress,
 			gatewayAddress)
+		m.NDFLock.Lock()
 		currentNDF := m.State.GetFullNdf().Get()
 
 		if nodeUpdate {
 			if err = updateNdfNodeAddr(nid, serverAddress, currentNDF); err != nil {
+				m.NDFLock.Unlock()
 				return
 			}
 		}
 		if gatewayUpdate {
 			if err = updateNdfGatewayAddr(nid, gatewayAddress, currentNDF); err != nil {
+				m.NDFLock.Unlock()
 				return
 			}
 		}
 
 		// Update the internal state with the newly-updated ndf
 		if err = m.State.UpdateNdf(currentNDF); err != nil {
+			m.NDFLock.Unlock()
 			return
+		}
+		m.NDFLock.Unlock()
+
+		// Output the current topology to a JSON file
+		err = outputToJSON(currentNDF, m.ndfOutputPath)
+		if err != nil {
+			err := errors.Errorf("unable to output NDF JSON file: %+v", err)
+			jww.ERROR.Print(err.Error())
 		}
 	}
 

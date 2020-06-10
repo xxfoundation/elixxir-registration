@@ -162,9 +162,11 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	jww.INFO.Printf("Registered %d node(s)! %s", m.numRegistered, regCode)
 
 	// Add the new node to the topology
+	m.NDFLock.Lock()
 	networkDef := m.State.GetFullNdf().Get()
 	gateway, node, order, err := assembleNdf(regCode)
 	if err != nil {
+		m.NDFLock.Unlock()
 		err := errors.Errorf("unable to assemble topology: %+v", err)
 		jww.ERROR.Print(err.Error())
 		return errors.Errorf("Could not complete registration: %+v", err)
@@ -186,6 +188,7 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 	// update the internal state with the newly-updated ndf
 	err = m.State.UpdateNdf(networkDef)
+	m.NDFLock.Unlock()
 	if err != nil {
 		return err
 	}
