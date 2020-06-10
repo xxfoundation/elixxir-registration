@@ -21,6 +21,10 @@ import (
 	"sync/atomic"
 )
 
+// The minimum amount of nodes needed
+// to give an ndf is only a single node
+const SingleNodeRegistered  = 1
+
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 	GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
@@ -174,11 +178,16 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
+	if uint32(m.numRegistered) == SingleNodeRegistered {
+		jww.INFO.Printf("Nodes now ready to receive an ndf")
+		atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
+
+	}
+
 	// Kick off the network if the minimum number of nodes has been met
 	if uint32(m.numRegistered) == m.params.minimumNodes {
-		jww.INFO.Printf("Minimum number of nodes %d registered!", m.numRegistered)
+		jww.INFO.Printf("Minimum number of nodes %d registered for scheduling!", m.numRegistered)
 
-		atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
 
 		//signal that scheduling should begin
 		m.beginScheduling <- struct{}{}
