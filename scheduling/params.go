@@ -30,6 +30,9 @@ type Params struct {
 	// Time in seconds between cleaning up offline nodes
 	NodeCleanUpInterval time.Duration
 
+	//Debug flag used to cause regular prints about the state of the network
+	DebugTrackRounds bool
+
 	//SIMPLE ONLY//
 	// sets if simple teaming randomly orders nodes or orders based upon the
 	// number in the `order` string
