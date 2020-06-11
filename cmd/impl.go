@@ -326,5 +326,16 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 		return response, err
 	}
 
+	// This comm is not authenticated as servers call this early in their
+	//lifecycle to check if they've already registered
+	impl.Functions.CheckRegistration = func(msg *pb.RegisteredNodeCheck) (confirmation *pb.RegisteredNodeConfirmation, e error) {
+		response := instance.CheckNodeRegistration(msg.RegCode)
+
+		// Returning any errors, such as database errors, would result in too much
+		// leaked data for a public call.
+		return &pb.RegisteredNodeConfirmation{IsRegistered: response}, nil
+
+	}
+
 	return impl
 }

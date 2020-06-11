@@ -12,16 +12,35 @@ import (
 	"bytes"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/crypto/tls"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
-	"gitlab.com/elixxir/registration/certAuthority"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
 	"sync/atomic"
 )
+
+// Handle registration check attempt by node. We assume
+//  the code being searched for is the node's.
+func (m *RegistrationImpl) CheckNodeRegistration(registrationCode string) bool {
+
+	// Check that the node hasn't already been registered. If there is an error,
+	//  then the code being checked is either invalid or not registered.
+	nodeInfo, err := storage.PermissioningDb.GetNode(registrationCode)
+	if err != nil {
+		return false
+	}
+
+	// If the node's id is not empty, then the node has been registered
+	if !bytes.Equal(nodeInfo.Id, []byte("")) {
+		return true
+	}
+
+	// Otherwise the code has not been registered
+	return false
+
+}
 
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
@@ -38,32 +57,10 @@ func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
 		return errors.Errorf(
 			"Node with registration code %+v has already been registered", RegistrationCode)
 	}
-	pk := &m.State.GetPrivateKey().PrivateKey
-	// Load the node and gateway certs
-	nodeCertificate, err := tls.LoadCertificate(ServerTlsCert)
-	if err != nil {
-		return errors.Errorf("Failed to load node certificate: %v", err)
-	}
-	gatewayCertificate, err := tls.LoadCertificate(GatewayTlsCert)
-	if err != nil {
-		return errors.Errorf("Failed to load gateway certificate: %v", err)
-	}
-
-	// Sign the node and gateway certs
-	signedNodeCert, err := certAuthority.Sign(nodeCertificate,
-		m.permissioningCert, pk)
-	if err != nil {
-		return errors.Errorf("failed to sign node certificate: %v", err)
-	}
-	signedGatewayCert, err := certAuthority.Sign(gatewayCertificate,
-		m.permissioningCert, pk)
-	if err != nil {
-		return errors.Errorf("Failed to sign gateway certificate: %v", err)
-	}
 
 	// Attempt to insert Node into the database
 	err = storage.PermissioningDb.RegisterNode(ID, RegistrationCode, ServerAddr,
-		signedNodeCert, GatewayAddr, signedGatewayCert)
+		ServerTlsCert, GatewayAddr, GatewayTlsCert)
 	if err != nil {
 		return errors.Errorf("unable to insert node: %+v", err)
 	}
@@ -203,9 +200,9 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 	// Kick off the network if the minimum number of nodes has been met
 	if uint32(m.numRegistered) == m.params.minimumNodes {
-		jww.INFO.Printf("Minimum number of nodes %d registered!", m.numRegistered)
-
 		atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
+
+		jww.INFO.Printf("Minimum number of nodes %d registered for scheduling!", m.numRegistered)
 
 		//signal that scheduling should begin
 		m.beginScheduling <- struct{}{}

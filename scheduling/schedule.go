@@ -184,11 +184,11 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 		}
 
 		// Output data into logs
-		jww.INFO.Printf("Nodes in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
-		jww.INFO.Printf("Nodes in precomp: %v", len(precompNodes)/int(params.TeamSize))
-		jww.INFO.Printf("Nodes in waiting: %v", len(waitingNodes)/int(params.TeamSize))
-		jww.INFO.Printf("Nodes in pool: %v", pool.Len())
-		jww.INFO.Printf("Nodes in offline pool: %v", pool.OfflineLen())
+		jww.TRACE.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Teams in waiting: %v", len(waitingNodes)/int(params.TeamSize))
+		jww.TRACE.Printf("Teams in pool: %v", pool.Len())
+		jww.TRACE.Printf("Teams in offline pool: %v", pool.OfflineLen())
 
 		// Reset the data for next periodic poll
 		realtimeNodes = make([]*node.State, 0)
