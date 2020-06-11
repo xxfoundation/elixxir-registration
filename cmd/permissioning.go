@@ -23,7 +23,6 @@ import (
 
 // Handle registration check attempt by node. We assume
 //  the code being searched for is the node's.
-// todo: test this function
 func (m *RegistrationImpl) CheckNodeRegistration(registrationCode string) bool {
 
 	// Check that the node hasn't already been registered. If there is an error,
