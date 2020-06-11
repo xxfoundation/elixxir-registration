@@ -90,8 +90,12 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 	numRounds := 0
 
-	// Uncomment when need to debug status of rounds
-	//go trackRounds(params, state, pool)
+	// optional debug print which regularly prints the status of rounds and nodes
+	// turned on by setting DebugTrackRounds to true in the scheduling config
+	if params.DebugTrackRounds{
+		go trackRounds(params, state, pool)
+	}
+
 
 	//start receiving updates from nodes
 	for true {
