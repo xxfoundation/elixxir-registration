@@ -196,6 +196,46 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
 		}
 
+		// Determine how long between storing Node metrics
+		nodeMetricInterval := time.Duration(
+			viper.GetInt64("nodeMetricInterval")) * time.Second
+		nodeTicker := time.NewTicker(nodeMetricInterval)
+
+		// Run the Node metric tracker forever in another thread
+		go func(quitChan QuitChan) {
+			jww.DEBUG.Printf("Beginning storage of node metrics every %+v...",
+				nodeMetricInterval)
+			for {
+				// Store the metric start time
+				startTime := time.Now()
+				select {
+				// Wait for the ticker to fire
+				case <-nodeTicker.C:
+
+					// Iterate over the Node States
+					nodeStates := impl.State.GetNodeMap().GetNodeStates()
+					for _, nodeState := range nodeStates {
+
+						// Build the NodeMetric
+						currentTime := time.Now()
+						metric := &storage.NodeMetric{
+							NodeId:    nodeState.GetID().Bytes(),
+							StartTime: startTime,
+							EndTime:   currentTime,
+							NumPings:  nodeState.GetAndResetNumPolls(),
+						}
+
+						// Store the NodeMetric
+						err := storage.PermissioningDb.InsertNodeMetric(metric)
+						if err != nil {
+							jww.FATAL.Panicf(
+								"Unable to store node metric: %+v", err)
+						}
+					}
+				}
+			}
+		}(impl.MakeQuitChan())
+
 		// Determine how long between polling for banned nodes
 		interval := viper.GetInt("BanTrackerInterval")
 		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
@@ -232,11 +272,6 @@ var rootCmd = &cobra.Command{
 			err = scheduling.Scheduler(SchedulingConfig, impl.State, schedulingKillChan)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
 		}(impl.MakeQuitChan())
-
-		// Determine how long between storing Node metrics
-		nodeMetricInterval := time.Duration(
-			viper.GetInt64("nodeMetricInterval")) * time.Second
-		nodeTicker := time.NewTicker(nodeMetricInterval)
 
 		// Set up signal handler for stopping round creation
 		killer := func() int {
@@ -280,43 +315,10 @@ var rootCmd = &cobra.Command{
 				jww.ERROR.Print("Round creation stop timed out")
 			}
 		}
-		ReceiveUSR2Signal(func() { quitter(impl) })
+		go ReceiveUSR2Signal(func() { quitter(impl) })
 
-		// Set up Signal Hangler for safe program exit
-		ReceiveExitSignal(killer)
-
-		// Run the Node metric tracker forever in another thread
-		go func(quitChan QuitChan) {
-			for {
-				// Store the metric start time
-				startTime := time.Now()
-				select {
-				// Wait for the ticker to fire
-				case <-nodeTicker.C:
-
-					// Iterate over the Node States
-					nodeStates := impl.State.GetNodeMap().GetNodeStates()
-					for _, nodeState := range nodeStates {
-
-						// Build the NodeMetric
-						currentTime := time.Now()
-						metric := &storage.NodeMetric{
-							NodeId:    nodeState.GetID().Bytes(),
-							StartTime: startTime,
-							EndTime:   currentTime,
-							NumPings:  nodeState.GetAndResetNumPolls(),
-						}
-
-						// Store the NodeMetric
-						err := storage.PermissioningDb.InsertNodeMetric(metric)
-						if err != nil {
-							jww.FATAL.Panicf(
-								"Unable to store node metric: %+v", err)
-						}
-					}
-				}
-			}
-		}(impl.MakeQuitChan())
+		// Block forever on Signal Handler for safe program exit
+		go ReceiveExitSignal(killer)
 
 		// Block forever to prevent the program ending
 		select {}
