@@ -131,6 +131,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	jww.DEBUG.Printf("Updating state for node %s: %+v",
 		auth.Sender.GetId(), msg)
 
+	//if the node needs to get more than 100 updates then return
+	if len(response.Updates)>100{
+		response.Updates = response.Updates[:100]
+		return
+	}
+
 	// if the node is in not started state, do not produce an update
 	if current.Activity(msg.Activity) == current.NOT_STARTED {
 		return
@@ -144,6 +150,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 
 	err = verifyError(msg, n, m)
 	if err != nil {
+		n.GetPollingLock().Unlock()
+		return response, err
+	}
+
+	if current.Activity(msg.Activity)==current.ERROR && msg.Error.Id == 0{
+		n.GetPollingLock().Unlock()
 		return response, err
 	}
 
