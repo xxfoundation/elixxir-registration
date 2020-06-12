@@ -124,13 +124,29 @@ func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
 		return err
 	}
 
+	//copy the topology
+	topology:= round.GetTopology()
+
+	topologyCopy := make([][]byte, len(topology))
+	for i, nid := range topology{
+		topologyCopy[i] = make([]byte, len(nid))
+		copy(topologyCopy[i],nid)
+	}
+
+	//copy the timestamps
+	timestamps := round.GetTimestamps()
+	timestampsCopy := make([]uint64, len(timestamps))
+	for i, stamp := range timestamps{
+		timestampsCopy[i] = stamp
+	}
+
 	roundCopy := &pb.RoundInfo{
 		ID:         round.GetID(),
 		UpdateID:   updateID,
 		State:      round.GetState(),
 		BatchSize:  round.GetBatchSize(),
-		Topology:   round.GetTopology(),
-		Timestamps: round.GetTimestamps(),
+		Topology:   topologyCopy,
+		Timestamps: timestampsCopy,
 	}
 
 	err = signature.Sign(roundCopy, s.privateKey)
@@ -141,6 +157,8 @@ func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
 
 	jww.DEBUG.Printf("Round state updated to %s",
 		states.Round(roundCopy.State))
+
+	jww.TRACE.Printf("Round Info: %+v", roundCopy)
 
 	return s.roundUpdates.AddRound(roundCopy)
 }

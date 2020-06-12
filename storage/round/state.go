@@ -114,16 +114,35 @@ func (s *State) Update(state states.Round, stamp time.Time) error {
 	return nil
 }
 
-//returns an unsigned roundinfo with all fields filled in
+// returns an unsigned roundinfo with all fields filled in
+// everything must be deep copied to ensure future edits do not edit the output
+// and cause signature verification failures
 func (s *State) BuildRoundInfo() *pb.RoundInfo {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
+
+	//copy the topology
+	topology:= s.base.GetTopology()
+
+	topologyCopy := make([][]byte, len(topology))
+	for i, nid := range topology{
+		topologyCopy[i] = make([]byte, len(nid))
+		copy(topologyCopy[i],nid)
+	}
+
+	//copy the timestamps
+	timestamps := s.base.GetTimestamps()
+	timestampsCopy := make([]uint64, len(timestamps))
+	for i, stamp := range timestamps{
+		timestampsCopy[i] = stamp
+	}
+
 	return &pb.RoundInfo{
 		ID:         s.base.GetID(),
 		State:      uint32(s.state),
 		BatchSize:  s.base.GetBatchSize(),
-		Topology:   s.base.GetTopology(),
-		Timestamps: s.base.GetTimestamps(),
+		Topology:   topologyCopy,
+		Timestamps: timestampsCopy,
 	}
 }
 
