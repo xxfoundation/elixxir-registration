@@ -138,7 +138,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	//catch edge case with malformed error and return it to the node
-	if current.Activity(msg.Activity)==current.ERROR && msg.Error==nil{
+	if current.Activity(msg.Activity) == current.ERROR && msg.Error == nil {
 		err = errors.Errorf("A malformed error was received from %s "+
 			"with a nil error payload", nid)
 		jww.WARN.Println(err)
