@@ -109,18 +109,17 @@ var rootCmd = &cobra.Command{
 
 		// Populate Node registration codes into the database
 		RegCodesFilePath := viper.GetString("regCodesFilePath")
-		if RegCodesFilePath!=""{
+		if RegCodesFilePath != "" {
 			regCodeInfos, err := node.LoadInfo(RegCodesFilePath)
 			if err != nil {
 				jww.FATAL.Panicf("Failed to load registration codes from the "+
 					"file %s: %+v", RegCodesFilePath, err)
 			}
 			storage.PopulateNodeRegistrationCodes(regCodeInfos)
-		}else{
+		} else {
 			jww.WARN.Printf("No registration code file found. This may be" +
 				"normal in live deployments")
 		}
-
 
 		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
 		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)

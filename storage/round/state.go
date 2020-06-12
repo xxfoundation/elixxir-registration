@@ -122,18 +122,18 @@ func (s *State) BuildRoundInfo() *pb.RoundInfo {
 	defer s.mux.RUnlock()
 
 	//copy the topology
-	topology:= s.base.GetTopology()
+	topology := s.base.GetTopology()
 
 	topologyCopy := make([][]byte, len(topology))
-	for i, nid := range topology{
+	for i, nid := range topology {
 		topologyCopy[i] = make([]byte, len(nid))
-		copy(topologyCopy[i],nid)
+		copy(topologyCopy[i], nid)
 	}
 
 	//copy the timestamps
 	timestamps := s.base.GetTimestamps()
 	timestampsCopy := make([]uint64, len(timestamps))
-	for i, stamp := range timestamps{
+	for i, stamp := range timestamps {
 		timestampsCopy[i] = stamp
 	}
 

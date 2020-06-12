@@ -128,11 +128,11 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	// Commit updates reported by the node if node involved in the current round
-	jww.DEBUG.Printf("Updating state for node %s: %+v",
+	jww.TRACE.Printf("Updating state for node %s: %+v",
 		auth.Sender.GetId(), msg)
 
 	//if the node needs to get more than 100 updates then return
-	if len(response.Updates)>100{
+	if len(response.Updates) > 100 {
 		response.Updates = response.Updates[:100]
 		return
 	}
@@ -154,7 +154,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return response, err
 	}
 
-	if current.Activity(msg.Activity)==current.ERROR && msg.Error.Id == 0{
+	if current.Activity(msg.Activity) == current.ERROR && msg.Error.Id == 0 {
 		n.GetPollingLock().Unlock()
 		return response, err
 	}

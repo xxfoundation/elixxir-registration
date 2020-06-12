@@ -125,18 +125,18 @@ func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
 	}
 
 	//copy the topology
-	topology:= round.GetTopology()
+	topology := round.GetTopology()
 
 	topologyCopy := make([][]byte, len(topology))
-	for i, nid := range topology{
+	for i, nid := range topology {
 		topologyCopy[i] = make([]byte, len(nid))
-		copy(topologyCopy[i],nid)
+		copy(topologyCopy[i], nid)
 	}
 
 	//copy the timestamps
 	timestamps := round.GetTimestamps()
 	timestampsCopy := make([]uint64, len(timestamps))
-	for i, stamp := range timestamps{
+	for i, stamp := range timestamps {
 		timestampsCopy[i] = stamp
 	}
 
@@ -155,7 +155,7 @@ func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
 			"due to failed signature", roundCopy.UpdateID)
 	}
 
-	jww.DEBUG.Printf("Round state updated to %s",
+	jww.INFO.Printf("Round state updated to %s",
 		states.Round(roundCopy.State))
 
 	jww.TRACE.Printf("Round Info: %+v", roundCopy)
