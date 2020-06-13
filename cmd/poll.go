@@ -162,18 +162,20 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return response, err
 	}
 
-	if current.Activity(msg.Activity) == current.ERROR && msg.Error.Id == 0 {
-		n.GetPollingLock().Unlock()
-		return response, err
-	}
-
 	// update does edge checking. It ensures the state change recieved was a
 	// valid one and the state fo the node and
 	// any associated round allows for that change. If the change was not
 	// acceptable, it is not recorded and an error is returned, which is
 	// propagated to the node
 	update, updateNotification, err := n.Update(current.Activity(msg.Activity))
+	//if updating to an error state, attach the error the the update
 	if update && err == nil && updateNotification.ToActivity == current.ERROR {
+		// if no round is associated with the error, do not report it to the
+		// scheduling algorithm
+		if msg.Error.Id == 0 {
+			n.GetPollingLock().Unlock()
+			return response, err
+		}
 		updateNotification.Error = msg.Error
 	}
 
