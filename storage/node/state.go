@@ -160,8 +160,10 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 		}
 	}
 
+
+
 	//check that the Node doesnt have a round if it shouldn't
-	if transition.Node.NeedsRound(newActivity) == transition.No && n.currentRound != nil {
+	if transition.Node.NeedsRound(newActivity) == transition.No && n.currentRound != nil{
 		return false, UpdateNotification{},
 			errors.Errorf("Node update from %s to %s failed, "+
 				"requires the Node not be assigned a round", oldActivity,

@@ -18,6 +18,7 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
+	"strings"
 	"time"
 )
 
@@ -216,7 +217,9 @@ func killRound(state *storage.NetworkState, r *round.State, n *node.State, round
 	err = storage.PermissioningDb.InsertRoundMetric(metric,
 		r.BuildRoundInfo().Topology)
 	if err != nil {
-		return errors.WithMessagef(err, "Could not insert round metric: %+v", err)
+		if !strings.Contains(err.Error(), "insert or update on table \"topologies\" violates foreign key constraint \"topologies_round_metric_id_fkey\""){
+			return errors.WithMessagef(err, "Could not insert round metric: %+v", err)
+		}
 	}
 
 	// Next, attempt to insert the error for the failed round
