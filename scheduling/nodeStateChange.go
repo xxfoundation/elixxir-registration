@@ -102,19 +102,26 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 		// in order to transition
 		stateComplete := r.NodeIsReadyForTransition()
 		if stateComplete {
-			// Update the round for realtime transition
-			err := r.Update(states.QUEUED, time.Now().Add(realtimeDelay))
+			// Update the round for end of precomp transition
+			err := r.Update(states.STANDBY, time.Now())
 			if err != nil {
 				return false, errors.WithMessagef(err,
 					"Could not move round %v from %s to %s",
-					r.GetRoundID(), states.PRECOMPUTING, states.REALTIME)
+					r.GetRoundID(), states.PRECOMPUTING, states.STANDBY)
+			}
+			// Update the round for realtime transition
+			err = r.Update(states.QUEUED, time.Now().Add(realtimeDelay))
+			if err != nil {
+				return false, errors.WithMessagef(err,
+					"Could not move round %v from %s to %s",
+					r.GetRoundID(), states.STANDBY, states.QUEUED)
 			}
 			// Build the round info and add to the networkState
 			err = state.AddRoundUpdate(r.BuildRoundInfo())
 			if err != nil {
 				return false, errors.WithMessagef(err, "Could not issue "+
 					"update for round %v transitioning from %s to %s",
-					r.GetRoundID(), states.PRECOMPUTING, states.REALTIME)
+					r.GetRoundID(), states.STANDBY, states.QUEUED)
 			}
 		}
 	case current.REALTIME:
@@ -129,7 +136,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			if err != nil {
 				return false, errors.WithMessagef(err,
 					"Could not move round %v from %s to %s",
-					r.GetRoundID(), states.STANDBY, states.REALTIME)
+					r.GetRoundID(), states.QUEUED, states.REALTIME)
 			}
 		}
 	case current.COMPLETED:
@@ -173,6 +180,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 // Insert metrics about the newly-completed round into storage
 func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 	metric := &storage.RoundMetric{
+		Id:            roundInfo.ID,
 		PrecompStart:  time.Unix(0, int64(roundInfo.Timestamps[states.PRECOMPUTING])),
 		PrecompEnd:    time.Unix(0, int64(roundInfo.Timestamps[states.STANDBY])),
 		RealtimeStart: time.Unix(0, int64(roundInfo.Timestamps[states.REALTIME])),
