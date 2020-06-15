@@ -91,7 +91,7 @@ type User struct {
 // Struct representing the Node's Application table in the database
 type Application struct {
 	// The Application's unique ID
-	Id uint64 `gorm:"primary_key"`
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:false"`
 	// Each Application has one Node
 	Node Node `gorm:"foreignkey:ApplicationId"`
 
@@ -155,7 +155,7 @@ type Node struct {
 // Struct representing Node Metrics table in the database
 type NodeMetric struct {
 	// Auto-incrementing primary key (Do not set)
-	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:true"`
 	// Node has many NodeMetrics
 	NodeId []byte `gorm:"NOT NULL;type:bytea REFERENCES nodes(Id)"`
 	// Start time of monitoring period
@@ -179,7 +179,7 @@ type Topology struct {
 // Struct representing Round Metrics table in the database
 type RoundMetric struct {
 	// Unique ID of the round as assigned by the network
-	Id uint64 `gorm:"primary_key"`
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:false"`
 
 	// Round timestamp information
 	PrecompStart  time.Time `gorm:"NOT NULL"`
@@ -198,7 +198,7 @@ type RoundMetric struct {
 // Struct representing Round Errors table in the database
 type RoundError struct {
 	// Auto-incrementing primary key (Do not set)
-	Id uint64 `gorm:"primary_key;AUTO_INCREMENT"`
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:true"`
 
 	// ID of the round for a given run of the network
 	RoundMetricId uint64 `gorm:"NOT NULL;type:bigint REFERENCES round_metrics(Id)"`
