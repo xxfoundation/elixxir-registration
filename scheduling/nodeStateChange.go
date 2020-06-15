@@ -62,11 +62,6 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 	case current.NOT_STARTED:
 		// Do nothing
 	case current.WAITING:
-		// Clear the round if node has one (it should unless it is
-		// coming from NOT_STARTED
-		if hasRound {
-			n.ClearRound()
-		}
 		// If the node was in the offline pool, set it to online
 		//  (which also adds it to the online pool)
 		if update.FromStatus == node.Inactive && update.ToStatus == node.Active {
@@ -170,8 +165,12 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			return true, StoreRoundMetric(roundInfo)
 		}
 	case current.ERROR:
-		// If in an error state, kill the round
-		return false, killRound(state, r, n, update.Error)
+		// If in an error state, kill the round if the node has one
+		var err error
+		if hasRound{
+			err = killRound(state, r, n, update.Error)
+		}
+		return false, err
 	}
 
 	return false, nil
@@ -224,13 +223,15 @@ func killRound(state *storage.NetworkState, r *round.State, n *node.State, round
 	err = storage.PermissioningDb.InsertRoundMetric(metric,
 		r.BuildRoundInfo().Topology)
 	if err != nil {
-		return errors.WithMessagef(err, "Could not insert round metric: %+v", err)
+		jww.WARN.Printf("Could not insert round metric: %+v", err)
+		err = nil
 	}
 
 	// Next, attempt to insert the error for the failed round
 	err = storage.PermissioningDb.InsertRoundError(roundId, roundError.Error)
 	if err != nil {
-		err = errors.WithMessagef(err, "Could not insert round error: %+v", err)
+		jww.WARN.Printf("Could not insert round error: %+v", err)
+		err = nil
 	}
 	return err
 }

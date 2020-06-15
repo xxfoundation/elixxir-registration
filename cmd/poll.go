@@ -65,51 +65,11 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return nil, err
 	}
 
-	// Get server and gateway addresses
-	nodeAddress := serverAddress
-	gatewayAddress := msg.GatewayAddress
-
-	// Update server and gateway addresses in state, if necessary
-	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
-	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
-
-	jww.TRACE.Printf("Received gateway and node update: %s, %s", nodeAddress,
-		gatewayAddress)
-
-	// If state required changes, then check the NDF
-	if nodeUpdate || gatewayUpdate {
-
-		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", nodeAddress,
-			gatewayAddress)
-		m.NDFLock.Lock()
-		currentNDF := m.State.GetFullNdf().Get()
-
-		if nodeUpdate {
-			if err = updateNdfNodeAddr(nid, serverAddress, currentNDF); err != nil {
-				m.NDFLock.Unlock()
-				return
-			}
-		}
-		if gatewayUpdate {
-			if err = updateNdfGatewayAddr(nid, gatewayAddress, currentNDF); err != nil {
-				m.NDFLock.Unlock()
-				return
-			}
-		}
-
-		// Update the internal state with the newly-updated ndf
-		if err = m.State.UpdateNdf(currentNDF); err != nil {
-			m.NDFLock.Unlock()
-			return
-		}
-		m.NDFLock.Unlock()
-
-		// Output the current topology to a JSON file
-		err = outputToJSON(currentNDF, m.ndfOutputPath)
-		if err != nil {
-			err := errors.Errorf("unable to output NDF JSON file: %+v", err)
-			jww.ERROR.Print(err.Error())
-		}
+	//update ip addresses if nessessary
+	err = checkIPAddresses(m, n, msg, serverAddress)
+	if err!=nil{
+		err = errors.WithMessage(err, "Failed to update IP addresses")
+		return
 	}
 
 	// Return updated NDF if provided hash does not match current NDF hash
@@ -130,12 +90,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// Commit updates reported by the node if node involved in the current round
 	jww.TRACE.Printf("Updating state for node %s: %+v",
 		auth.Sender.GetId(), msg)
-
-	//if the node needs to get more than 100 updates then return
-	if len(response.Updates) > 100 {
-		response.Updates = response.Updates[:100]
-		return
-	}
 
 	//catch edge case with malformed error and return it to the node
 	if current.Activity(msg.Activity) == current.ERROR && msg.Error == nil {
@@ -170,12 +124,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	update, updateNotification, err := n.Update(current.Activity(msg.Activity))
 	//if updating to an error state, attach the error the the update
 	if update && err == nil && updateNotification.ToActivity == current.ERROR {
-		// if no round is associated with the error, do not report it to the
-		// scheduling algorithm
-		if msg.Error.Id == 0 {
-			n.GetPollingLock().Unlock()
-			return response, err
-		}
 		updateNotification.Error = msg.Error
 	}
 
@@ -320,13 +268,18 @@ func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) 
 	// If there is an error, we must verify the signature before an update occurs
 	// We do not want to update if the signature is invalid
 	if msg.Error != nil {
-		ok, r := n.GetCurrentRound()
-		if !ok {
-			return errors.New("Node cannot submit a rounderror when it is not participating in a round")
-		} else if msg.Error.Id != uint64(r.GetRoundID()) {
-			return errors.New("This error is not associated with the round the submitting node is participating in")
+		// only ensure there is an associated round if the error reports
+		// association with a round
+		if msg.Error.Id != 0{
+			ok, r := n.GetCurrentRound()
+			if !ok {
+				return errors.New("Node cannot submit a rounderror when it is not participating in a round")
+			} else if msg.Error.Id != uint64(r.GetRoundID()) {
+				return errors.New("This error is not associated with the round the submitting node is participating in")
+			}
 		}
 
+		//check the error is signed by the node that created it
 		errorNodeId, err := id.Unmarshal(msg.Error.NodeId)
 		if err != nil {
 			return errors.WithMessage(err, "Could not unmarshal node ID from error in poll")
@@ -341,5 +294,57 @@ func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) 
 			return errors.WithMessage(err, "Failed to verify error signature")
 		}
 	}
+	return nil
+}
+
+func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, nodeAddress string)error{
+	// Get server and gateway addresses
+	gatewayAddress := msg.GatewayAddress
+
+	// Update server and gateway addresses in state, if necessary
+	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
+	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
+
+	var err error
+
+	jww.TRACE.Printf("Received gateway and node update: %s, %s", nodeAddress,
+		gatewayAddress)
+
+	// If state required changes, then check the NDF
+	if nodeUpdate || gatewayUpdate {
+
+		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", nodeAddress,
+			gatewayAddress)
+		m.NDFLock.Lock()
+		currentNDF := m.State.GetFullNdf().Get()
+
+		if nodeUpdate {
+			if err = updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
+				m.NDFLock.Unlock()
+				return err
+			}
+		}
+		if gatewayUpdate {
+			if err = updateNdfGatewayAddr(n.GetID() , gatewayAddress, currentNDF); err != nil {
+				m.NDFLock.Unlock()
+				return err
+			}
+		}
+
+		// Update the internal state with the newly-updated ndf
+		if err = m.State.UpdateNdf(currentNDF); err != nil {
+			m.NDFLock.Unlock()
+			return err
+		}
+		m.NDFLock.Unlock()
+
+		// Output the current topology to a JSON file
+		err = outputToJSON(currentNDF, m.ndfOutputPath)
+		if err != nil {
+			err := errors.Errorf("unable to output NDF JSON file: %+v", err)
+			jww.ERROR.Print(err.Error())
+		}
+	}
+
 	return nil
 }
