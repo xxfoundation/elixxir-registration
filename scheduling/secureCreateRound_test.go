@@ -9,6 +9,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
 	"testing"
+	"time"
 )
 
 // Happy path
@@ -17,7 +18,7 @@ func TestCreateRound(t *testing.T) {
 
 	// Build scheduling params
 	testParams := Params{
-		TeamSize:            10,
+		TeamSize:            9,
 		BatchSize:           32,
 		RandomOrdering:      true,
 		Threshold:           1,
@@ -39,7 +40,7 @@ func TestCreateRound(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "NA_WEST", "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -62,7 +63,7 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 
 	// Build scheduling params
 	testParams := Params{
-		TeamSize:            10,
+		TeamSize:            9,
 		BatchSize:           32,
 		RandomOrdering:      true,
 		Threshold:           5,
@@ -115,7 +116,7 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 
 	// Build scheduling params
 	testParams := Params{
-		TeamSize:            10,
+		TeamSize:            9,
 		BatchSize:           32,
 		RandomOrdering:      true,
 		Threshold:           25,
@@ -169,7 +170,7 @@ func TestCreateRound_EfficientTeam(t *testing.T) {
 
 	// Build scheduling params
 	testParams := Params{
-		TeamSize:            4,
+		TeamSize:            8,
 		BatchSize:           32,
 		RandomOrdering:      true,
 		Threshold:           2,
@@ -189,7 +190,8 @@ func TestCreateRound_EfficientTeam(t *testing.T) {
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 
 	// Craft regions for nodes
-	regions := []string{"NA_WEST", "NA_EAST", "EUROPE_WEST", "EUROPE_EAST"}
+	regions := []string{"Americas", "WesternEurope", "CentralEurope",
+		"EasternEurope", "MiddleEast", "Africa", "Russia", "Asia"}
 
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
@@ -209,9 +211,19 @@ func TestCreateRound_EfficientTeam(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 
+	start := time.Now()
 	testProtoRound, err := createSecureRound(testParams, testpool, roundID, testState)
 	if err != nil {
 		t.Errorf("Error in happy path: %v", err)
+	}
+
+	duration := time.Now().Sub(start)
+	expectedDuration := int64(20)
+
+	if duration.Milliseconds() > expectedDuration {
+		t.Errorf("Warning, creating round for a team of 8 took longer than expected."+
+			"\n\tExpected: ~%v ms"+
+			"\n\tReceived: %v ms", expectedDuration, duration)
 	}
 
 	ourRing := ring.New(int(testParams.TeamSize))
@@ -231,13 +243,15 @@ func TestCreateRound_EfficientTeam(t *testing.T) {
 	// order can go in 'reverse' order, as it is just a loop
 	// We have to check the outputted order to see if it conforms
 	// to either order
-	idealOrder := []string{"NA_WEST", "EUROPE_WEST", "EUROPE_EAST", "NA_EAST"}
-	idealOrderRev := []string{"NA_WEST", "NA_EAST", "EUROPE_EAST", "EUROPE_WEST"}
+	idealOrder := []string{"Asia", "Africa", "EasternEurope", "CentralEurope",
+		"Americas", "WesternEurope", "Russia", "MiddleEast"}
+	idealOrderRev := []string{"Asia", "MiddleEast", "Russia", "WesternEurope",
+		"Americas", "CentralEurope", "EasternEurope", "Africa"}
 
 	var isReverse bool
 
-	// Make the 0 value the head of the ring buffer
-	for ourRing.Value != "NA_WEST" {
+	//Make the 0 value the head of the ring buffer
+	for ourRing.Value != "Asia" {
 		ourRing = ourRing.Next()
 	}
 

@@ -207,7 +207,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 func TestCreateRound_RandomOrdering(t *testing.T) {
 	// Build scheduling params
 	testParams := Params{
-		TeamSize:            10,
+		TeamSize:            9,
 		BatchSize:           32,
 		RandomOrdering:      true,
 		Threshold:           1,
@@ -231,7 +231,7 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "NA_EAST", "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
