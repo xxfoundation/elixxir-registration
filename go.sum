@@ -264,12 +264,14 @@ github.com/tmc/grpc-websocket-proxy v0.0.0-20190109142713-0ad062ec5ee5/go.mod h1
 github.com/ugorji/go v1.1.4/go.mod h1:uQMGLiO92mf5W77hV/PUCpI3pbzQx3CRekS0kk+RGrc=
 github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77/go.mod h1:aYKd//L2LvnjZzWKhF00oedf4jCCReLcmhLdhm1A27Q=
-gitlab.com/elixxir/comms v0.0.0-20200612184319-baccb0892edb h1:uBY+oV/zEczk09dJtpA7pSr4I6xI/4wzy5KVHvE2x5M=
-gitlab.com/elixxir/comms v0.0.0-20200612184319-baccb0892edb/go.mod h1:eYjjmjVfmdIJTNySmyJX1CzdKerjky+nexrVP+2ywwQ=
+gitlab.com/elixxir/comms v0.0.0-20200613233124-0dadeeb3a61e h1:IVRhlToz13ds1qV9SYhKi6m80Sowac5LCxF+9nVvEZU=
+gitlab.com/elixxir/comms v0.0.0-20200613233124-0dadeeb3a61e/go.mod h1:8rgF2/aul1JdTZcSM73zUojtt0VdOHU2r1snlI42Il8=
 gitlab.com/elixxir/crypto v0.0.0-20200612160324-a76e4451ae25 h1:tmlSzEfPD+ddB2AOvM5Bu7mQZA9XDg9BdkJpdJj2nsM=
 gitlab.com/elixxir/crypto v0.0.0-20200612160324-a76e4451ae25/go.mod h1:SpcmFZ4baOMRxH7qo2myvYFNr8/bz9ItYzVo5Q2Ld1k=
 gitlab.com/elixxir/primitives v0.0.0-20200608222556-1d2c04e59346 h1:o+7DerjZ6EinUowEFWwaQSmRabiekqjV8jD1UZRXaa4=
 gitlab.com/elixxir/primitives v0.0.0-20200608222556-1d2c04e59346/go.mod h1:OQgUZq7SjnE0b+8+iIAT2eqQF+2IFHn73tOo+aV11mg=
+gitlab.com/elixxir/primitives v0.0.0-20200612195410-43b4fabcbe9a h1:SjdRRZQxwOw7NQfuOFbQ/5QjrL3/1TNOiTUiZJCGCr0=
+gitlab.com/elixxir/primitives v0.0.0-20200612195410-43b4fabcbe9a/go.mod h1:OQgUZq7SjnE0b+8+iIAT2eqQF+2IFHn73tOo+aV11mg=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=

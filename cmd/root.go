@@ -114,7 +114,7 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				jww.ERROR.Printf("Failed to load registration codes from the "+
 					"file %s: %+v", RegCodesFilePath, err)
-			}else{
+			} else {
 				storage.PopulateNodeRegistrationCodes(regCodeInfos)
 			}
 		} else {

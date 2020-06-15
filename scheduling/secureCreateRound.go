@@ -11,6 +11,17 @@ import (
 	"time"
 )
 
+const (
+	Americas      = 0
+	WesternEurope = 1
+	CentralEurope = 2
+	EasternEurope = 3
+	MiddleEast    = 4
+	Africa        = 5
+	Russia        = 6
+	Asia          = 7
+)
+
 // createSimpleRound builds the team for a round of a pool and round id
 func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
@@ -30,11 +41,14 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 	// Make all permutations of nodes
 	permutations := Permute(nodes)
 	// This assumes order is geographic region, where (arbitrarily)
-	// NA_WEST - Western United States and Canada
-	// NA_EAST - Eastern United States and Canada, Latin America
-	// EUROPE_WEST - Western Europe, Africa
-	// EUROPE_EAST - Eastern Europe, Russia, Middle East
-	// ASIA - Asia
+	// Americas       - Entirety of North and South America
+	// Western Europe - todo define countries in region
+	// Central Europe - todo define countries in region
+	// Eastern Europe - todo define countries in region
+	// Middle East    - todo define countries in region
+	// Africa         - Consists of entire continent of Africa
+	// Russia         - Consists of the country of Russia
+	// Asia           - todo define countries in region
 	// We shall assume geographical distance causes latency in a naive
 	//  manner, as delineated here:
 	//  https://docs.google.com/document/d/1oyjIDlqC54u_eoFzQP9SVNU2IqjnQOjpUYd9aqbg5X0/edit#
@@ -48,7 +62,7 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 		totalLatency := 0
 		for i := 0; i < len(nodes); i++ {
 			// Get the ordering for the current node
-			ourRegion, err := getRegion(nodes[i].GetOrdering())
+			thisRegion, err := getRegion(nodes[i].GetOrdering())
 			if err != nil {
 				return protoRound{}, err
 
@@ -63,8 +77,7 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 			}
 
 			// Calculate the distance and pull the latency from the table
-			distance := Abs(nextRegion - ourRegion)
-			totalLatency += latencyMap[distance]
+			totalLatency += latencyMap[thisRegion][nextRegion]
 
 			// Stop if this permutation has already accumulated
 			// a latency worse than the best time
@@ -119,42 +132,113 @@ func createProtoRound(params Params, state *storage.NetworkState,
 
 // Creates a latency table mapping regional distance to latency
 // todo: table needs better real-world accuracy
-func createLatencyTable() (distanceLatency map[int]int) {
-	distanceLatency = make(map[int]int)
+func createLatencyTable() (distanceLatency [8][8]int) {
 
-	distanceLatency[0] = 1
-	distanceLatency[1] = 3
-	distanceLatency[2] = 7
-	distanceLatency[3] = 15
-	distanceLatency[4] = 31
+	// Distance from Americas to other regions
+	distanceLatency[Americas][Americas] = 50
+	distanceLatency[Americas][WesternEurope] = 150
+	distanceLatency[Americas][CentralEurope] = 220
+	distanceLatency[Americas][EasternEurope] = 270
+	distanceLatency[Americas][MiddleEast] = 330
+	distanceLatency[Americas][Africa] = 400
+	distanceLatency[Americas][Russia] = 440
+	distanceLatency[Americas][Asia] = 500
+
+	// Distance from Western Europe to other regions
+	distanceLatency[WesternEurope][Americas] = 150
+	distanceLatency[WesternEurope][WesternEurope] = 50
+	distanceLatency[WesternEurope][CentralEurope] = 100
+	distanceLatency[WesternEurope][EasternEurope] = 150
+	distanceLatency[WesternEurope][MiddleEast] = 240
+	distanceLatency[WesternEurope][Africa] = 300
+	distanceLatency[WesternEurope][Russia] = 200
+	distanceLatency[WesternEurope][Asia] = 400
+
+	// Distance from Central Europe to other regions
+	distanceLatency[CentralEurope][Americas] = 220
+	distanceLatency[CentralEurope][WesternEurope] = 100
+	distanceLatency[CentralEurope][CentralEurope] = 50
+	distanceLatency[CentralEurope][EasternEurope] = 100
+	distanceLatency[CentralEurope][MiddleEast] = 200
+	distanceLatency[CentralEurope][Africa] = 250
+	distanceLatency[CentralEurope][Russia] = 150
+	distanceLatency[CentralEurope][Asia] = 340
+
+	// Distance from Eastern Europe to other regions
+	distanceLatency[EasternEurope][Americas] = 270
+	distanceLatency[EasternEurope][WesternEurope] = 150
+	distanceLatency[EasternEurope][CentralEurope] = 100
+	distanceLatency[EasternEurope][EasternEurope] = 50
+	distanceLatency[EasternEurope][MiddleEast] = 150
+	distanceLatency[EasternEurope][Africa] = 220
+	distanceLatency[EasternEurope][Russia] = 170
+	distanceLatency[EasternEurope][Asia] = 270
+
+	// Distance from Middle_East to other regions
+	// todo: reconsdier values for these?
+	distanceLatency[MiddleEast][Americas] = 240
+	distanceLatency[MiddleEast][WesternEurope] = 240
+	distanceLatency[MiddleEast][CentralEurope] = 200
+	distanceLatency[MiddleEast][EasternEurope] = 150
+	distanceLatency[MiddleEast][MiddleEast] = 50
+	distanceLatency[MiddleEast][Africa] = 150
+	distanceLatency[MiddleEast][Russia] = 100
+	distanceLatency[MiddleEast][Asia] = 160
+
+	// Distance from Africa to other regions
+	distanceLatency[Africa][Americas] = 400
+	distanceLatency[Africa][WesternEurope] = 300
+	distanceLatency[Africa][CentralEurope] = 250
+	distanceLatency[Africa][EasternEurope] = 220
+	distanceLatency[Africa][MiddleEast] = 150
+	distanceLatency[Africa][Africa] = 50
+	distanceLatency[Africa][Russia] = 180
+	distanceLatency[Africa][Asia] = 200
+
+	// Distance from Russia to other regions
+	distanceLatency[Russia][Americas] = 440
+	distanceLatency[Russia][WesternEurope] = 200
+	distanceLatency[Russia][CentralEurope] = 150
+	distanceLatency[Russia][EasternEurope] = 170
+	distanceLatency[Russia][MiddleEast] = 100
+	distanceLatency[Russia][Africa] = 180
+	distanceLatency[Russia][Russia] = 50
+	distanceLatency[Russia][Asia] = 120
+
+	// Distance from Asia to other regions
+	distanceLatency[Asia][Americas] = 500
+	distanceLatency[Asia][WesternEurope] = 400
+	distanceLatency[Asia][CentralEurope] = 340
+	distanceLatency[Asia][EasternEurope] = 270
+	distanceLatency[Asia][MiddleEast] = 160
+	distanceLatency[Asia][Africa] = 200
+	distanceLatency[Asia][Russia] = 120
+	distanceLatency[Asia][Asia] = 50
 
 	return
 }
 
-// Abs returns the absolute value of x. There is no
-// builtin for abs of int type
-// todo: Put this in primitives?
-func Abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
-}
-
 // Convert region to a numerical representation
 //  in order to find distances between regions
+// fixme: consider modifying node state for a region field?
 func getRegion(region string) (int, error) {
 	switch region {
-	case "NA_WEST":
-		return 0, nil
-	case "NA_EAST":
-		return 1, nil
-	case "EUROPE_WEST":
-		return 2, nil
-	case "EUROPE_EAST":
-		return 3, nil
-	case "ASIA":
-		return 4, nil
+	case "Americas":
+		return Americas, nil
+	case "Western Europe":
+		return WesternEurope, nil
+	case "Central Europe":
+		return CentralEurope, nil
+	case "Eastern Europe":
+		return EasternEurope, nil
+	case "Middle East":
+		return MiddleEast, nil
+	case "Africa":
+		return Africa, nil
+	case "Russia":
+		return Russia, nil
+	case "Asia":
+		return Asia, nil
 	default:
 		return -1, errors.Errorf("Could not parse region info ('%s')", region)
 
