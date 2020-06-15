@@ -155,7 +155,7 @@ func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
 			"due to failed signature", roundCopy.UpdateID)
 	}
 
-	jww.INFO.Printf("Round state updated to %s",
+	jww.INFO.Printf("Round %v state updated to %s", round.ID,
 		states.Round(roundCopy.State))
 
 	jww.TRACE.Printf("Round Info: %+v", roundCopy)

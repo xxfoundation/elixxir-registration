@@ -18,7 +18,6 @@ import (
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
-	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage/node"
 	"sync/atomic"
@@ -92,12 +91,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	jww.TRACE.Printf("Updating state for node %s: %+v",
 		auth.Sender.GetId(), msg)
 
-	//if the node needs to get more than 100 updates then return
-	if len(response.Updates) > 100 {
-		response.Updates = response.Updates[:100]
-		return
-	}
-
 	//catch edge case with malformed error and return it to the node
 	if current.Activity(msg.Activity) == current.ERROR && msg.Error == nil {
 		err = errors.Errorf("A malformed error was received from %s "+
@@ -131,18 +124,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	update, updateNotification, err := n.Update(current.Activity(msg.Activity))
 	//if updating to an error state, attach the error the the update
 	if update && err == nil && updateNotification.ToActivity == current.ERROR {
-		// if no round is associated with the error, do not report it to the
-		// scheduling algorithm
-		if msg.Error.Id == 0 {
-			hasRound, r := n.GetCurrentRound()
-			if hasRound{
-				if roundState := r.GetRoundState(); roundState == states.COMPLETED || roundState == states.FAILED{
-					n.ClearRound()
-				}
-			}
-			n.GetPollingLock().Unlock()
-			return response, err
-		}
 		updateNotification.Error = msg.Error
 	}
 
