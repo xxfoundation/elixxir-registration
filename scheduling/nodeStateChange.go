@@ -62,11 +62,6 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 	case current.NOT_STARTED:
 		// Do nothing
 	case current.WAITING:
-		// Clear the round if node has one (it should unless it is
-		// coming from NOT_STARTED
-		if hasRound {
-			n.ClearRound()
-		}
 		// If the node was in the offline pool, set it to online
 		//  (which also adds it to the online pool)
 		if update.FromStatus == node.Inactive && update.ToStatus == node.Active {
@@ -102,19 +97,26 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 		// in order to transition
 		stateComplete := r.NodeIsReadyForTransition()
 		if stateComplete {
-			// Update the round for realtime transition
-			err := r.Update(states.QUEUED, time.Now().Add(realtimeDelay))
+			// Update the round for end of precomp transition
+			err := r.Update(states.STANDBY, time.Now())
 			if err != nil {
 				return false, errors.WithMessagef(err,
 					"Could not move round %v from %s to %s",
-					r.GetRoundID(), states.PRECOMPUTING, states.REALTIME)
+					r.GetRoundID(), states.PRECOMPUTING, states.STANDBY)
+			}
+			// Update the round for realtime transition
+			err = r.Update(states.QUEUED, time.Now().Add(realtimeDelay))
+			if err != nil {
+				return false, errors.WithMessagef(err,
+					"Could not move round %v from %s to %s",
+					r.GetRoundID(), states.STANDBY, states.QUEUED)
 			}
 			// Build the round info and add to the networkState
 			err = state.AddRoundUpdate(r.BuildRoundInfo())
 			if err != nil {
 				return false, errors.WithMessagef(err, "Could not issue "+
 					"update for round %v transitioning from %s to %s",
-					r.GetRoundID(), states.PRECOMPUTING, states.REALTIME)
+					r.GetRoundID(), states.STANDBY, states.QUEUED)
 			}
 		}
 	case current.REALTIME:
@@ -129,7 +131,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			if err != nil {
 				return false, errors.WithMessagef(err,
 					"Could not move round %v from %s to %s",
-					r.GetRoundID(), states.STANDBY, states.REALTIME)
+					r.GetRoundID(), states.QUEUED, states.REALTIME)
 			}
 		}
 	case current.COMPLETED:
@@ -163,8 +165,12 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			return true, StoreRoundMetric(roundInfo)
 		}
 	case current.ERROR:
-		// If in an error state, kill the round
-		return false, killRound(state, r, n, update.Error)
+		// If in an error state, kill the round if the node has one
+		var err error
+		if hasRound{
+			err = killRound(state, r, n, update.Error)
+		}
+		return false, err
 	}
 
 	return false, nil
@@ -173,6 +179,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 // Insert metrics about the newly-completed round into storage
 func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 	metric := &storage.RoundMetric{
+		Id:            roundInfo.ID,
 		PrecompStart:  time.Unix(0, int64(roundInfo.Timestamps[states.PRECOMPUTING])),
 		PrecompEnd:    time.Unix(0, int64(roundInfo.Timestamps[states.STANDBY])),
 		RealtimeStart: time.Unix(0, int64(roundInfo.Timestamps[states.REALTIME])),
@@ -216,13 +223,15 @@ func killRound(state *storage.NetworkState, r *round.State, n *node.State, round
 	err = storage.PermissioningDb.InsertRoundMetric(metric,
 		r.BuildRoundInfo().Topology)
 	if err != nil {
-		return errors.WithMessagef(err, "Could not insert round metric: %+v", err)
+		jww.WARN.Printf("Could not insert round metric: %+v", err)
+		err = nil
 	}
 
 	// Next, attempt to insert the error for the failed round
 	err = storage.PermissioningDb.InsertRoundError(roundId, roundError.Error)
 	if err != nil {
-		err = errors.WithMessagef(err, "Could not insert round error: %+v", err)
+		jww.WARN.Printf("Could not insert round error: %+v", err)
+		err = nil
 	}
 	return err
 }

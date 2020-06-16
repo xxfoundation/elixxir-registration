@@ -317,11 +317,29 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	}
 
 	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth, serverAddress string) (*pb.PermissionPollResponse, error) {
+		//ensure a bad poll can not take down the permisisoning server
+		result := make(chan bool)
 
-		response, err := instance.Poll(msg, auth, serverAddress)
-		if err != nil && err.Error() != ndf.NO_NDF {
-			jww.ERROR.Printf("Unified Poll error: %+v", err)
-		}
+		response := &pb.PermissionPollResponse{}
+		var err error
+
+		go func(){
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("Unified Poll crash recovered: %+v", r)
+					jww.ERROR.Printf("Unified Poll crash recovered: %+v", r)
+					result<-true
+				}
+			}()
+
+			response, err = instance.Poll(msg, auth, serverAddress)
+			if err != nil && err.Error() != ndf.NO_NDF {
+				jww.ERROR.Printf("Unified Poll error: %+v", err)
+			}
+			result<-true
+		}()
+
+		<-result
 
 		return response, err
 	}

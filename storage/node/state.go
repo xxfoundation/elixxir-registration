@@ -124,9 +124,7 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 	}
 
 	// Check the round error state
-	roundError := n.currentRound != nil && n.currentRound.GetRoundState() == states.FAILED && newActivity != current.ERROR
-	if roundError {
-
+	if n.currentRound != nil && n.currentRound.GetRoundState() == states.FAILED && newActivity != current.ERROR {
 		return false, UpdateNotification{}, errors.New("Round has failed, state cannot be updated")
 	}
 
@@ -160,8 +158,10 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 		}
 	}
 
+
+
 	//check that the Node doesnt have a round if it shouldn't
-	if transition.Node.NeedsRound(newActivity) == transition.No && n.currentRound != nil {
+	if transition.Node.NeedsRound(newActivity) == transition.No && n.currentRound != nil{
 		return false, UpdateNotification{},
 			errors.Errorf("Node update from %s to %s failed, "+
 				"requires the Node not be assigned a round", oldActivity,
