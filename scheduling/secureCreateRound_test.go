@@ -223,7 +223,7 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 	duration := time.Now().Sub(start)
 	t.Logf("CreateRound took: %v\n", duration)
 
-	expectedDuration := int64(22)
+	expectedDuration := int64(35)
 
 	if duration.Milliseconds() > expectedDuration {
 		t.Errorf("Warning, creating round for a team of 8 took longer than expected."+
@@ -324,7 +324,7 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	duration := time.Now().Sub(start)
 	fmt.Printf("CreateRound took: %v\n", duration)
 
-	expectedDuration := int64(22)
+	expectedDuration := int64(35)
 
 	if duration.Milliseconds() > expectedDuration {
 		t.Errorf("Warning, creating round for a team of 8 took longer than expected."+

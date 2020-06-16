@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// createSecureeRound.go contains the logic to construct a team for a secure
+// createSecureRound.go contains the logic to construct a team for a secure
 // teaming algorithm. Focuses largely on constructing an optimal team
 
 // createSimpleRound builds the team for a round of a pool and round id
