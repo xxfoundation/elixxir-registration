@@ -414,11 +414,29 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	// This comm is not authenticated as servers call this early in their
 	//lifecycle to check if they've already registered
 	impl.Functions.CheckRegistration = func(msg *pb.RegisteredNodeCheck) (confirmation *pb.RegisteredNodeConfirmation, e error) {
-		response := instance.CheckNodeRegistration(msg.RegCode)
+		result := make(chan bool)
+
+		var response bool
+		var err error
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("Check Node Registration crash recovered: %+v", r)
+					jww.ERROR.Printf("Check Node Registration crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			response = instance.CheckNodeRegistration(msg.RegCode)
+			result <- true
+		}()
+
+		<-result
 
 		// Returning any errors, such as database errors, would result in too much
 		// leaked data for a public call.
-		return &pb.RegisteredNodeConfirmation{IsRegistered: response}, nil
+		return &pb.RegisteredNodeConfirmation{IsRegistered: response}, err
 
 	}
 
