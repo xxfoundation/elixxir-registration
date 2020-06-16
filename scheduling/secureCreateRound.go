@@ -1,7 +1,6 @@
 package scheduling
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
@@ -12,22 +11,27 @@ import (
 	"time"
 )
 
-const (
-	Americas      = 0
-	WesternEurope = 1
-	CentralEurope = 2
-	EasternEurope = 3
-	MiddleEast    = 4
-	Africa        = 5
-	Russia        = 6
-	Asia          = 7
-)
+// createSecureeRound.go contains the logic to construct a team for a secure
+// teaming algorithm. Focuses largely on constructing an optimal team
 
 // createSimpleRound builds the team for a round of a pool and round id
+// This for this we use the node state's order as its
+// geographic region, where:
+//    Americas       - Entirety of North and South America
+//    Western Europe - todo define countries in region
+//    Central Europe - todo define countries in region
+//    Eastern Europe - todo define countries in region
+//    Middle East    - todo define countries in region
+//    Africa         - Consists of entire continent of Africa
+//    Russia         - Consists of the country of Russia
+//    Asia           - todo define countries in region
+// We shall assume geographical distance causes latency in a naive
+//  manner, as delineated here:
+//  https://docs.google.com/document/d/1oyjIDlqC54u_eoFzQP9SVNU2IqjnQOjpUYd9aqbg5X0/edit#
 func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
 
-	// Create a latencyTable (todo: have this table be based on better data)
+	// Create a latencyTable
 	latencyMap := createLatencyTable()
 
 	// Pick nodes from the pool
@@ -41,22 +45,10 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 
 	// Make all permutations of nodes
 	permutations := Permute(nodes)
-	// This assumes order is geographic region, where (arbitrarily)
-	// Americas       - Entirety of North and South America
-	// Western Europe - todo define countries in region
-	// Central Europe - todo define countries in region
-	// Eastern Europe - todo define countries in region
-	// Middle East    - todo define countries in region
-	// Africa         - Consists of entire continent of Africa
-	// Russia         - Consists of the country of Russia
-	// Asia           - todo define countries in region
-	// We shall assume geographical distance causes latency in a naive
-	//  manner, as delineated here:
-	//  https://docs.google.com/document/d/1oyjIDlqC54u_eoFzQP9SVNU2IqjnQOjpUYd9aqbg5X0/edit#
 
 	jww.DEBUG.Printf("Looking for most efficient teaming order")
-	bestTime := math.MaxInt32
-	var bestOrder []*node.State
+	optimalLatency := math.MaxInt32
+	var optimalTeam []*node.State
 	// TODO: consider a way to do this more efficiently? As of now,
 	//  for larger teams of 10 or greater it takes >2 seconds for round creation
 	//  but it runs in the microsecond range with 4 nodes.
@@ -85,23 +77,23 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 			// Stop if this permutation has already accumulated
 			// a latency worse than the best time
 			//  and move to next iteration
-			if totalLatency > bestTime {
+			if totalLatency > optimalLatency {
 				break
 			}
 		}
 
 		// Replace with the best time and order found thus far
-		if totalLatency < bestTime {
-			bestOrder = nodes
-			bestTime = totalLatency
+		if totalLatency < optimalLatency {
+			optimalTeam = nodes
+			optimalLatency = totalLatency
 		}
 
 	}
 
 	jww.DEBUG.Printf("Permuting and finding the best team took: %v", time.Now().Sub(start))
-	fmt.Printf("Permuting and finding the best team took: %v\n", time.Now().Sub(start))
-	// Create proto
-	newRound := createProtoRound(params, state, bestOrder, roundID)
+
+	// Create proto-round object now that the optimal team has been found
+	newRound := createProtoRound(params, state, optimalTeam, roundID)
 
 	jww.TRACE.Printf("Built round %d", roundID)
 	return newRound, nil
@@ -134,89 +126,92 @@ func createProtoRound(params Params, state *storage.NetworkState,
 	return
 }
 
-// Creates a latency table mapping regional distance to latency
-// todo: table needs better real-world accuracy
+// Creates a latency table which maps different regions latencies to all
+// other defined regions. Latency is derived through educated guesses right now
+// without any real world data.
+// todo: table needs better real-world accuracy. Once data is collected
+//  this table can be updated for better accuracy and selection
 func createLatencyTable() (distanceLatency [8][8]int) {
 
-	// Distance from Americas to other regions
-	distanceLatency[Americas][Americas] = 50
-	distanceLatency[Americas][WesternEurope] = 200
-	distanceLatency[Americas][CentralEurope] = 250
-	distanceLatency[Americas][EasternEurope] = 300
-	distanceLatency[Americas][MiddleEast] = 380
-	distanceLatency[Americas][Africa] = 450
-	distanceLatency[Americas][Russia] = 500
-	distanceLatency[Americas][Asia] = 550
+	// Latency from Americas to other regions
+	distanceLatency[Americas][Americas] = 1
+	distanceLatency[Americas][WesternEurope] = 2
+	distanceLatency[Americas][CentralEurope] = 4
+	distanceLatency[Americas][EasternEurope] = 6
+	distanceLatency[Americas][MiddleEast] = 7
+	distanceLatency[Americas][Africa] = 6
+	distanceLatency[Americas][Russia] = 7
+	distanceLatency[Americas][Asia] = 3
 
-	// Distance from Western Europe to other regions
-	distanceLatency[WesternEurope][Americas] = 200
-	distanceLatency[WesternEurope][WesternEurope] = 50
-	distanceLatency[WesternEurope][CentralEurope] = 100
-	distanceLatency[WesternEurope][EasternEurope] = 150
-	distanceLatency[WesternEurope][MiddleEast] = 220
-	distanceLatency[WesternEurope][Africa] = 250
-	distanceLatency[WesternEurope][Russia] = 200
-	distanceLatency[WesternEurope][Asia] = 400
+	// Latency from Western Europe to other regions
+	distanceLatency[WesternEurope][Americas] = 2
+	distanceLatency[WesternEurope][WesternEurope] = 1
+	distanceLatency[WesternEurope][CentralEurope] = 2
+	distanceLatency[WesternEurope][EasternEurope] = 3
+	distanceLatency[WesternEurope][MiddleEast] = 4
+	distanceLatency[WesternEurope][Africa] = 2
+	distanceLatency[WesternEurope][Russia] = 6
+	distanceLatency[WesternEurope][Asia] = 6
 
-	// Distance from Central Europe to other regions
-	distanceLatency[CentralEurope][Americas] = 250
-	distanceLatency[CentralEurope][WesternEurope] = 100
-	distanceLatency[CentralEurope][CentralEurope] = 50
-	distanceLatency[CentralEurope][EasternEurope] = 100
-	distanceLatency[CentralEurope][MiddleEast] = 200
-	distanceLatency[CentralEurope][Africa] = 250
-	distanceLatency[CentralEurope][Russia] = 200
-	distanceLatency[CentralEurope][Asia] = 350
+	// Latency from Central Europe to other regions
+	distanceLatency[CentralEurope][Americas] = 4
+	distanceLatency[CentralEurope][WesternEurope] = 2
+	distanceLatency[CentralEurope][CentralEurope] = 1
+	distanceLatency[CentralEurope][EasternEurope] = 2
+	distanceLatency[CentralEurope][MiddleEast] = 5
+	distanceLatency[CentralEurope][Africa] = 2
+	distanceLatency[CentralEurope][Russia] = 5
+	distanceLatency[CentralEurope][Asia] = 5
 
-	// Distance from Eastern Europe to other regions
-	distanceLatency[EasternEurope][Americas] = 300
-	distanceLatency[EasternEurope][WesternEurope] = 150
-	distanceLatency[EasternEurope][CentralEurope] = 100
-	distanceLatency[EasternEurope][EasternEurope] = 50
-	distanceLatency[EasternEurope][MiddleEast] = 150
-	distanceLatency[EasternEurope][Africa] = 220
-	distanceLatency[EasternEurope][Russia] = 170
-	distanceLatency[EasternEurope][Asia] = 300
+	// Latency from Eastern Europe to other regions
+	distanceLatency[EasternEurope][Americas] = 6
+	distanceLatency[EasternEurope][WesternEurope] = 3
+	distanceLatency[EasternEurope][CentralEurope] = 2
+	distanceLatency[EasternEurope][EasternEurope] = 1
+	distanceLatency[EasternEurope][MiddleEast] = 2
+	distanceLatency[EasternEurope][Africa] = 4
+	distanceLatency[EasternEurope][Russia] = 2
+	distanceLatency[EasternEurope][Asia] = 4
 
-	// Distance from Middle_East to other regions
-	distanceLatency[MiddleEast][Americas] = 380
-	distanceLatency[MiddleEast][WesternEurope] = 220
-	distanceLatency[MiddleEast][CentralEurope] = 200
-	distanceLatency[MiddleEast][EasternEurope] = 150
-	distanceLatency[MiddleEast][MiddleEast] = 50
-	distanceLatency[MiddleEast][Africa] = 150
-	distanceLatency[MiddleEast][Russia] = 100
-	distanceLatency[MiddleEast][Asia] = 150
+	// Latency from Middle_East to other regions
+	distanceLatency[MiddleEast][Americas] = 7
+	distanceLatency[MiddleEast][WesternEurope] = 4
+	distanceLatency[MiddleEast][CentralEurope] = 5
+	distanceLatency[MiddleEast][EasternEurope] = 2
+	distanceLatency[MiddleEast][MiddleEast] = 1
+	distanceLatency[MiddleEast][Africa] = 6
+	distanceLatency[MiddleEast][Russia] = 5
+	distanceLatency[MiddleEast][Asia] = 2
 
-	// Distance from Africa to other regions
-	distanceLatency[Africa][Americas] = 450
-	distanceLatency[Africa][WesternEurope] = 250
-	distanceLatency[Africa][CentralEurope] = 250
-	distanceLatency[Africa][EasternEurope] = 220
-	distanceLatency[Africa][MiddleEast] = 150
-	distanceLatency[Africa][Africa] = 50
-	distanceLatency[Africa][Russia] = 200
-	distanceLatency[Africa][Asia] = 230
+	// Latency from Africa to other regions
+	distanceLatency[Africa][Americas] = 6
+	distanceLatency[Africa][WesternEurope] = 2
+	distanceLatency[Africa][CentralEurope] = 2
+	distanceLatency[Africa][EasternEurope] = 4
+	distanceLatency[Africa][MiddleEast] = 6
+	distanceLatency[Africa][Africa] = 1
+	distanceLatency[Africa][Russia] = 7
+	distanceLatency[Africa][Asia] = 6
 
-	// Distance from Russia to other regions
-	distanceLatency[Russia][Americas] = 500
-	distanceLatency[Russia][WesternEurope] = 200
-	distanceLatency[Russia][CentralEurope] = 200
-	distanceLatency[Russia][EasternEurope] = 170
-	distanceLatency[Russia][MiddleEast] = 100
-	distanceLatency[Russia][Africa] = 200
-	distanceLatency[Russia][Russia] = 50
-	distanceLatency[Russia][Asia] = 200
+	// Latency from Russia to other regions
+	distanceLatency[Russia][Americas] = 7
+	distanceLatency[Russia][WesternEurope] = 6
+	distanceLatency[Russia][CentralEurope] = 5
+	distanceLatency[Russia][EasternEurope] = 2
+	distanceLatency[Russia][MiddleEast] = 5
+	distanceLatency[Russia][Africa] = 7
+	distanceLatency[Russia][Russia] = 1
+	distanceLatency[Russia][Asia] = 2
 
-	// Distance from Asia to other regions
-	distanceLatency[Asia][Americas] = 550
-	distanceLatency[Asia][WesternEurope] = 400
-	distanceLatency[Asia][CentralEurope] = 350
-	distanceLatency[Asia][EasternEurope] = 300
-	distanceLatency[Asia][MiddleEast] = 150
-	distanceLatency[Asia][Africa] = 230
-	distanceLatency[Asia][Russia] = 200
-	distanceLatency[Asia][Asia] = 50
+	// Latency from Asia to other regions
+	distanceLatency[Asia][Americas] = 3
+	distanceLatency[Asia][WesternEurope] = 6
+	distanceLatency[Asia][CentralEurope] = 5
+	distanceLatency[Asia][EasternEurope] = 4
+	distanceLatency[Asia][MiddleEast] = 2
+	distanceLatency[Asia][Africa] = 6
+	distanceLatency[Asia][Russia] = 2
+	distanceLatency[Asia][Asia] = 1
 
 	return
 }
