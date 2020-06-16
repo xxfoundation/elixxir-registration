@@ -424,3 +424,20 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 
 	return impl
 }
+
+func recoverable(f func() error, source string) error {
+	result := make(chan bool)
+	var err error
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				err = errors.Errorf("crash recovered: %+v, %+v", source, r)
+				result <- true
+			}
+		}()
+		err = f()
+		result <- true
+	}()
+	<-result
+	return err
+}
