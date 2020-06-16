@@ -264,6 +264,8 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 
 }
 
+// Test that a team of 8 nodes from random regions,
+// is assembled into a round with an efficient order
 func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	testpool := NewWaitingPool()
 
@@ -367,11 +369,12 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 // discerned from internet cable maps
 type regionTransition [8]regionTransitionValidation
 
-// Transitional information used for each state
+// Transitional information used for each region
 type regionTransitionValidation struct {
 	from [8]bool
 }
 
+// Create the valid jumps for each region
 func newRegionTransitionValidation(from ...int) regionTransitionValidation {
 	tv := regionTransitionValidation{}
 
