@@ -167,7 +167,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 	case current.ERROR:
 		// If in an error state, kill the round if the node has one
 		var err error
-		if hasRound{
+		if hasRound {
 			err = killRound(state, r, n, update.Error)
 		}
 		return false, err

@@ -67,7 +67,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 
 	//update ip addresses if nessessary
 	err = checkIPAddresses(m, n, msg, serverAddress)
-	if err!=nil{
+	if err != nil {
 		err = errors.WithMessage(err, "Failed to update IP addresses")
 		return
 	}
@@ -270,7 +270,7 @@ func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) 
 	if msg.Error != nil {
 		// only ensure there is an associated round if the error reports
 		// association with a round
-		if msg.Error.Id != 0{
+		if msg.Error.Id != 0 {
 			ok, r := n.GetCurrentRound()
 			if !ok {
 				return errors.New("Node cannot submit a rounderror when it is not participating in a round")
@@ -297,7 +297,7 @@ func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) 
 	return nil
 }
 
-func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, nodeAddress string)error{
+func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, nodeAddress string) error {
 	// Get server and gateway addresses
 	gatewayAddress := msg.GatewayAddress
 
@@ -325,7 +325,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 			}
 		}
 		if gatewayUpdate {
-			if err = updateNdfGatewayAddr(n.GetID() , gatewayAddress, currentNDF); err != nil {
+			if err = updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
 			}

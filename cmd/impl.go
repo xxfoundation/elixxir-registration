@@ -323,12 +323,12 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 		response := &pb.PermissionPollResponse{}
 		var err error
 
-		go func(){
+		go func() {
 			defer func() {
 				if r := recover(); r != nil {
 					err = errors.Errorf("Unified Poll crash recovered: %+v", r)
 					jww.ERROR.Printf("Unified Poll crash recovered: %+v", r)
-					result<-true
+					result <- true
 				}
 			}()
 
@@ -336,7 +336,7 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 			if err != nil && err.Error() != ndf.NO_NDF {
 				jww.ERROR.Printf("Unified Poll error: %+v", err)
 			}
-			result<-true
+			result <- true
 		}()
 
 		<-result
