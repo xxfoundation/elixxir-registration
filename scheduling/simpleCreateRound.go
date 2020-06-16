@@ -54,6 +54,16 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 			//  the nodes' topological order
 			orderedNodeList[randomIndex[i]] = nid.GetID()
 		}
+	} else if params.SemiOptimalOrdering{
+		nodeStateList, err = generateSemiOptimalOrdering(nodes)
+		if err!=nil{
+			return  protoRound{}, errors.WithMessage(err,
+				"Failed to generate optimal ordering")
+		}
+		for i, n := range nodeStateList {
+			nid := n.GetID()
+			orderedNodeList[i] = nid
+		}
 	} else {
 		// Otherwise go in the order derived
 		// from the pool picking and the node's ordering
