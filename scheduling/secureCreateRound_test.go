@@ -1,7 +1,6 @@
 package scheduling
 
 import (
-	"container/ring"
 	"crypto/rand"
 	"fmt"
 	"gitlab.com/elixxir/crypto/signature/rsa"
@@ -232,47 +231,35 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 			"\n\tReceived: %v ms", expectedDuration, duration)
 	}
 
-	ourRing := ring.New(int(testParams.TeamSize))
-	var regionOrder []string
+	var regionOrder []int
+	var regionOrderStr []string
 	// Ideal: 0 -> 1 -> 3 -> 2 (with any starting node)
 	for _, n := range testProtoRound.NodeStateList {
-		order := n.GetOrdering()
-		if err != nil {
-			t.Errorf("Failed to convert node's order. Ordering: %s", n.GetOrdering())
-		}
-		ourRing.Value = order
-		ourRing = ourRing.Next()
+		order, _ := getRegion(n.GetOrdering())
+		region := n.GetOrdering()
 		regionOrder = append(regionOrder, order)
+		regionOrderStr = append(regionOrderStr, region)
 	}
 
-	t.Logf("Team order outputted by CreateRound: %v", regionOrder)
+	t.Log("Team order outputted by CreateRound: ", regionOrderStr)
 
-	// Ideal iteration(s). It is possible that the ideal
-	// order can go in 'reverse' order, as it is just a loop
-	// We have to check the outputted order to see if it conforms
-	// to either order
-	idealOrder := []string{"Americas", "WesternEurope", "Africa", "CentralEurope",
-		"EasternEurope", "MiddleEast", "Russia", "Asia"}
-	idealOrderRev := []string{"Americas", "Asia", "Russia", "MiddleEast",
-		"EasternEurope", "CentralEurope", "Africa", "WesternEurope"}
+	validRegionTransitions := newTransitions()
+	longTransitions := uint32(0)
+	for i, thisRegion := range regionOrder {
+		// Get the next region to  see if it's a long distant jump
+		nextRegion := regionOrder[(i+1)%len(regionOrder)]
+		if !validRegionTransitions.isValidTransition(thisRegion, nextRegion) {
+			longTransitions++
+		}
 
-	var isReverse bool
-
-	//Make the 0 value the head of the ring buffer
-	for ourRing.Value != "Americas" {
-		ourRing = ourRing.Next()
 	}
 
-	// Check if in the "reverse" order
-	if ourRing.Next().Value == idealOrderRev[1] {
-		isReverse = true
-	}
+	t.Logf("Amount of long distant jumps: %v", longTransitions)
 
-	// Parse the buffer for correctness depending on order
-	if isReverse {
-		checkReverseOrder(idealOrderRev, regionOrder, ourRing, t)
-	} else {
-		checkOrder(idealOrder, regionOrder, ourRing, t)
+	if longTransitions > testParams.TeamSize/2+1 {
+		t.Errorf("Number of long distant transitions beyond acceptable amount!"+
+			"\n\tAcceptable long distance transitions: %v"+
+			"\n\tReceived long distance transitions: %v", testParams.TeamSize/2+1, longTransitions)
 	}
 
 }
@@ -372,34 +359,6 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 		t.Errorf("Number of long distant transitions beyond acceptable amount!"+
 			"\n\tAcceptable long distance transitions: %v"+
 			"\n\tReceived long distance transitions: %v", testParams.TeamSize/2+1, longTransitions)
-	}
-
-}
-
-func checkReverseOrder(idealOrder, regionOrder []string, ourRing *ring.Ring, t *testing.T) {
-	for j := 0; j < len(idealOrder); j++ {
-		if ourRing.Value != idealOrder[j] {
-			t.Errorf("Round made with innefficient order."+
-				"\n\tExpected: %s"+
-				"\n\tReceived: %s ", idealOrder[j], ourRing.Value)
-			t.Logf("Actual order of nodes: %v", regionOrder)
-			t.FailNow()
-		}
-		ourRing = ourRing.Next()
-	}
-}
-
-func checkOrder(idealOrder, regionOrder []string, ourRing *ring.Ring, t *testing.T) {
-	// Check that the order is expected (ie an efficient team)
-	for j := 0; j < len(idealOrder); j++ {
-		if ourRing.Value != idealOrder[j] {
-			t.Errorf("Round made with innefficient order."+
-				"\n\tExpected: %s"+
-				"\n\tReceived: %s ", idealOrder[j], ourRing.Value)
-			t.Logf("Actual order of nodes: %v", regionOrder)
-			t.FailNow()
-		}
-		ourRing = ourRing.Next()
 	}
 
 }
