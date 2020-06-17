@@ -77,6 +77,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	newRound.ID = roundID
 	newRound.BatchSize = params.BatchSize
 	newRound.NodeStateList = nodeStateList
+	newRound.ResourceQueueTimeout = params.ResourceQueueTimeout
 	return newRound, nil
 
 }

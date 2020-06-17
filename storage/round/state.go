@@ -40,7 +40,7 @@ type State struct {
 }
 
 //creates a round state object
-func newState(id id.Round, batchsize uint32, topology *connect.Circuit, pendingTs time.Time) *State {
+func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration, topology *connect.Circuit, pendingTs time.Time) *State {
 	strTopology := make([][]byte, topology.Len())
 	for i := 0; i < topology.Len(); i++ {
 		strTopology[i] = topology.GetNodeAtIndex(i).Marshal()
@@ -53,12 +53,13 @@ func newState(id id.Round, batchsize uint32, topology *connect.Circuit, pendingT
 	//build and return the round state object
 	return &State{
 		base: &pb.RoundInfo{
-			ID:         uint64(id),
-			UpdateID:   math.MaxUint64,
-			State:      0,
-			BatchSize:  batchsize,
-			Topology:   strTopology,
-			Timestamps: timestamps,
+			ID:                         uint64(id),
+			UpdateID:                   math.MaxUint64,
+			State:                      0,
+			BatchSize:                  batchsize,
+			Topology:                   strTopology,
+			Timestamps:                 timestamps,
+			ResourceQueueTimeoutMillis: uint32(resourceQueueTimeout),
 		},
 		topology:           topology,
 		state:              states.PENDING,
@@ -138,11 +139,12 @@ func (s *State) BuildRoundInfo() *pb.RoundInfo {
 	}
 
 	return &pb.RoundInfo{
-		ID:         s.base.GetID(),
-		State:      uint32(s.state),
-		BatchSize:  s.base.GetBatchSize(),
-		Topology:   topologyCopy,
-		Timestamps: timestampsCopy,
+		ID:                         s.base.GetID(),
+		State:                      uint32(s.state),
+		BatchSize:                  s.base.GetBatchSize(),
+		Topology:                   topologyCopy,
+		Timestamps:                 timestampsCopy,
+		ResourceQueueTimeoutMillis: s.base.GetResourceQueueTimeoutMillis(),
 	}
 }
 

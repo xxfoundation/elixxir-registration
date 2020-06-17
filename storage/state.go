@@ -141,12 +141,13 @@ func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
 	}
 
 	roundCopy := &pb.RoundInfo{
-		ID:         round.GetID(),
-		UpdateID:   updateID,
-		State:      round.GetState(),
-		BatchSize:  round.GetBatchSize(),
-		Topology:   topologyCopy,
-		Timestamps: timestampsCopy,
+		ID:                         round.GetID(),
+		UpdateID:                   updateID,
+		State:                      round.GetState(),
+		BatchSize:                  round.GetBatchSize(),
+		ResourceQueueTimeoutMillis: round.GetResourceQueueTimeoutMillis(),
+		Topology:                   topologyCopy,
+		Timestamps:                 timestampsCopy,
 	}
 
 	err = signature.Sign(roundCopy, s.privateKey)
