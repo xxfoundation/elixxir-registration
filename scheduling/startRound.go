@@ -17,16 +17,7 @@ import (
 //  node and network states in order to begin the round
 func startRound(round protoRound, state *storage.NetworkState, errChan chan<- error) error {
 	// Add the round to the manager
-
-	// Default resource queue timeout to 3 minutes if it's not set
-	// Conversion to real time.Duration happens on the nodes
-	resourceQueueTimeoutMillis := round.ResourceQueueTimeout
-	if resourceQueueTimeoutMillis == 0 {
-		// Default 3 minutes = 180000 ms
-		resourceQueueTimeoutMillis = 180000
-	}
-
-	r, err := state.GetRoundMap().AddRound(round.ID, round.BatchSize, resourceQueueTimeoutMillis, round.Topology)
+	r, err := state.GetRoundMap().AddRound(round.ID, round.BatchSize, round.ResourceQueueTimeout, round.Topology)
 	if err != nil {
 		err = errors.WithMessagef(err, "Failed to create new round %v", round.ID)
 		errChan <- err

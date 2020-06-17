@@ -32,6 +32,11 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 		return errors.WithMessage(err, "Could not extract parameters")
 	}
 
+	// If resource queue timeout isn't set, set it to a default of 3 minutes
+	if params.ResourceQueueTimeout == 0 {
+		params.ResourceQueueTimeout = 180000 // 180000 ms = 3 minutes
+	}
+
 	return scheduler(params, state, killchan)
 }
 
