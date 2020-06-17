@@ -22,6 +22,8 @@ type Params struct {
 	TeamSize uint32
 	// number of slots in a batch
 	BatchSize uint32
+	// Resource queue timeout on nodes (ms)
+	ResourceQueueTimeout time.Duration
 
 	// Time in ms between assigning a round
 	MinimumDelay time.Duration
@@ -49,8 +51,9 @@ type Params struct {
 
 //internal structure which describes a round to be created
 type protoRound struct {
-	Topology      *connect.Circuit
-	ID            id.Round
-	NodeStateList []*node.State
-	BatchSize     uint32
+	Topology             *connect.Circuit
+	ID                   id.Round
+	NodeStateList        []*node.State
+	BatchSize            uint32
+	ResourceQueueTimeout time.Duration
 }

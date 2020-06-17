@@ -17,7 +17,7 @@ import (
 //  node and network states in order to begin the round
 func startRound(round protoRound, state *storage.NetworkState, errChan chan<- error) error {
 	// Add the round to the manager
-	r, err := state.GetRoundMap().AddRound(round.ID, round.BatchSize, round.Topology)
+	r, err := state.GetRoundMap().AddRound(round.ID, round.BatchSize, round.ResourceQueueTimeout, round.Topology)
 	if err != nil {
 		err = errors.WithMessagef(err, "Failed to create new round %v", round.ID)
 		errChan <- err

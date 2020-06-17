@@ -860,7 +860,7 @@ func TestVerifyError(t *testing.T) {
 	_ = nsm.AddNode(errNodeId, "", "", "")
 	n := nsm.GetNode(errNodeId)
 	rsm := round.NewStateMap()
-	s, _ := rsm.AddRound(id.Round(0), 4, connect.NewCircuit([]*id.ID{errNodeId}))
+	s, _ := rsm.AddRound(id.Round(0), 4, 5*time.Minute, connect.NewCircuit([]*id.ID{errNodeId}))
 	_ = n.SetRound(s)
 
 	err = verifyError(msg, n, impl)

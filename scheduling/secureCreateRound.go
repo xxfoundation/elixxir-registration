@@ -77,6 +77,7 @@ func createProtoRound(params Params, state *storage.NetworkState,
 	newRound.ID = roundID
 	newRound.BatchSize = params.BatchSize
 	newRound.NodeStateList = nodeStateList
+	newRound.ResourceQueueTimeout = params.ResourceQueueTimeout
 
 	return
 }

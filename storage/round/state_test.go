@@ -29,7 +29,7 @@ func TestNewState(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	if len(ns.base.Timestamps) != int(states.NUM_STATES) {
 		t.Errorf("Length of timestamps list is incorrect: "+
@@ -106,7 +106,7 @@ func TestState_NodeIsReadyForTransition(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	if ns.readyForTransition != 0 {
 		t.Errorf("readyForTransmission is incorrect; "+
@@ -142,7 +142,7 @@ func TestState_Update_Forward(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	for i := states.PRECOMPUTING; i < states.NUM_STATES; i++ {
 		time.Sleep(1 * time.Millisecond)
@@ -177,7 +177,7 @@ func TestState_Update_Same(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	for i := states.PENDING; i < states.NUM_STATES; i++ {
 		ns.state = i
@@ -221,7 +221,7 @@ func TestState_Update_Reverse(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	for i := states.PRECOMPUTING; i < states.NUM_STATES; i++ {
 		ns.state = i
@@ -263,7 +263,7 @@ func TestState_BuildRoundInfo(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	ns.state = states.FAILED
 
