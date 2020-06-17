@@ -21,7 +21,7 @@ func TestStartRound(t *testing.T) {
 	// Build params for scheduling
 	// Build scheduling params
 	testParams := Params{
-		TeamSize:            10,
+		TeamSize:            8,
 		BatchSize:           32,
 		RandomOrdering:      false,
 		Threshold:           1,
@@ -46,7 +46,7 @@ func TestStartRound(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "NA_EAST", "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -83,7 +83,7 @@ func TestStartRound(t *testing.T) {
 func TestStartRound_BadState(t *testing.T) {
 	// Build params for scheduling
 	testParams := Params{
-		TeamSize:            10,
+		TeamSize:            8,
 		BatchSize:           32,
 		RandomOrdering:      false,
 		Threshold:           1,
@@ -108,7 +108,7 @@ func TestStartRound_BadState(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "NA_EAST", "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -150,7 +150,7 @@ func TestStartRound_BadNode(t *testing.T) {
 	// Build params for scheduling
 	// Build params for scheduling
 	testParams := Params{
-		TeamSize:            10,
+		TeamSize:            8,
 		BatchSize:           32,
 		RandomOrdering:      false,
 		Threshold:           1,
@@ -175,7 +175,7 @@ func TestStartRound_BadNode(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "NA_EAST", "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()

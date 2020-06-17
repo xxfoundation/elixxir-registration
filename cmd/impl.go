@@ -279,49 +279,134 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	impl.Functions.RegisterUser = func(
 		registrationCode, pubKey string) (signature []byte, err error) {
 
-		response, err := instance.RegisterUser(registrationCode, pubKey)
-		if err != nil {
-			jww.ERROR.Printf("RegisterUser error: %+v", err)
-		}
+		result := make(chan bool)
+
+		var response []byte
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("Register User crash recovered: %+v", r)
+					jww.ERROR.Printf("Register User crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			response, err = instance.RegisterUser(registrationCode, pubKey)
+			if err != nil {
+				jww.ERROR.Printf("RegisterUser error: %+v", err)
+			}
+			result <- true
+		}()
+
+		<-result
 
 		return response, err
 	}
-	impl.Functions.GetCurrentClientVersion = func() (version string, err error) {
 
-		response, err := instance.GetCurrentClientVersion()
-		if err != nil {
-			jww.ERROR.Printf("GetCurrentClientVersion error: %+v", err)
-		}
+	impl.Functions.GetCurrentClientVersion = func() (version string, err error) {
+		result := make(chan bool)
+
+		var response string
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("GetCurrentClientVersion crash recovered: %+v", r)
+					jww.ERROR.Printf("GetCurrentClientVersion crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			response, err = instance.GetCurrentClientVersion()
+			if err != nil {
+				jww.ERROR.Printf("GetCurrentClientVersion error: %+v", err)
+			}
+			result <- true
+		}()
+
+		<-result
 
 		return response, err
 	}
 	impl.Functions.RegisterNode = func(ID *id.ID, ServerAddr, ServerTlsCert,
 		GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
 
-		err := instance.RegisterNode(ID, ServerAddr,
-			ServerTlsCert, GatewayAddr, GatewayTlsCert, RegistrationCode)
-		if err != nil {
-			jww.ERROR.Printf("RegisterNode error: %+v", err)
-		}
+		result := make(chan bool)
+		var err error
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("RegisterNode crash recovered: %+v", r)
+					jww.ERROR.Printf("RegisterNode crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			err = instance.RegisterNode(ID, ServerAddr,
+				ServerTlsCert, GatewayAddr, GatewayTlsCert, RegistrationCode)
+			if err != nil {
+				jww.ERROR.Printf("RegisterNode error: %+v", err)
+			}
+			result <- true
+		}()
+
+		<-result
 
 		return err
 	}
 	impl.Functions.PollNdf = func(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
 
-		response, err := instance.PollNdf(theirNdfHash, auth)
-		if err != nil && err.Error() != ndf.NO_NDF {
-			jww.ERROR.Printf("PollNdf error: %+v", err)
-		}
+		result := make(chan bool)
+		var err error
+		var response []byte
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("PollNdf crash recovered: %+v", r)
+					jww.ERROR.Printf("PollNdf crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			response, err = instance.PollNdf(theirNdfHash, auth)
+			if err != nil && err.Error() != ndf.NO_NDF {
+				jww.ERROR.Printf("PollNdf error: %+v", err)
+			}
+			result <- true
+		}()
+
+		<-result
 
 		return response, err
 	}
 
 	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth, serverAddress string) (*pb.PermissionPollResponse, error) {
+		//ensure a bad poll can not take down the permisisoning server
+		result := make(chan bool)
 
-		response, err := instance.Poll(msg, auth, serverAddress)
-		if err != nil && err.Error() != ndf.NO_NDF {
-			jww.ERROR.Printf("Unified Poll error: %+v", err)
-		}
+		response := &pb.PermissionPollResponse{}
+		var err error
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("Unified Poll crash recovered: %+v", r)
+					jww.ERROR.Printf("Unified Poll crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			response, err = instance.Poll(msg, auth, serverAddress)
+			if err != nil && err.Error() != ndf.NO_NDF {
+				jww.ERROR.Printf("Unified Poll error: %+v", err)
+			}
+			result <- true
+		}()
+
+		<-result
 
 		return response, err
 	}
@@ -329,13 +414,48 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	// This comm is not authenticated as servers call this early in their
 	//lifecycle to check if they've already registered
 	impl.Functions.CheckRegistration = func(msg *pb.RegisteredNodeCheck) (confirmation *pb.RegisteredNodeConfirmation, e error) {
-		response := instance.CheckNodeRegistration(msg.RegCode)
+		result := make(chan bool)
+
+		var response bool
+		var err error
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("Check Node Registration crash recovered: %+v", r)
+					jww.ERROR.Printf("Check Node Registration crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			response = instance.CheckNodeRegistration(msg.RegCode)
+			result <- true
+		}()
+
+		<-result
 
 		// Returning any errors, such as database errors, would result in too much
 		// leaked data for a public call.
-		return &pb.RegisteredNodeConfirmation{IsRegistered: response}, nil
+		return &pb.RegisteredNodeConfirmation{IsRegistered: response}, err
 
 	}
 
 	return impl
+}
+
+func recoverable(f func() error, source string) error {
+	result := make(chan bool)
+	var err error
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				err = errors.Errorf("crash recovered: %+v, %+v", source, r)
+				result <- true
+			}
+		}()
+		err = f()
+		result <- true
+	}()
+	<-result
+	return err
 }

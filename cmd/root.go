@@ -112,10 +112,11 @@ var rootCmd = &cobra.Command{
 		if RegCodesFilePath != "" {
 			regCodeInfos, err := node.LoadInfo(RegCodesFilePath)
 			if err != nil {
-				jww.FATAL.Panicf("Failed to load registration codes from the "+
+				jww.ERROR.Printf("Failed to load registration codes from the "+
 					"file %s: %+v", RegCodesFilePath, err)
+			} else {
+				storage.PopulateNodeRegistrationCodes(regCodeInfos)
 			}
-			storage.PopulateNodeRegistrationCodes(regCodeInfos)
 		} else {
 			jww.WARN.Printf("No registration code file found. This may be" +
 				"normal in live deployments")

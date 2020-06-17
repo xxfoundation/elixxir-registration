@@ -57,7 +57,7 @@ func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte)
 
 	// Save the RoundMetric
 	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
-	return m.db.Save(metric).Error
+	return m.db.Create(metric).Error
 }
 
 // If Node registration code is valid, add Node information

@@ -38,7 +38,10 @@ type Params struct {
 	//SIMPLE ONLY//
 	// sets if simple teaming randomly orders nodes or orders based upon the
 	// number in the `order` string
-	RandomOrdering bool
+	// SemiOptimalOrdering is the ordering designed for secure teaming.
+	// Prefers RandomOrdering
+	RandomOrdering      bool
+	SemiOptimalOrdering bool
 
 	//SECURE ONLY
 	// sets the minimum number of nodes in the waiting pool before secure teaming
