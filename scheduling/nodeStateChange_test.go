@@ -17,6 +17,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/round"
 	"strconv"
 	"testing"
+	"time"
 )
 
 // Happy path for transitioning to waiting
@@ -100,7 +101,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 
 	roundID := testState.GetRoundID()
 
-	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, circuit)
+	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, 5*time.Minute, circuit)
 	if err != nil {
 		t.Errorf("Failed to add round: %v", err)
 	}
@@ -244,7 +245,7 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 
 	roundID := testState.GetRoundID()
 
-	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, circuit)
+	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, 5*time.Minute, circuit)
 	if err != nil {
 		t.Errorf("Failed to add round: %v", err)
 	}
