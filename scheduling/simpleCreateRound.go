@@ -36,8 +36,20 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	orderedNodeList := make([]*id.ID, params.TeamSize)
 
 	// In the case of random ordering
-	if params.RandomOrdering {
+	if params.SemiOptimalOrdering {
+		// Generate a team based on latency
+		nodeStateList, err = generateSemiOptimalOrdering(nodes)
+		if err != nil {
+			return protoRound{}, errors.WithMessage(err,
+				"Failed to generate optimal ordering")
+		}
 
+		// Parse the node list to get the order
+		for i, n := range nodeStateList {
+			nid := n.GetID()
+			orderedNodeList[i] = nid
+		}
+	} else if params.RandomOrdering {
 		// Input an incrementing array of ints
 		randomIndex := make([]uint64, params.TeamSize)
 		for i := range randomIndex {
@@ -54,16 +66,6 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 			//  the nodes' topological order
 			orderedNodeList[randomIndex[i]] = nid.GetID()
 		}
-	} else if params.SemiOptimalOrdering{
-		nodeStateList, err = generateSemiOptimalOrdering(nodes)
-		if err!=nil{
-			return  protoRound{}, errors.WithMessage(err,
-				"Failed to generate optimal ordering")
-		}
-		for i, n := range nodeStateList {
-			nid := n.GetID()
-			orderedNodeList[i] = nid
-		}
 	} else {
 		// Otherwise go in the order derived
 		// from the pool picking and the node's ordering
@@ -71,6 +73,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 			n := nodeMap.GetNode(nid.GetID())
 			nodeStateList[i] = n
 
+			// Get the position for the node
 			position, err := strconv.Atoi(n.GetOrdering())
 			if err != nil {
 				return protoRound{}, errors.WithMessagef(err,

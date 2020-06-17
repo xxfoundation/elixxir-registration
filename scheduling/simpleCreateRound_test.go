@@ -12,6 +12,7 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	mathRand "math/rand"
 	"reflect"
 	"strconv"
 	"testing"
@@ -193,7 +194,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	}
 
 	// Invalid ordering will cause this to fail
-	_, err = createSecureRound(testParams, testPool, roundID, testState)
+	_, err = createSimpleRound(testParams, testPool, roundID, testState)
 	if err != nil {
 		return
 	}
@@ -248,7 +249,7 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -272,5 +273,177 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.BatchSize)
 
 	}
+
+}
+
+// Test that the system semi-optimal gets done when both
+// random ordering and semioptimal ordering are set to true
+func TestCreateSimpleRound_SemiOptimal(t *testing.T) {
+	// Build scheduling params
+	testParams := Params{
+		TeamSize:            9,
+		BatchSize:           32,
+		RandomOrdering:      true,
+		SemiOptimalOrdering: true,
+		Threshold:           1,
+		Secure:              false,
+		NodeCleanUpInterval: 3,
+	}
+
+	// Build network state
+	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	testState, err := storage.NewState(privKey, "", "")
+	if err != nil {
+		t.Errorf("Failed to create test state: %v", err)
+		t.FailNow()
+	}
+
+	// Build the nodes
+	nodeList := make([]*id.ID, testParams.TeamSize)
+	nodeStateList := make([]*node.State, testParams.TeamSize)
+	testPool := NewWaitingPool()
+
+	// Craft regions for nodes
+	regions := []string{"Americas", "WesternEurope", "CentralEurope",
+		"EasternEurope", "MiddleEast", "Africa", "Russia", "Asia"}
+
+	for i := uint64(0); i < uint64(len(nodeList)); i++ {
+		// Randomize the regions of the nodes
+		index := mathRand.Intn(8)
+
+		// Generate a test id
+		nid := id.NewIdFromUInt(i, id.Node, t)
+		nodeList[i] = nid
+
+		// Add the node to that node map
+		// Place the node in a random region
+		err := testState.GetNodeMap().AddNode(nodeList[i], regions[index], "", "")
+		if err != nil {
+			t.Errorf("Couldn't add node: %v", err)
+			t.FailNow()
+		}
+
+		// Add the node to the pool
+		nodeState := testState.GetNodeMap().GetNode(nid)
+		nodeStateList[i] = nodeState
+		testPool.Add(nodeState)
+	}
+
+	initialTopology := connect.NewCircuit(nodeList)
+
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
+
+	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState)
+	if err != nil {
+		t.Errorf("Happy path of createSimpleRound failed: %v", err)
+	}
+
+	// Check that shuffling has actually occurred, should not be the initial topology
+	// which is inefficient
+	if reflect.DeepEqual(initialTopology, testProtoRound.Topology) {
+		t.Errorf("Highly unlikely initial topology identical to resulting after shuffling. " +
+			"Possile shuffling is broken")
+	}
+
+	// Parse the order of the regions
+	// one for testing and one for logging
+	var regionOrder []int
+	var regionOrderStr []string
+	for _, n := range testProtoRound.NodeStateList {
+		order, _ := getRegion(n.GetOrdering())
+		region := n.GetOrdering()
+		regionOrder = append(regionOrder, order)
+		regionOrderStr = append(regionOrderStr, region)
+	}
+
+	// Output the teaming order to the log in human readable format
+	t.Log("Team order outputted by CreateRound: ", regionOrderStr)
+
+	// Measure the amount of longer than necessary jumps
+	validRegionTransitions := newTransitions()
+	longTransitions := uint32(0)
+	for i, thisRegion := range regionOrder {
+		// Get the next region to  see if it's a long distant jump
+		nextRegion := regionOrder[(i+1)%len(regionOrder)]
+		if !validRegionTransitions.isValidTransition(thisRegion, nextRegion) {
+			longTransitions++
+		}
+
+	}
+
+	t.Logf("Amount of long distant jumps: %v", longTransitions)
+
+	// Check that the long distant jumps do not exceed half the jumps
+	if longTransitions > testParams.TeamSize/2+1 {
+		t.Errorf("Number of long distant transitions beyond acceptable amount!"+
+			"\n\tAcceptable long distance transitions: %v"+
+			"\n\tReceived long distance transitions: %v", testParams.TeamSize/2+1, longTransitions)
+	}
+
+}
+
+// Test that the system semi-optimal gets done when both
+// random ordering and semioptimal ordering are set to true
+func TestCreateSimpleRound_SemiOptimal_BadRegion(t *testing.T) {
+	// Build scheduling params
+	testParams := Params{
+		TeamSize:            9,
+		BatchSize:           32,
+		RandomOrdering:      true,
+		SemiOptimalOrdering: true,
+		Threshold:           1,
+		Secure:              false,
+		NodeCleanUpInterval: 3,
+	}
+
+	// Build network state
+	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	testState, err := storage.NewState(privKey, "", "")
+	if err != nil {
+		t.Errorf("Failed to create test state: %v", err)
+		t.FailNow()
+	}
+
+	// Build the nodes
+	nodeList := make([]*id.ID, testParams.TeamSize)
+	nodeStateList := make([]*node.State, testParams.TeamSize)
+	testPool := NewWaitingPool()
+
+	badRegion := "Mars"
+
+	for i := uint64(0); i < uint64(len(nodeList)); i++ {
+		// Generate a test id
+		nid := id.NewIdFromUInt(i, id.Node, t)
+		nodeList[i] = nid
+
+		// Add the node to that node map
+		// Place the node in a random region
+		err := testState.GetNodeMap().AddNode(nodeList[i], badRegion, "", "")
+		if err != nil {
+			t.Errorf("Couldn't add node: %v", err)
+			t.FailNow()
+		}
+
+		// Add the node to the pool
+		nodeState := testState.GetNodeMap().GetNode(nid)
+		nodeStateList[i] = nodeState
+		testPool.Add(nodeState)
+	}
+
+	// Generate round id
+	roundID, err := testState.IncrementRoundID()
+	if err != nil {
+		t.Errorf("IncrementRoundID() failed: %+v", err)
+	}
+
+	_, err = createSimpleRound(testParams, testPool, roundID, testState)
+	if err != nil {
+		return
+	}
+
+	t.Errorf("Expected error path: Test should fail when receiving bad region %v!", badRegion)
 
 }

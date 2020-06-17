@@ -233,7 +233,6 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 
 	var regionOrder []int
 	var regionOrderStr []string
-	// Ideal: 0 -> 1 -> 3 -> 2 (with any starting node)
 	for _, n := range testProtoRound.NodeStateList {
 		order, _ := getRegion(n.GetOrdering())
 		region := n.GetOrdering()
@@ -243,6 +242,7 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 
 	t.Log("Team order outputted by CreateRound: ", regionOrderStr)
 
+	// Go though the regions, checking for any long jumps
 	validRegionTransitions := newTransitions()
 	longTransitions := uint32(0)
 	for i, thisRegion := range regionOrder {
@@ -256,6 +256,7 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 
 	t.Logf("Amount of long distant jumps: %v", longTransitions)
 
+	// Check that the long jumps does not exceed over half the jumps
 	if longTransitions > testParams.TeamSize/2+1 {
 		t.Errorf("Number of long distant transitions beyond acceptable amount!"+
 			"\n\tAcceptable long distance transitions: %v"+
@@ -298,13 +299,20 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		// Randomize the regions of the nodes
 		index := mathRand.Intn(8)
+
+		// Generate a test id
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
+
+		// Add the node to that node map
+		// Place the node in a random region
 		err := testState.GetNodeMap().AddNode(nodeList[i], regions[index], "", "")
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
 		}
+
+		// Add the node to the pool
 		nodeState := testState.GetNodeMap().GetNode(nid)
 		nodeStateList[i] = nodeState
 		testpool.Add(nodeState)
@@ -315,6 +323,7 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 
+	//  Create the protoround
 	start := time.Now()
 	testProtoRound, err := createSecureRound(testParams, testpool, roundID, testState)
 	if err != nil {
@@ -326,15 +335,18 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 
 	expectedDuration := int64(35)
 
+	// Check that it did not take an excessive amount of time
+	// to create the round
 	if duration.Milliseconds() > expectedDuration {
 		t.Errorf("Warning, creating round for a team of 8 took longer than expected."+
 			"\n\tExpected: ~%v ms"+
 			"\n\tReceived: %v ms", expectedDuration, duration)
 	}
 
+	// Parse the order of the regions
+	// one for testing and one for logging
 	var regionOrder []int
 	var regionOrderStr []string
-	// Ideal: 0 -> 1 -> 3 -> 2 (with any starting node)
 	for _, n := range testProtoRound.NodeStateList {
 		order, _ := getRegion(n.GetOrdering())
 		region := n.GetOrdering()
@@ -342,8 +354,10 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 		regionOrderStr = append(regionOrderStr, region)
 	}
 
+	// Output the teaming order to the log in human readable format
 	t.Log("Team order outputted by CreateRound: ", regionOrderStr)
 
+	// Measure the amount of longer than necessary jumps
 	validRegionTransitions := newTransitions()
 	longTransitions := uint32(0)
 	for i, thisRegion := range regionOrder {
@@ -357,6 +371,7 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 
 	t.Logf("Amount of long distant jumps: %v", longTransitions)
 
+	// Check that the long distant jumps do not exceed half the jumps
 	if longTransitions > testParams.TeamSize/2+1 {
 		t.Errorf("Number of long distant transitions beyond acceptable amount!"+
 			"\n\tAcceptable long distance transitions: %v"+

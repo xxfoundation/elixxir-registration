@@ -10,7 +10,7 @@ import (
 // Create a latencyTable
 var latencyTable = createLatencyTable()
 
-func generateSemiOptimalOrdering(nodes []*node.State)([]*node.State,error){
+func generateSemiOptimalOrdering(nodes []*node.State) ([]*node.State, error) {
 	// Make all permutations of nodes
 	permutations := Permute(nodes)
 

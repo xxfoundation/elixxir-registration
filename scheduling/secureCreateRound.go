@@ -39,9 +39,9 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 	jww.TRACE.Printf("Beginning permutations")
 	start := time.Now()
 
-	optimalTeam, err :=generateSemiOptimalOrdering(nodes)
-	if err!=nil{
-		return  protoRound{}, errors.WithMessage(err,
+	optimalTeam, err := generateSemiOptimalOrdering(nodes)
+	if err != nil {
+		return protoRound{}, errors.WithMessage(err,
 			"Failed to generate optimal ordering")
 	}
 
@@ -80,4 +80,3 @@ func createProtoRound(params Params, state *storage.NetworkState,
 
 	return
 }
-

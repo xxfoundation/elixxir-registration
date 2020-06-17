@@ -38,7 +38,7 @@ type Params struct {
 	// number in the `order` string
 	// SemiOptimalOrdering is the ordering designed for secure teaming.
 	// Prefers RandomOrdering
-	RandomOrdering bool
+	RandomOrdering      bool
 	SemiOptimalOrdering bool
 
 	//SECURE ONLY
