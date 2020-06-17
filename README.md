@@ -20,6 +20,12 @@ ndfOutputPath: "ndf.json"
 # in a team because some scheduling algorithms may require multiple teams worth of nodes at minimum
 minimumNodes: 3
 
+# Path to the file containing the round ID
+roundIdPath: "roundId.txt"
+
+# Path to the file containing the update ID
+updateIdPath: "updateId.txt"
+
 # UDB ID
 udbID: 1
 
@@ -28,6 +34,12 @@ publicAdress: "0.0.0.0:11420"
 
 # The listening port of this  server
 port: 11420
+
+# The minimum version required of gateways to connect
+minGatewayVersion: "0.0.0"
+
+# The minimum version required of servers to connect
+minServerVersion:  "0.0.0"
 
 # Database connection information
 dbUsername: "cmix"
@@ -55,6 +67,13 @@ keyPath: ""
 # Path to the permissioning server certificate file
 certPath: ""
 
+# Time interval (in seconds) between committing Node statistics to storage
+nodeMetricInterval: 180
+
+# Time interval (in minutes) in which the database is 
+# checked for banned nodes
+BanTrackerInterval: "3"
+
 # E2E/CMIX Primes
 groups:
   cmix:
@@ -64,16 +83,43 @@ groups:
     prime: "${e2e_prime}"
     generator: "${e2e_generator}"
 
-# Selection of scheduling algorithem to use. Options are:
+# Selection of scheduling algorithm to use. Options are:
 #   simple - Schedules multiple teams to maximize performance, does not randomly re-arrange teams, if only a single
 #            only scheduling a single team, will use numerical ordering data for AlphaNet
-#   secure - Schedules new teams randomly, has apropreate buffers to ensure unpredictability, designed for BetaNet
+#   secure - Schedules new teams randomly, has appropriate buffers to ensure
+# unpredictability, designed for BetaNet
 schedulingAlgorithm: "single"
 
-# Path to file with config for scheduling algorithem within the user directory 
-schedulingConfigPath: "schedulingConfig.json"
+# Path to file with config for scheduling algorithm within the user directory 
+schedulingConfigPath: "Scheduling_Simple_NonRandom.json"
 
-
-
+# Time that the registration server waits before timing out while killing the round scheduling thread
+schedulingKillTimeout: 10s
+# Time the registration waits for rounds to close out and stop (optional)
+closeTimeout: 60s
 ```
 
+### SchedulingConfig template:
+```json
+{
+  "TeamSize": 4,
+  "BatchSize": 32,
+  "RandomOrdering": false,
+  "MinimumDelay": 60,
+  "RealtimeDelay": 3000,
+  "Threshold":     10,
+  "NodeCleanUpInterval": 3,  
+  "Secure": 		     true
+
+}
+```
+
+### RegCodes Template
+```json
+[{"RegCode": "qpol", "Order": "0"},
+{"RegCode": "yiiq", "Order": "1"},
+{"RegCode": "vydz", "Order": "2"},
+{"RegCode": "gwxs", "Order": "3"},
+{"RegCode": "nahv", "Order": "4"},
+{"RegCode": "plmd", "Order": "5"}]
+```

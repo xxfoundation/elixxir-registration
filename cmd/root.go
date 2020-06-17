@@ -18,14 +18,17 @@ import (
 	"github.com/spf13/viper"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/utils"
-	"gitlab.com/elixxir/registration/scheduling/simple"
+	"gitlab.com/elixxir/primitives/version"
+	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"net"
 	"os"
 	"path"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -58,7 +61,6 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Failed to create E2E group: %+v", err)
 		}
 
-
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
@@ -70,6 +72,8 @@ var rootCmd = &cobra.Command{
 		nsCertPath := viper.GetString("nsCertPath")
 		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
+		roundIdPath := viper.GetString("roundIdPath")
+		updateIdPath := viper.GetString("updateIdPath")
 
 		maxRegistrationAttempts := viper.GetUint64("maxRegistrationAttempts")
 		if maxRegistrationAttempts == 0 {
@@ -82,21 +86,41 @@ var rootCmd = &cobra.Command{
 		}
 
 		// Set up database connection
-		storage.PermissioningDb = storage.NewDatabase(
+		rawAddr := viper.GetString("dbAddress")
+
+		var addr, port string
+		if rawAddr != "" {
+			addr, port, err = net.SplitHostPort(rawAddr)
+			if err != nil {
+				jww.FATAL.Panicf("Unable to get database port: %+v", err)
+			}
+		}
+
+		storage.PermissioningDb, err = storage.NewDatabase(
 			viper.GetString("dbUsername"),
 			viper.GetString("dbPassword"),
 			viper.GetString("dbName"),
-			viper.GetString("dbAddress"),
+			addr,
+			port,
 		)
+		if err != nil {
+			jww.FATAL.Panicf("Unable to initialize storage: %+v", err)
+		}
 
 		// Populate Node registration codes into the database
 		RegCodesFilePath := viper.GetString("regCodesFilePath")
-		regCodeInfos, err := node.LoadInfo(RegCodesFilePath)
-		if err != nil {
-			jww.FATAL.Panicf("Failed to load registration codes from the "+
-				"file %s: %+v", RegCodesFilePath, err)
+		if RegCodesFilePath != "" {
+			regCodeInfos, err := node.LoadInfo(RegCodesFilePath)
+			if err != nil {
+				jww.ERROR.Printf("Failed to load registration codes from the "+
+					"file %s: %+v", RegCodesFilePath, err)
+			} else {
+				storage.PopulateNodeRegistrationCodes(regCodeInfos)
+			}
+		} else {
+			jww.WARN.Printf("No registration code file found. This may be" +
+				"normal in live deployments")
 		}
-		storage.PopulateNodeRegistrationCodes(regCodeInfos)
 
 		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
 		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
@@ -109,6 +133,36 @@ var rootCmd = &cobra.Command{
 		SchedulingConfig, err := utils.ReadFile(SchedulingConfigPath)
 		if err != nil {
 			jww.FATAL.Panicf("Could not load Scheduling Config file: %v", err)
+		}
+
+		// Parse version strings
+		minGatewayVersionString := viper.GetString("minGatewayVersion")
+		minGatewayVersion, err := version.ParseVersion(minGatewayVersionString)
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse minGatewayVersion %#v: %+v",
+				minGatewayVersionString, err)
+		}
+
+		minServerVersionString := viper.GetString("minServerVersion")
+		minServerVersion, err := version.ParseVersion(minServerVersionString)
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse minServerVersion %#v: %+v",
+				minServerVersionString, err)
+		}
+
+		// Get the amount of time to wait for scheduling to end
+		// This should default to 10 seconds in StartRegistration if not set
+		schedulingKillTimeout, err := time.ParseDuration(
+			viper.GetString("schedulingKillTimeout"))
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse duration: %+v", err)
+		}
+
+		// The amount of time to wait for rounds to stop running
+		closeTimeout, err := time.ParseDuration(
+			viper.GetString("closeTimeout"))
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse duration: %+v", err)
 		}
 
 		// Populate params
@@ -124,40 +178,153 @@ var rootCmd = &cobra.Command{
 			NsCertPath:                nsCertPath,
 			maxRegistrationAttempts:   maxRegistrationAttempts,
 			registrationCountDuration: registrationCountDuration,
+			schedulingKillTimeout:     schedulingKillTimeout,
+			closeTimeout:              closeTimeout,
 			udbId:                     udbId,
 			minimumNodes:              viper.GetUint32("minimumNodes"),
+			minGatewayVersion:         minGatewayVersion,
+			minServerVersion:          minServerVersion,
+			roundIdPath:               roundIdPath,
+			updateIdPath:              updateIdPath,
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
 
 		// Start registration server
-		impl, err := StartRegistration(RegParams)
+		quitRegistrationCapacity := make(chan bool)
+		impl, err := StartRegistration(RegParams, quitRegistrationCapacity)
 		if err != nil {
 			jww.FATAL.Panicf(err.Error())
 		}
+
+		err = impl.LoadAllRegisteredNodes()
+		if err != nil {
+			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
+		}
+
+		// Determine how long between storing Node metrics
+		nodeMetricInterval := time.Duration(
+			viper.GetInt64("nodeMetricInterval")) * time.Second
+		nodeTicker := time.NewTicker(nodeMetricInterval)
+
+		// Run the Node metric tracker forever in another thread
+		go func(quitChan QuitChan) {
+			jww.DEBUG.Printf("Beginning storage of node metrics every %+v...",
+				nodeMetricInterval)
+			for {
+				// Store the metric start time
+				startTime := time.Now()
+				select {
+				// Wait for the ticker to fire
+				case <-nodeTicker.C:
+
+					// Iterate over the Node States
+					nodeStates := impl.State.GetNodeMap().GetNodeStates()
+					for _, nodeState := range nodeStates {
+
+						// Build the NodeMetric
+						currentTime := time.Now()
+						metric := &storage.NodeMetric{
+							NodeId:    nodeState.GetID().Bytes(),
+							StartTime: startTime,
+							EndTime:   currentTime,
+							NumPings:  nodeState.GetAndResetNumPolls(),
+						}
+
+						// Store the NodeMetric
+						err := storage.PermissioningDb.InsertNodeMetric(metric)
+						if err != nil {
+							jww.FATAL.Panicf(
+								"Unable to store node metric: %+v", err)
+						}
+					}
+				}
+			}
+		}(impl.MakeQuitChan())
+
+		// Determine how long between polling for banned nodes
+		interval := viper.GetInt("BanTrackerInterval")
+		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
+
+		// Run the independent node tracker in own go thread
+		go func(quitChan QuitChan) {
+		nodeTrackerLoop:
+			for {
+				select {
+				case <-ticker.C:
+					// Keep track of banned nodes
+					err = BannedNodeTracker(impl)
+					if err != nil {
+						jww.FATAL.Panicf("BannedNodeTracker failed: %v", err)
+					}
+				case <-quitChan:
+					break nodeTrackerLoop
+				}
+
+			}
+		}(impl.MakeQuitChan())
 
 		jww.INFO.Printf("Waiting for for %v nodes to register so "+
 			"rounds can start", RegParams.minimumNodes)
 
 		<-impl.beginScheduling
-		jww.INFO.Printf("Minnimum number of nodes %v have registered,"+
-			"begining scheduling and round creation", RegParams.minimumNodes)
+		jww.INFO.Printf("Minimum number of nodes %v have registered, "+
+			"beginning scheduling and round creation", RegParams.minimumNodes)
+
+		schedulingKillChan := make(chan chan struct{})
 
 		// Begin scheduling algorithm
-		go func() {
-			var err error
-			algo := viper.GetString("schedulingAlgorithm")
-			jww.INFO.Printf("Beginning %s scheduling algorithm", algo)
-			switch algo {
-			case "simple":
-				err = simple.Scheduler(SchedulingConfig, impl.State)
-			case "secure":
-				err = errors.New("secure scheduling algorithm not yet implemented")
-			default:
-				err = errors.Errorf("schedulding algorithem %s unknown", algo)
-			}
+		go func(quitChan QuitChan) {
+			err = scheduling.Scheduler(SchedulingConfig, impl.State, schedulingKillChan)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
-		}()
+		}(impl.MakeQuitChan())
+
+		// Set up signal handler for stopping round creation
+		killer := func() int {
+			k := make(chan struct{})
+			schedulingKillChan <- k
+			jww.INFO.Printf("Stopping round creation...")
+			select {
+			case <-k:
+				jww.INFO.Printf("stopped!\n")
+				return 0
+			case <-time.After(closeTimeout):
+				jww.ERROR.Print("couldn't stop round creation!")
+			}
+			return -1
+		}
+		ReceiveUSR1Signal(func() { killer() })
+
+		// Set up signal handler for stopping all long-running threads
+		quitter := func(impl *RegistrationImpl) {
+			jww.INFO.Printf("Stopping all long-running threads")
+
+			jww.INFO.Printf("Stopping long-running round creation...")
+			schedulingTimeout := time.NewTimer(schedulingKillTimeout)
+			k := make(chan struct{})
+			schedulingKillChan <- k
+
+			// Try a non-blocking send for the registration capacity
+			select {
+			case quitRegistrationCapacity <- true:
+			default:
+			}
+
+			// Quit everything else
+			impl.QuitAll()
+
+			// See if round creation got destroyed
+			select {
+			case <-k:
+				jww.INFO.Printf("Stopped long-running round creation")
+			case <-schedulingTimeout.C:
+				jww.ERROR.Print("Round creation stop timed out")
+			}
+		}
+		go ReceiveUSR2Signal(func() { quitter(impl) })
+
+		// Block forever on Signal Handler for safe program exit
+		go ReceiveExitSignal(killer)
 
 		// Block forever to prevent the program ending
 		select {}
@@ -195,8 +362,28 @@ func init() {
 	rootCmd.Flags().BoolVar(&noTLS, "noTLS", false,
 		"Runs without TLS enabled")
 
+	rootCmd.Flags().StringP("close-timeout", "t", "60s",
+		("Amount of time to wait for rounds to stop running after" +
+			" receiving the SIGUSR1 and SIGTERM signals"))
+
+	rootCmd.Flags().StringP("kill-timeout", "k", "60s",
+		("Amount of time to wait for round creation to stop after" +
+			" receiving the SIGUSR2 and SIGTERM signals"))
+
 	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
 		false, "Disables registration server checking for ndf updates")
+
+	err := viper.BindPFlag("closeTimeout",
+		rootCmd.Flags().Lookup("close-timeout"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
+
+	err = viper.BindPFlag("schedulingKillTimeout",
+		rootCmd.Flags().Lookup("kill-timeout"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
 
 }
 

@@ -7,6 +7,7 @@
 package round
 
 import (
+	"bytes"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"math"
@@ -28,7 +29,7 @@ func TestNewState(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	if len(ns.base.Timestamps) != int(states.NUM_STATES) {
 		t.Errorf("Length of timestamps list is incorrect: "+
@@ -54,7 +55,7 @@ func TestNewState(t *testing.T) {
 
 	for i := 0; i < topology.Len(); i++ {
 		strId := topology.GetNodeAtIndex(i).String()
-		if ns.base.Topology[i] != strId {
+		if bytes.Equal(ns.base.Topology[i], []byte(strId)) {
 			t.Errorf("Topology string on index %v is incorrect"+
 				"Expected: %s, Recieved: %s", i, strId, ns.base.Topology[i])
 		}
@@ -105,7 +106,7 @@ func TestState_NodeIsReadyForTransition(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	if ns.readyForTransition != 0 {
 		t.Errorf("readyForTransmission is incorrect; "+
@@ -141,7 +142,7 @@ func TestState_Update_Forward(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	for i := states.PRECOMPUTING; i < states.NUM_STATES; i++ {
 		time.Sleep(1 * time.Millisecond)
@@ -156,7 +157,7 @@ func TestState_Update_Forward(t *testing.T) {
 				ns.state)
 		}
 
-		if ns.base.Timestamps[i] != uint64(ts.Unix()) {
+		if ns.base.Timestamps[i] != uint64(ts.UnixNano()) {
 			t.Errorf("Timestamp stored is incorrect. "+
 				"Stored: %v, Expected: %v", ns.base.Timestamps[i], uint64(ts.Unix()))
 		}
@@ -176,7 +177,7 @@ func TestState_Update_Same(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	for i := states.PENDING; i < states.NUM_STATES; i++ {
 		ns.state = i
@@ -220,7 +221,7 @@ func TestState_Update_Reverse(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	for i := states.PRECOMPUTING; i < states.NUM_STATES; i++ {
 		ns.state = i
@@ -262,7 +263,7 @@ func TestState_BuildRoundInfo(t *testing.T) {
 
 	ts := time.Now()
 
-	ns := newState(rid, batchSize, topology, ts)
+	ns := newState(rid, batchSize, 5*time.Minute, topology, ts)
 
 	ns.state = states.FAILED
 
@@ -292,7 +293,7 @@ func TestState_BuildRoundInfo(t *testing.T) {
 
 	for i := 0; i < topology.Len(); i++ {
 		strId := topology.GetNodeAtIndex(i).String()
-		if ri.Topology[i] != strId {
+		if bytes.Equal(ri.Topology[i], []byte(strId)) {
 			t.Errorf("Topology string on index %v is incorrect"+
 				"Expected: %s, Recieved: %s", i, strId, ri.Topology[i])
 		}

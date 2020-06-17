@@ -20,6 +20,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
 	mrand "math/rand"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -49,7 +50,7 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey)
+	state, err := NewState(privateKey, "", "")
 	if err != nil {
 		t.Errorf("NewState() produced an unexpected error:\n%v", err)
 	}
@@ -109,7 +110,7 @@ func TestNewState_PrivateKeyError(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey)
+	state, err := NewState(privateKey, "", "")
 
 	// Test NewState() output
 	if err == nil || err.Error() != expectedErr {
@@ -223,7 +224,7 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	state.roundUpdateID = 1
+	state.roundUpdateID.id = 1
 
 	// Call AddRoundUpdate()
 	err = state.AddRoundUpdate(testRoundInfo)
@@ -244,7 +245,13 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 	expectedRoundInfo.Signature = roundInfo.Signature
 
 	// Check that the round info returned is correct.
-	if !reflect.DeepEqual(*roundInfo, expectedRoundInfo) {
+	if roundInfo.State != expectedRoundInfo.State && roundInfo.ID != expectedRoundInfo.ID &&
+		reflect.DeepEqual(roundInfo.Topology, expectedRoundInfo.Topology) &&
+		roundInfo.BatchSize != expectedRoundInfo.BatchSize &&
+		reflect.DeepEqual(roundInfo.Errors, expectedRoundInfo.Errors) &&
+		reflect.DeepEqual(roundInfo.Timestamps, expectedRoundInfo.Timestamps) &&
+		roundInfo.UpdateID != expectedRoundInfo.UpdateID {
+
 		t.Errorf("AddRoundUpdate() added incorrect roundInfo."+
 			"\n\texpected: %#v\n\treceived: %#v", expectedRoundInfo, *roundInfo)
 	}
@@ -405,10 +412,10 @@ func TestNetworkState_GetNodeMap(t *testing.T) {
 // channel and that GetNodeUpdateChannel() receives and returns it.
 func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 	// Test values
-	testNun := NodeUpdateNotification{
-		Node: id.NewNodeFromUInt(mrand.Uint64(), t),
-		From: current.NOT_STARTED,
-		To:   current.WAITING,
+	testNun := node.UpdateNotification{
+		Node:         id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
+		FromActivity: current.NOT_STARTED,
+		ToActivity:   current.WAITING,
 	}
 
 	// Generate new NetworkState
@@ -418,7 +425,7 @@ func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 	}
 
 	go func() {
-		err = state.NodeUpdateNotification(testNun.Node, testNun.From, testNun.To)
+		err = state.SendUpdateNotification(testNun)
 		if err != nil {
 			t.Errorf("NodeUpdateNotification() produced an unexpected error:"+
 				"\n%+v", err)
@@ -429,10 +436,10 @@ func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 
 	select {
 	case testUpdate := <-nodeUpdateNotifier:
-		if !reflect.DeepEqual(*testUpdate, testNun) {
+		if !reflect.DeepEqual(testUpdate, testNun) {
 			t.Errorf("GetNodeUpdateChannel() received the wrong "+
 				"NodeUpdateNotification.\n\texpected: %v\n\t received: %v",
-				testNun, *testUpdate)
+				testNun, testUpdate)
 		}
 	case <-time.After(time.Millisecond):
 		t.Error("Failed to receive node update.")
@@ -443,10 +450,10 @@ func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 // channel buffer is already filled.
 func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
 	// Test values
-	testNun := NodeUpdateNotification{
-		Node: id.NewNodeFromUInt(mrand.Uint64(), t),
-		From: current.NOT_STARTED,
-		To:   current.WAITING,
+	testNun := node.UpdateNotification{
+		Node:         id.NewIdFromUInt(mrand.Uint64(), id.Node, t),
+		FromActivity: current.NOT_STARTED,
+		ToActivity:   current.WAITING,
 	}
 	expectedError := errors.New("Could not send update notification")
 
@@ -458,11 +465,11 @@ func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
 
 	// Fill buffer
 	for i := 0; i < updateBufferLength; i++ {
-		state.update <- &testNun
+		state.update <- testNun
 	}
 
 	go func() {
-		err = state.NodeUpdateNotification(testNun.Node, testNun.From, testNun.To)
+		err = state.SendUpdateNotification(testNun)
 		if strings.Compare(err.Error(), expectedError.Error()) != 0 {
 			t.Errorf("NodeUpdateNotification() did not produce an error "+
 				"when the channel buffer is full.\n\texpected: %v\n\treceived: %v",
@@ -483,10 +490,62 @@ func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 	}
 
 	// Generate new NetworkState using the private key
-	state, err := NewState(privateKey)
+	state, err := NewState(privateKey, "", "")
 	if err != nil {
 		return state, privateKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
 	}
 
 	return state, privateKey, nil
+}
+
+// Tests that IncrementRoundID() increments the ID correctly.
+func TestNetworkState_IncrementRoundID(t *testing.T) {
+	testID := uint64(9843)
+	testPath := "testRoundID.txt"
+	incrementAmount := uint64(10)
+	testState := NetworkState{
+		roundID: &stateID{
+			id:   testID,
+			path: testPath,
+		},
+	}
+
+	defer func() {
+		err := os.RemoveAll(testPath)
+		if err != nil {
+			t.Fatalf("%+v", err)
+		}
+	}()
+
+	for i := uint64(0); i < incrementAmount; i++ {
+		oldID, err := testState.IncrementRoundID()
+		if err != nil {
+			t.Errorf("IncrementRoundID() produced an unexpected error on "+
+				"index %d: %+v", i, err)
+		}
+
+		// Test that the correct old ID was returned
+		if oldID != id.Round(testID+i) {
+			t.Errorf("IncrementRoundID() did not return the correct old ID."+
+				"\n\texpected: %+v\n\treceived: %+v", id.Round(testID+i), oldID)
+		}
+	}
+}
+
+// Tests that GetRoundID() returns the correct value.
+func TestNetworkState_GetRoundID(t *testing.T) {
+	expectedID := id.Round(9843)
+	testState := NetworkState{
+		roundID: &stateID{
+			id:   uint64(expectedID),
+			path: "testRoundID.txt",
+		},
+	}
+
+	testID := testState.GetRoundID()
+
+	if expectedID != testID {
+		t.Errorf("GetRoundID() returned an incorrect ID."+
+			"\n\texpected: %+v\n\treceived: %+v", expectedID, testID)
+	}
 }

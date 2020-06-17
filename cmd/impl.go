@@ -20,7 +20,9 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
+	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"sync"
 	"time"
 )
@@ -41,12 +43,15 @@ type RegistrationImpl struct {
 	maxRegistrationAttempts uint64
 
 	//registration status trackers
-	numRegistered    int
+	numRegistered int
 	//FIXME: it is possible that polling lock and registration lock
 	// do the same job and could conflict. reconsiderations of this logic
 	// may be fruitful
 	registrationLock sync.Mutex
 	beginScheduling  chan struct{}
+	QuitChans
+
+	NDFLock sync.Mutex
 }
 
 //function used to schedule nodes
@@ -65,8 +70,14 @@ type Params struct {
 	publicAddress             string
 	maxRegistrationAttempts   uint64
 	registrationCountDuration time.Duration
+	schedulingKillTimeout     time.Duration
+	closeTimeout              time.Duration
 	minimumNodes              uint32
 	udbId                     []byte
+	minGatewayVersion         version.Version
+	minServerVersion          version.Version
+	roundIdPath               string
+	updateIdPath              string
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -84,7 +95,7 @@ func toGroup(grp map[string]string) (*ndf.Group, error) {
 }
 
 // Configure and start the Permissioning Server
-func StartRegistration(params Params) (*RegistrationImpl, error) {
+func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error) {
 
 	// Initialize variables
 	regRemaining := uint64(0)
@@ -104,7 +115,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	//initilize the state tracking object
-	state, err := storage.NewState(pk)
+	state, err := storage.NewState(pk, params.roundIdPath, params.updateIdPath)
 	if err != nil {
 		return nil, err
 	}
@@ -119,12 +130,11 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		NdfReady:                &ndfReady,
 
 		numRegistered:   0,
-		beginScheduling: make(chan struct{}),
+		beginScheduling: make(chan struct{}, 1),
 	}
 
 	// Create timer and channel to be used by routine that clears the number of
 	// registrations every time the ticker activates
-	done := make(chan bool)
 	go func() {
 		ticker := time.NewTicker(params.registrationCountDuration)
 		regImpl.registrationCapacityRestRunner(ticker, done)
@@ -144,6 +154,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			return nil, errors.Errorf("Failed to parse permissioning server cert: %+v. "+
 				"Permissioning cert is %+v", err, regImpl.permissioningCert)
 		}
+
 	}
 
 	// Construct the NDF
@@ -159,8 +170,8 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		CMIX:      RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
-		Nodes:    make([]ndf.Node, params.minimumNodes),
-		Gateways: make([]ndf.Gateway, params.minimumNodes),
+		Nodes:    make([]ndf.Node, 0),
+		Gateways: make([]ndf.Gateway, 0),
 	}
 
 	// Assemble notification server information if configured
@@ -184,7 +195,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// Start the communication server
-	regImpl.Comms = registration.StartRegistrationServer(id.PERMISSIONING,
+	regImpl.Comms = registration.StartRegistrationServer(&id.Permissioning,
 		params.Address, NewImplementation(regImpl),
 		[]byte(regImpl.certFromFile), key)
 
@@ -196,58 +207,255 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	return regImpl, nil
 }
 
+// Tracks nodes banned from the network. Sends an update to the scheduler
+func BannedNodeTracker(impl *RegistrationImpl) error {
+	state := impl.State
+	// Search the database for any banned nodes
+	bannedNodes, err := storage.PermissioningDb.GetNodesByStatus(node.Banned)
+	if err != nil {
+		return errors.Errorf("Failed to get nodes by %s status: %v", node.Banned, err)
+	}
+
+	impl.NDFLock.Lock()
+	defer impl.NDFLock.Unlock()
+	def := state.GetFullNdf().Get()
+
+	// Parse through the returned node list
+	for _, n := range bannedNodes {
+		// Convert the id into an id.ID
+		nodeId, err := id.Unmarshal(n.Id)
+		if err != nil {
+			return errors.Errorf("Failed to convert node %s to id.ID: %v", n.Id, err)
+		}
+
+		var newNodes []ndf.Node
+		// Loop through NDF nodes to remove any that are banned
+		for i, node := range def.Nodes {
+			ndfNodeID, err := id.Unmarshal(node.ID)
+			if err != nil {
+				return errors.WithMessage(err, "Failed to unmarshal node id from NDF")
+			}
+			if ndfNodeID.Cmp(nodeId) {
+				continue
+			} else {
+				newNodes = append(newNodes, def.Nodes[i])
+			}
+		}
+		if len(newNodes) != len(def.Nodes) {
+			def.Nodes = newNodes
+			err = state.UpdateNdf(def)
+			if err != nil {
+				return errors.WithMessage(err, "Failed to update NDF after bans")
+			}
+		}
+
+		// Get the node from the nodeMap
+		ns := state.GetNodeMap().GetNode(nodeId)
+		var nun node.UpdateNotification
+		// If the node is already banned do not attempt to re-ban
+		if ns == nil || ns.IsBanned() {
+			continue
+		}
+
+		// Ban the node, propagating the ban to the node's state
+		nun, err = ns.Ban()
+		if err != nil {
+			return errors.WithMessage(err, "Could not ban node")
+		}
+
+		/// Send the node's update notification to the scheduler
+		err = state.SendUpdateNotification(nun)
+		if err != nil {
+			return errors.WithMessage(err, "Could not send update notification")
+		}
+	}
+
+	return nil
+}
+
 // NewImplementation returns a registration server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
 	impl.Functions.RegisterUser = func(
 		registrationCode, pubKey string) (signature []byte, err error) {
 
-		response, err := instance.RegisterUser(registrationCode, pubKey)
-		if err != nil {
-			jww.ERROR.Printf("RegisterUser error: %+v", err)
-		}
+		result := make(chan bool)
+
+		var response []byte
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("Register User crash recovered: %+v", r)
+					jww.ERROR.Printf("Register User crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			response, err = instance.RegisterUser(registrationCode, pubKey)
+			if err != nil {
+				jww.ERROR.Printf("RegisterUser error: %+v", err)
+			}
+			result <- true
+		}()
+
+		<-result
 
 		return response, err
 	}
+
 	impl.Functions.GetCurrentClientVersion = func() (version string, err error) {
+		result := make(chan bool)
 
-		response, err := instance.GetCurrentClientVersion()
-		if err != nil {
-			jww.ERROR.Printf("GetCurrentClientVersion error: %+v", err)
-		}
+		var response string
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("GetCurrentClientVersion crash recovered: %+v", r)
+					jww.ERROR.Printf("GetCurrentClientVersion crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			response, err = instance.GetCurrentClientVersion()
+			if err != nil {
+				jww.ERROR.Printf("GetCurrentClientVersion error: %+v", err)
+			}
+			result <- true
+		}()
+
+		<-result
 
 		return response, err
 	}
-	impl.Functions.RegisterNode = func(ID []byte, ServerAddr, ServerTlsCert,
+	impl.Functions.RegisterNode = func(ID *id.ID, ServerAddr, ServerTlsCert,
 		GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
 
-		err := instance.RegisterNode(ID, ServerAddr,
-			ServerTlsCert, GatewayAddr, GatewayTlsCert, RegistrationCode)
-		if err != nil {
-			jww.ERROR.Printf("RegisterNode error: %+v", err)
-		}
+		result := make(chan bool)
+		var err error
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("RegisterNode crash recovered: %+v", r)
+					jww.ERROR.Printf("RegisterNode crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			err = instance.RegisterNode(ID, ServerAddr,
+				ServerTlsCert, GatewayAddr, GatewayTlsCert, RegistrationCode)
+			if err != nil {
+				jww.ERROR.Printf("RegisterNode error: %+v", err)
+			}
+			result <- true
+		}()
+
+		<-result
 
 		return err
 	}
 	impl.Functions.PollNdf = func(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
 
-		response, err := instance.PollNdf(theirNdfHash, auth)
-		if err != nil {
-			jww.ERROR.Printf("PollNdf error: %+v", err)
-		}
+		result := make(chan bool)
+		var err error
+		var response []byte
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("PollNdf crash recovered: %+v", r)
+					jww.ERROR.Printf("PollNdf crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			response, err = instance.PollNdf(theirNdfHash, auth)
+			if err != nil && err.Error() != ndf.NO_NDF {
+				jww.ERROR.Printf("PollNdf error: %+v", err)
+			}
+			result <- true
+		}()
+
+		<-result
 
 		return response, err
 	}
 
-	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
+	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth, serverAddress string) (*pb.PermissionPollResponse, error) {
+		//ensure a bad poll can not take down the permisisoning server
+		result := make(chan bool)
 
-		response, err := instance.Poll(msg, auth)
-		if err != nil {
-			jww.ERROR.Printf("Poll error: %+v", err)
-		}
+		response := &pb.PermissionPollResponse{}
+		var err error
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("Unified Poll crash recovered: %+v", r)
+					jww.ERROR.Printf("Unified Poll crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			response, err = instance.Poll(msg, auth, serverAddress)
+			if err != nil && err.Error() != ndf.NO_NDF {
+				jww.ERROR.Printf("Unified Poll error: %+v", err)
+			}
+			result <- true
+		}()
+
+		<-result
 
 		return response, err
+	}
+
+	// This comm is not authenticated as servers call this early in their
+	//lifecycle to check if they've already registered
+	impl.Functions.CheckRegistration = func(msg *pb.RegisteredNodeCheck) (confirmation *pb.RegisteredNodeConfirmation, e error) {
+		result := make(chan bool)
+
+		var response bool
+		var err error
+
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					err = errors.Errorf("Check Node Registration crash recovered: %+v", r)
+					jww.ERROR.Printf("Check Node Registration crash recovered: %+v", r)
+					result <- true
+				}
+			}()
+
+			response = instance.CheckNodeRegistration(msg.RegCode)
+			result <- true
+		}()
+
+		<-result
+
+		// Returning any errors, such as database errors, would result in too much
+		// leaked data for a public call.
+		return &pb.RegisteredNodeConfirmation{IsRegistered: response}, err
+
 	}
 
 	return impl
+}
+
+func recoverable(f func() error, source string) error {
+	result := make(chan bool)
+	var err error
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				err = errors.Errorf("crash recovered: %+v, %+v", source, r)
+				result <- true
+			}
+		}()
+		err = f()
+		result <- true
+	}()
+	<-result
+	return err
 }

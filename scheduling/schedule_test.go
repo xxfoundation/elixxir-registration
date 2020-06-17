@@ -1,4 +1,4 @@
-package simple
+package scheduling
 
 import (
 	"encoding/json"
@@ -7,6 +7,7 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
 	"reflect"
 	"strconv"
@@ -15,10 +16,10 @@ import (
 )
 
 // Happy path
-func TestScheduler(t *testing.T) {
-	configJson, err := utils.ReadFile(testkeys.GetSchedulingConfig())
+func TestScheduler_NonRandom(t *testing.T) {
+	configJson, err := utils.ReadFile(testkeys.GetSchedulingSimple(false))
 	if err != nil {
-		t.Errorf("Failed to open %s", testkeys.GetSchedulingConfig())
+		t.Errorf("Failed to open %s", testkeys.GetSchedulingSimple(false))
 	}
 
 	var testParams Params
@@ -40,33 +41,43 @@ func TestScheduler(t *testing.T) {
 			"PermissioningKey is %+v", err, pk)
 	}
 	// Start registration server
-	state, err := storage.NewState(pk)
+	state, err := storage.NewState(pk, "", "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
 
-	teamSize := 3
-
-	nodeList := make([]*id.Node, teamSize)
-	for i := 0; i < teamSize; i++ {
-		nid := id.NewNodeFromUInt(uint64(i), t)
+	nodeList := make([]*id.ID, testParams.TeamSize)
+	for i := 0; i < int(testParams.TeamSize); i++ {
+		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
 		nodeList[i] = nid
+		nodIDBytes := make([]byte, id.ArrIDLen)
+		nodIDBytes[0] = byte(i + 1)
+		nodeID := id.NewIdFromBytes(nodIDBytes, t)
+		nodeList[i] = nodeID
 
-		err = state.GetNodeMap().AddNode(nid, strconv.Itoa(i))
+		err = state.GetNodeMap().AddNode(nodeID, strconv.Itoa(i), "", "")
 		if err != nil {
 			t.Errorf("Failed to add node %d to map: %v", i, err)
 		}
 		state.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
-		err = state.NodeUpdateNotification(nid, current.NOT_STARTED, current.WAITING)
+
+		nun := node.UpdateNotification{
+			Node:         nodeID,
+			FromActivity: current.NOT_STARTED,
+			ToActivity:   current.WAITING,
+		}
+
+		err = state.SendUpdateNotification(nun)
 		if err != nil {
 			t.Errorf("Failed to update node %d from %s to %s: %v",
 				i, current.NOT_STARTED, current.WAITING, err)
 		}
-
 	}
 
+	kill := make(chan chan struct{})
+
 	go func() {
-		err = Scheduler(configJson, state)
+		err = Scheduler(configJson, state, kill)
 		if err != nil {
 			t.Errorf("Scheduler failed with error: %v", err)
 		}
@@ -76,16 +87,16 @@ func TestScheduler(t *testing.T) {
 
 	roundInfo, err := state.GetUpdates(0)
 
+	if err != nil {
+		t.Errorf("Unexpected error retrieving round info: %v", err)
+	}
+
 	if len(roundInfo) == 0 {
 		t.Errorf("Expected round to start. " +
 			"Received no round info indicating this")
 	}
 
-	if err != nil {
-		t.Errorf("Unexpected error retrieving round info: %v", err)
-	}
-
-	receivedNodeList, err := id.NewNodeListFromStrings(roundInfo[0].Topology)
+	receivedNodeList, err := id.NewIDListFromBytes(roundInfo[0].Topology)
 	if err != nil {
 		t.Errorf("Failed to convert topology of round info: %v", err)
 	}

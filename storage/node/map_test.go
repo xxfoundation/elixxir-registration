@@ -25,29 +25,29 @@ func TestNewStateMap(t *testing.T) {
 	}
 }
 
-//Tests a node is added correctly to the state map when it is
+//Tests a Node is added correctly to the state map when it is
 func TestStateMap_AddNode_Happy(t *testing.T) {
 	sm := &StateMap{
-		nodeStates: make(map[id.Node]*State),
+		nodeStates: make(map[id.ID]*State),
 	}
 
-	nid := id.NewNodeFromUInt(2, t)
+	nid := id.NewIdFromUInt(2, id.Node, t)
 
-	err := sm.AddNode(nid, "")
+	err := sm.AddNode(nid, "", "", "")
 
 	if err != nil {
-		t.Errorf("Error returned on valid addition of node: %s", err)
+		t.Errorf("Error returned on valid addition of Node: %s", err)
 	}
 
 	n := sm.nodeStates[*nid]
 
 	if n.activity != current.NOT_STARTED {
-		t.Errorf("New node state has wrong activity; "+
+		t.Errorf("New Node state has wrong activity; "+
 			"Expected: %s, Recieved: %s", current.NOT_STARTED, n.activity)
 	}
 
 	if n.currentRound != nil {
-		t.Errorf("New node has a curent round set incorrectly")
+		t.Errorf("New Node has a curent round set incorrectly")
 	}
 
 	pollDelta := time.Now().Sub(n.lastPoll)
@@ -57,13 +57,13 @@ func TestStateMap_AddNode_Happy(t *testing.T) {
 	}
 }
 
-//Tests a node is added correctly to the state map when it is
+//Tests a Node is added correctly to the state map when it is
 func TestStateMap_AddNode_Invalid(t *testing.T) {
 	sm := &StateMap{
-		nodeStates: make(map[id.Node]*State),
+		nodeStates: make(map[id.ID]*State),
 	}
 
-	nid := id.NewNodeFromUInt(2, t)
+	nid := id.NewIdFromUInt(2, id.Node, t)
 	r := round.NewState_Testing(42, 0, t)
 
 	sm.nodeStates[*nid] = &State{
@@ -74,11 +74,11 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 
 	time.Sleep(1 * time.Millisecond)
 
-	err := sm.AddNode(nid, "")
+	err := sm.AddNode(nid, "", "", "")
 
 	if err == nil {
-		t.Errorf("Error not returned on invalid addition of node: %s", err)
-	} else if !strings.Contains(err.Error(), "cannot add a node which "+
+		t.Errorf("Error not returned on invalid addition of Node: %s", err)
+	} else if !strings.Contains(err.Error(), "cannot add a Node which "+
 		"already exists") {
 		t.Errorf("Incorrect error returned from failed AddNode: %s", err)
 	}
@@ -86,12 +86,12 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 	n := sm.nodeStates[*nid]
 
 	if n.activity != current.WAITING {
-		t.Errorf("Extant node state has wrong activity; "+
+		t.Errorf("Extant Node state has wrong activity; "+
 			"Expected: %s, Recieved: %s", current.WAITING, n.activity)
 	}
 
 	if n.currentRound == nil || n.currentRound.GetRoundID() != r.GetRoundID() {
-		t.Errorf("New node has a curent round set incorrectly: "+
+		t.Errorf("New Node has a curent round set incorrectly: "+
 			"Expected: %+v; Recieved: %+v", r.GetRoundID(), n.currentRound.GetRoundID())
 
 	}
@@ -103,13 +103,13 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 	}
 }
 
-//Tests a node is retrieved correctly when in the state map
+//Tests a Node is retrieved correctly when in the state map
 func TestStateMap_GetNode_Valid(t *testing.T) {
 	sm := &StateMap{
-		nodeStates: make(map[id.Node]*State),
+		nodeStates: make(map[id.ID]*State),
 	}
 
-	nid := id.NewNodeFromUInt(2, t)
+	nid := id.NewIdFromUInt(2, id.Node, t)
 	r := round.NewState_Testing(42, 0, t)
 
 	sm.nodeStates[*nid] = &State{
@@ -121,15 +121,15 @@ func TestStateMap_GetNode_Valid(t *testing.T) {
 	n := sm.GetNode(nid)
 
 	if n == nil {
-		t.Errorf("No node returned when node exists")
+		t.Errorf("No Node returned when Node exists")
 	} else {
 		if n.activity != current.NOT_STARTED {
-			t.Errorf("New node state has wrong activity; "+
+			t.Errorf("New Node state has wrong activity; "+
 				"Expected: %s, Recieved: %s", current.NOT_STARTED, n.activity)
 		}
 
 		if n.currentRound == nil || n.currentRound.GetRoundID() != r.GetRoundID() {
-			t.Errorf("New node has a curent round set incorrectly: "+
+			t.Errorf("New Node has a curent round set incorrectly: "+
 				"Expected: %+v; Recieved: %+v", r.GetRoundID(), n.currentRound.GetRoundID())
 
 		}
@@ -143,18 +143,18 @@ func TestStateMap_GetNode_Valid(t *testing.T) {
 
 }
 
-//Tests a node not is not returned when no node exists
+//Tests a Node not is not returned when no Node exists
 func TestStateMap_GetNode_invalid(t *testing.T) {
 	sm := &StateMap{
-		nodeStates: make(map[id.Node]*State),
+		nodeStates: make(map[id.ID]*State),
 	}
 
-	nid := id.NewNodeFromUInt(2, t)
+	nid := id.NewIdFromUInt(2, id.Node, t)
 
 	n := sm.GetNode(nid)
 
 	if n != nil {
-		t.Errorf("Nnode returned when node does not exist")
+		t.Errorf("Nnode returned when Node does not exist")
 	}
 }
 
@@ -170,16 +170,41 @@ func TestStateMap_Len(t *testing.T) {
 		}
 
 		sm := &StateMap{
-			nodeStates: make(map[id.Node]*State),
+			nodeStates: make(map[id.ID]*State),
 		}
 
 		for j := 0; j < l; j++ {
-			sm.nodeStates[*id.NewNodeFromUInt(uint64(5*j+1), t)] = &State{}
+			sm.nodeStates[*id.NewIdFromUInt(uint64(5*j+1), id.Node, t)] = &State{}
 		}
 
 		if sm.Len() != l {
 			t.Errorf("Len returned a length of %v when it should be %v",
 				sm.Len(), l)
 		}
+	}
+}
+
+// Happy path
+func TestStateMap_GetNodeStates(t *testing.T) {
+	sm := &StateMap{
+		nodeStates: make(map[id.ID]*State),
+	}
+
+	err := sm.AddNode(id.NewIdFromBytes([]byte("test"), t), "test", "", "")
+	if err != nil {
+		t.Errorf("Unable to add node: %+v", err)
+	}
+	err = sm.AddNode(id.NewIdFromBytes([]byte("test2"), t), "test2", "", "")
+	if err != nil {
+		t.Errorf("Unable to add node: %+v", err)
+	}
+	err = sm.AddNode(id.NewIdFromBytes([]byte("test3"), t), "test3", "", "")
+	if err != nil {
+		t.Errorf("Unable to add node: %+v", err)
+	}
+
+	nodeStates := sm.GetNodeStates()
+	if len(nodeStates) != 3 {
+		t.Errorf("Incorrect number of nodes returned, got %d", len(nodeStates))
 	}
 }

@@ -10,9 +10,12 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/transition"
 	"sync"
+	"sync/atomic"
+	"testing"
 	"time"
 )
 
@@ -23,11 +26,17 @@ type State struct {
 	// Current activity as reported by the Node
 	activity current.Activity
 
-	//nil if not in a round, otherwise holds the round the node is in
+	// denotes the current status of the Node in the network
+	status Status
+
+	//nil if not in a round, otherwise holds the round the Node is in
 	currentRound *round.State
 
 	// Timestamp of the last time this Node polled
 	lastPoll time.Time
+
+	// Number of polls made by the node during the current monitoring period
+	numPolls *uint64
 
 	// Order string to be used in team configuration
 	ordering string
@@ -35,22 +44,66 @@ type State struct {
 	//holds valid state transitions
 	stateMap *[][]bool
 
-	//id of the node
-	id *id.Node
+	//id of the Node
+	id *id.ID
 
-	// when a node poll is received, this nodes polling lock is. If
+	// Address of node
+	nodeAddress string
+
+	// Address of gateway
+	gatewayAddress string
+
+	// when a Node poll is received, this nodes polling lock is. If
 	// there is no update, it is released in this endpoint, otherwise it is
 	// released in the scheduling algorithm which blocks all future polls until
 	// processing completes
 	//FIXME: it is possible that polling lock and registration lock
-	// do the same job and could conflict. reconsiderations of this logic
-	// may be fruitfull
+	// do the same job and could conflict. reconsideration of this logic
+	// may be fruitful
 	pollingLock sync.Mutex
 }
 
+// Increment function for numPolls
+func (n *State) IncrementNumPolls() {
+	atomic.AddUint64(n.numPolls, 1)
+}
+
+// Returns the current value of numPolls and then resets numPolls to zero
+func (n *State) GetAndResetNumPolls() uint64 {
+	return atomic.SwapUint64(n.numPolls, 0)
+}
+
+// sets the Node to banned and then returns an update notification for signaling
+func (n *State) Ban() (UpdateNotification, error) {
+	// Get and lock n state
+	n.mux.Lock()
+	defer n.mux.Unlock()
+
+	//check if the Node is already banned. do not continue if it is
+	if n.status == Banned {
+		return UpdateNotification{}, errors.New("cannot ban an already banned Node")
+	}
+
+	oldStatus := n.status
+
+	//ban the Node
+	n.status = Banned
+
+	//create the update notification
+	nun := UpdateNotification{
+		Node:         n.id,
+		FromStatus:   oldStatus,
+		ToStatus:     n.status,
+		FromActivity: n.activity,
+		ToActivity:   n.activity,
+	}
+
+	return nun, nil
+}
+
 // updates to the passed in activity if it is different from the known activity
-// returns true if the state changed and the state was it was reguardless
-func (n *State) Update(newActivity current.Activity) (bool, current.Activity, error) {
+// returns true if the state changed and the state was it was regardless
+func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, error) {
 	// Get and lock n state
 	n.mux.Lock()
 	defer n.mux.Unlock()
@@ -60,62 +113,103 @@ func (n *State) Update(newActivity current.Activity) (bool, current.Activity, er
 
 	oldActivity := n.activity
 
-	//if the activity is the one that the node is already in, do nothing
+	//if the Node is inactive, check if requirements are met to reactive it
+	if n.status == Inactive {
+		return n.updateInactive(newActivity)
+	}
+
+	//if the activity is the one that the Node is already in, do nothing
 	if oldActivity == newActivity {
-		return false, oldActivity, nil
+		return false, UpdateNotification{}, nil
+	}
+
+	// Check the round error state
+	if n.currentRound != nil && n.currentRound.GetRoundState() == states.FAILED && newActivity != current.ERROR {
+		return false, UpdateNotification{}, errors.New("Round has failed, state cannot be updated")
 	}
 
 	//check that teh activity transition is valid
 	valid := transition.Node.IsValidTransition(newActivity, oldActivity)
 
 	if !valid {
-		return false, oldActivity,
-			errors.Errorf("node update from %s to %s failed, "+
+		return false, UpdateNotification{},
+			errors.Errorf("Node update from %s to %s failed, "+
 				"invalid transition", oldActivity, newActivity)
 	}
 
-	// check that the state of the round the node is assoceated with is correct
+	// check that the state of the round the Node is assoceated with is correct
 	// for the transition
 	if transition.Node.NeedsRound(newActivity) == transition.Yes {
+
 		if n.currentRound == nil {
-			return false, oldActivity,
-				errors.Errorf("node update from %s to %s failed, "+
-					"requires the node be assigned a round", oldActivity,
+			return false, UpdateNotification{},
+				errors.Errorf("Node update from %s to %s failed, "+
+					"requires the Node be assigned a round", oldActivity,
 					newActivity)
 		}
 
 		if n.currentRound.GetRoundState() != transition.Node.RequiredRoundState(newActivity) {
-			return false, oldActivity,
-				errors.Errorf("node update from %s to %s failed, "+
-					"requires the node's be assigned a round to be in the "+
+			return false, UpdateNotification{},
+				errors.Errorf("Node update from %s to %s failed, "+
+					"requires the Node's be assigned a round to be in the "+
 					"correct state; Assigned: %s, Expected: %s", oldActivity,
 					newActivity, n.currentRound.GetRoundState(),
 					transition.Node.RequiredRoundState(oldActivity))
 		}
 	}
 
-	//check that the node doesnt have a round if it shouldn't
+	//check that the Node doesnt have a round if it shouldn't
 	if transition.Node.NeedsRound(newActivity) == transition.No && n.currentRound != nil {
-		return false, oldActivity,
-			errors.Errorf("node update from %s to %s failed, "+
-				"requires the node not be assigned a round", oldActivity,
+		return false, UpdateNotification{},
+			errors.Errorf("Node update from %s to %s failed, "+
+				"requires the Node not be assigned a round", oldActivity,
 				newActivity)
 	}
 
-	// change the node's activity
+	// change the Node's activity
 	n.activity = newActivity
 
-	return true, oldActivity, nil
+	//build the update notification
+	nun := UpdateNotification{
+		Node:         n.id,
+		FromStatus:   n.status,
+		ToStatus:     n.status,
+		FromActivity: oldActivity,
+		ToActivity:   newActivity,
+	}
+
+	return true, nun, nil
 }
 
-// gets the current activity of the node
+// gets the current activity of the Node
 func (n *State) GetActivity() current.Activity {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	return n.activity
 }
 
-// gets the timestap of the last time the node polled
+// Gets the status of the Node in the network
+func (n *State) GetStatus() Status {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	return n.status
+}
+
+// Gets if the Node is banned from the network
+func (n *State) IsBanned() bool {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	return n.status == Banned
+}
+
+// Designates the node as offline
+func (n *State) SetInactive() {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	n.status = Inactive
+}
+
+// gets the timestap of the last time the Node polled
 func (n *State) GetLastPoll() time.Time {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
@@ -127,17 +221,43 @@ func (n *State) GetPollingLock() *sync.Mutex {
 	return &n.pollingLock
 }
 
+// UpdateNodeAddresses updates the address if it is warranted.
+func (n *State) UpdateNodeAddresses(node string) bool {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+
+	if n.nodeAddress != node {
+		n.nodeAddress = node
+		return true
+	}
+
+	return false
+}
+
+// UpdateGatewayAddresses updates the address if it is warranted
+func (n *State) UpdateGatewayAddresses(gateway string) bool {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+
+	if gateway != "" && n.gatewayAddress != gateway {
+		n.gatewayAddress = gateway
+		return true
+	}
+
+	return false
+}
+
 // gets the ordering string for use in team formation
 func (n *State) GetOrdering() string {
 	return n.ordering
 }
 
-// gets the ID of the node
-func (n *State) GetID() *id.Node {
+// gets the ID of the Node
+func (n *State) GetID() *id.ID {
 	return n.id
 }
 
-// returns true and the round id if the node is assigned to a round,
+// returns true and the round id if the Node is assigned to a round,
 // return false and nil if it is not
 func (n *State) GetCurrentRound() (bool, *round.State) {
 	n.mux.RLock()
@@ -149,14 +269,14 @@ func (n *State) GetCurrentRound() (bool, *round.State) {
 	}
 }
 
-// sets the node to not be in a round
+// sets the Node to not be in a round
 func (n *State) ClearRound() {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 	n.currentRound = nil
 }
 
-// sets the node's round to the passed in round unless one is already set,
+// sets the Node's round to the passed in round unless one is already set,
 // in which case it errors
 func (n *State) SetRound(r *round.State) error {
 	n.mux.Lock()
@@ -168,4 +288,42 @@ func (n *State) SetRound(r *round.State) error {
 
 	n.currentRound = r
 	return nil
+}
+
+// Handles the node update in the case of a node with an inactive state
+func (n *State) updateInactive(newActivity current.Activity) (bool, UpdateNotification, error) {
+	switch newActivity {
+	case current.WAITING:
+		oldActivity := n.activity
+		n.activity = newActivity
+		n.status = Active
+		nun := UpdateNotification{
+			Node:         n.id,
+			FromStatus:   Inactive,
+			ToStatus:     Active,
+			FromActivity: oldActivity,
+			ToActivity:   newActivity,
+		}
+		return true, nun, nil
+	case current.ERROR:
+		return false, UpdateNotification{}, nil
+	default:
+		return false, UpdateNotification{}, errors.Errorf("Report "+
+			"for state %s rejected due to Node being inactive, Node must "+
+			"activate by polling warning state", newActivity)
+	}
+}
+
+func (n *State) SetLastPoll(lastPoll time.Time, t *testing.T) {
+	if t == nil {
+		panic("Cannot directly set node.State's last poll outside of testing")
+	}
+	n.lastPoll = lastPoll
+}
+
+func (n *State) SetOrdering(ordering string, t *testing.T) {
+	if t == nil {
+		panic("Cannot directly set node.State's ordering outside of testing")
+	}
+	n.ordering = ordering
 }

@@ -11,6 +11,7 @@ import (
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"testing"
+	"time"
 )
 
 //tests that newStateMap is correct
@@ -33,7 +34,7 @@ func TestStateMap_AddRound_Happy(t *testing.T) {
 
 	const numNodes = 5
 
-	rRtn, err := sm.AddRound(rid, 32, buildMockTopology(numNodes, t))
+	rRtn, err := sm.AddRound(rid, 32, 5*time.Minute, buildMockTopology(numNodes, t))
 
 	if err != nil {
 		t.Errorf("Error returned on valid addition of node: %s", err)
@@ -68,7 +69,7 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 
 	sm.rounds[rid] = &State{state: states.FAILED}
 
-	rRtn, err := sm.AddRound(rid, 32, buildMockTopology(numNodes, t))
+	rRtn, err := sm.AddRound(rid, 32, 5*time.Minute, buildMockTopology(numNodes, t))
 
 	if err == nil {
 		t.Errorf("Error not returned on invalid addition of node: %s", err)
@@ -114,9 +115,9 @@ func TestStateMap_GetNode_invalid(t *testing.T) {
 }
 
 func buildMockTopology(numNodes int, t *testing.T) *connect.Circuit {
-	nodeLst := make([]*id.Node, numNodes)
+	nodeLst := make([]*id.ID, numNodes)
 	for i := 0; i < numNodes; i++ {
-		nid := id.NewNodeFromUInt(uint64(i+1), t)
+		nid := id.NewIdFromUInt(uint64(i+1), id.Node, t)
 		nodeLst[i] = nid
 	}
 	return connect.NewCircuit(nodeLst)

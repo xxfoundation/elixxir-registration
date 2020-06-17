@@ -33,14 +33,17 @@ type State struct {
 	// Number of nodes ready for the next transition
 	readyForTransition uint8
 
+	// List of round errors received from nodes
+	roundErrors []*pb.RoundError
+
 	mux sync.RWMutex
 }
 
 //creates a round state object
-func newState(id id.Round, batchsize uint32, topology *connect.Circuit, pendingTs time.Time) *State {
-	strTopology := make([]string, topology.Len())
+func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration, topology *connect.Circuit, pendingTs time.Time) *State {
+	strTopology := make([][]byte, topology.Len())
 	for i := 0; i < topology.Len(); i++ {
-		strTopology[i] = topology.GetNodeAtIndex(i).String()
+		strTopology[i] = topology.GetNodeAtIndex(i).Marshal()
 	}
 
 	//create the timestamps and populate the first one
@@ -50,12 +53,13 @@ func newState(id id.Round, batchsize uint32, topology *connect.Circuit, pendingT
 	//build and return the round state object
 	return &State{
 		base: &pb.RoundInfo{
-			ID:         uint64(id),
-			UpdateID:   math.MaxUint64,
-			State:      0,
-			BatchSize:  batchsize,
-			Topology:   strTopology,
-			Timestamps: timestamps,
+			ID:                         uint64(id),
+			UpdateID:                   math.MaxUint64,
+			State:                      0,
+			BatchSize:                  batchsize,
+			Topology:                   strTopology,
+			Timestamps:                 timestamps,
+			ResourceQueueTimeoutMillis: uint32(resourceQueueTimeout),
 		},
 		topology:           topology,
 		state:              states.PENDING,
@@ -72,7 +76,8 @@ func NewState_Testing(id id.Round, state states.Round, t *testing.T) *State {
 	//build and return the round state object
 	return &State{
 		base: &pb.RoundInfo{
-			ID: uint64(id),
+			ID:         uint64(id),
+			Timestamps: make([]uint64, states.NUM_STATES),
 		},
 		state:              state,
 		readyForTransition: 0,
@@ -106,20 +111,40 @@ func (s *State) Update(state states.Round, stamp time.Time) error {
 	}
 
 	s.state = state
-	s.base.Timestamps[state] = uint64(stamp.Unix())
+	s.base.Timestamps[state] = uint64(stamp.UnixNano())
 	return nil
 }
 
-//returns an unsigned roundinfo with all fields filled in
+// returns an unsigned roundinfo with all fields filled in
+// everything must be deep copied to ensure future edits do not edit the output
+// and cause signature verification failures
 func (s *State) BuildRoundInfo() *pb.RoundInfo {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
+
+	//copy the topology
+	topology := s.base.GetTopology()
+
+	topologyCopy := make([][]byte, len(topology))
+	for i, nid := range topology {
+		topologyCopy[i] = make([]byte, len(nid))
+		copy(topologyCopy[i], nid)
+	}
+
+	//copy the timestamps
+	timestamps := s.base.GetTimestamps()
+	timestampsCopy := make([]uint64, len(timestamps))
+	for i, stamp := range timestamps {
+		timestampsCopy[i] = stamp
+	}
+
 	return &pb.RoundInfo{
-		ID:         s.base.GetID(),
-		State:      uint32(s.state),
-		BatchSize:  s.base.GetBatchSize(),
-		Topology:   s.base.GetTopology(),
-		Timestamps: s.base.GetTimestamps(),
+		ID:                         s.base.GetID(),
+		State:                      uint32(s.state),
+		BatchSize:                  s.base.GetBatchSize(),
+		Topology:                   topologyCopy,
+		Timestamps:                 timestampsCopy,
+		ResourceQueueTimeoutMillis: s.base.GetResourceQueueTimeoutMillis(),
 	}
 }
 
@@ -139,4 +164,18 @@ func (s *State) GetTopology() *connect.Circuit {
 func (s *State) GetRoundID() id.Round {
 	rid := id.Round(s.base.ID)
 	return rid
+}
+
+// Append a round error to our list of stored rounderrors
+func (s *State) AppendError(roundError *pb.RoundError) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	for _, e := range s.roundErrors {
+		if e.String() == roundError.String() {
+			return
+		}
+	}
+
+	s.roundErrors = append(s.roundErrors, roundError)
 }
