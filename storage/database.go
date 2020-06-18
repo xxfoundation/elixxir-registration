@@ -157,7 +157,7 @@ type NodeMetric struct {
 	// Auto-incrementing primary key (Do not set)
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:true"`
 	// Node has many NodeMetrics
-	NodeId []byte `gorm:"NOT NULL;type:bytea REFERENCES nodes(Id)"`
+	NodeId []byte `gorm:"INDEX;NOT NULL;type:bytea REFERENCES nodes(Id)"`
 	// Start time of monitoring period
 	StartTime time.Time `gorm:"NOT NULL"`
 	// End time of monitoring period
@@ -170,7 +170,7 @@ type NodeMetric struct {
 type Topology struct {
 	// Composite primary key
 	NodeId        []byte `gorm:"primary_key;type:bytea REFERENCES nodes(Id)"`
-	RoundMetricId uint64 `gorm:"primary_key;type:bigint REFERENCES round_metrics(Id)"`
+	RoundMetricId uint64 `gorm:"INDEX;primary_key;type:bigint REFERENCES round_metrics(Id)"`
 
 	// Order in the topology of a Node for a given Round
 	Order uint8 `gorm:"NOT NULL"`
@@ -201,7 +201,7 @@ type RoundError struct {
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:true"`
 
 	// ID of the round for a given run of the network
-	RoundMetricId uint64 `gorm:"NOT NULL;type:bigint REFERENCES round_metrics(Id)"`
+	RoundMetricId uint64 `gorm:"INDEX;NOT NULL;type:bigint REFERENCES round_metrics(Id)"`
 
 	// String of error that occurred during the Round
 	Error string `gorm:"NOT NULL"`
