@@ -96,7 +96,8 @@ var rootCmd = &cobra.Command{
 			}
 		}
 
-		storage.PermissioningDb, err = storage.NewDatabase(
+		var closeFunc func() error // Used for closing the database
+		storage.PermissioningDb, closeFunc, err = storage.NewDatabase(
 			viper.GetString("dbUsername"),
 			viper.GetString("dbPassword"),
 			viper.GetString("dbName"),
@@ -319,6 +320,12 @@ var rootCmd = &cobra.Command{
 				jww.INFO.Printf("Stopped long-running round creation")
 			case <-schedulingTimeout.C:
 				jww.ERROR.Print("Round creation stop timed out")
+			}
+
+			// Exit the database
+			err = closeFunc()
+			if err != nil {
+				jww.ERROR.Printf("Error closing database: %+v", err)
 			}
 		}
 		go ReceiveUSR2Signal(func() { quitter(impl) })

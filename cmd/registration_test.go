@@ -100,8 +100,9 @@ func TestEmptyDataBase(t *testing.T) {
 
 	dblck.Lock()
 	defer dblck.Unlock()
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -128,12 +129,12 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 
-	//impl.nodeCompleted = make(chan string, 1)
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
+
 	//Insert a sample regCode
 	applicationId := uint64(10)
 	newNode := &storage.Node{
@@ -167,9 +168,8 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 
-	// Initialize the database
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -200,11 +200,13 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
-	} //Insert a sample regCode
+	}
+
+	//Insert a sample regCode
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"})
 
@@ -246,11 +248,12 @@ func TestDoubleRegistration(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
+
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
@@ -263,6 +266,7 @@ func TestDoubleRegistration(t *testing.T) {
 	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 
 	//Create a second node to register
@@ -294,11 +298,13 @@ func TestTopology_MultiNodes(t *testing.T) {
 	var err error
 	dblck.Lock()
 	defer dblck.Unlock()
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
+
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
@@ -355,11 +361,13 @@ func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 	var err error
 	dblck.Lock()
 	defer dblck.Unlock()
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
+
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
@@ -375,6 +383,7 @@ func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 	impl, err := StartRegistration(localParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 
 	//Register 1st node
@@ -406,15 +415,16 @@ func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {
 	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 	testVersion := "0.0.0a"
 	setClientVersion(testVersion)
-	version, err := impl.GetCurrentClientVersion()
+	ver, err := impl.GetCurrentClientVersion()
 	if err != nil {
 		t.Error(err)
 	}
-	if version != testVersion {
-		t.Errorf("Version was %+v, expected %+v", version, testVersion)
+	if ver != testVersion {
+		t.Errorf("Version was %+v, expected %+v", ver, testVersion)
 	}
 
 }
@@ -474,8 +484,8 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	defer dblck.Unlock()
 
 	// Initialize the database
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}

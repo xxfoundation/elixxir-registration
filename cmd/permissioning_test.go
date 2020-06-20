@@ -15,8 +15,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	//region Database setup
 	// Create a database to store some nodes into
 	var err error
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Error(err)
 	}
