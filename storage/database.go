@@ -273,7 +273,7 @@ func NewDatabase(username, password, database, address,
 	for _, model := range models {
 		err = db.AutoMigrate(model).Error
 		if err != nil {
-			return Storage{}, nil, err
+			return Storage{}, func() error { return nil }, err
 		}
 	}
 
