@@ -20,8 +20,8 @@ import (
 func TestBannedNodeTracker(t *testing.T) {
 	//Create database
 	var err error
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("",
+		"", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}

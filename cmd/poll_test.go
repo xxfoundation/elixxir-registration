@@ -196,8 +196,8 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 func TestRegistrationImpl_PollNdf(t *testing.T) {
 	//Create database
 	var err error
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -301,8 +301,8 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Create database
 	var err error
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -323,6 +323,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	impl, err := StartRegistration(testParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 
 	//Register 1st node
@@ -350,8 +351,9 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 func TestPoll_BannedNode(t *testing.T) {
 	//Create database
 	var err error
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -406,7 +408,10 @@ func TestPoll_BannedNode(t *testing.T) {
 		t.Errorf("Could nto add node: %s", err)
 	}
 
-	impl.State.GetNodeMap().GetNode(testID).Ban()
+	_, err = impl.State.GetNodeMap().GetNode(testID).Ban()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	_, err = impl.Poll(testMsg, testAuth, "")
 	if err != nil {
