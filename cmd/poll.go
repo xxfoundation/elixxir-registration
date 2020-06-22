@@ -126,12 +126,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// acceptable, it is not recorded and an error is returned, which is
 	// propagated to the node
 	update, updateNotification, err := n.Update(current.Activity(msg.Activity))
-	//if updating to an error state, attach the error the the update
-	if update && err == nil && updateNotification.ToActivity == current.ERROR {
-		updateNotification.Error = msg.Error
-	}
-
 	if stopped != 1 {
+		//if updating to an error state, attach the error the the update
+		if update && err == nil && updateNotification.ToActivity == current.ERROR {
+			updateNotification.Error = msg.Error
+		}
+
 		//if an update ocured, report it to the control thread
 		if update {
 			err = m.State.SendUpdateNotification(updateNotification)
