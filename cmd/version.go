@@ -18,7 +18,8 @@ import (
 const currentVersion = "1.2.1"
 
 func printVersion() {
-	fmt.Printf("Elixxir Registration Server v%s -- %s\n\n", SEMVER, GITVERSION)
+	fmt.Printf("XX Network Permissioning Server v%s -- %s\n\n",
+		SEMVER, GITVERSION)
 	fmt.Printf("Dependencies:\n\n%s\n", DEPENDENCIES)
 }
 
@@ -29,8 +30,8 @@ func init() {
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the version and dependency information for the Elixxir binary",
-	Long:  `Print the version and dependency information for the Elixxir binary`,
+	Short: "Print the version and dependency information for the XX Network binary",
+	Long:  `Print the version and dependency information for the XX Network binary`,
 	Run: func(cmd *cobra.Command, args []string) {
 		printVersion()
 	},
@@ -38,8 +39,8 @@ var versionCmd = &cobra.Command{
 
 var generateCmd = &cobra.Command{
 	Use:   "generate",
-	Short: "Generates version and dependency information for the Elixxir binary",
-	Long:  `Generates version and dependency information for the Elixxir binary`,
+	Short: "Generates version and dependency information for the XX Network binary",
+	Long:  `Generates version and dependency information for the XX Network binary`,
 	Run: func(cmd *cobra.Command, args []string) {
 		utils.GenerateVersionFile(currentVersion)
 	},
