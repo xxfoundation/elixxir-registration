@@ -153,6 +153,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 					"Could not move round %v from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
+
 			// Build the round info and add to the networkState
 			roundInfo := r.BuildRoundInfo()
 			err = state.AddRoundUpdate(roundInfo)
@@ -161,6 +162,10 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 					"update for round %v transitioning from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
+
+			//send the signal that the round is complete
+			r.GetRoundCompletedChan() <- struct{}{}
+
 			// Commit metrics about the round to storage
 			return true, StoreRoundMetric(roundInfo)
 		}
@@ -168,6 +173,8 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 		// If in an error state, kill the round if the node has one
 		var err error
 		if hasRound {
+			//send the signal that the round is complete
+			r.GetRoundCompletedChan() <- struct{}{}
 			err = killRound(state, r, n, update.Error)
 		}
 		return false, err
