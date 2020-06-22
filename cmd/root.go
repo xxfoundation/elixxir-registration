@@ -285,8 +285,6 @@ var rootCmd = &cobra.Command{
 		var stopRoundCreationSucceeded bool
 		// Set up signal handler for stopping round creation
 		stopRounds := func() {
-			// Prevent node updates after round creation stops
-			atomic.StoreUint32(impl.RoundCreationStopped, 1)
 			k := make(chan struct{})
 			roundCreationQuitChan <- k
 			jww.INFO.Printf("Stopping round creation...")
@@ -297,6 +295,8 @@ var rootCmd = &cobra.Command{
 			case <-time.After(closeTimeout):
 				jww.ERROR.Print("couldn't stop round creation!")
 			}
+			// Prevent node updates after round creation stops
+			atomic.StoreUint32(impl.RoundCreationStopped, 1)
 		}
 		ReceiveUSR1Signal(func() { stopRoundCreationOnce.Do(stopRounds) })
 
