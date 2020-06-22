@@ -154,9 +154,6 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
 
-			//send the signal that the round is complete
-			r.GetRoundCompletedChan() <- struct{}{}
-
 			// Build the round info and add to the networkState
 			roundInfo := r.BuildRoundInfo()
 			err = state.AddRoundUpdate(roundInfo)
@@ -166,6 +163,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
 
+			//send the signal that the round is complete
 			r.GetRoundCompletedChan() <- struct{}{}
 
 			// Commit metrics about the round to storage

@@ -83,7 +83,6 @@ func NewState_Testing(id id.Round, state states.Round, t *testing.T) *State {
 
 	roundCompleteChan := make(chan struct{}, 1000)
 
-
 	//build and return the round state object
 	return &State{
 		base: &pb.RoundInfo{
@@ -93,7 +92,7 @@ func NewState_Testing(id id.Round, state states.Round, t *testing.T) *State {
 		state:              state,
 		readyForTransition: 0,
 		mux:                sync.RWMutex{},
-		roundComplete:roundCompleteChan,
+		roundComplete:      roundCompleteChan,
 	}
 }
 

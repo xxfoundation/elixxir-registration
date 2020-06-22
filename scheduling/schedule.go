@@ -40,6 +40,10 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 	if params.ResourceQueueTimeout == 0 {
 		params.ResourceQueueTimeout = 180000 // 180000 ms = 3 minutes
 	}
+	// If roundTimeout hasn't set, set to three minutes
+	if params.RoundTimeout == 0 {
+		params.RoundTimeout = 60
+	}
 
 	return scheduler(params, state, killchan)
 }
@@ -92,8 +96,9 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			}
 
 			go func() {
+				// Allow for round the to be added to the map
+				time.Sleep(25 * time.Millisecond)
 				ourRound := state.GetRoundMap().GetRound(newRound.ID)
-
 				roundTimer := time.NewTimer(params.RoundTimeout * time.Second)
 				select {
 				// Wait for the timer to go off
@@ -227,12 +232,11 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
 			if err != nil {
 				return errors.WithMessagef(err, "Failed to kill round for node [%v]", nid)
 			}
+
+			jww.DEBUG.Printf("Round [%d] killed due to timeout", ourRound.GetRoundID())
 		}
 
-	} else {
-
 	}
-
 	return nil
 }
 
