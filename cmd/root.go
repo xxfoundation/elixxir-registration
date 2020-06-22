@@ -210,7 +210,8 @@ var rootCmd = &cobra.Command{
 		nodeTicker := time.NewTicker(nodeMetricInterval)
 
 		// Run the Node metric tracker forever in another thread
-		go func(quitChan QuitChan) {
+		metricTrackerQuitChan := make(chan struct{})
+		go func(quitChan chan struct{}) {
 			jww.DEBUG.Printf("Beginning storage of node metrics every %+v...",
 				nodeMetricInterval)
 			for {
@@ -242,14 +243,15 @@ var rootCmd = &cobra.Command{
 					}
 				}
 			}
-		}(impl.MakeQuitChan())
+		}(metricTrackerQuitChan)
 
 		// Determine how long between polling for banned nodes
 		interval := viper.GetInt("BanTrackerInterval")
 		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
 
 		// Run the independent node tracker in own go thread
-		go func(quitChan QuitChan) {
+		bannedNodeTrackerQuitChan := make(chan struct{})
+		go func(quitChan chan struct{}) {
 		nodeTrackerLoop:
 			for {
 				select {
@@ -264,7 +266,7 @@ var rootCmd = &cobra.Command{
 				}
 
 			}
-		}(impl.MakeQuitChan())
+		}(bannedNodeTrackerQuitChan)
 
 		jww.INFO.Printf("Waiting for for %v nodes to register so "+
 			"rounds can start", RegParams.minimumNodes)
@@ -276,13 +278,12 @@ var rootCmd = &cobra.Command{
 		roundCreationQuitChan := make(chan chan struct{})
 
 		// Begin scheduling algorithm
-		go func(quitChan QuitChan) {
+		go func() {
 			err = scheduling.Scheduler(SchedulingConfig, impl.State, roundCreationQuitChan)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
-		}(impl.MakeQuitChan())
+		}()
 
-		var stopRoundCreationOnce sync.Once
-		var stopRoundCreationSucceeded bool
+		var stopOnce sync.Once
 		// Set up signal handler for stopping round creation
 		stopRounds := func() {
 			k := make(chan struct{})
@@ -290,20 +291,10 @@ var rootCmd = &cobra.Command{
 			jww.INFO.Printf("Stopping round creation...")
 			select {
 			case <-k:
-				stopRoundCreationSucceeded = true
 				jww.INFO.Printf("stopped!\n")
 			case <-time.After(closeTimeout):
 				jww.ERROR.Print("couldn't stop round creation!")
 			}
-			// Prevent node updates after round creation stops
-			atomic.StoreUint32(impl.RoundCreationStopped, 1)
-		}
-		ReceiveUSR1Signal(func() { stopRoundCreationOnce.Do(stopRounds) })
-
-		var stopEverythingElseOnce sync.Once
-		// Set up signal handler for stopping all long-running threads
-		stopEverythingElse := func() {
-			jww.INFO.Printf("Stopping all other long-running threads")
 
 			// Try a non-blocking send for the registration capacity
 			select {
@@ -311,25 +302,39 @@ var rootCmd = &cobra.Command{
 			default:
 			}
 
-			// Quit everything else
-			impl.QuitAll()
+			bannedNodeTrackerQuitChan <- struct{}{}
 
-			// Exit the database
+			// Prevent node updates after round creation stops
+			atomic.StoreUint32(impl.Stopped, 1)
+		}
+		ReceiveUSR1Signal(func() { stopOnce.Do(stopRounds) })
+
+		var stopForKillOnce sync.Once
+		// Stops the long-running threads which are used for tracking node activity
+		// You should only do this if you're killing permissioning outright,
+		// as these threads are used to determine whether nodes get paid
+		stopForKill := func() {
+			jww.INFO.Printf("Stopping all other long-running threads")
+
+			// Stop round metrics tracker
+			metricTrackerQuitChan <- struct{}{}
+
+			// Close connection to the database
 			err = closeFunc()
 			if err != nil {
 				jww.ERROR.Printf("Error closing database: %+v", err)
 			}
 		}
 		stopEverything := func() {
-			stopRoundCreationOnce.Do(stopRounds)
-			stopEverythingElseOnce.Do(stopEverythingElse)
+			stopOnce.Do(stopRounds)
+			stopForKillOnce.Do(stopForKill)
 		}
 		ReceiveUSR2Signal(stopEverything)
 
 		// Block forever on Signal Handler for safe program exit
 		ReceiveExitSignal(func() int {
 			stopEverything()
-			if stopRoundCreationSucceeded {
+			if atomic.LoadUint32(impl.Stopped) == 1 {
 				return 0
 			} else {
 				return -1

@@ -35,7 +35,7 @@ type RegistrationImpl struct {
 	Comms                   *registration.Comms
 	params                  *Params
 	State                   *storage.NetworkState
-	RoundCreationStopped    *uint32
+	Stopped                 *uint32
 	permissioningCert       *x509.Certificate
 	ndfOutputPath           string
 	NdfReady                *uint32
@@ -50,7 +50,6 @@ type RegistrationImpl struct {
 	// may be fruitful
 	registrationLock sync.Mutex
 	beginScheduling  chan struct{}
-	QuitChans
 
 	NDFLock sync.Mutex
 }
@@ -130,7 +129,7 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
 		NdfReady:                &ndfReady,
-		RoundCreationStopped:    &roundCreationStopped,
+		Stopped:                 &roundCreationStopped,
 
 		numRegistered:   0,
 		beginScheduling: make(chan struct{}, 1),

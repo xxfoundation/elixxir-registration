@@ -105,20 +105,19 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	// Return early before we get the polling lock if round creation stopped
-	if atomic.LoadUint32(m.RoundCreationStopped) == 1 {
-		return
-	}
+	stopped := atomic.LoadUint32(m.Stopped)
+	if stopped != 1 {
+		// when a node poll is received, the nodes polling lock is taken here. If
+		// there is no update, it is released in this endpoint, otherwise it is
+		// released in the scheduling algorithm which blocks all future polls until
+		// processing completes
+		n.GetPollingLock().Lock()
 
-	// when a node poll is received, the nodes polling lock is taken here. If
-	// there is no update, it is released in this endpoint, otherwise it is
-	// released in the scheduling algorithm which blocks all future polls until
-	// processing completes
-	n.GetPollingLock().Lock()
-
-	err = verifyError(msg, n, m)
-	if err != nil {
-		n.GetPollingLock().Unlock()
-		return response, err
+		err = verifyError(msg, n, m)
+		if err != nil {
+			n.GetPollingLock().Unlock()
+			return response, err
+		}
 	}
 
 	// update does edge checking. It ensures the state change recieved was a
@@ -132,11 +131,13 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		updateNotification.Error = msg.Error
 	}
 
-	//if an update ocured, report it to the control thread
-	if update {
-		err = m.State.SendUpdateNotification(updateNotification)
-	} else {
-		n.GetPollingLock().Unlock()
+	if stopped != 1 {
+		//if an update ocured, report it to the control thread
+		if update {
+			err = m.State.SendUpdateNotification(updateNotification)
+		} else {
+			n.GetPollingLock().Unlock()
+		}
 	}
 
 	return
