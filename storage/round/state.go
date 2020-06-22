@@ -54,7 +54,7 @@ func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
 	timestamps := make([]uint64, states.NUM_STATES)
 	timestamps[states.PENDING] = uint64(pendingTs.Unix())
 
-	roundCompleteChan := make(chan struct{})
+	roundCompleteChan := make(chan struct{}, topology.Len()*topology.Len()+1)
 
 	//build and return the round state object
 	return &State{

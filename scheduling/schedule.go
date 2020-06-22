@@ -73,7 +73,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	}
 
 	// Channel to communicate that a round has timed out
-	roundTimeoutTracker := make(chan id.Round)
+	roundTimeoutTracker := make(chan id.Round, 1000)
 
 	//begin the thread that starts rounds
 	go func() {
@@ -85,9 +85,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				time.Sleep(timeDiff)
 			}
 			lastRound = time.Now()
-			roundCompletionChan := make(chan<- struct{}, (params.TeamSize*params.TeamSize)+1)
 
-			err = startRound(newRound, state, roundCompletionChan)
+			err = startRound(newRound, state)
 			if err != nil {
 				break
 			}
@@ -106,7 +105,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				case <-ourRound.GetRoundCompletedChan():
 					return
 				}
-
 			}()
 		}
 
@@ -124,10 +122,9 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		go trackRounds(params, state, pool)
 	}
 
-	isRoundTimeout := false
-
 	// Start receiving updates from nodes
 	for true {
+		isRoundTimeout := false
 		var update node.UpdateNotification
 		var timedOutRoundID id.Round
 		select {
@@ -140,20 +137,22 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			isRoundTimeout = true
 		}
 
+		endRound := false
+
 		if isRoundTimeout {
 			// Handle the timed out round
 			err := timeoutRound(state, timedOutRoundID)
 			if err != nil {
 				return err
 			}
-			// Reset to false for next round to time out
-			isRoundTimeout = false
-		}
-
-		// Handle the node's state change
-		endRound, err := HandleNodeUpdates(update, pool, state, rtDelay)
-		if err != nil {
-			return err
+			endRound = true
+		} else {
+			var err error
+			// Handle the node's state change
+			endRound, err = HandleNodeUpdates(update, pool, state, rtDelay)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Remove offline nodes from pool to more accurately determine if pool is eligible for round creation

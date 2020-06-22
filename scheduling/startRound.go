@@ -15,10 +15,10 @@ import (
 
 // startRound is a function which takes the info from createSimpleRound and updates the
 //  node and network states in order to begin the round
-func startRound(round protoRound, state *storage.NetworkState, roundCompleteChan chan<- struct{}) error {
+func startRound(round protoRound, state *storage.NetworkState) error {
 	// Add the round to the manager
 	r, err := state.GetRoundMap().AddRound(round.ID, round.BatchSize, round.ResourceQueueTimeout,
-		round.Topology, roundCompleteChan)
+		round.Topology)
 	if err != nil {
 		err = errors.WithMessagef(err, "Failed to create new round %v", round.ID)
 		return err
