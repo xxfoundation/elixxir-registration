@@ -219,7 +219,7 @@ func TestNodeState_Update_Valid_RequiresRound_Round_ValidState(t *testing.T) {
 	updated, old, err := ns.Update(current.PRECOMPUTING)
 
 	if err != nil {
-		t.Errorf("Node state update returned no error on valid state change: %s", err)
+		t.Errorf("Node state update returned error on valid state change: %s", err)
 	}
 
 	timeDelta := ns.lastPoll.Sub(before)
