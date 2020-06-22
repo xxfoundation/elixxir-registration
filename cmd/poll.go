@@ -104,6 +104,11 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return
 	}
 
+	// Return early before we get the polling lock if round creation stopped
+	if atomic.LoadUint32(m.RoundCreationStopped) == 1 {
+		return
+	}
+
 	// when a node poll is received, the nodes polling lock is taken here. If
 	// there is no update, it is released in this endpoint, otherwise it is
 	// released in the scheduling algorithm which blocks all future polls until

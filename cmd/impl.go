@@ -35,6 +35,7 @@ type RegistrationImpl struct {
 	Comms                   *registration.Comms
 	params                  *Params
 	State                   *storage.NetworkState
+	RoundCreationStopped    *uint32
 	permissioningCert       *x509.Certificate
 	ndfOutputPath           string
 	NdfReady                *uint32

@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -272,38 +273,37 @@ var rootCmd = &cobra.Command{
 		jww.INFO.Printf("Minimum number of nodes %v have registered, "+
 			"beginning scheduling and round creation", RegParams.minimumNodes)
 
-		schedulingKillChan := make(chan chan struct{})
+		roundCreationQuitChan := make(chan chan struct{})
 
 		// Begin scheduling algorithm
 		go func(quitChan QuitChan) {
-			err = scheduling.Scheduler(SchedulingConfig, impl.State, schedulingKillChan)
+			err = scheduling.Scheduler(SchedulingConfig, impl.State, roundCreationQuitChan)
 			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
 		}(impl.MakeQuitChan())
 
+		var stopRoundCreationOnce sync.Once
+		var stopRoundCreationSucceeded bool
 		// Set up signal handler for stopping round creation
-		killer := func() int {
+		stopRounds := func() {
+			// Prevent node updates after round creation stops
+			atomic.StoreUint32(impl.RoundCreationStopped, 1)
 			k := make(chan struct{})
-			schedulingKillChan <- k
+			roundCreationQuitChan <- k
 			jww.INFO.Printf("Stopping round creation...")
 			select {
 			case <-k:
+				stopRoundCreationSucceeded = true
 				jww.INFO.Printf("stopped!\n")
-				return 0
 			case <-time.After(closeTimeout):
 				jww.ERROR.Print("couldn't stop round creation!")
 			}
-			return -1
 		}
-		ReceiveUSR1Signal(func() { killer() })
+		ReceiveUSR1Signal(func() { stopRoundCreationOnce.Do(stopRounds) })
 
+		var stopEverythingElseOnce sync.Once
 		// Set up signal handler for stopping all long-running threads
-		quitter := func(impl *RegistrationImpl) {
-			jww.INFO.Printf("Stopping all long-running threads")
-
-			jww.INFO.Printf("Stopping long-running round creation...")
-			schedulingTimeout := time.NewTimer(schedulingKillTimeout)
-			k := make(chan struct{})
-			schedulingKillChan <- k
+		stopEverythingElse := func() {
+			jww.INFO.Printf("Stopping all other long-running threads")
 
 			// Try a non-blocking send for the registration capacity
 			select {
@@ -314,24 +314,27 @@ var rootCmd = &cobra.Command{
 			// Quit everything else
 			impl.QuitAll()
 
-			// See if round creation got destroyed
-			select {
-			case <-k:
-				jww.INFO.Printf("Stopped long-running round creation")
-			case <-schedulingTimeout.C:
-				jww.ERROR.Print("Round creation stop timed out")
-			}
-
 			// Exit the database
 			err = closeFunc()
 			if err != nil {
 				jww.ERROR.Printf("Error closing database: %+v", err)
 			}
 		}
-		go ReceiveUSR2Signal(func() { quitter(impl) })
+		stopEverything := func() {
+			stopRoundCreationOnce.Do(stopRounds)
+			stopEverythingElseOnce.Do(stopEverythingElse)
+		}
+		ReceiveUSR2Signal(stopEverything)
 
 		// Block forever on Signal Handler for safe program exit
-		go ReceiveExitSignal(killer)
+		ReceiveExitSignal(func() int {
+			stopEverything()
+			if stopRoundCreationSucceeded {
+				return 0
+			} else {
+				return -1
+			}
+		})
 
 		// Block forever to prevent the program ending
 		select {}
