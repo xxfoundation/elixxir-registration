@@ -125,8 +125,10 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			return false, errors.Errorf("Node %s without round should "+
 				"not be moving to the %s state", update.Node, states.REALTIME)
 		}
-		stateComplete := r.NodeIsReadyForTransition()
-		if stateComplete {
+		// REALTIME does not use the state complete handler because it
+		// increments on the first report, not when every node reports in
+		// order to avoid distributed synchronicity issues
+		if r.GetRoundState() != states.REALTIME {
 			err := r.Update(states.REALTIME, time.Now())
 			if err != nil {
 				return false, errors.WithMessagef(err,
