@@ -18,7 +18,8 @@ import (
 const currentVersion = "1.2.1"
 
 func printVersion() {
-	fmt.Printf("Elixxir Registration Server v%s -- %s\n\n", SEMVER, GITVERSION)
+	fmt.Printf("XX Network Permissioning Server v%s -- %s\n\n",
+		SEMVER, GITVERSION)
 	fmt.Printf("Dependencies:\n\n%s\n", DEPENDENCIES)
 }
 
