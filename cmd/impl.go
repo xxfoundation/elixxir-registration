@@ -101,6 +101,7 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 	// Initialize variables
 	regRemaining := uint64(0)
 	ndfReady := uint32(0)
+	roundCreationStopped := uint32(0)
 
 	// Read in private key
 	key, err := utils.ReadFile(params.KeyPath)
@@ -129,6 +130,7 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 		registrationsRemaining:  &regRemaining,
 		ndfOutputPath:           params.NdfOutputPath,
 		NdfReady:                &ndfReady,
+		RoundCreationStopped:    &roundCreationStopped,
 
 		numRegistered:   0,
 		beginScheduling: make(chan struct{}, 1),
