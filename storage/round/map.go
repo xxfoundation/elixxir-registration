@@ -32,7 +32,7 @@ func NewStateMap() *StateMap {
 
 // Adds a new round state to the structure. Will not overwrite an existing one.
 func (rsm *StateMap) AddRound(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
-	topology *connect.Circuit) (*State, error) {
+	topology *connect.Circuit, roundCompleteChan chan<- struct{}) (*State, error) {
 	rsm.mux.Lock()
 	defer rsm.mux.Unlock()
 

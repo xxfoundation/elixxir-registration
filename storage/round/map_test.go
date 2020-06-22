@@ -34,7 +34,7 @@ func TestStateMap_AddRound_Happy(t *testing.T) {
 
 	const numNodes = 5
 
-	rRtn, err := sm.AddRound(rid, 32, 5*time.Minute, buildMockTopology(numNodes, t))
+	rRtn, err := sm.AddRound(rid, 32, 5*time.Minute, buildMockTopology(numNodes, t), nil)
 
 	if err != nil {
 		t.Errorf("Error returned on valid addition of node: %s", err)
@@ -69,7 +69,7 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 
 	sm.rounds[rid] = &State{state: states.FAILED}
 
-	rRtn, err := sm.AddRound(rid, 32, 5*time.Minute, buildMockTopology(numNodes, t))
+	rRtn, err := sm.AddRound(rid, 32, 5*time.Minute, buildMockTopology(numNodes, t), nil)
 
 	if err == nil {
 		t.Errorf("Error not returned on invalid addition of node: %s", err)

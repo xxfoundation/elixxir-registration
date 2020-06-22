@@ -36,11 +36,15 @@ type State struct {
 	// List of round errors received from nodes
 	roundErrors []*pb.RoundError
 
+	roundComplete chan struct{}
+
 	mux sync.RWMutex
 }
 
 //creates a round state object
-func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration, topology *connect.Circuit, pendingTs time.Time) *State {
+func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
+	topology *connect.Circuit, pendingTs time.Time) *State {
+
 	strTopology := make([][]byte, topology.Len())
 	for i := 0; i < topology.Len(); i++ {
 		strTopology[i] = topology.GetNodeAtIndex(i).Marshal()
@@ -49,6 +53,8 @@ func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
 	//create the timestamps and populate the first one
 	timestamps := make([]uint64, states.NUM_STATES)
 	timestamps[states.PENDING] = uint64(pendingTs.Unix())
+
+	roundCompleteChan := make(chan struct{})
 
 	//build and return the round state object
 	return &State{
@@ -65,6 +71,7 @@ func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
 		state:              states.PENDING,
 		readyForTransition: 0,
 		mux:                sync.RWMutex{},
+		roundComplete:      roundCompleteChan,
 	}
 }
 
@@ -108,6 +115,10 @@ func (s *State) Update(state states.Round, stamp time.Time) error {
 	if state <= s.state {
 		return errors.New("round state must always update to a " +
 			"greater state")
+	}
+
+	if state == states.FAILED || state == states.COMPLETED {
+		s.roundComplete <- struct{}{}
 	}
 
 	s.state = state
@@ -178,4 +189,9 @@ func (s *State) AppendError(roundError *pb.RoundError) {
 	}
 
 	s.roundErrors = append(s.roundErrors, roundError)
+}
+
+//returns the id of the round
+func (s *State) GetRoundCompletedChan() chan struct{} {
+	return s.roundComplete
 }

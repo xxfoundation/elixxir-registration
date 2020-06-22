@@ -7,10 +7,14 @@ package scheduling
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"time"
@@ -44,22 +48,20 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 // state changes then creating a team from the nodes in the pool
 func scheduler(params Params, state *storage.NetworkState, killchan chan chan struct{}) error {
 
-	// pool which tracks nodes which are not in a team
+	// Pool which tracks nodes which are not in a team
 	pool := NewWaitingPool()
 
-	//channel to send new rounds over to be created
+	// Channel to send new rounds over to be created
 	newRoundChan := make(chan protoRound, newRoundChanLen)
 
-	//channel which the round creation thread returns errors on
-	errorChan := make(chan error, 1)
-
-	//calculate the realtime delay from params
+	// Calculate the realtime delay from params
 	rtDelay := params.RealtimeDelay * time.Millisecond
 
-	//select the correct round creator
+	// Select the correct round creator
 	var createRound roundCreator
 	var teamFormationThreshold uint32
 
+	// Identify which teaming algorithm we will be using
 	if params.Secure {
 		jww.INFO.Printf("Using Secure Teaming Algorithm")
 		createRound = createSecureRound
@@ -69,6 +71,9 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		createRound = createSimpleRound
 		teamFormationThreshold = params.TeamSize
 	}
+
+	// Channel to communicate that a round has timed out
+	roundTimeoutTracker := make(chan id.Round)
 
 	//begin the thread that starts rounds
 	go func() {
@@ -80,11 +85,29 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				time.Sleep(timeDiff)
 			}
 			lastRound = time.Now()
+			roundCompletionChan := make(chan<- struct{}, (params.TeamSize*params.TeamSize)+1)
 
-			err = startRound(newRound, state, errorChan)
+			err = startRound(newRound, state, roundCompletionChan)
 			if err != nil {
 				break
 			}
+
+			go func() {
+				ourRound := state.GetRoundMap().GetRound(newRound.ID)
+
+				roundTimer := time.NewTimer(params.RoundTimeout * time.Second)
+				select {
+				// Wait for the timer to go off
+				case <-roundTimer.C:
+					// Send the timed out round id to the timeout handler
+					roundTimeoutTracker <- newRound.ID
+				// Signals the round has been completed.
+				// In this case, we can exit the go-routine
+				case <-ourRound.GetRoundCompletedChan():
+					return
+				}
+
+			}()
 		}
 
 		jww.ERROR.Printf("Round creation thread should never exit: %s", err)
@@ -101,34 +124,47 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		go trackRounds(params, state, pool)
 	}
 
-	//start receiving updates from nodes
+	isRoundTimeout := false
+
+	// Start receiving updates from nodes
 	for true {
 		var update node.UpdateNotification
+		var timedOutRoundID id.Round
 		select {
-		// receive a signal to kill the scheduler
+		// Receive a signal to kill the scheduler
 		case killed = <-killchan:
-		// If receive an error over a channel, return an error
-		case err := <-errorChan:
-			return err
-		// when we get a node update, move base the select statement
+		// When we get a node update, move past the select statement
 		case update = <-state.GetNodeUpdateChannel():
+		// Receive a signal indicating that a round has timed out
+		case timedOutRoundID = <-roundTimeoutTracker:
+			isRoundTimeout = true
 		}
 
-		//handle the node's state change
+		if isRoundTimeout {
+			// Handle the timed out round
+			err := timeoutRound(state, timedOutRoundID)
+			if err != nil {
+				return err
+			}
+			// Reset to false for next round to time out
+			isRoundTimeout = false
+		}
+
+		// Handle the node's state change
 		endRound, err := HandleNodeUpdates(update, pool, state, rtDelay)
 		if err != nil {
 			return err
 		}
 
-		//remove offline nodes from pool to more accurately determine if pool is eligible for round creation
+		// Remove offline nodes from pool to more accurately determine if pool is eligible for round creation
 		pool.CleanOfflineNodes(params.NodeCleanUpInterval * time.Second)
 
-		//if a round has finished, decrement num rounds
+		// If a round has finished, decrement num rounds
 		if endRound {
 			numRounds--
 		}
 
-		//create a new round if the pool is full
+		// Create a new round if the pool is full
 		if pool.Len() >= int(teamFormationThreshold) && killed == nil {
 			// Increment round ID
 			currentID, err := state.IncrementRoundID()
@@ -141,12 +177,12 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				return err
 			}
 
-			//send the round to the new round channel to be created
+			// Send the round to the new round channel to be created
 			newRoundChan <- newRound
 			numRounds++
 		}
 
-		// if the scheduler is to be killed and no rounds are in progress,
+		// If the scheduler is to be killed and no rounds are in progress,
 		// kill the scheduler
 		if killed != nil && numRounds == 0 {
 			close(newRoundChan)
@@ -157,6 +193,48 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	}
 
 	return errors.New("single scheduler should never exit")
+}
+
+// Helper function which handles when we receive a timed out round
+func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
+	// On a timeout, check if the round is completed. If not, kill it
+	ourRound := state.GetRoundMap().GetRound(timeoutRoundID)
+	roundState := ourRound.GetRoundState()
+
+	// If the round is neither in completed or failed
+	if roundState != states.COMPLETED && roundState != states.FAILED {
+		// Build the round error message
+		timeoutError := &pb.RoundError{
+			Id:     uint64(ourRound.GetRoundID()),
+			NodeId: id.Permissioning.Marshal(),
+			Error:  fmt.Sprintf("Round %d killed due to a round time out", ourRound.GetRoundID()),
+		}
+		// Sign the error message with our private key
+		err := signature.Sign(timeoutError, state.GetPrivateKey())
+		if err != nil {
+			jww.FATAL.Panicf("Failed to sign error message for "+
+				"timed out round %d: %+v", ourRound.GetRoundID(), err)
+		}
+
+		// Parse the circuit, killing the round for each node
+		roundCircuit := ourRound.GetTopology()
+		for i := 0; i < roundCircuit.Len(); i++ {
+			// Get the node from the nodeMap
+			nid := roundCircuit.GetNodeAtIndex(i)
+			n := state.GetNodeMap().GetNode(nid)
+
+			// Kill the round for this node
+			err = killRound(state, ourRound, n, timeoutError)
+			if err != nil {
+				return errors.WithMessagef(err, "Failed to kill round for node [%v]", nid)
+			}
+		}
+
+	} else {
+
+	}
+
+	return nil
 }
 
 // Tracks rounds, periodically outputs how many teams are in various rounds

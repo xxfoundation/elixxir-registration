@@ -161,6 +161,9 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 					"update for round %v transitioning from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
+
+			r.GetRoundCompletedChan() <- struct{}{}
+
 			// Commit metrics about the round to storage
 			return true, StoreRoundMetric(roundInfo)
 		}

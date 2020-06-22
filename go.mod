@@ -7,6 +7,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/golang-collections/collections v0.0.0-20130729185459-604e922904d3
+	github.com/golang/protobuf v1.4.2
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
 	github.com/jinzhu/gorm v1.9.12
 	github.com/jinzhu/now v1.1.1 // indirect
@@ -27,6 +28,8 @@ require (
 	gitlab.com/elixxir/comms v0.0.0-20200617200816-e0360e7c282e
 	gitlab.com/elixxir/crypto v0.0.0-20200617200757-fac8d7aaf8da
 	gitlab.com/elixxir/primitives v0.0.0-20200617192826-98601f119cdf
+	golang.org/x/net v0.0.0-20200513185701-a91f0712d120
 	google.golang.org/genproto v0.0.0-20200515170657-fc4c6c6a6587 // indirect
+	google.golang.org/grpc v1.29.1
 	gopkg.in/ini.v1 v1.56.0 // indirect
 )
