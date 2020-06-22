@@ -65,11 +65,13 @@ func TestTransitions_NeedsRound(t *testing.T) {
 func TestTransitions_RequiredRoundState(t *testing.T) {
 	testTransition := newTransitions()
 
-	expectedRoundState := []states.Round{nilRoundState, nilRoundState, 1, 1, 3, 4, nilRoundState}
-	receivedRoundState := make([]states.Round, len(expectedRoundState))
+	input := []states.Round{states.PENDING, states.PENDING, states.PRECOMPUTING,
+		states.PRECOMPUTING, states.QUEUED, states.REALTIME, states.PENDING}
+	receivedRoundState := make([]bool, len(input))
+	expectedRoundState := []bool{false, false, true, true, true, true, false}
 
 	for i := uint32(0); i < uint32(current.CRASH); i++ {
-		receivedRoundState[i] = testTransition.RequiredRoundState(current.Activity(i))
+		receivedRoundState[i] = testTransition.IsValidRoundState(current.Activity(i), input[i])
 	}
 
 	if !reflect.DeepEqual(expectedRoundState, receivedRoundState) {
