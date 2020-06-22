@@ -40,7 +40,7 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 	if params.ResourceQueueTimeout == 0 {
 		params.ResourceQueueTimeout = 180000 // 180000 ms = 3 minutes
 	}
-	// If roundTimeout hasn't set, set to three minutes
+	// If roundTimeout hasn't set, set to a default of one minute
 	if params.RoundTimeout == 0 {
 		params.RoundTimeout = 60
 	}
