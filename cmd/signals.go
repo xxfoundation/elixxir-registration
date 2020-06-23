@@ -33,11 +33,13 @@ func ReceiveSignal(sigFn func(), sig os.Signal) {
 
 	// Block until a signal is received, then call the function
 	// provided
-	for {
-		<-c
-		jww.INFO.Printf("Received %s signal...\n", sig)
-		sigFn()
-	}
+	go func() {
+		for {
+			<-c
+			jww.INFO.Printf("Received %s signal...\n", sig)
+			sigFn()
+		}
+	}()
 }
 
 // ReceiveUSR1Signal calls the provided function when receiving SIGUSR1.
@@ -64,8 +66,10 @@ func ReceiveExitSignal(exitFn func() int) {
 
 	// Block until a signal is received, then call the function
 	// provided
-	<-c
-	jww.INFO.Printf("Received Exit (SIGTERM or SIGINT) signal...\n")
-	ret := exitFn()
-	os.Exit(ret)
+	go func() {
+		<-c
+		jww.INFO.Printf("Received Exit (SIGTERM or SIGINT) signal...\n")
+		ret := exitFn()
+		os.Exit(ret)
+	}()
 }
