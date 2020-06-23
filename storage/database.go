@@ -208,8 +208,9 @@ type RoundError struct {
 }
 
 // Initialize the Database interface with database backend
-func NewDatabase(username, password, database, address, port string) (Storage,
-	error) {
+// Returns a Storage interface, Close function, and error
+func NewDatabase(username, password, database, address,
+	port string) (Storage, func() error, error) {
 
 	var err error
 	var db *gorm.DB
@@ -248,12 +249,19 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 				nodes:        make(map[string]*Node),
 				nodeMetrics:  make(map[uint64]*NodeMetric),
 				roundMetrics: make(map[uint64]*RoundMetric),
-			})}, nil
+			})}, func() error { return nil }, nil
 	}
 
 	// Initialize the database logger
 	db.SetLogger(jww.DEBUG)
 	db.LogMode(true)
+
+	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
+	db.DB().SetMaxIdleConns(10)
+	// SetMaxOpenConns sets the maximum number of open connections to the database.
+	db.DB().SetMaxOpenConns(100)
+	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
+	db.DB().SetConnMaxLifetime(24 * time.Hour)
 
 	// Initialize the database schema
 	// WARNING: Order is important. Do not change without database testing
@@ -265,7 +273,7 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 	for _, model := range models {
 		err = db.AutoMigrate(model).Error
 		if err != nil {
-			return Storage{}, err
+			return Storage{}, func() error { return nil }, err
 		}
 	}
 
@@ -278,7 +286,7 @@ func NewDatabase(username, password, database, address, port string) (Storage,
 	return Storage{
 		ClientRegistration: di,
 		NodeRegistration:   di,
-	}, nil
+	}, db.Close, nil
 
 }
 

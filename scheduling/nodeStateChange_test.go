@@ -218,8 +218,8 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 		RandomOrdering: false,
 	}
 	var err error
-	storage.PermissioningDb, err = storage.NewDatabase("test", "password",
-		"regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("test", "password",
+		"regCodes", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -400,7 +400,7 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 	}
 	testState.GetNodeMap().GetNode(testUpdate.Node).GetPollingLock().Lock()
 
-	storage.PermissioningDb, err = storage.NewDatabase("", "", "", "", "")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 
 	roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0)
 	if err != nil {

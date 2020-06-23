@@ -6,6 +6,7 @@
 package transition
 
 import (
+	"fmt"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
 	"math"
@@ -29,13 +30,13 @@ type Transitions [current.NUM_STATES]transitionValidation
 // on state transitions
 func newTransitions() Transitions {
 	t := Transitions{}
-	t[current.NOT_STARTED] = NewTransitionValidation(No, nilRoundState)
-	t[current.WAITING] = NewTransitionValidation(No, nilRoundState, current.NOT_STARTED, current.COMPLETED, current.ERROR)
-	t[current.PRECOMPUTING] = NewTransitionValidation(Yes, states.PRECOMPUTING, current.WAITING)
-	t[current.STANDBY] = NewTransitionValidation(Yes, states.PRECOMPUTING, current.PRECOMPUTING)
-	t[current.REALTIME] = NewTransitionValidation(Yes, states.QUEUED, current.STANDBY)
-	t[current.COMPLETED] = NewTransitionValidation(Yes, states.REALTIME, current.REALTIME)
-	t[current.ERROR] = NewTransitionValidation(Maybe, nilRoundState, current.NOT_STARTED,
+	t[current.NOT_STARTED] = NewTransitionValidation(No, nil)
+	t[current.WAITING] = NewTransitionValidation(No, nil, current.NOT_STARTED, current.COMPLETED, current.ERROR)
+	t[current.PRECOMPUTING] = NewTransitionValidation(Yes, []states.Round{states.PRECOMPUTING}, current.WAITING)
+	t[current.STANDBY] = NewTransitionValidation(Yes, []states.Round{states.PRECOMPUTING}, current.PRECOMPUTING)
+	t[current.REALTIME] = NewTransitionValidation(Yes, []states.Round{states.QUEUED, states.REALTIME}, current.STANDBY)
+	t[current.COMPLETED] = NewTransitionValidation(Yes, []states.Round{states.REALTIME}, current.REALTIME)
+	t[current.ERROR] = NewTransitionValidation(Maybe, nil, current.NOT_STARTED,
 		current.WAITING, current.PRECOMPUTING, current.STANDBY, current.REALTIME,
 		current.COMPLETED)
 
@@ -54,22 +55,43 @@ func (t Transitions) NeedsRound(to current.Activity) int {
 	return t[to].needsRound
 }
 
-// RequiredRoundState looks up the required round needed prior to transition
-func (t Transitions) RequiredRoundState(to current.Activity) states.Round {
-	return t[to].roundState
+// Checks if the passed round state is valid for the transition
+func (t Transitions) IsValidRoundState(to current.Activity, st states.Round) bool {
+	for _, s := range t[to].roundState {
+		if st == s {
+			return true
+		}
+	}
+	return false
+}
+
+// returns a string describing valid transitions for error messages
+func (t Transitions) GetValidRoundStateStrings(to current.Activity) string {
+	if len(t[to].roundState) == 0 {
+		return "NO VALID TRANSITIONS"
+	}
+
+	var rtnStr string
+
+	for i := 0; i < len(t[to].roundState)-1; i++ {
+		rtnStr = fmt.Sprintf("%s, ", t[to].roundState[i])
+	}
+
+	rtnStr += fmt.Sprintf("%s", t[to].roundState[len(t[to].roundState)-1])
+	return rtnStr
 }
 
 // Transitional information used for each state
 type transitionValidation struct {
 	from       [current.NUM_STATES]bool
 	needsRound int
-	roundState states.Round
+	roundState []states.Round
 }
 
 // NewTransitionValidation sets the from attribute,
 //  denoting whether going from that to the objects current state
 //  is valid
-func NewTransitionValidation(needsRound int, roundState states.Round, from ...current.Activity) transitionValidation {
+func NewTransitionValidation(needsRound int, roundState []states.Round, from ...current.Activity) transitionValidation {
 	tv := transitionValidation{}
 
 	tv.needsRound = needsRound

@@ -148,13 +148,14 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 					newActivity)
 		}
 
-		if n.currentRound.GetRoundState() != transition.Node.RequiredRoundState(newActivity) {
+		if !transition.Node.IsValidRoundState(newActivity, n.currentRound.GetRoundState()) {
+
 			return false, UpdateNotification{},
 				errors.Errorf("Node update from %s to %s failed, "+
 					"requires the Node's be assigned a round to be in the "+
 					"correct state; Assigned: %s, Expected: %s", oldActivity,
 					newActivity, n.currentRound.GetRoundState(),
-					transition.Node.RequiredRoundState(oldActivity))
+					transition.Node.GetValidRoundStateStrings(newActivity))
 		}
 	}
 
