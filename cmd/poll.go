@@ -74,7 +74,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 
 	// Return updated NDF if provided hash does not match current NDF hash
 	if isSame := m.State.GetFullNdf().CompareHash(msg.Full.Hash); !isSame {
-		jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
+		jww.TRACE.Printf("Returning a new NDF to a back-end server!")
 
 		// Return the updated NDFs
 		response.FullNDF = m.State.GetFullNdf().GetPb()
@@ -160,7 +160,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 		}
 
 		// Send the json of the client
-		jww.DEBUG.Printf("Returning a new NDF to client!")
+		jww.TRACE.Printf("Returning a new NDF to client!")
 		jww.TRACE.Printf("Sending the following ndf: %v", m.State.GetPartialNdf().Get())
 		return m.State.GetPartialNdf().Get().Marshal()
 	}
@@ -171,7 +171,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 	}
 
 	//Send the json of the ndf
-	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
+	jww.TRACE.Printf("Returning a new NDF to a back-end server!")
 	return m.State.GetFullNdf().Get().Marshal()
 }
 
@@ -197,7 +197,7 @@ func checkVersion(requiredGateway, requiredServer version.Version,
 				gatewayVersion.String(), requiredGateway.String())
 		}
 	} else {
-		jww.DEBUG.Printf("Gateway version string is empty. Skipping gateway " +
+		jww.TRACE.Printf("Gateway version string is empty. Skipping gateway " +
 			"version check.")
 	}
 
@@ -309,7 +309,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 
 	// Update server and gateway addresses in state, if necessary
 	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
-	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
+	gatewayUpdate := n.r(gatewayAddress)
 
 	var err error
 
