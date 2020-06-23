@@ -105,12 +105,13 @@ closeTimeout: 60s
   "TeamSize": 4,
   "BatchSize": 32,
   "RandomOrdering": false,
+  "SemiOptimalOrdering": false,
   "MinimumDelay": 60,
   "RealtimeDelay": 3000,
   "Threshold":     10,
   "NodeCleanUpInterval": 3,  
-  "Secure": 		     true
-
+  "Secure": 		     true,
+  "RoundTimeout": 60
 }
 ```
 

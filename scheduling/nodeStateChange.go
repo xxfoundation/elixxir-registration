@@ -125,8 +125,10 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			return false, errors.Errorf("Node %s without round should "+
 				"not be moving to the %s state", update.Node, states.REALTIME)
 		}
-		stateComplete := r.NodeIsReadyForTransition()
-		if stateComplete {
+		// REALTIME does not use the state complete handler because it
+		// increments on the first report, not when every node reports in
+		// order to avoid distributed synchronicity issues
+		if r.GetRoundState() != states.REALTIME {
 			err := r.Update(states.REALTIME, time.Now())
 			if err != nil {
 				return false, errors.WithMessagef(err,
@@ -153,6 +155,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 					"Could not move round %v from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
+
 			// Build the round info and add to the networkState
 			roundInfo := r.BuildRoundInfo()
 			err = state.AddRoundUpdate(roundInfo)
@@ -161,6 +164,10 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 					"update for round %v transitioning from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
+
+			//send the signal that the round is complete
+			r.GetRoundCompletedChan() <- struct{}{}
+
 			// Commit metrics about the round to storage
 			return true, StoreRoundMetric(roundInfo)
 		}
@@ -168,6 +175,8 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 		// If in an error state, kill the round if the node has one
 		var err error
 		if hasRound {
+			//send the signal that the round is complete
+			r.GetRoundCompletedChan() <- struct{}{}
 			err = killRound(state, r, n, update.Error)
 		}
 		return false, err

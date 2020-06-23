@@ -104,16 +104,20 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return
 	}
 
-	// when a node poll is received, the nodes polling lock is taken here. If
-	// there is no update, it is released in this endpoint, otherwise it is
-	// released in the scheduling algorithm which blocks all future polls until
-	// processing completes
-	n.GetPollingLock().Lock()
+	// Return early before we get the polling lock if round creation stopped
+	stopped := atomic.LoadUint32(m.Stopped) == 1
+	if !stopped {
+		// when a node poll is received, the nodes polling lock is taken here. If
+		// there is no update, it is released in this endpoint, otherwise it is
+		// released in the scheduling algorithm which blocks all future polls until
+		// processing completes
+		n.GetPollingLock().Lock()
 
-	err = verifyError(msg, n, m)
-	if err != nil {
-		n.GetPollingLock().Unlock()
-		return response, err
+		err = verifyError(msg, n, m)
+		if err != nil {
+			n.GetPollingLock().Unlock()
+			return response, err
+		}
 	}
 
 	// update does edge checking. It ensures the state change recieved was a
@@ -122,16 +126,18 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// acceptable, it is not recorded and an error is returned, which is
 	// propagated to the node
 	update, updateNotification, err := n.Update(current.Activity(msg.Activity))
-	//if updating to an error state, attach the error the the update
-	if update && err == nil && updateNotification.ToActivity == current.ERROR {
-		updateNotification.Error = msg.Error
-	}
+	if !stopped {
+		//if updating to an error state, attach the error the the update
+		if update && err == nil && updateNotification.ToActivity == current.ERROR {
+			updateNotification.Error = msg.Error
+		}
 
-	//if an update ocured, report it to the control thread
-	if update {
-		err = m.State.SendUpdateNotification(updateNotification)
-	} else {
-		n.GetPollingLock().Unlock()
+		//if an update ocured, report it to the control thread
+		if update {
+			err = m.State.SendUpdateNotification(updateNotification)
+		} else {
+			n.GetPollingLock().Unlock()
+		}
 	}
 
 	return
