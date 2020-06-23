@@ -18,7 +18,7 @@ import (
 const currentVersion = "1.2.2"
 
 func printVersion() {
-	fmt.Printf("XX Network Permissioning Server v%s -- %s\n\n",
+	fmt.Printf("xx network Permissioning Server v%s -- %s\n\n",
 		SEMVER, GITVERSION)
 	fmt.Printf("Dependencies:\n\n%s\n", DEPENDENCIES)
 }
@@ -30,8 +30,8 @@ func init() {
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the version and dependency information for the XX Network binary",
-	Long:  `Print the version and dependency information for the XX Network binary`,
+	Short: "Print the version and dependency information for the xx network binary",
+	Long:  `Print the version and dependency information for the xx network binary`,
 	Run: func(cmd *cobra.Command, args []string) {
 		printVersion()
 	},

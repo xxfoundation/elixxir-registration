@@ -93,7 +93,7 @@ tag:
     script:
         - git remote add origin_tags git@gitlab.com:elixxir/registration.git || true
         - git remote set-url origin_tags git@gitlab.com:elixxir/registration.git || true
-        - git tag $(./release/registration.linux64 version | grep "Elixxir Registration Server v"| cut -d ' ' -f4) -f
+        - git tag $(./release/registration.linux64 version | grep "xx network Permissioning Server v"| cut -d ' ' -f4) -f
         - git push origin_tags -f --tags
 
 
