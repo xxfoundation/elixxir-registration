@@ -10,9 +10,7 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/pkg/errors"
-	"github.com/sparrc/go-ping"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -22,7 +20,9 @@ import (
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage/node"
+	"net"
 	"sync/atomic"
+	"time"
 )
 
 // Server->Permissioning unified poll function
@@ -57,6 +57,45 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return nil, errors.Errorf("Node %s has been banned from the network", nid)
 	}
 
+	activity := current.Activity(msg.Activity)
+
+	switch n.GetConnectivity() {
+	case node.PortUnknown:
+		go func() {
+			seconds := 5
+			timeOut := time.Duration(seconds) * time.Second
+			conn, errOpen := net.DialTimeout("tcp", serverAddress, timeOut)
+			if errOpen != nil {
+				jww.DEBUG.Printf("Failed to verify connectivity" +
+					" for node (%s) at (%s): %s", n.GetID(), serverAddress, errOpen)
+				n.SetConnectivity(node.PortFailed)
+			} else  {
+				n.SetConnectivity(node.PortSucessful)
+
+			}
+			errClose := conn.Close()
+			if errClose != nil && errOpen == nil {
+				jww.DEBUG.Printf("Failed to close connection for node (%s) at (%s): %v",
+					n.GetID(), serverAddress, errClose)
+			}
+		}()
+
+
+
+		if activity != current.ERROR {
+			return response, err
+		}
+	case node.PortVerifying:
+		if activity != current.ERROR {
+			return response, err
+		}
+	case node.PortSucessful:
+	case node.PortFailed:
+		return nil, errors.Errorf("Node %s cannot be contacted "+
+			"at %s  by Permissioning, are ports properly forwarded?", n.GetID(),
+			serverAddress)
+	}
+
 	//update ip addresses if nessessary
 	err = checkIPAddresses(m, n, msg, serverAddress)
 	if err != nil {
@@ -86,41 +125,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return
 	}
 
-	activity := current.Activity(msg.Activity)
 
-	switch n.GetConnectivity() {
-	case node.PortUnknown:
-		pinger, err := ping.NewPinger(serverAddress)
 
-		if err != nil {
-			return nil, errors.Errorf("Failed to initilize ping: +"+
-				" of Node %s at %s: %s", n.GetID(), serverAddress, err)
-		}
-		pinger.Count = 3
-		pinger.OnFinish = func(stats *ping.Statistics) {
-			if stats.PacketsRecv == 0 {
-				n.SetConnectivity(node.PortFailed)
-			} else {
-				n.SetConnectivity(node.PortSucessful)
-			}
-		}
-
-		go func() {
-			pinger.Run()
-		}()
-		if activity != current.ERROR {
-			return
-		}
-	case node.PortVerifying:
-		if activity != current.ERROR {
-			return
-		}
-	case node.PortSucessful:
-	case node.PortFailed:
-		return nil, errors.Errorf("Node %s cannot be contacted "+
-			"at %s  by Permissioning, are ports properly forwarded?", n.GetID(),
-			serverAddress)
-	}
 
 	// Increment the Node's poll count
 	n.IncrementNumPolls()
@@ -347,7 +353,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 
 	// Update server and gateway addresses in state, if necessary
 	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
-	gatewayUpdate := n.r(gatewayAddress)
+	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
 
 	var err error
 

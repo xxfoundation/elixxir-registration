@@ -99,6 +99,9 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		t.Errorf("Could nto add node: %s", err)
 	}
 
+	n := impl.State.GetNodeMap().GetNode(testID)
+	n.SetConnectivity(node.PortSucessful)
+
 	response, err := impl.Poll(testMsg, testAuth, "0.0.0.0")
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
