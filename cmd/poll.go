@@ -57,6 +57,9 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return nil, errors.Errorf("Node %s has been banned from the network", nid)
 	}
 
+	// Increment the Node's poll count
+	n.IncrementNumPolls()
+
 	//update ip addresses if nessessary
 	err = checkIPAddresses(m, n, msg, serverAddress)
 	if err != nil {
@@ -92,9 +95,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	if err != nil || !continuePoll {
 		return
 	}
-
-	// Increment the Node's poll count
-	n.IncrementNumPolls()
 
 	// Commit updates reported by the node if node involved in the current round
 	jww.TRACE.Printf("Updating state for node %s: %+v",
@@ -365,19 +365,20 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 }
 
 // Handles the responses to the different connectivity states of a node
+// if boolean is true the poll should continue
 func checkConnectivity(n *node.State, activity current.Activity, serverAddress string) (bool, error) {
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
-		// Check that the node hasn't errored out
-		if activity != current.ERROR {
-			return true, nil
-		}
 		// If we are not sure on whether the port has been forwarded
 		go checkPortForwarding(n, serverAddress)
+		// Check that the node hasn't errored out
+		if activity == current.ERROR {
+			return true, nil
+		}
 
 	case node.PortVerifying:
 		// If we are still verifying, then
-		if activity != current.ERROR {
+		if activity == current.ERROR {
 			return true, nil
 		}
 	case node.PortSuccessful:
