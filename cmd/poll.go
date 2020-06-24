@@ -309,7 +309,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 
 	// Update server and gateway addresses in state, if necessary
 	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
-	gatewayUpdate := n.r(gatewayAddress)
+	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
 
 	var err error
 
