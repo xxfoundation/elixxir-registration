@@ -398,8 +398,8 @@ func checkPortForwarding(n *node.State, activity current.Activity, serverAddress
 // Otherwise we return an error to the node
 func checkConnectivity(n *node.State, serverAddress string) {
 	// Then we ping the server and attempt on that port
-	seconds := 5
-	timeOut := time.Duration(seconds) * time.Second
+	duration := time.Duration(5)
+	timeOut := duration * time.Second
 	conn, errOpen := net.DialTimeout("tcp", serverAddress, timeOut)
 	if errOpen != nil {
 		// If we cannot connect, mark the node as failed

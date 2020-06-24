@@ -19,6 +19,7 @@ import (
 	"time"
 )
 
+// Enumeration of connectivity statuses for a node
 const (
 	PortUnknown uint32 = iota
 	PortVerifying
@@ -69,6 +70,8 @@ type State struct {
 	// may be fruitful
 	pollingLock sync.Mutex
 
+	// Status of node's connectivity, i.e. whether the node
+	// has port forwarding
 	connectivity *uint32
 }
 
@@ -212,8 +215,9 @@ func (n *State) IsBanned() bool {
 	return n.status == Banned
 }
 
-// Gets if the Node is banned from the network
+// Gets the status of the node, atomically
 func (n *State) GetConnectivity() uint32 {
+	// Done to avoid a race condition in the case of a double poll
 	verify := atomic.CompareAndSwapUint32(n.connectivity, PortUnknown, PortVerifying)
 	if verify {
 		return PortUnknown
@@ -222,7 +226,7 @@ func (n *State) GetConnectivity() uint32 {
 	}
 }
 
-// Gets if the Node is banned from the network
+// Sets the connectivity of node to c, atomically
 func (n *State) SetConnectivity(c uint32) {
 	atomic.StoreUint32(n.connectivity, c)
 }
