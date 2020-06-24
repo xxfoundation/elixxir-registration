@@ -57,45 +57,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return nil, errors.Errorf("Node %s has been banned from the network", nid)
 	}
 
-	activity := current.Activity(msg.Activity)
-
-	switch n.GetConnectivity() {
-	case node.PortUnknown:
-		go func() {
-			seconds := 5
-			timeOut := time.Duration(seconds) * time.Second
-			conn, errOpen := net.DialTimeout("tcp", serverAddress, timeOut)
-			if errOpen != nil {
-				jww.DEBUG.Printf("Failed to verify connectivity" +
-					" for node (%s) at (%s): %s", n.GetID(), serverAddress, errOpen)
-				n.SetConnectivity(node.PortFailed)
-			} else  {
-				n.SetConnectivity(node.PortSucessful)
-
-			}
-			errClose := conn.Close()
-			if errClose != nil && errOpen == nil {
-				jww.DEBUG.Printf("Failed to close connection for node (%s) at (%s): %v",
-					n.GetID(), serverAddress, errClose)
-			}
-		}()
-
-
-
-		if activity != current.ERROR {
-			return response, err
-		}
-	case node.PortVerifying:
-		if activity != current.ERROR {
-			return response, err
-		}
-	case node.PortSucessful:
-	case node.PortFailed:
-		return nil, errors.Errorf("Node %s cannot be contacted "+
-			"at %s  by Permissioning, are ports properly forwarded?", n.GetID(),
-			serverAddress)
-	}
-
 	//update ip addresses if nessessary
 	err = checkIPAddresses(m, n, msg, serverAddress)
 	if err != nil {
@@ -125,8 +86,30 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return
 	}
 
+	activity := current.Activity(msg.Activity)
 
+	// Check what we know about the node's connectivity
+	switch n.GetConnectivity() {
+	case node.PortUnknown:
+		// If we are not sure on whether the port has been forwarded
+		go checkPortForwarding(n, serverAddress)
 
+		if activity != current.ERROR {
+			return response, err
+		}
+	case node.PortVerifying:
+		// If we are still verifying, then
+		if activity != current.ERROR {
+			return response, err
+		}
+	case node.PortSucessful:
+	case node.PortFailed:
+		// If the port has been marked as failed,
+		// we send an error informing the node
+		return response, errors.Errorf("Node %s cannot be contacted "+
+			"at %s by Permissioning, are ports properly forwarded?", n.GetID(),
+			serverAddress)
+	}
 
 	// Increment the Node's poll count
 	n.IncrementNumPolls()
@@ -397,4 +380,33 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 	}
 
 	return nil
+}
+
+// Attempts to dial node n at serverAddress.
+// If we can successfully connect then, then port forwarding been done correctly
+// Otherwise we return an error to the node
+func checkPortForwarding(n *node.State, serverAddress string) {
+	// Then we ping the server and attempt on that port
+	seconds := 5
+	timeOut := time.Duration(seconds) * time.Second
+	conn, errOpen := net.DialTimeout("tcp", serverAddress, timeOut)
+	if errOpen != nil {
+		// If we cannot connect, mark the node as failed
+		jww.DEBUG.Printf("Failed to verify connectivity"+
+			" for node (%s) at (%s): %s", n.GetID(), serverAddress, errOpen)
+		n.SetConnectivity(node.PortFailed)
+	} else {
+		// If connection was successful, mark the port as forwarded
+		n.SetConnectivity(node.PortSucessful)
+
+	}
+
+	// Attempt to close the connection
+	if conn != nil {
+		errClose := conn.Close()
+		if errClose != nil {
+			jww.DEBUG.Printf("Failed to close connection for node (%s) at (%s): %v",
+				n.GetID(), serverAddress, errClose)
+		}
+	}
 }
