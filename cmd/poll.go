@@ -20,7 +20,9 @@ import (
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage/node"
+	"net"
 	"sync/atomic"
+	"time"
 )
 
 // Server->Permissioning unified poll function
@@ -50,19 +52,9 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return
 	}
 
-	// Increment the Node's poll count
-	n.IncrementNumPolls()
-
 	// Check if the node has been deemed out of network
 	if n.IsBanned() {
 		return nil, errors.Errorf("Node %s has been banned from the network", nid)
-	}
-
-	// Check for correct version
-	err = checkVersion(m.params.minGatewayVersion, m.params.minServerVersion,
-		msg)
-	if err != nil {
-		return nil, err
 	}
 
 	//update ip addresses if nessessary
@@ -70,6 +62,13 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	if err != nil {
 		err = errors.WithMessage(err, "Failed to update IP addresses")
 		return
+	}
+
+	// Check for correct version
+	err = checkVersion(m.params.minGatewayVersion, m.params.minServerVersion,
+		msg)
+	if err != nil {
+		return nil, err
 	}
 
 	// Return updated NDF if provided hash does not match current NDF hash
@@ -87,6 +86,16 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return
 	}
 
+	activity := current.Activity(msg.Activity)
+	// Check the node's connectivity
+	continuePoll, err := checkConnectivity(n, activity, serverAddress)
+	if err != nil || !continuePoll {
+		return
+	}
+
+	// Increment the Node's poll count
+	n.IncrementNumPolls()
+
 	// Commit updates reported by the node if node involved in the current round
 	jww.TRACE.Printf("Updating state for node %s: %+v",
 		auth.Sender.GetId(), msg)
@@ -100,7 +109,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	// if the node is in not started state, do not produce an update
-	if current.Activity(msg.Activity) == current.NOT_STARTED {
+	if activity == current.NOT_STARTED {
 		return
 	}
 
@@ -353,4 +362,63 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 	}
 
 	return nil
+}
+
+// Handles the responses to the different connectivity states of a node
+func checkConnectivity(n *node.State, activity current.Activity, serverAddress string) (bool, error) {
+	switch n.GetConnectivity() {
+	case node.PortUnknown:
+		// Check that the node hasn't errored out
+		if activity != current.ERROR {
+			return true, nil
+		}
+		// If we are not sure on whether the port has been forwarded
+		go checkPortForwarding(n, serverAddress)
+
+	case node.PortVerifying:
+		// If we are still verifying, then
+		if activity != current.ERROR {
+			return true, nil
+		}
+	case node.PortSuccessful:
+		// In the case of a successful port check, we do nothing
+		return true, nil
+	case node.PortFailed:
+		// If the port has been marked as failed,
+		// we send an error informing the node of such
+		return false, errors.Errorf("Node %s cannot be contacted "+
+			"at %s by Permissioning, are ports properly forwarded?", n.GetID(),
+			serverAddress)
+	}
+
+	return false, nil
+}
+
+// Attempts to dial node n at serverAddress.
+// If we can successfully connect then, then port forwarding been done correctly
+// Otherwise we return an error to the node
+func checkPortForwarding(n *node.State, serverAddress string) {
+	// Then we ping the server and attempt on that port
+	duration := time.Duration(5)
+	timeOut := duration * time.Second
+	conn, errOpen := net.DialTimeout("tcp", serverAddress, timeOut)
+	if errOpen != nil {
+		// If we cannot connect, mark the node as failed
+		jww.DEBUG.Printf("Failed to verify connectivity"+
+			" for node (%s) at (%s): %s", n.GetID(), serverAddress, errOpen)
+		n.SetConnectivity(node.PortFailed)
+	} else {
+		// If connection was successful, mark the port as forwarded
+		n.SetConnectivity(node.PortSuccessful)
+
+	}
+
+	// Attempt to close the connection
+	if conn != nil {
+		errClose := conn.Close()
+		if errClose != nil {
+			jww.DEBUG.Printf("Failed to close connection for node (%s) at (%s): %v",
+				n.GetID(), serverAddress, errClose)
+		}
+	}
 }

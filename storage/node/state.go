@@ -19,6 +19,14 @@ import (
 	"time"
 )
 
+// Enumeration of connectivity statuses for a node
+const (
+	PortUnknown uint32 = iota
+	PortVerifying
+	PortSuccessful
+	PortFailed
+)
+
 // Tracks state of an individual Node in the network
 type State struct {
 	mux sync.RWMutex
@@ -61,6 +69,10 @@ type State struct {
 	// do the same job and could conflict. reconsideration of this logic
 	// may be fruitful
 	pollingLock sync.Mutex
+
+	// Status of node's connectivity, i.e. whether the node
+	// has port forwarding
+	connectivity *uint32
 }
 
 // Increment function for numPolls
@@ -201,6 +213,22 @@ func (n *State) IsBanned() bool {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	return n.status == Banned
+}
+
+// Gets the status of the node, atomically
+func (n *State) GetConnectivity() uint32 {
+	// Done to avoid a race condition in the case of a double poll
+	verify := atomic.CompareAndSwapUint32(n.connectivity, PortUnknown, PortVerifying)
+	if verify {
+		return PortUnknown
+	} else {
+		return atomic.LoadUint32(n.connectivity)
+	}
+}
+
+// Sets the connectivity of node to c, atomically
+func (n *State) SetConnectivity(c uint32) {
+	atomic.StoreUint32(n.connectivity, c)
 }
 
 // Designates the node as offline

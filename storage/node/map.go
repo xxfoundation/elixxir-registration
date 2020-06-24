@@ -35,6 +35,7 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string) error {
 	if _, ok := nsm.nodeStates[*id]; ok {
 		return errors.New("cannot add a Node which already exists")
 	}
+	pfState := PortUnknown
 
 	numPolls := uint64(0)
 	nsm.nodeStates[*id] =
@@ -49,6 +50,7 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string) error {
 			status:         Active,
 			numPolls:       &numPolls,
 			mux:            sync.RWMutex{},
+			connectivity:   &pfState,
 		}
 
 	return nil
