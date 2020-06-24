@@ -7,7 +7,6 @@
 package node
 
 import (
-	"fmt"
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
@@ -225,7 +224,6 @@ func (n *State) GetConnectivity() uint32 {
 
 // Gets if the Node is banned from the network
 func (n *State) SetConnectivity(c uint32) {
-	fmt.Println("Setting connectivity to: %v", c)
 	atomic.StoreUint32(n.connectivity, c)
 }
 
