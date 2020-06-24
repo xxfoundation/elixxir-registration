@@ -10,7 +10,6 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
@@ -53,7 +52,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return
 	}
 
-	fmt.Println("after start, node conn is at: ", n.GetConnectivity())
 
 	// Check if the node has been deemed out of network
 	if n.IsBanned() {
@@ -90,8 +88,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	activity := current.Activity(msg.Activity)
-	fmt.Println("connectivity: ", n.GetConnectivity())
-
 	// Check the node's connectivity
 	continuePoll, err := checkPortForwarding(n, activity, serverAddress)
 	if err != nil || !continuePoll {
