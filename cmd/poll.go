@@ -88,7 +88,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 
 	activity := current.Activity(msg.Activity)
 	// Check the node's connectivity
-	continuePoll, err := checkPortForwarding(n, activity, serverAddress)
+	continuePoll, err := checkConnectivity(n, activity, serverAddress)
 	if err != nil || !continuePoll {
 		return
 	}
@@ -365,15 +365,16 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 }
 
 // Handles the responses to the different connectivity states of a node
-func checkPortForwarding(n *node.State, activity current.Activity, serverAddress string) (bool, error) {
+func checkConnectivity(n *node.State, activity current.Activity, serverAddress string) (bool, error) {
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
-		// If we are not sure on whether the port has been forwarded
-		go checkConnectivity(n, serverAddress)
 		// Check that the node hasn't errored out
 		if activity != current.ERROR {
 			return true, nil
 		}
+		// If we are not sure on whether the port has been forwarded
+		go checkPortForwarding(n, serverAddress)
+
 	case node.PortVerifying:
 		// If we are still verifying, then
 		if activity != current.ERROR {
@@ -396,7 +397,7 @@ func checkPortForwarding(n *node.State, activity current.Activity, serverAddress
 // Attempts to dial node n at serverAddress.
 // If we can successfully connect then, then port forwarding been done correctly
 // Otherwise we return an error to the node
-func checkConnectivity(n *node.State, serverAddress string) {
+func checkPortForwarding(n *node.State, serverAddress string) {
 	// Then we ping the server and attempt on that port
 	duration := time.Duration(5)
 	timeOut := duration * time.Second

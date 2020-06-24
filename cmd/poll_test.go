@@ -424,6 +424,7 @@ func TestPoll_BannedNode(t *testing.T) {
 	t.Errorf("Expected error state: Node with out of network status should return an error")
 }
 
+// TODO: more work needs to be done to get this testable (making timeout a config option, etc)
 //func TestPoll_CheckPortForwarding(t *testing.T) {
 //	testID := id.NewIdFromUInt(0, id.Node, t)
 //	testString := "test"

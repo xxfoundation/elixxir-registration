@@ -97,7 +97,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 			go func() {
 				// Allow for round the to be added to the map
-				time.Sleep(50 * time.Millisecond)
 				ourRound := state.GetRoundMap().GetRound(newRound.ID)
 				roundTimer := time.NewTimer(params.RoundTimeout * time.Second)
 				select {
