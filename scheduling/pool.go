@@ -85,6 +85,7 @@ func (wp *waitingPool) CleanOfflineNodes(timeout time.Duration) {
 		if delta > timeout {
 			toRemove = append(toRemove, ns)
 		}
+		ns.SetConnectivity(node.PortUnknown)
 	})
 
 	for _, ns := range toRemove {

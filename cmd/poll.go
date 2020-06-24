@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
@@ -52,6 +53,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return
 	}
 
+	fmt.Println("after start, node conn is at: ", n.GetConnectivity())
+
 	// Check if the node has been deemed out of network
 	if n.IsBanned() {
 		return nil, errors.Errorf("Node %s has been banned from the network", nid)
@@ -87,28 +90,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	activity := current.Activity(msg.Activity)
+	fmt.Println("connectivity: ", n.GetConnectivity())
 
-	// Check what we know about the node's connectivity
-	switch n.GetConnectivity() {
-	case node.PortUnknown:
-		// If we are not sure on whether the port has been forwarded
-		go checkPortForwarding(n, serverAddress)
-
-		if activity != current.ERROR {
-			return response, err
-		}
-	case node.PortVerifying:
-		// If we are still verifying, then
-		if activity != current.ERROR {
-			return response, err
-		}
-	case node.PortSucessful:
-	case node.PortFailed:
-		// If the port has been marked as failed,
-		// we send an error informing the node
-		return response, errors.Errorf("Node %s cannot be contacted "+
-			"at %s by Permissioning, are ports properly forwarded?", n.GetID(),
-			serverAddress)
+	// Check the node's connectivity
+	continuePoll, err := checkPortForwarding(n, activity, serverAddress)
+	if err != nil || !continuePoll {
+		return
 	}
 
 	// Increment the Node's poll count
@@ -382,10 +369,39 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 	return nil
 }
 
+// Handles the responses to the different connectivity states of a node
+func checkPortForwarding(n *node.State, activity current.Activity, serverAddress string) (bool, error) {
+	switch n.GetConnectivity() {
+	case node.PortUnknown:
+		// If we are not sure on whether the port has been forwarded
+		go checkConnectivity(n, serverAddress)
+		// Check that the node hasn't errored out
+		if activity != current.ERROR {
+			return true, nil
+		}
+	case node.PortVerifying:
+		// If we are still verifying, then
+		if activity != current.ERROR {
+			return true, nil
+		}
+	case node.PortSuccessful:
+		// In the case of a successful port check, we do nothing
+		return true, nil
+	case node.PortFailed:
+		// If the port has been marked as failed,
+		// we send an error informing the node of such
+		return false, errors.Errorf("Node %s cannot be contacted "+
+			"at %s by Permissioning, are ports properly forwarded?", n.GetID(),
+			serverAddress)
+	}
+
+	return false, nil
+}
+
 // Attempts to dial node n at serverAddress.
 // If we can successfully connect then, then port forwarding been done correctly
 // Otherwise we return an error to the node
-func checkPortForwarding(n *node.State, serverAddress string) {
+func checkConnectivity(n *node.State, serverAddress string) {
 	// Then we ping the server and attempt on that port
 	seconds := 5
 	timeOut := time.Duration(seconds) * time.Second
@@ -397,7 +413,7 @@ func checkPortForwarding(n *node.State, serverAddress string) {
 		n.SetConnectivity(node.PortFailed)
 	} else {
 		// If connection was successful, mark the port as forwarded
-		n.SetConnectivity(node.PortSucessful)
+		n.SetConnectivity(node.PortSuccessful)
 
 	}
 
