@@ -27,10 +27,10 @@ import (
 
 // Server->Permissioning unified poll function
 func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
-	serverAddress string) (response *pb.PermissionPollResponse, err error) {
+	serverAddress string) (*pb.PermissionPollResponse, error) {
 
 	// Initialize the response
-	response = &pb.PermissionPollResponse{}
+	response := &pb.PermissionPollResponse{}
 
 	// Ensure the NDF is ready to be returned
 	regComplete := atomic.LoadUint32(m.NdfReady)
@@ -47,9 +47,9 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	nid := auth.Sender.GetId()
 	n := m.State.GetNodeMap().GetNode(nid)
 	if n == nil {
-		err = errors.Errorf("Node %s could not be found in internal state "+
+		err := errors.Errorf("Node %s could not be found in internal state "+
 			"tracker", nid)
-		return
+		return response, err
 	}
 
 	// Check if the node has been deemed out of network
@@ -57,14 +57,20 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return nil, errors.Errorf("Node %s has been banned from the network", nid)
 	}
 
-	// Increment the Node's poll count
-	n.IncrementNumPolls()
+	activity := current.Activity(msg.Activity)
+
+	// check that the activity is not error and then poll, do not count error
+	// polls so erroring nodes are not issues rounds
+	if activity != current.ERROR {
+		// Increment the Node's poll count
+		n.IncrementNumPolls()
+	}
 
 	//update ip addresses if nessessary
-	err = checkIPAddresses(m, n, msg, serverAddress)
+	err := checkIPAddresses(m, n, msg, serverAddress)
 	if err != nil {
 		err = errors.WithMessage(err, "Failed to update IP addresses")
-		return
+		return response, err
 	}
 
 	// Check for correct version
@@ -86,14 +92,13 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// Fetch latest round updates
 	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
 	if err != nil {
-		return
+		return response, err
 	}
 
-	activity := current.Activity(msg.Activity)
 	// Check the node's connectivity
 	continuePoll, err := checkConnectivity(n, activity, serverAddress)
 	if err != nil || !continuePoll {
-		return
+		return response, err
 	}
 
 	// Commit updates reported by the node if node involved in the current round
@@ -110,7 +115,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 
 	// if the node is in not started state, do not produce an update
 	if activity == current.NOT_STARTED {
-		return
+		return response, err
 	}
 
 	// Return early before we get the polling lock if round creation stopped
@@ -149,7 +154,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		}
 	}
 
-	return
+	return response, nil
 }
 
 // PollNdf handles the client polling for an updated NDF
@@ -334,6 +339,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 		currentNDF := m.State.GetFullNdf().Get()
 
 		if nodeUpdate {
+			n.SetConnectivity(node.PortUnknown)
 			if err = updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err

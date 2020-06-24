@@ -167,22 +167,26 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			numRounds--
 		}
 
-		// Create a new round if the pool is full
-		if pool.Len() >= int(teamFormationThreshold) && killed == nil {
-			// Increment round ID
-			currentID, err := state.IncrementRoundID()
-			if err != nil {
-				return err
-			}
+		for {
+			// Create a new round if the pool is full
+			if pool.Len() >= int(teamFormationThreshold) && killed == nil {
+				// Increment round ID
+				currentID, err := state.IncrementRoundID()
+				if err != nil {
+					return err
+				}
 
-			newRound, err := createRound(params, pool, currentID, state)
-			if err != nil {
-				return err
-			}
+				newRound, err := createRound(params, pool, currentID, state)
+				if err != nil {
+					return err
+				}
 
-			// Send the round to the new round channel to be created
-			newRoundChan <- newRound
-			numRounds++
+				// Send the round to the new round channel to be created
+				newRoundChan <- newRound
+				numRounds++
+			} else {
+				break
+			}
 		}
 
 		// If the scheduler is to be killed and no rounds are in progress,
