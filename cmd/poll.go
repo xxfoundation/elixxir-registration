@@ -10,7 +10,9 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/pkg/errors"
+	"github.com/sparrc/go-ping"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -50,19 +52,9 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return
 	}
 
-	// Increment the Node's poll count
-	n.IncrementNumPolls()
-
 	// Check if the node has been deemed out of network
 	if n.IsBanned() {
 		return nil, errors.Errorf("Node %s has been banned from the network", nid)
-	}
-
-	// Check for correct version
-	err = checkVersion(m.params.minGatewayVersion, m.params.minServerVersion,
-		msg)
-	if err != nil {
-		return nil, err
 	}
 
 	//update ip addresses if nessessary
@@ -70,6 +62,13 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	if err != nil {
 		err = errors.WithMessage(err, "Failed to update IP addresses")
 		return
+	}
+
+	// Check for correct version
+	err = checkVersion(m.params.minGatewayVersion, m.params.minServerVersion,
+		msg)
+	if err != nil {
+		return nil, err
 	}
 
 	// Return updated NDF if provided hash does not match current NDF hash
@@ -87,6 +86,45 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return
 	}
 
+	activity := current.Activity(msg.Activity)
+
+	switch n.GetConnectivity() {
+	case node.PortUnknown:
+		pinger, err := ping.NewPinger(serverAddress)
+
+		if err != nil {
+			return nil, errors.Errorf("Failed to initilize ping: +"+
+				" of Node %s at %s: %s", n.GetID(), serverAddress, err)
+		}
+		pinger.Count = 3
+		pinger.OnFinish = func(stats *ping.Statistics) {
+			if stats.PacketsRecv == 0 {
+				n.SetConnectivity(node.PortFailed)
+			} else {
+				n.SetConnectivity(node.PortSucessful)
+			}
+		}
+
+		go func() {
+			pinger.Run()
+		}()
+		if activity != current.ERROR {
+			return
+		}
+	case node.PortVerifying:
+		if activity != current.ERROR {
+			return
+		}
+	case node.PortSucessful:
+	case node.PortFailed:
+		return nil, errors.Errorf("Node %s cannot be contacted "+
+			"at %s  by Permissioning, are ports properly forwarded?", n.GetID(),
+			serverAddress)
+	}
+
+	// Increment the Node's poll count
+	n.IncrementNumPolls()
+
 	// Commit updates reported by the node if node involved in the current round
 	jww.TRACE.Printf("Updating state for node %s: %+v",
 		auth.Sender.GetId(), msg)
@@ -100,7 +138,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	// if the node is in not started state, do not produce an update
-	if current.Activity(msg.Activity) == current.NOT_STARTED {
+	if activity == current.NOT_STARTED {
 		return
 	}
 

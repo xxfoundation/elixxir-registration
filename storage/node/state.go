@@ -214,7 +214,12 @@ func (n *State) IsBanned() bool {
 
 // Gets if the Node is banned from the network
 func (n *State) GetConnectivity() uint32 {
-	return atomic.LoadUint32(n.connectivity)
+	verify := atomic.CompareAndSwapUint32(n.connectivity, PortUnknown, PortVerifying)
+	if verify {
+		return PortUnknown
+	} else {
+		return atomic.LoadUint32(n.connectivity)
+	}
 }
 
 // Gets if the Node is banned from the network
