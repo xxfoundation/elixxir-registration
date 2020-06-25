@@ -246,7 +246,7 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
 // Tracks rounds, periodically outputs how many teams are in various rounds
 func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) {
 	// Period of polling the state map for logs
-	schedulingTicker := time.NewTicker(15 * time.Second)
+	schedulingTicker := time.NewTicker(1 * time.Minute)
 
 	realtimeNodes := make([]*node.State, 0)
 	precompNodes := make([]*node.State, 0)
@@ -272,11 +272,11 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 		}
 
 		// Output data into logs
-		jww.TRACE.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
-		jww.TRACE.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
-		jww.TRACE.Printf("Teams in waiting: %v", len(waitingNodes)/int(params.TeamSize))
-		jww.TRACE.Printf("Nodes in pool: %v", pool.Len())
-		jww.TRACE.Printf("Nodes in offline pool: %v", pool.OfflineLen())
+		jww.INFO.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
+		jww.INFO.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
+		jww.INFO.Printf("Teams in waiting: %v", len(waitingNodes)/int(params.TeamSize))
+		jww.INFO.Printf("Nodes in pool: %v", pool.Len())
+		jww.INFO.Printf("Nodes in offline pool: %v", pool.OfflineLen())
 
 		// Reset the data for next periodic poll
 		realtimeNodes = make([]*node.State, 0)
