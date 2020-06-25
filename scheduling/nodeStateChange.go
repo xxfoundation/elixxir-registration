@@ -51,8 +51,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			if err != nil {
 				jww.FATAL.Panicf("Failed to sign error message for banned node %s: %+v", update.Node, err)
 			}
-			n.ClearRound()
-			return false, killRound(state, r, banError)
+			return false, killRound(state, r, n, banError)
 		} else {
 			pool.Ban(n)
 			return false, nil
@@ -167,7 +166,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			}
 
 			//send the signal that the round is complete
-			r.DenoteRoundCompleted()
+			r.GetRoundCompletedChan() <- struct{}{}
 
 			// Commit metrics about the round to storage
 			return true, StoreRoundMetric(roundInfo)
@@ -177,9 +176,8 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 		var err error
 		if hasRound {
 			//send the signal that the round is complete
-			r.DenoteRoundCompleted()
-			n.ClearRound()
-			err = killRound(state, r, update.Error)
+			r.GetRoundCompletedChan() <- struct{}{}
+			err = killRound(state, r, n, update.Error)
 		}
 		return false, err
 	}
@@ -208,10 +206,11 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 }
 
 // killRound sets the round to failed and clears the node's round
-func killRound(state *storage.NetworkState, r *round.State, roundError *pb.RoundError) error {
+func killRound(state *storage.NetworkState, r *round.State, n *node.State, roundError *pb.RoundError) error {
 
 	r.AppendError(roundError)
 	_ = r.Update(states.FAILED, time.Now())
+	n.ClearRound()
 	roundId := r.GetRoundID()
 
 	// Build the round info and update the network state
