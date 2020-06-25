@@ -543,14 +543,12 @@ func TestKillRound(t *testing.T) {
 
 	r := round.NewState_Testing(42, 0, t)
 
-	ns := testState.GetNodeMap().GetNode(nodeList[0])
-
 	re := &mixmessages.RoundError{
 		Id:     0,
 		NodeId: nil,
 		Error:  "test",
 	}
-	//
+
 	err = killRound(testState, r, re)
 	if err != nil {
 		t.Errorf("Unexpected error in happy path: %v", err)
