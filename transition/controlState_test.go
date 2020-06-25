@@ -21,7 +21,7 @@ func TestTransitions_IsValidTransition(t *testing.T) {
 	expectedTransition[current.NOT_STARTED] = []bool{false, false, false, false, false, false, false, false}
 	expectedTransition[current.WAITING] = []bool{true, false, false, false, false, true, true, false}
 	expectedTransition[current.PRECOMPUTING] = []bool{false, true, false, false, false, false, false, false}
-	expectedTransition[current.STANDBY] = []bool{false, false, true, false, false, false, false, false}
+	expectedTransition[current.STANDBY] = []bool{false, true, true, false, false, false, false, false}
 	expectedTransition[current.REALTIME] = []bool{false, false, false, true, false, false, false, false}
 	expectedTransition[current.COMPLETED] = []bool{false, false, false, false, true, false, false, false}
 	expectedTransition[current.ERROR] = []bool{true, true, true, true, true, true, false, false}

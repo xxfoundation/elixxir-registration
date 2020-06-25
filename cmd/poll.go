@@ -20,15 +20,17 @@ import (
 	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage/node"
+	"net"
 	"sync/atomic"
+	"time"
 )
 
 // Server->Permissioning unified poll function
 func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
-	serverAddress string) (response *pb.PermissionPollResponse, err error) {
+	serverAddress string) (*pb.PermissionPollResponse, error) {
 
 	// Initialize the response
-	response = &pb.PermissionPollResponse{}
+	response := &pb.PermissionPollResponse{}
 
 	// Ensure the NDF is ready to be returned
 	regComplete := atomic.LoadUint32(m.NdfReady)
@@ -45,17 +47,30 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	nid := auth.Sender.GetId()
 	n := m.State.GetNodeMap().GetNode(nid)
 	if n == nil {
-		err = errors.Errorf("Node %s could not be found in internal state "+
+		err := errors.Errorf("Node %s could not be found in internal state "+
 			"tracker", nid)
-		return
+		return response, err
 	}
-
-	// Increment the Node's poll count
-	n.IncrementNumPolls()
 
 	// Check if the node has been deemed out of network
 	if n.IsBanned() {
 		return nil, errors.Errorf("Node %s has been banned from the network", nid)
+	}
+
+	activity := current.Activity(msg.Activity)
+
+	// check that the activity is not error and then poll, do not count error
+	// polls so erroring nodes are not issues rounds
+	if activity != current.ERROR {
+		// Increment the Node's poll count
+		n.IncrementNumPolls()
+	}
+
+	//update ip addresses if nessessary
+	err := checkIPAddresses(m, n, msg, serverAddress)
+	if err != nil {
+		err = errors.WithMessage(err, "Failed to update IP addresses")
+		return response, err
 	}
 
 	// Check for correct version
@@ -65,16 +80,9 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return nil, err
 	}
 
-	//update ip addresses if nessessary
-	err = checkIPAddresses(m, n, msg, serverAddress)
-	if err != nil {
-		err = errors.WithMessage(err, "Failed to update IP addresses")
-		return
-	}
-
 	// Return updated NDF if provided hash does not match current NDF hash
 	if isSame := m.State.GetFullNdf().CompareHash(msg.Full.Hash); !isSame {
-		jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
+		jww.TRACE.Printf("Returning a new NDF to a back-end server!")
 
 		// Return the updated NDFs
 		response.FullNDF = m.State.GetFullNdf().GetPb()
@@ -84,7 +92,13 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// Fetch latest round updates
 	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
 	if err != nil {
-		return
+		return response, err
+	}
+
+	// Check the node's connectivity
+	continuePoll, err := checkConnectivity(n, activity, serverAddress)
+	if err != nil || !continuePoll {
+		return response, err
 	}
 
 	// Commit updates reported by the node if node involved in the current round
@@ -100,8 +114,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	// if the node is in not started state, do not produce an update
-	if current.Activity(msg.Activity) == current.NOT_STARTED {
-		return
+	if activity == current.NOT_STARTED {
+		return response, err
 	}
 
 	// Return early before we get the polling lock if round creation stopped
@@ -140,7 +154,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		}
 	}
 
-	return
+	return response, nil
 }
 
 // PollNdf handles the client polling for an updated NDF
@@ -160,7 +174,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 		}
 
 		// Send the json of the client
-		jww.DEBUG.Printf("Returning a new NDF to client!")
+		jww.TRACE.Printf("Returning a new NDF to client!")
 		jww.TRACE.Printf("Sending the following ndf: %v", m.State.GetPartialNdf().Get())
 		return m.State.GetPartialNdf().Get().Marshal()
 	}
@@ -171,7 +185,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 	}
 
 	//Send the json of the ndf
-	jww.DEBUG.Printf("Returning a new NDF to a back-end server!")
+	jww.TRACE.Printf("Returning a new NDF to a back-end server!")
 	return m.State.GetFullNdf().Get().Marshal()
 }
 
@@ -197,7 +211,7 @@ func checkVersion(requiredGateway, requiredServer version.Version,
 				gatewayVersion.String(), requiredGateway.String())
 		}
 	} else {
-		jww.DEBUG.Printf("Gateway version string is empty. Skipping gateway " +
+		jww.TRACE.Printf("Gateway version string is empty. Skipping gateway " +
 			"version check.")
 	}
 
@@ -325,6 +339,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 		currentNDF := m.State.GetFullNdf().Get()
 
 		if nodeUpdate {
+			n.SetConnectivity(node.PortUnknown)
 			if err = updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
@@ -353,4 +368,64 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 	}
 
 	return nil
+}
+
+// Handles the responses to the different connectivity states of a node
+// if boolean is true the poll should continue
+func checkConnectivity(n *node.State, activity current.Activity, serverAddress string) (bool, error) {
+	switch n.GetConnectivity() {
+	case node.PortUnknown:
+		// If we are not sure on whether the port has been forwarded
+		go checkPortForwarding(n, serverAddress)
+		// Check that the node hasn't errored out
+		if activity == current.ERROR {
+			return true, nil
+		}
+
+	case node.PortVerifying:
+		// If we are still verifying, then
+		if activity == current.ERROR {
+			return true, nil
+		}
+	case node.PortSuccessful:
+		// In the case of a successful port check, we do nothing
+		return true, nil
+	case node.PortFailed:
+		// If the port has been marked as failed,
+		// we send an error informing the node of such
+		return false, errors.Errorf("Node %s cannot be contacted "+
+			"at %s by Permissioning, are ports properly forwarded?", n.GetID(),
+			serverAddress)
+	}
+
+	return false, nil
+}
+
+// Attempts to dial node n at serverAddress.
+// If we can successfully connect then, then port forwarding been done correctly
+// Otherwise we return an error to the node
+func checkPortForwarding(n *node.State, serverAddress string) {
+	// Then we ping the server and attempt on that port
+	duration := time.Duration(5)
+	timeOut := duration * time.Second
+	conn, errOpen := net.DialTimeout("tcp", serverAddress, timeOut)
+	if errOpen != nil {
+		// If we cannot connect, mark the node as failed
+		jww.DEBUG.Printf("Failed to verify connectivity"+
+			" for node (%s) at (%s): %s", n.GetID(), serverAddress, errOpen)
+		n.SetConnectivity(node.PortFailed)
+	} else {
+		// If connection was successful, mark the port as forwarded
+		n.SetConnectivity(node.PortSuccessful)
+
+	}
+
+	// Attempt to close the connection
+	if conn != nil {
+		errClose := conn.Close()
+		if errClose != nil {
+			jww.DEBUG.Printf("Failed to close connection for node (%s) at (%s): %v",
+				n.GetID(), serverAddress, errClose)
+		}
+	}
 }
