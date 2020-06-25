@@ -83,10 +83,11 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	go func() {
 		lastRound := time.Now()
 		var err error
+		minRoundDelay := params.MinimumDelay * time.Millisecond
 		for newRound := range newRoundChan {
 			// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
-			if timeDiff := time.Now().Sub(lastRound); timeDiff < params.MinimumDelay*time.Millisecond {
-				time.Sleep(timeDiff)
+			if timeDiff := time.Now().Sub(lastRound); timeDiff < minRoundDelay {
+				time.Sleep(minRoundDelay - timeDiff)
 			}
 			lastRound = time.Now()
 
@@ -223,20 +224,10 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
 				"timed out round %d: %+v", ourRound.GetRoundID(), err)
 		}
 
-		// Parse the circuit, killing the round for each node
-		roundCircuit := ourRound.GetTopology()
-		for i := 0; i < roundCircuit.Len(); i++ {
-			// Get the node from the nodeMap
-			nid := roundCircuit.GetNodeAtIndex(i)
-			n := state.GetNodeMap().GetNode(nid)
-
-			// Kill the round for this node
-			err = killRound(state, ourRound, n, timeoutError)
-			if err != nil {
-				return errors.WithMessagef(err, "Failed to kill round for node [%v]", nid)
-			}
-
-			jww.DEBUG.Printf("Round [%d] killed due to timeout", ourRound.GetRoundID())
+		err = killRound(state, ourRound, timeoutError)
+		if err != nil {
+			return errors.WithMessagef(err, "Failed to kill round %d: %s",
+				ourRound.GetRoundID(), err)
 		}
 
 	}
