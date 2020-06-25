@@ -32,6 +32,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// Initialize the response
 	response := &pb.PermissionPollResponse{}
 
+	//do edge check to ensure the message is not nil
+	if msg == nil {
+		return nil, errors.Errorf("Message payload for unified poll " +
+			"is nil, poll cannot be processed")
+	}
+
 	// Ensure the NDF is ready to be returned
 	regComplete := atomic.LoadUint32(m.NdfReady)
 	if regComplete != 1 {
