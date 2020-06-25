@@ -54,7 +54,7 @@ func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
 	timestamps := make([]uint64, states.NUM_STATES)
 	timestamps[states.PENDING] = uint64(pendingTs.Unix())
 
-	roundCompleteChan := make(chan struct{}, topology.Len()*topology.Len()+1)
+	roundCompleteChan := make(chan struct{}, 1)
 
 	//build and return the round state object
 	return &State{
@@ -195,7 +195,16 @@ func (s *State) AppendError(roundError *pb.RoundError) {
 	s.roundErrors = append(s.roundErrors, roundError)
 }
 
-//returns the id of the round
-func (s *State) GetRoundCompletedChan() chan struct{} {
+//returns the channel used to stop the round timeout
+func (s *State) GetRoundCompletedChan() <-chan struct{} {
 	return s.roundComplete
+}
+
+// sends on the round complete channel to the timeout thread notifying it
+// that the round has completed
+func (s *State) DenoteRoundCompleted() {
+	select {
+	case s.roundComplete <- struct{}{}:
+	default:
+	}
 }
