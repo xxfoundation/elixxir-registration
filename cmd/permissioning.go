@@ -156,12 +156,13 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 	m.numRegistered++
 
-	jww.INFO.Printf("Registered %d node(s)! %s", m.numRegistered, regCode)
+	jww.INFO.Printf("Registered %d node(s)!", m.numRegistered)
 
 	// Add the new node to the topology
 	m.NDFLock.Lock()
 	networkDef := m.State.GetFullNdf().Get()
-	gateway, node, order, err := assembleNdf(regCode)
+	gateway, n, order, err := assembleNdf(regCode)
+
 	if err != nil {
 		m.NDFLock.Unlock()
 		err := errors.Errorf("unable to assemble topology: %+v", err)
@@ -177,10 +178,10 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		}
 
 		networkDef.Gateways[order] = gateway
-		networkDef.Nodes[order] = node
+		networkDef.Nodes[order] = n
 	} else {
 		networkDef.Gateways = append(networkDef.Gateways, gateway)
-		networkDef.Nodes = append(networkDef.Nodes, node)
+		networkDef.Nodes = append(networkDef.Nodes, n)
 	}
 
 	// update the internal state with the newly-updated ndf
@@ -244,11 +245,13 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf("Error parsing node ID: %v", err)
 	}
 
-	node := ndf.Node{
+	n := ndf.Node{
 		ID:             nodeID.Bytes(),
 		Address:        nodeInfo.ServerAddress,
 		TlsCertificate: nodeInfo.NodeCertificate,
 	}
+
+	jww.INFO.Printf("Node %s (AppID: %d) registed with code %s", nodeID, nodeInfo.ApplicationId, code)
 
 	gwID := nodeID.DeepCopy()
 	gwID.SetType(id.Gateway)
@@ -260,10 +263,10 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 
 	order, err := strconv.Atoi(nodeInfo.Sequence)
 	if err != nil {
-		return gateway, node, -1, nil
+		return gateway, n, -1, nil
 	}
 
-	return gateway, node, order, nil
+	return gateway, n, order, nil
 }
 
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
