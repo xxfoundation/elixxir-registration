@@ -31,14 +31,6 @@ func startRound(round protoRound, state *storage.NetworkState) error {
 		return err
 	}
 
-	// Issue the update to the network state
-	err = state.AddRoundUpdate(r.BuildRoundInfo())
-	if err != nil {
-		err = errors.WithMessagef(err, "Could not issue "+
-			"update to create round %v", r.GetRoundID())
-		return err
-	}
-
 	// Tag all nodes to the round
 	for i, n := range round.NodeStateList {
 		jwalterweatherman.TRACE.Printf("Node %v is (%d)/(%d) of round",
@@ -48,6 +40,14 @@ func startRound(round protoRound, state *storage.NetworkState) error {
 			err = errors.WithMessagef(err, "could not add round %v to node %s", r.GetRoundID(), n.GetID())
 			return err
 		}
+	}
+
+	// Issue the update to the network state
+	err = state.AddRoundUpdate(r.BuildRoundInfo())
+	if err != nil {
+		err = errors.WithMessagef(err, "Could not issue "+
+			"update to create round %v", r.GetRoundID())
+		return err
 	}
 
 	return nil
