@@ -121,10 +121,6 @@ func (s *State) Update(state states.Round, stamp time.Time) error {
 			"greater state")
 	}
 
-	if state == states.FAILED || state == states.COMPLETED {
-		s.roundComplete <- struct{}{}
-	}
-
 	s.state = state
 	s.base.Timestamps[state] = uint64(stamp.UnixNano())
 	return nil

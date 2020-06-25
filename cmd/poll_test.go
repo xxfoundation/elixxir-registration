@@ -148,7 +148,9 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 		},
 	}
 
-	_, err = impl.Poll(nil, nil, "")
+	dummyMessage := &pb.PermissioningPoll{}
+
+	_, err = impl.Poll(dummyMessage, nil, "")
 	if err == nil || err.Error() != ndf.NO_NDF {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -189,7 +191,9 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 		Sender:          testHost,
 	}
 
-	_, err = impl.Poll(nil, testAuth, "0.0.0.0")
+	dummyMessage := &pb.PermissioningPoll{}
+
+	_, err = impl.Poll(dummyMessage, testAuth, "0.0.0.0")
 	if err == nil || err.Error() != connect.AuthError(testAuth.Sender.GetId()).Error() {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}

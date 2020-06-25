@@ -543,8 +543,6 @@ func TestKillRound(t *testing.T) {
 
 	r := round.NewState_Testing(42, 0, t)
 
-	ns := testState.GetNodeMap().GetNode(nodeList[0])
-
 	re := &mixmessages.RoundError{
 		Id:     0,
 		NodeId: nil,
