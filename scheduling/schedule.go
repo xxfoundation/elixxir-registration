@@ -225,6 +225,10 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
 		}
 
 		err = killRound(state, ourRound, timeoutError)
+		if err != nil {
+			return errors.WithMessagef(err, "Failed to kill round %d: %s",
+				ourRound.GetRoundID(), err)
+		}
 
 	}
 	return nil

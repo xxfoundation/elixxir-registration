@@ -548,7 +548,7 @@ func TestKillRound(t *testing.T) {
 		NodeId: nil,
 		Error:  "test",
 	}
-	//
+
 	err = killRound(testState, r, re)
 	if err != nil {
 		t.Errorf("Unexpected error in happy path: %v", err)
