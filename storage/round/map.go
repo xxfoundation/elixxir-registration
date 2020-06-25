@@ -48,7 +48,7 @@ func (rsm *StateMap) AddRound(id id.Round, batchsize uint32, resourceQueueTimeou
 // Gets rounds from the state structure
 func (rsm *StateMap) GetRound(id id.Round) *State {
 	rsm.mux.RLock()
-	defer rsm.mux.RUnlock()
+	rsm.mux.RUnlock()
 	return rsm.rounds[id]
 }
 
