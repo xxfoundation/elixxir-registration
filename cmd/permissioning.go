@@ -251,7 +251,7 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 		TlsCertificate: nodeInfo.NodeCertificate,
 	}
 
-	jww.INFO.Printf("Node %s (AppID: %d) registed with code %s", nodeID, nodeInfo.ApplicationId, code)
+	jww.INFO.Printf("Node %s (AppID: %d) registered with code %s", nodeID, nodeInfo.ApplicationId, code)
 
 	gwID := nodeID.DeepCopy()
 	gwID.SetType(id.Gateway)
