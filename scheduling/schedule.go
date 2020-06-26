@@ -83,10 +83,11 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	go func() {
 		lastRound := time.Now()
 		var err error
+		minRoundDelay := params.MinimumDelay * time.Millisecond
 		for newRound := range newRoundChan {
 			// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
-			if timeDiff := time.Now().Sub(lastRound); timeDiff < params.MinimumDelay*time.Millisecond {
-				time.Sleep(timeDiff)
+			if timeDiff := time.Now().Sub(lastRound); timeDiff < minRoundDelay {
+				time.Sleep(minRoundDelay - timeDiff)
 			}
 			lastRound = time.Now()
 
@@ -97,7 +98,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 			go func() {
 				// Allow for round the to be added to the map
-				time.Sleep(25 * time.Millisecond)
 				ourRound := state.GetRoundMap().GetRound(newRound.ID)
 				roundTimer := time.NewTimer(params.RoundTimeout * time.Second)
 				select {
@@ -168,22 +168,26 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			numRounds--
 		}
 
-		// Create a new round if the pool is full
-		if pool.Len() >= int(teamFormationThreshold) && killed == nil {
-			// Increment round ID
-			currentID, err := state.IncrementRoundID()
-			if err != nil {
-				return err
-			}
+		for {
+			// Create a new round if the pool is full
+			if pool.Len() >= int(teamFormationThreshold) && killed == nil {
+				// Increment round ID
+				currentID, err := state.IncrementRoundID()
+				if err != nil {
+					return err
+				}
 
-			newRound, err := createRound(params, pool, currentID, state)
-			if err != nil {
-				return err
-			}
+				newRound, err := createRound(params, pool, currentID, state)
+				if err != nil {
+					return err
+				}
 
-			// Send the round to the new round channel to be created
-			newRoundChan <- newRound
-			numRounds++
+				// Send the round to the new round channel to be created
+				newRoundChan <- newRound
+				numRounds++
+			} else {
+				break
+			}
 		}
 
 		// If the scheduler is to be killed and no rounds are in progress,
@@ -220,20 +224,10 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
 				"timed out round %d: %+v", ourRound.GetRoundID(), err)
 		}
 
-		// Parse the circuit, killing the round for each node
-		roundCircuit := ourRound.GetTopology()
-		for i := 0; i < roundCircuit.Len(); i++ {
-			// Get the node from the nodeMap
-			nid := roundCircuit.GetNodeAtIndex(i)
-			n := state.GetNodeMap().GetNode(nid)
-
-			// Kill the round for this node
-			err = killRound(state, ourRound, n, timeoutError)
-			if err != nil {
-				return errors.WithMessagef(err, "Failed to kill round for node [%v]", nid)
-			}
-
-			jww.DEBUG.Printf("Round [%d] killed due to timeout", ourRound.GetRoundID())
+		err = killRound(state, ourRound, timeoutError)
+		if err != nil {
+			return errors.WithMessagef(err, "Failed to kill round %d: %s",
+				ourRound.GetRoundID(), err)
 		}
 
 	}
@@ -243,7 +237,7 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
 // Tracks rounds, periodically outputs how many teams are in various rounds
 func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) {
 	// Period of polling the state map for logs
-	schedulingTicker := time.NewTicker(15 * time.Second)
+	schedulingTicker := time.NewTicker(1 * time.Minute)
 
 	realtimeNodes := make([]*node.State, 0)
 	precompNodes := make([]*node.State, 0)
@@ -269,11 +263,11 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 		}
 
 		// Output data into logs
-		jww.TRACE.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
-		jww.TRACE.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
-		jww.TRACE.Printf("Teams in waiting: %v", len(waitingNodes)/int(params.TeamSize))
-		jww.TRACE.Printf("Teams in pool: %v", pool.Len())
-		jww.TRACE.Printf("Teams in offline pool: %v", pool.OfflineLen())
+		jww.INFO.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
+		jww.INFO.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
+		jww.INFO.Printf("nodes in waiting: %v", len(waitingNodes))
+		jww.INFO.Printf("Nodes in pool: %v", pool.Len())
+		jww.INFO.Printf("Nodes in offline pool: %v", pool.OfflineLen())
 
 		// Reset the data for next periodic poll
 		realtimeNodes = make([]*node.State, 0)

@@ -99,6 +99,9 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		t.Errorf("Could nto add node: %s", err)
 	}
 
+	n := impl.State.GetNodeMap().GetNode(testID)
+	n.SetConnectivity(node.PortSuccessful)
+
 	response, err := impl.Poll(testMsg, testAuth, "0.0.0.0")
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
@@ -145,7 +148,9 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 		},
 	}
 
-	_, err = impl.Poll(nil, nil, "")
+	dummyMessage := &pb.PermissioningPoll{}
+
+	_, err = impl.Poll(dummyMessage, nil, "")
 	if err == nil || err.Error() != ndf.NO_NDF {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -186,7 +191,9 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 		Sender:          testHost,
 	}
 
-	_, err = impl.Poll(nil, testAuth, "0.0.0.0")
+	dummyMessage := &pb.PermissioningPoll{}
+
+	_, err = impl.Poll(dummyMessage, testAuth, "0.0.0.0")
 	if err == nil || err.Error() != connect.AuthError(testAuth.Sender.GetId()).Error() {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -420,6 +427,85 @@ func TestPoll_BannedNode(t *testing.T) {
 
 	t.Errorf("Expected error state: Node with out of network status should return an error")
 }
+
+// TODO: more work needs to be done to get this testable (making timeout a config option, etc)
+//func TestPoll_CheckPortForwarding(t *testing.T) {
+//	testID := id.NewIdFromUInt(0, id.Node, t)
+//	testString := "test"
+//	// Start registration server
+//	testParams.KeyPath = testkeys.GetCAKeyPath()
+//	impl, err := StartRegistration(testParams, nil)
+//	if err != nil {
+//		t.Errorf("Unable to start registration: %+v", err)
+//	}
+//	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
+//
+//	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+//		Registration: ndf.Registration{
+//			Address:        "420",
+//			TlsCertificate: "",
+//		},
+//		Gateways: []ndf.Gateway{
+//			{ID: id.NewIdFromUInt(0, id.Gateway, t).Bytes()},
+//		},
+//		Nodes: []ndf.Node{
+//			{ID: id.NewIdFromUInt(0, id.Node, t).Bytes()},
+//		},
+//	})
+//
+//	// Make a simple auth object that will pass the checks
+//	testHost, _ := connect.NewHost(testID, testString,
+//		make([]byte, 0), false, true)
+//	testAuth := &connect.Auth{
+//		IsAuthenticated: true,
+//		Sender:          testHost,
+//	}
+//	testMsg := &pb.PermissioningPoll{
+//		Full: &pb.NDFHash{
+//			Hash: []byte(testString)},
+//		Partial: &pb.NDFHash{
+//			Hash: []byte(testString),
+//		},
+//		LastUpdate:     0,
+//		Activity:       uint32(current.WAITING),
+//		Error:          nil,
+//		GatewayVersion: "1.1.0",
+//		ServerVersion:  "1.1.0",
+//	}
+//
+//	err = impl.State.AddRoundUpdate(
+//		&pb.RoundInfo{
+//			ID:    1,
+//			State: uint32(states.PRECOMPUTING),
+//		})
+//
+//	if err != nil {
+//		t.Errorf("Could not add round update: %s", err)
+//	}
+//
+//	err = impl.State.GetNodeMap().AddNode(testID, "", "", "")
+//
+//	if err != nil {
+//		t.Errorf("Could nto add node: %s", err)
+//	}
+//
+//	_, err = impl.Poll(testMsg, testAuth, "0.0.0.0")
+//	if err != nil {
+//		t.Errorf("Unexpected error polling: %+v", err)
+//	}
+//
+//
+//	n := impl.State.GetNodeMap().GetNode(testID)
+//	if n.GetConnectivity() != node.PortFailed {
+//		t.Errorf("Failed to set node connectivity as expected!" +
+//			"\n\tExpected: %v" +
+//			"\n\tReceived: %v", node.PortFailed, n.GetConnectivity())
+//	}
+//
+//
+//	// Shutdown registration
+//	impl.Comms.Shutdown()
+//}
 
 // Check that checkVersion() correctly determines the message versions to be
 // compatible with the required versions.
