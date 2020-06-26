@@ -156,7 +156,7 @@ func getRegion(region string) (int, error) {
 	switch region {
 	case "Americas":
 		return Americas, nil
-	case "WesternEurope":
+	case "WesternEurope", "WestEurope":
 		return WesternEurope, nil
 	case "CentralEurope":
 		return CentralEurope, nil
