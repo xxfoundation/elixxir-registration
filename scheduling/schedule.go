@@ -234,6 +234,8 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
 	return nil
 }
 
+const timeToInactive = 3 * time.Minute
+
 // Tracks rounds, periodically outputs how many teams are in various rounds
 func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) {
 	// Period of polling the state map for logs
@@ -264,12 +266,13 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 					precompNodes = append(precompNodes, nodeState)
 				}
 
+				//tracks which nodes have not acted recently
 				lastUpdate := nodeState.GetLastUpdate()
 				lastPoll := nodeState.GetLastPoll()
 
 				if now.After(lastUpdate) {
 					updateDelta := now.Sub(lastUpdate)
-					if updateDelta < 3*time.Minute {
+					if updateDelta > timeToInactive {
 						notUpdating = append(notUpdating, nodeState)
 						lastUpdates = append(lastUpdates, updateDelta)
 					}
@@ -278,11 +281,10 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 
 				if now.After(lastPoll) {
 					pollDelta := now.Sub(lastPoll)
-					if pollDelta < 3*time.Minute {
+					if pollDelta > timeToInactive {
 						noPoll = append(noPoll, nodeState)
 						lastPolls = append(lastPolls, pollDelta)
 					}
-
 				}
 			}
 		}

@@ -59,6 +59,7 @@ type State struct {
 	id *id.ID
 
 	//Application ID of the node
+	//used primarily for logging
 	applicationID uint64
 
 	// Address of node
