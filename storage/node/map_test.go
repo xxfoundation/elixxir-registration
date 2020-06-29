@@ -33,7 +33,7 @@ func TestStateMap_AddNode_Happy(t *testing.T) {
 
 	nid := id.NewIdFromUInt(2, id.Node, t)
 
-	err := sm.AddNode(nid, "", "", "")
+	err := sm.AddNode(nid, "", "", "", 0)
 
 	if err != nil {
 		t.Errorf("Error returned on valid addition of Node: %s", err)
@@ -74,7 +74,7 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 
 	time.Sleep(1 * time.Millisecond)
 
-	err := sm.AddNode(nid, "", "", "")
+	err := sm.AddNode(nid, "", "", "", 0)
 
 	if err == nil {
 		t.Errorf("Error not returned on invalid addition of Node: %s", err)
@@ -190,15 +190,15 @@ func TestStateMap_GetNodeStates(t *testing.T) {
 		nodeStates: make(map[id.ID]*State),
 	}
 
-	err := sm.AddNode(id.NewIdFromBytes([]byte("test"), t), "test", "", "")
+	err := sm.AddNode(id.NewIdFromBytes([]byte("test"), t), "test", "", "", 0)
 	if err != nil {
 		t.Errorf("Unable to add node: %+v", err)
 	}
-	err = sm.AddNode(id.NewIdFromBytes([]byte("test2"), t), "test2", "", "")
+	err = sm.AddNode(id.NewIdFromBytes([]byte("test2"), t), "test2", "", "", 0)
 	if err != nil {
 		t.Errorf("Unable to add node: %+v", err)
 	}
-	err = sm.AddNode(id.NewIdFromBytes([]byte("test3"), t), "test3", "", "")
+	err = sm.AddNode(id.NewIdFromBytes([]byte("test3"), t), "test3", "", "", 0)
 	if err != nil {
 		t.Errorf("Unable to add node: %+v", err)
 	}

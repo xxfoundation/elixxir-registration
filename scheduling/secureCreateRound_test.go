@@ -42,7 +42,7 @@ func TestCreateRound(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -88,7 +88,7 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 	for i := uint64(0); i < 5; i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i%5)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i%5)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -141,7 +141,7 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 	for i := uint64(0); i < 5; i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i%5)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i%5)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -199,7 +199,7 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], regions[i], "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], regions[i], "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -306,7 +306,7 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 
 		// Add the node to that node map
 		// Place the node in a random region
-		err := testState.GetNodeMap().AddNode(nodeList[i], regions[index], "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], regions[index], "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()

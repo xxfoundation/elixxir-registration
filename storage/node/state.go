@@ -43,6 +43,9 @@ type State struct {
 	// Timestamp of the last time this Node polled
 	lastPoll time.Time
 
+	// Timestamp of the last time this Node produced an update
+	lastUpdate time.Time
+
 	// Number of polls made by the node during the current monitoring period
 	numPolls *uint64
 
@@ -54,6 +57,9 @@ type State struct {
 
 	//id of the Node
 	id *id.ID
+
+	//Application ID of the node
+	applicationID uint64
 
 	// Address of node
 	nodeAddress string
@@ -83,6 +89,11 @@ func (n *State) IncrementNumPolls() {
 // Returns the current value of numPolls and then resets numPolls to zero
 func (n *State) GetAndResetNumPolls() uint64 {
 	return atomic.SwapUint64(n.numPolls, 0)
+}
+
+// Returns the current value of numPolls and then resets numPolls to zero
+func (n *State) GetAppID() uint64 {
+	return n.applicationID
 }
 
 // sets the Node to banned and then returns an update notification for signaling
@@ -181,6 +192,8 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 
 	// change the Node's activity
 	n.activity = newActivity
+	// Timestamp of the last time this Node produced an update
+	n.lastUpdate = time.Now()
 
 	//build the update notification
 	nun := UpdateNotification{
@@ -243,6 +256,13 @@ func (n *State) GetLastPoll() time.Time {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	return n.lastPoll
+}
+
+// gets the timestamp of the last time the Node updates
+func (n *State) GetLastUpdate() time.Time {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	return n.lastUpdate
 }
 
 // Returns the polling lock

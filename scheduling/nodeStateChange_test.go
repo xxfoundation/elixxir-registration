@@ -39,7 +39,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -91,7 +91,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize-1)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -172,7 +172,7 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -235,7 +235,7 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -320,7 +320,7 @@ func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -371,7 +371,7 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -435,7 +435,7 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -529,7 +529,7 @@ func TestKillRound(t *testing.T) {
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()

@@ -239,11 +239,17 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 	// Period of polling the state map for logs
 	schedulingTicker := time.NewTicker(1 * time.Minute)
 
-	realtimeNodes := make([]*node.State, 0)
-	precompNodes := make([]*node.State, 0)
-	waitingNodes := make([]*node.State, 0)
-
 	for {
+		realtimeNodes := make([]*node.State, 0)
+		precompNodes := make([]*node.State, 0)
+		waitingNodes := make([]*node.State, 0)
+		noPoll := make([]*node.State, 0)
+		notUpdating := make([]*node.State, 0)
+		lastUpdates := make([]time.Duration, 0)
+		lastPolls := make([]time.Duration, 0)
+
+		now := time.Now()
+
 		select {
 		case <-schedulingTicker.C:
 			// Parse through the node map to collect nodes into round state arrays
@@ -258,8 +264,27 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 					precompNodes = append(precompNodes, nodeState)
 				}
 
-			}
+				lastUpdate := nodeState.GetLastUpdate()
+				lastPoll := nodeState.GetLastPoll()
 
+				if now.After(lastUpdate) {
+					updateDelta := now.Sub(lastUpdate)
+					if updateDelta < 3*time.Minute {
+						notUpdating = append(notUpdating, nodeState)
+						lastUpdates = append(lastUpdates, updateDelta)
+					}
+
+				}
+
+				if now.After(lastPoll) {
+					pollDelta := now.Sub(lastPoll)
+					if pollDelta < 3*time.Minute {
+						noPoll = append(noPoll, nodeState)
+						lastPolls = append(lastPolls, pollDelta)
+					}
+
+				}
+			}
 		}
 
 		// Output data into logs
@@ -268,12 +293,22 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 		jww.INFO.Printf("nodes in waiting: %v", len(waitingNodes))
 		jww.INFO.Printf("Nodes in pool: %v", pool.Len())
 		jww.INFO.Printf("Nodes in offline pool: %v", pool.OfflineLen())
+		jww.INFO.Printf("Nodes without recent update: %v", len(notUpdating))
+		jww.INFO.Printf("Nodes without recent poll: %v", len(noPoll))
 
-		// Reset the data for next periodic poll
-		realtimeNodes = make([]*node.State, 0)
-		precompNodes = make([]*node.State, 0)
-		waitingNodes = make([]*node.State, 0)
+		if len(notUpdating) > 0 {
+			jww.INFO.Printf("NODES WITH NO STATE UPDATES IN 3 MINUTES")
+			for i, n := range notUpdating {
+				jww.INFO.Printf("   Node %s (AppID: %v) stuck in %s for %s", n.GetID(), n.GetAppID(), n.GetStatus(), lastUpdates[i])
+			}
+		}
 
+		if len(noPoll) > 0 {
+			jww.INFO.Printf("NODES WITH NO POLL IN 3 MINUTES")
+			for i, n := range noPoll {
+				jww.INFO.Printf("   Node %s (AppID: %v, State: %s) has not polled for %s", n.GetID(), n.GetAppID(), n.GetStatus(), lastPolls[i])
+			}
+		}
 	}
 
 }

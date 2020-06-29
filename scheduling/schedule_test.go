@@ -55,7 +55,7 @@ func TestScheduler_NonRandom(t *testing.T) {
 		nodeID := id.NewIdFromBytes(nodIDBytes, t)
 		nodeList[i] = nodeID
 
-		err = state.GetNodeMap().AddNode(nodeID, strconv.Itoa(i), "", "")
+		err = state.GetNodeMap().AddNode(nodeID, strconv.Itoa(i), "", "", 0)
 		if err != nil {
 			t.Errorf("Failed to add node %d to map: %v", i, err)
 		}
