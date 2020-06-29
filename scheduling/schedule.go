@@ -303,7 +303,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 		jww.INFO.Printf("Nodes in offline pool: %v", pool.OfflineLen())
 		jww.INFO.Printf("Nodes without recent update: %v", len(notUpdating))
 		jww.INFO.Printf("Nodes without recent poll: %v", len(noPoll))
-
+		jww.INFO.Printf("")
 		if len(notUpdating) > 0 {
 			jww.INFO.Printf("Nodes with no state updates in: %s", timeToInactive)
 			for i, n := range notUpdating {
