@@ -237,8 +237,18 @@ func killRound(state *storage.NetworkState, r *round.State, roundError *pb.Round
 		err = nil
 	}
 
+	nid, err := id.Unmarshal(roundError.NodeId)
+	var idStr string
+	if err != nil {
+		idStr = "N/A"
+	} else {
+		idStr = nid.String()
+	}
+
+	formattedError := fmt.Sprintf("Round Error from %s: %s", idStr, roundError.Error)
+
 	// Next, attempt to insert the error for the failed round
-	err = storage.PermissioningDb.InsertRoundError(roundId, roundError.Error)
+	err = storage.PermissioningDb.InsertRoundError(roundId, formattedError)
 	if err != nil {
 		jww.WARN.Printf("Could not insert round error: %+v", err)
 		err = nil
