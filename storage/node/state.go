@@ -229,7 +229,7 @@ func (n *State) IsBanned() bool {
 	return n.status == Banned
 }
 
-// Gets the status of the node, atomically
+// Gets the status of connectivity to the node, atomically
 func (n *State) GetConnectivity() uint32 {
 	// Done to avoid a race condition in the case of a double poll
 	verify := atomic.CompareAndSwapUint32(n.connectivity, PortUnknown, PortVerifying)
@@ -238,6 +238,12 @@ func (n *State) GetConnectivity() uint32 {
 	} else {
 		return atomic.LoadUint32(n.connectivity)
 	}
+}
+
+// Gets the status of of the connectivity, but do not move from unknown
+// to verifying
+func (n *State) GetRawConnectivity() uint32 {
+	return atomic.LoadUint32(n.connectivity)
 }
 
 // Sets the connectivity of node to c, atomically

@@ -249,6 +249,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 		notUpdating := make([]*node.State, 0)
 		lastUpdates := make([]time.Duration, 0)
 		lastPolls := make([]time.Duration, 0)
+		noContact := make([]*node.State, 0)
 
 		now := time.Now()
 
@@ -286,6 +287,11 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 						lastPolls = append(lastPolls, pollDelta)
 					}
 				}
+
+				//tracks if the node cannot be contacted by permissioning
+				if nodeState.GetRawConnectivity() == node.PortFailed {
+					noContact = append(noContact, nodeState)
+				}
 			}
 		}
 
@@ -299,16 +305,23 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 		jww.INFO.Printf("Nodes without recent poll: %v", len(noPoll))
 
 		if len(notUpdating) > 0 {
-			jww.INFO.Printf("NODES WITH NO STATE UPDATES IN 3 MINUTES")
+			jww.INFO.Printf("Nodes with no state updates in: %s", timeToInactive)
 			for i, n := range notUpdating {
 				jww.INFO.Printf("   Node %s (AppID: %v) stuck in %s for %s", n.GetID(), n.GetAppID(), n.GetStatus(), lastUpdates[i])
 			}
 		}
 
 		if len(noPoll) > 0 {
-			jww.INFO.Printf("NODES WITH NO POLL IN 3 MINUTES")
+			jww.INFO.Printf("Nodes with no polls updates in: %s", timeToInactive)
 			for i, n := range noPoll {
 				jww.INFO.Printf("   Node %s (AppID: %v, State: %s) has not polled for %s", n.GetID(), n.GetAppID(), n.GetStatus(), lastPolls[i])
+			}
+		}
+
+		if len(noContact) > 0 {
+			jww.INFO.Printf("Nodes which are not included due to no contact error")
+			for i, n := range noPoll {
+				jww.INFO.Printf("   Node %s (AppID: %v, State: %s) cannot be contacted", n.GetID(), n.GetAppID(), n.GetStatus())
 			}
 		}
 	}
