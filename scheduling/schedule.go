@@ -291,11 +291,16 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 					noContact = append(noContact, nodeState)
 				}
 			}
+
+			latestRound := state.GetRoundID()
+			for i := latestRound - 1; i > latestRound-20; i++ {
+
+			}
 		}
 
 		// Output data into logs
-		jww.INFO.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
-		jww.INFO.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
+		jww.INFO.Printf("Teams in realtime: %v", len(realtimeNodes))
+		jww.INFO.Printf("Teams in precomp: %v", len(precompNodes))
 		jww.INFO.Printf("nodes in waiting: %v", len(waitingNodes))
 		jww.INFO.Printf("Nodes in pool: %v", pool.Len())
 		jww.INFO.Printf("Nodes in offline pool: %v", pool.OfflineLen())
