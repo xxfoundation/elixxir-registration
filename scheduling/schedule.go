@@ -12,7 +12,6 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature"
-	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
@@ -247,8 +246,6 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 	schedulingTicker := time.NewTicker(1 * time.Minute)
 
 	for {
-		realtimeNodes := make([]*node.State, 0)
-		precompNodes := make([]*node.State, 0)
 		waitingNodes := make([]*node.State, 0)
 		noPoll := make([]*node.State, 0)
 		notUpdating := make([]*node.State, 0)
@@ -263,14 +260,6 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 			// Parse through the node map to collect nodes into round state arrays
 			nodeStates := state.GetNodeMap().GetNodeStates()
 			for _, nodeState := range nodeStates {
-				switch nodeState.GetActivity() {
-				case current.WAITING:
-					waitingNodes = append(waitingNodes, nodeState)
-				case current.REALTIME:
-					realtimeNodes = append(realtimeNodes, nodeState)
-				case current.PRECOMPUTING:
-					precompNodes = append(precompNodes, nodeState)
-				}
 
 				//tracks which nodes have not acted recently
 				lastUpdate := nodeState.GetLastUpdate()
@@ -323,8 +312,6 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		jww.INFO.Printf("Rounds in precomp: %v", len(precompRounds))
 		jww.INFO.Printf("Rounds in queued: %v", len(queuedRounds))
 
-		jww.INFO.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
-		jww.INFO.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
 		jww.INFO.Printf("nodes in waiting: %v", len(waitingNodes))
 		jww.INFO.Printf("Nodes in pool: %v", pool.Len())
 		jww.INFO.Printf("Nodes in offline pool: %v", pool.OfflineLen())

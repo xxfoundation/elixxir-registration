@@ -1,17 +1,18 @@
 package scheduling
 
 import (
-	"fmt"
 	"github.com/golang-collections/collections/set"
 	"gitlab.com/elixxir/primitives/id"
 	"sync"
 )
 
+// Tracks rounds which are active, meaning between precomputing and completed
 type RoundTracker struct {
 	mux          sync.Mutex
 	activeRounds *set.Set
 }
 
+// Creates tracker object
 func NewRoundTracker() *RoundTracker {
 	return &RoundTracker{
 		activeRounds: set.New(),
@@ -27,7 +28,6 @@ func (rt *RoundTracker) AddActiveRound(rid id.Round) {
 
 // Removes round from active round map
 func (rt *RoundTracker) RemoveActiveRound(rid id.Round) {
-	fmt.Println("round tracker mux: ", rt)
 	rt.mux.Lock()
 	defer rt.mux.Unlock()
 
