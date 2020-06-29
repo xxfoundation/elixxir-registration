@@ -66,7 +66,9 @@ func TestStartRound(t *testing.T) {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 
-	err = startRound(testProtoRound, testState)
+	testTracker := NewRoundTracker()
+
+	err = startRound(testProtoRound, testState, testTracker)
 	if err != nil {
 		t.Errorf("Received error from startRound(): %v", err)
 	}
@@ -130,7 +132,9 @@ func TestStartRound_BadState(t *testing.T) {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
 
-	err = startRound(testProtoRound, testState)
+	testTracker := NewRoundTracker()
+
+	err = startRound(testProtoRound, testState, testTracker)
 	if err == nil {
 		t.Errorf("Expected error. Artificially created round " +
 			"should make starting precomputing impossible")
@@ -193,8 +197,9 @@ func TestStartRound_BadNode(t *testing.T) {
 	}
 	// Manually set the round of a node
 	testProtoRound.NodeStateList[0].SetRound(badState)
+	testTracker := NewRoundTracker()
 
-	err = startRound(testProtoRound, testState)
+	err = startRound(testProtoRound, testState, testTracker)
 	if err == nil {
 		t.Log(err)
 		t.Errorf("Expected error. Artificially created round " +

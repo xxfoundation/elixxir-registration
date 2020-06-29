@@ -12,11 +12,11 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature"
-	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/elixxir/registration/storage/round"
 	"time"
 )
 
@@ -79,6 +79,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	// Channel to communicate that a round has timed out
 	roundTimeoutTracker := make(chan id.Round, 1000)
 
+	roundTracker := NewRoundTracker()
+
 	//begin the thread that starts rounds
 	go func() {
 		lastRound := time.Now()
@@ -91,7 +93,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			}
 			lastRound = time.Now()
 
-			err = startRound(newRound, state)
+			err = startRound(newRound, state, roundTracker)
 			if err != nil {
 				break
 			}
@@ -124,7 +126,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	// optional debug print which regularly prints the status of rounds and nodes
 	// turned on by setting DebugTrackRounds to true in the scheduling config
 	if params.DebugTrackRounds {
-		go trackRounds(params, state, pool)
+		go trackRounds(params, state, pool, roundTracker)
 	}
 
 	// Start receiving updates from nodes
@@ -146,7 +148,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 		if isRoundTimeout {
 			// Handle the timed out round
-			err := timeoutRound(state, timedOutRoundID)
+			err := timeoutRound(state, timedOutRoundID, nil)
 			if err != nil {
 				return err
 			}
@@ -154,7 +156,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		} else {
 			var err error
 			// Handle the node's state change
-			endRound, err = HandleNodeUpdates(update, pool, state, rtDelay)
+			endRound, err = HandleNodeUpdates(update, pool, state,
+				rtDelay, roundTracker)
 			if err != nil {
 				return err
 			}
@@ -204,7 +207,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 }
 
 // Helper function which handles when we receive a timed out round
-func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
+func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
+	roundTracker *RoundTracker) error {
 	// On a timeout, check if the round is completed. If not, kill it
 	ourRound := state.GetRoundMap().GetRound(timeoutRoundID)
 	roundState := ourRound.GetRoundState()
@@ -224,7 +228,7 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
 				"timed out round %d: %+v", ourRound.GetRoundID(), err)
 		}
 
-		err = killRound(state, ourRound, timeoutError)
+		err = killRound(state, ourRound, timeoutError, roundTracker)
 		if err != nil {
 			return errors.WithMessagef(err, "Failed to kill round %d: %s",
 				ourRound.GetRoundID(), err)
@@ -237,7 +241,8 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
 const timeToInactive = 3 * time.Minute
 
 // Tracks rounds, periodically outputs how many teams are in various rounds
-func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) {
+func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
+	roundTracker *RoundTracker) {
 	// Period of polling the state map for logs
 	schedulingTicker := time.NewTicker(1 * time.Minute)
 
@@ -298,15 +303,27 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 			}
 		}
 
+		realtimeRounds := make([]*round.State, 0)
+		precompRounds := make([]*round.State, 0)
+		queuedRounds := make([]*round.State, 0)
+
+		rounds := roundTracker.GetActiveRounds()
+
+		for _, rid := range rounds {
+			r := state.GetRoundMap().GetRound(rid)
+
+			jww.INFO.Printf("Round %d is in %v", rid, r.GetRoundState())
+		}
+
 		// Output data into logs
-		jww.INFO.Printf("Teams in realtime: %v", len(realtimeNodes))
-		jww.INFO.Printf("Teams in precomp: %v", len(precompNodes))
+		jww.INFO.Printf("nodes in realtime: %v", len(realtimeNodes))
+		jww.INFO.Printf("nodes in precomp: %v", len(precompNodes))
 		jww.INFO.Printf("nodes in waiting: %v", len(waitingNodes))
 		jww.INFO.Printf("Nodes in pool: %v", pool.Len())
 		jww.INFO.Printf("Nodes in offline pool: %v", pool.OfflineLen())
 		jww.INFO.Printf("Nodes without recent update: %v", len(notUpdating))
 		jww.INFO.Printf("Nodes without recent poll: %v", len(noPoll))
-
+		jww.INFO.Printf("")
 		if len(notUpdating) > 0 {
 			jww.INFO.Printf("Nodes with no state updates in: %s", timeToInactive)
 			for i, n := range notUpdating {
