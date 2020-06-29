@@ -17,6 +17,7 @@ import (
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/elixxir/registration/storage/round"
 	"time"
 )
 
@@ -295,7 +296,29 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 			}
 		}
 
+		realtimeRounds := make([]*round.State, 0)
+		precompRounds := make([]*round.State, 0)
+		queuedRounds := make([]*round.State, 0)
+
+		_, rounds := state.GetRoundMap().GetActiveRounds()
+		for _, rid := range rounds {
+			r := state.GetRoundMap().GetRound(rid)
+			switch r.GetRoundState() {
+			case states.QUEUED:
+				queuedRounds = append(queuedRounds, r)
+			case states.PRECOMPUTING:
+				precompRounds = append(precompRounds, r)
+			case states.REALTIME:
+				realtimeRounds = append(realtimeRounds, r)
+
+			}
+		}
+
 		// Output data into logs
+		jww.INFO.Printf("Rounds in realtime: %v", len(realtimeRounds))
+		jww.INFO.Printf("Rounds in precomp: %v", len(precompRounds))
+		jww.INFO.Printf("Rounds in queued: %v", len(queuedRounds))
+
 		jww.INFO.Printf("Teams in realtime: %v", len(realtimeNodes)/int(params.TeamSize))
 		jww.INFO.Printf("Teams in precomp: %v", len(precompNodes)/int(params.TeamSize))
 		jww.INFO.Printf("nodes in waiting: %v", len(waitingNodes))
