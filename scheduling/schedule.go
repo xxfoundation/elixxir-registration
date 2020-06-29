@@ -12,6 +12,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature"
+	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
@@ -256,94 +257,129 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		lastPolls := make([]time.Duration, 0)
 		noContact := make([]*node.State, 0)
 
+		precompRounds := make([]*round.State, 0)
+		queuedRounds := make([]*round.State, 0)
+		realtimeRounds := make([]*round.State, 0)
+		otherRounds := make([]*round.State, 0)
+
+		<-schedulingTicker.C
 		now := time.Now()
 
-		select {
-		case <-schedulingTicker.C:
-			// Parse through the node map to collect nodes into round state arrays
-			nodeStates := state.GetNodeMap().GetNodeStates()
-			for _, nodeState := range nodeStates {
-				switch nodeState.GetActivity() {
-				case current.WAITING:
-					waitingNodes = append(waitingNodes, nodeState)
-				case current.REALTIME:
-					realtimeNodes = append(realtimeNodes, nodeState)
-				case current.PRECOMPUTING:
-					precompNodes = append(precompNodes, nodeState)
+		// Parse through the node map to collect nodes into round state arrays
+		nodeStates := state.GetNodeMap().GetNodeStates()
+		for _, nodeState := range nodeStates {
+			switch nodeState.GetActivity() {
+			case current.WAITING:
+				waitingNodes = append(waitingNodes, nodeState)
+			case current.REALTIME:
+				realtimeNodes = append(realtimeNodes, nodeState)
+			case current.PRECOMPUTING:
+				precompNodes = append(precompNodes, nodeState)
+			}
+
+			//tracks which nodes have not acted recently
+			lastUpdate := nodeState.GetLastUpdate()
+			lastPoll := nodeState.GetLastPoll()
+
+			if now.After(lastUpdate) {
+				updateDelta := now.Sub(lastUpdate)
+				if updateDelta > timeToInactive {
+					notUpdating = append(notUpdating, nodeState)
+					lastUpdates = append(lastUpdates, updateDelta)
 				}
 
-				//tracks which nodes have not acted recently
-				lastUpdate := nodeState.GetLastUpdate()
-				lastPoll := nodeState.GetLastPoll()
-
-				if now.After(lastUpdate) {
-					updateDelta := now.Sub(lastUpdate)
-					if updateDelta > timeToInactive {
-						notUpdating = append(notUpdating, nodeState)
-						lastUpdates = append(lastUpdates, updateDelta)
-					}
-
-				} else if now.After(lastPoll) {
-					pollDelta := now.Sub(lastPoll)
-					if pollDelta > timeToInactive {
-						noPoll = append(noPoll, nodeState)
-						lastPolls = append(lastPolls, pollDelta)
-					}
-				}
-
-				//tracks if the node cannot be contacted by permissioning
-				if nodeState.GetRawConnectivity() == node.PortFailed {
-					noContact = append(noContact, nodeState)
+			} else if now.After(lastPoll) {
+				pollDelta := now.Sub(lastPoll)
+				if pollDelta > timeToInactive {
+					noPoll = append(noPoll, nodeState)
+					lastPolls = append(lastPolls, pollDelta)
 				}
 			}
 
-			latestRound := state.GetRoundID()
-			for i := latestRound - 1; i > latestRound-20; i++ {
-
+			//tracks if the node cannot be contacted by permissioning
+			if nodeState.GetRawConnectivity() == node.PortFailed {
+				noContact = append(noContact, nodeState)
 			}
 		}
 
-		realtimeRounds := make([]*round.State, 0)
-		precompRounds := make([]*round.State, 0)
-		queuedRounds := make([]*round.State, 0)
+		latestRound := state.GetRoundID()
+		for i := latestRound - 1; i > latestRound-20; i++ {
 
+		}
+
+		// Parse through the active round list to collect into round state arrays
 		rounds := roundTracker.GetActiveRounds()
 
 		for _, rid := range rounds {
 			r := state.GetRoundMap().GetRound(rid)
-
-			jww.INFO.Printf("Round %d is in %v", rid, r.GetRoundState())
+			switch r.GetRoundState() {
+			case states.PRECOMPUTING:
+				precompRounds = append(precompRounds, r)
+			case states.QUEUED:
+				queuedRounds = append(queuedRounds, r)
+			case states.REALTIME:
+				realtimeRounds = append(realtimeRounds, r)
+			default:
+				otherRounds = append(otherRounds, r)
+			}
 		}
 
 		// Output data into logs
-		jww.INFO.Printf("nodes in realtime: %v", len(realtimeNodes))
-		jww.INFO.Printf("nodes in precomp: %v", len(precompNodes))
-		jww.INFO.Printf("nodes in waiting: %v", len(waitingNodes))
+		jww.INFO.Printf("Teams in precomp: %v", len(precompRounds))
+		jww.INFO.Printf("Teams in queued: %v", len(queuedRounds))
+		jww.INFO.Printf("Teams in realtime: %v", len(realtimeRounds))
+		jww.INFO.Printf("Nodes in precomp: %v", len(precompNodes))
+		jww.INFO.Printf("Nodes in waiting: %v", len(waitingNodes))
+		jww.INFO.Printf("Nodes in precomp: %v", len(precompNodes))
+		jww.INFO.Printf("Nodes in realtime: %v", len(realtimeNodes))
+
 		jww.INFO.Printf("Nodes in pool: %v", pool.Len())
 		jww.INFO.Printf("Nodes in offline pool: %v", pool.OfflineLen())
 		jww.INFO.Printf("Nodes without recent update: %v", len(notUpdating))
 		jww.INFO.Printf("Nodes without recent poll: %v", len(noPoll))
 		jww.INFO.Printf("")
+
 		if len(notUpdating) > 0 {
 			jww.INFO.Printf("Nodes with no state updates in: %s", timeToInactive)
 			for i, n := range notUpdating {
-				jww.INFO.Printf("   Node %s (AppID: %v) stuck in %s for %s", n.GetID(), n.GetAppID(), n.GetActivity(), lastUpdates[i])
+				jww.INFO.Printf("\tNode %s (AppID: %v) stuck in %s for %s", n.GetID(), n.GetAppID(), n.GetActivity(), lastUpdates[i])
 			}
 		}
 
 		if len(noPoll) > 0 {
 			jww.INFO.Printf("Nodes with no polls updates in: %s", timeToInactive)
 			for i, n := range noPoll {
-				jww.INFO.Printf("   Node %s (AppID: %v, Activity: %s) has not polled for %s", n.GetID(), n.GetAppID(), n.GetActivity(), lastPolls[i])
+				jww.INFO.Printf("\tNode %s (AppID: %v, Activity: %s) has not polled for %s", n.GetID(), n.GetAppID(), n.GetActivity(), lastPolls[i])
 			}
 		}
 
 		if len(noContact) > 0 {
 			jww.INFO.Printf("Nodes which are not included due to no contact error")
 			for _, n := range noContact {
-				jww.INFO.Printf("   Node %s (AppID: %v, Activity: %s) cannot be contacted", n.GetID(), n.GetAppID(), n.GetActivity())
+				jww.INFO.Printf("\tNode %s (AppID: %v, Activity: %s) cannot be contacted", n.GetID(), n.GetAppID(), n.GetActivity())
 			}
 		}
+
+		allRounds := precompRounds
+		allRounds = append(allRounds, queuedRounds...)
+		allRounds = append(allRounds, realtimeRounds...)
+		allRounds = append(allRounds, otherRounds...)
+		if len(allRounds) > 0 {
+			jww.INFO.Printf("All Active Rounds")
+			for _, r := range allRounds {
+				lastUpdate := r.GetLastUpdate()
+				var delta time.Duration
+				if lastUpdate.After(now) {
+					delta = 0
+				} else {
+					delta = now.Sub(lastUpdate)
+				}
+				jww.INFO.Printf("\tRound %v in state %s, last update: %s ago", r.GetRoundID(), r.GetRoundState(), delta)
+			}
+		} else {
+			jww.INFO.Printf("No Rounds active")
+		}
+
 	}
 
 }
