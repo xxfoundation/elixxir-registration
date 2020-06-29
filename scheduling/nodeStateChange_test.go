@@ -252,6 +252,7 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
 	testPool := NewWaitingPool()
+	testTracker := NewRoundTracker()
 
 	for i := range nodeList {
 		testUpdate := node.UpdateNotification{
@@ -261,7 +262,6 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 		}
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
-		testTracker := NewRoundTracker()
 
 		roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
 		if err != nil {
@@ -284,7 +284,7 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, nil)
+		roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
 		if err != nil {
 			t.Errorf("Expected happy path for completed: %v", err)
 		}

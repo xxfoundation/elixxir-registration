@@ -59,8 +59,6 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 		}
 	}
 
-	rid := r.GetRoundID()
-
 	//get node and round information
 	switch update.ToActivity {
 	case current.NOT_STARTED:
@@ -82,7 +80,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 				"not be moving to the %s state", update.Node, states.PRECOMPUTING)
 		}
 
-		roundTracker.AddActiveRound(rid)
+		roundTracker.AddActiveRound(r.GetRoundID())
 		// fixme: nodes selected from pool are assigned to precomp in start round, inherently are synced
 		//stateComplete := r.NodeIsReadyForTransition()
 		//if stateComplete {
@@ -173,7 +171,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 
 			//send the signal that the round is complete
 			r.DenoteRoundCompleted()
-			roundTracker.RemoveActiveRound(rid)
+			roundTracker.RemoveActiveRound(r.GetRoundID())
 			// Commit metrics about the round to storage
 			return true, StoreRoundMetric(roundInfo)
 		}
