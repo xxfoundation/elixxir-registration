@@ -304,11 +304,6 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 			}
 		}
 
-		latestRound := state.GetRoundID()
-		for i := latestRound - 1; i > latestRound-20; i++ {
-
-		}
-
 		// Parse through the active round list to collect into round state arrays
 		rounds := roundTracker.GetActiveRounds()
 

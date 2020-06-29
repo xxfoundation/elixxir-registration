@@ -9,7 +9,6 @@
 package scheduling
 
 import (
-	"github.com/golang-collections/collections/set"
 	"gitlab.com/elixxir/primitives/id"
 	"sync"
 )
@@ -17,39 +16,55 @@ import (
 // Tracks rounds which are active, meaning between precomputing and completed
 type RoundTracker struct {
 	mux          sync.Mutex
-	activeRounds *set.Set
+	activeRounds map[id.Round]struct{}
 }
 
 // Creates tracker object
 func NewRoundTracker() *RoundTracker {
 	return &RoundTracker{
-		activeRounds: set.New(),
+		activeRounds: make(map[id.Round]struct{}),
 	}
 }
 
 // Adds round id to active round tracker
 func (rt *RoundTracker) AddActiveRound(rid id.Round) {
 	rt.mux.Lock()
-	defer rt.mux.Unlock()
-	rt.activeRounds.Insert(rid)
+
+	rt.activeRounds[rid] = struct{}{}
+
+	rt.mux.Unlock()
 }
 
 // Removes round from active round map
 func (rt *RoundTracker) RemoveActiveRound(rid id.Round) {
 	rt.mux.Lock()
-	defer rt.mux.Unlock()
 
-	rt.activeRounds.Remove(rid)
+	if _, exists := rt.activeRounds[rid]; exists {
+		delete(rt.activeRounds, rid)
+	}
+
+	rt.mux.Unlock()
 }
 
 // Gets the amount of active rounds in the set as well as the round id's
 func (rt *RoundTracker) GetActiveRounds() []id.Round {
-	rt.mux.Lock()
-	defer rt.mux.Unlock()
 	var rounds []id.Round
-	rt.activeRounds.Do(func(i interface{}) {
-		rounds = append(rounds, i.(id.Round))
-	})
+
+	rt.mux.Lock()
+
+	for rid := range rt.activeRounds {
+		rounds = append(rounds, rid)
+	}
+
+	rt.mux.Unlock()
 
 	return rounds
 }
+
+/*
+// tracks how many times the scheduler runs
+type SchedulingTracker *uint32
+
+func (sc SchedulingTracker)Incrememnt(){
+	atomic.AddUint32()
+}*/

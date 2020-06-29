@@ -214,12 +214,14 @@ func killRound(state *storage.NetworkState, r *round.State,
 	roundError *pb.RoundError, roundTracker *RoundTracker) error {
 
 	r.AppendError(roundError)
-	_ = r.Update(states.FAILED, time.Now())
+	err := r.Update(states.FAILED, time.Now())
+	if err == nil {
+		roundTracker.RemoveActiveRound(r.GetRoundID())
+	}
 	roundId := r.GetRoundID()
-	roundTracker.RemoveActiveRound(r.GetRoundID())
 
 	// Build the round info and update the network state
-	err := state.AddRoundUpdate(r.BuildRoundInfo())
+	err = state.AddRoundUpdate(r.BuildRoundInfo())
 	if err != nil {
 		return errors.WithMessagef(err, "Could not issue "+
 			"update to kill round %v", r.GetRoundID())
