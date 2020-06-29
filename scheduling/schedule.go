@@ -278,9 +278,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 						lastUpdates = append(lastUpdates, updateDelta)
 					}
 
-				}
-
-				if now.After(lastPoll) {
+				} else if now.After(lastPoll) {
 					pollDelta := now.Sub(lastPoll)
 					if pollDelta > timeToInactive {
 						noPoll = append(noPoll, nodeState)
@@ -307,21 +305,21 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 		if len(notUpdating) > 0 {
 			jww.INFO.Printf("Nodes with no state updates in: %s", timeToInactive)
 			for i, n := range notUpdating {
-				jww.INFO.Printf("   Node %s (AppID: %v) stuck in %s for %s", n.GetID(), n.GetAppID(), n.GetStatus(), lastUpdates[i])
+				jww.INFO.Printf("   Node %s (AppID: %v) stuck in %s for %s", n.GetID(), n.GetAppID(), n.GetActivity(), lastUpdates[i])
 			}
 		}
 
 		if len(noPoll) > 0 {
 			jww.INFO.Printf("Nodes with no polls updates in: %s", timeToInactive)
 			for i, n := range noPoll {
-				jww.INFO.Printf("   Node %s (AppID: %v, State: %s) has not polled for %s", n.GetID(), n.GetAppID(), n.GetStatus(), lastPolls[i])
+				jww.INFO.Printf("   Node %s (AppID: %v, Activity: %s) has not polled for %s", n.GetID(), n.GetAppID(), n.GetActivity(), lastPolls[i])
 			}
 		}
 
 		if len(noContact) > 0 {
 			jww.INFO.Printf("Nodes which are not included due to no contact error")
 			for _, n := range noContact {
-				jww.INFO.Printf("   Node %s (AppID: %v, State: %s) cannot be contacted", n.GetID(), n.GetAppID(), n.GetStatus())
+				jww.INFO.Printf("   Node %s (AppID: %v, Activity: %s) cannot be contacted", n.GetID(), n.GetAppID(), n.GetActivity())
 			}
 		}
 	}
