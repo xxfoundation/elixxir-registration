@@ -239,6 +239,8 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 	return nil
 }
 
+// how long a node needs to not act to be considered offline or in-active for the
+// print. arbitrarily chosen.
 const timeToInactive = 3 * time.Minute
 
 // Tracks rounds, periodically outputs how many teams are in various rounds
