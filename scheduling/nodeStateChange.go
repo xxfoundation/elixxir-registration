@@ -26,8 +26,8 @@ import (
 //  A node in standby is added to a round in preparation for realtime.
 //  A node in completed waits for all other nodes in the team to transition
 //   before the round is updated.
-func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
-	state *storage.NetworkState, realtimeDelay time.Duration) (bool, error) {
+func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state *storage.NetworkState,
+	realtimeDelay time.Duration, roundTracker *RoundTracker) (bool, error) {
 	// Check the round's error state
 	n := state.GetNodeMap().GetNode(update.Node)
 	// when a node poll is received, the nodes polling lock is taken.  If there
@@ -60,7 +60,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 	}
 
 	rid := r.GetRoundID()
-	roundMap := state.GetRoundMap()
+
 	//get node and round information
 	switch update.ToActivity {
 	case current.NOT_STARTED:
@@ -82,7 +82,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 				"not be moving to the %s state", update.Node, states.PRECOMPUTING)
 		}
 
-		roundMap.AddActiveRound(rid)
+		roundTracker.AddActiveRound(rid)
 		// fixme: nodes selected from pool are assigned to precomp in start round, inherently are synced
 		//stateComplete := r.NodeIsReadyForTransition()
 		//if stateComplete {
@@ -173,7 +173,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 
 			//send the signal that the round is complete
 			r.DenoteRoundCompleted()
-			roundMap.RemoveActiveRound(rid)
+			roundTracker.RemoveActiveRound(rid)
 			// Commit metrics about the round to storage
 			return true, StoreRoundMetric(roundInfo)
 		}

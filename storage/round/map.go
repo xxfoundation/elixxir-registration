@@ -7,7 +7,6 @@
 package round
 
 import (
-	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/connect"
@@ -21,15 +20,13 @@ import (
 type StateMap struct {
 	mux sync.RWMutex
 
-	rounds       map[id.Round]*State
-	activeRounds *set.Set
+	rounds map[id.Round]*State
 }
 
 //creates a state map object
 func NewStateMap() *StateMap {
 	return &StateMap{
-		rounds:       make(map[id.Round]*State),
-		activeRounds: set.New(),
+		rounds: make(map[id.Round]*State),
 	}
 }
 
@@ -53,33 +50,6 @@ func (rsm *StateMap) GetRound(id id.Round) *State {
 	rsm.mux.RLock()
 	defer rsm.mux.RUnlock()
 	return rsm.rounds[id]
-}
-
-// Adds round id to active round tracker
-func (rsm *StateMap) AddActiveRound(rid id.Round) {
-	rsm.mux.RLock()
-	defer rsm.mux.RUnlock()
-	rsm.activeRounds.Insert(rid)
-}
-
-// Removes round from active round map
-func (rsm *StateMap) RemoveActiveRound(rid id.Round) {
-	rsm.mux.RLock()
-	defer rsm.mux.RUnlock()
-
-	rsm.activeRounds.Remove(rid)
-}
-
-// Gets the amount of active rounds in the set as well as the round id's
-func (rsm *StateMap) GetActiveRounds() (int, []id.Round) {
-	rsm.mux.RLock()
-	defer rsm.mux.RUnlock()
-	var rounds []id.Round
-	rsm.activeRounds.Do(func(i interface{}) {
-		rounds = append(rounds, i.(id.Round))
-	})
-
-	return rsm.activeRounds.Len(), rounds
 }
 
 //adds rounds for testing without checks

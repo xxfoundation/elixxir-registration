@@ -80,6 +80,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	// Channel to communicate that a round has timed out
 	roundTimeoutTracker := make(chan id.Round, 1000)
 
+	roundTracker := NewRoundTracker()
+
 	//begin the thread that starts rounds
 	go func() {
 		lastRound := time.Now()
@@ -125,7 +127,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	// optional debug print which regularly prints the status of rounds and nodes
 	// turned on by setting DebugTrackRounds to true in the scheduling config
 	if params.DebugTrackRounds {
-		go trackRounds(params, state, pool)
+		go trackRounds(params, state, pool, nil)
 	}
 
 	// Start receiving updates from nodes
@@ -155,7 +157,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		} else {
 			var err error
 			// Handle the node's state change
-			endRound, err = HandleNodeUpdates(update, pool, state, rtDelay)
+			endRound, err = HandleNodeUpdates(update, pool, state,
+				rtDelay, roundTracker)
 			if err != nil {
 				return err
 			}
@@ -238,7 +241,8 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
 const timeToInactive = 3 * time.Minute
 
 // Tracks rounds, periodically outputs how many teams are in various rounds
-func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) {
+func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
+	roundTracker *RoundTracker) {
 	// Period of polling the state map for logs
 	schedulingTicker := time.NewTicker(1 * time.Minute)
 
@@ -300,7 +304,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 		precompRounds := make([]*round.State, 0)
 		queuedRounds := make([]*round.State, 0)
 
-		_, rounds := state.GetRoundMap().GetActiveRounds()
+		rounds := roundTracker.GetActiveRounds()
 		for _, rid := range rounds {
 			r := state.GetRoundMap().GetRound(rid)
 			switch r.GetRoundState() {
