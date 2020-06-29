@@ -93,7 +93,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			}
 			lastRound = time.Now()
 
-			err = startRound(newRound, state)
+			err = startRound(newRound, state, roundTracker)
 			if err != nil {
 				break
 			}
@@ -126,7 +126,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	// optional debug print which regularly prints the status of rounds and nodes
 	// turned on by setting DebugTrackRounds to true in the scheduling config
 	if params.DebugTrackRounds {
-		go trackRounds(params, state, pool, nil)
+		go trackRounds(params, state, pool, roundTracker)
 	}
 
 	// Start receiving updates from nodes
@@ -148,7 +148,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 		if isRoundTimeout {
 			// Handle the timed out round
-			err := timeoutRound(state, timedOutRoundID)
+			err := timeoutRound(state, timedOutRoundID, nil)
 			if err != nil {
 				return err
 			}
@@ -207,7 +207,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 }
 
 // Helper function which handles when we receive a timed out round
-func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
+func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
+	roundTracker *RoundTracker) error {
 	// On a timeout, check if the round is completed. If not, kill it
 	ourRound := state.GetRoundMap().GetRound(timeoutRoundID)
 	roundState := ourRound.GetRoundState()
@@ -227,7 +228,7 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round) error {
 				"timed out round %d: %+v", ourRound.GetRoundID(), err)
 		}
 
-		err = killRound(state, ourRound, timeoutError)
+		err = killRound(state, ourRound, timeoutError, roundTracker)
 		if err != nil {
 			return errors.WithMessagef(err, "Failed to kill round %d: %s",
 				ourRound.GetRoundID(), err)
@@ -294,17 +295,11 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		queuedRounds := make([]*round.State, 0)
 
 		rounds := roundTracker.GetActiveRounds()
+
 		for _, rid := range rounds {
 			r := state.GetRoundMap().GetRound(rid)
-			switch r.GetRoundState() {
-			case states.QUEUED:
-				queuedRounds = append(queuedRounds, r)
-			case states.PRECOMPUTING:
-				precompRounds = append(precompRounds, r)
-			case states.REALTIME:
-				realtimeRounds = append(realtimeRounds, r)
 
-			}
+			jww.INFO.Printf("Round %d is in %v", rid, r.GetRoundState())
 		}
 
 		// Output data into logs

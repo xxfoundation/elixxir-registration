@@ -491,7 +491,7 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 
 	// Ban the the second node in the state map
 	testState.GetNodeMap().GetNode(nodeList[1]).GetPollingLock().Lock()
-	roundEnd, err = HandleNodeUpdates(testUpdate, testPool, testState, 0, nil)
+	roundEnd, err = HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
@@ -553,7 +553,9 @@ func TestKillRound(t *testing.T) {
 		Error:  "test",
 	}
 
-	err = killRound(testState, r, re)
+	tesTracker := NewRoundTracker()
+
+	err = killRound(testState, r, re, tesTracker)
 	if err != nil {
 		t.Errorf("Unexpected error in happy path: %v", err)
 	}
