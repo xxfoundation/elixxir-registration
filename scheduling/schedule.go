@@ -320,7 +320,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool) 
 
 		if len(noContact) > 0 {
 			jww.INFO.Printf("Nodes which are not included due to no contact error")
-			for i, n := range noPoll {
+			for _, n := range noContact {
 				jww.INFO.Printf("   Node %s (AppID: %v, State: %s) cannot be contacted", n.GetID(), n.GetAppID(), n.GetStatus())
 			}
 		}
