@@ -287,19 +287,19 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 			lastUpdate := nodeState.GetLastUpdate()
 			lastPoll := nodeState.GetLastPoll()
 
-			if now.After(lastUpdate) {
+			if now.After(lastPoll) {
+				pollDelta := now.Sub(lastPoll)
+				if pollDelta > timeToInactive {
+					noPoll = append(noPoll, nodeState)
+					lastPolls = append(lastPolls, pollDelta)
+				}
+			}else if now.After(lastUpdate) {
 				updateDelta := now.Sub(lastUpdate)
 				if updateDelta > timeToInactive {
 					notUpdating = append(notUpdating, nodeState)
 					lastUpdates = append(lastUpdates, updateDelta)
 				}
 
-			} else if now.After(lastPoll) {
-				pollDelta := now.Sub(lastPoll)
-				if pollDelta > timeToInactive {
-					noPoll = append(noPoll, nodeState)
-					lastPolls = append(lastPolls, pollDelta)
-				}
 			}
 
 			//tracks if the node cannot be contacted by permissioning
@@ -328,7 +328,6 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		jww.INFO.Printf("Teams in precomp: %v", len(precompRounds))
 		jww.INFO.Printf("Teams in queued: %v", len(queuedRounds))
 		jww.INFO.Printf("Teams in realtime: %v", len(realtimeRounds))
-		jww.INFO.Printf("Nodes in precomp: %v", len(precompNodes))
 		jww.INFO.Printf("Nodes in waiting: %v", len(waitingNodes))
 		jww.INFO.Printf("Nodes in precomp: %v", len(precompNodes))
 		jww.INFO.Printf("Nodes in realtime: %v", len(realtimeNodes))
