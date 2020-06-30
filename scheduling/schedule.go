@@ -88,6 +88,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		var err error
 		minRoundDelay := params.MinimumDelay * time.Millisecond
 		for newRound := range newRoundChan {
+
 			// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
 			if timeDiff := time.Now().Sub(lastRound); timeDiff < minRoundDelay {
 				time.Sleep(minRoundDelay - timeDiff)
@@ -99,21 +100,23 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				break
 			}
 
-			go func() {
+			go func(roundID id.Round) {
 				// Allow for round the to be added to the map
-				ourRound := state.GetRoundMap().GetRound(newRound.ID)
+				ourRound := state.GetRoundMap().GetRound(roundID)
 				roundTimer := time.NewTimer(params.RoundTimeout * time.Second)
 				select {
 				// Wait for the timer to go off
 				case <-roundTimer.C:
+
 					// Send the timed out round id to the timeout handler
-					roundTimeoutTracker <- newRound.ID
+					jww.INFO.Printf("Round %v has timed out, signaling exit", roundID)
+					roundTimeoutTracker <- roundID
 				// Signals the round has been completed.
 				// In this case, we can exit the go-routine
 				case <-ourRound.GetRoundCompletedChan():
 					return
 				}
-			}()
+			}(newRound.ID)
 		}
 
 		jww.ERROR.Printf("Round creation thread should never exit: %s", err)
@@ -149,7 +152,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 		if isRoundTimeout {
 			// Handle the timed out round
-			err := timeoutRound(state, timedOutRoundID, nil)
+			err := timeoutRound(state, timedOutRoundID, roundTracker)
 			if err != nil {
 				return err
 			}
@@ -249,7 +252,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 	// Period of polling the state map for logs
 	schedulingTicker := time.NewTicker(1 * time.Minute)
 
-	for {
+	for true {
 		realtimeNodes := make([]*node.State, 0)
 		precompNodes := make([]*node.State, 0)
 		waitingNodes := make([]*node.State, 0)
@@ -269,6 +272,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 
 		// Parse through the node map to collect nodes into round state arrays
 		nodeStates := state.GetNodeMap().GetNodeStates()
+
 		for _, nodeState := range nodeStates {
 			switch nodeState.GetActivity() {
 			case current.WAITING:
@@ -303,7 +307,6 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 				noContact = append(noContact, nodeState)
 			}
 		}
-
 		// Parse through the active round list to collect into round state arrays
 		rounds := roundTracker.GetActiveRounds()
 
