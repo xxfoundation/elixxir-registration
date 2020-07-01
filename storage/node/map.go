@@ -42,7 +42,7 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string, appID ui
 		&State{
 			activity:       current.NOT_STARTED,
 			currentRound:   nil,
-			lastPoll:       time.Now(),
+			lastPoll:       time.Unix(0,0),
 			ordering:       ordering,
 			id:             id,
 			nodeAddress:    nAddr,

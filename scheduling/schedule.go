@@ -297,7 +297,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 			}
 
 			if pollDelta > timeToInactive {
-				s := fmt.Sprintf("\tNode %s (AppID: %v, Activity: %s) has not polled for %s", nodeState.GetID(), nodeState.GetAppID(), nodeState.GetActivity(), lastPoll)
+				s := fmt.Sprintf("\tNode %s (AppID: %v, Activity: %s) has not polled for %s", nodeState.GetID(), nodeState.GetAppID(), nodeState.GetActivity(), pollDelta)
 				noPoll = append(noPoll, s)
 			}else if updateDelta > timeToInactive {
 				s := fmt.Sprintf("\tNode %s (AppID: %v) stuck in %s for %s (last poll: %s)", nodeState.GetID(), nodeState.GetAppID(), nodeState.GetActivity(), updateDelta, pollDelta)
