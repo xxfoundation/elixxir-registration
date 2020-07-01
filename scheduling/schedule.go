@@ -298,12 +298,21 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 
 			if pollDelta > timeToInactive {
 				s := fmt.Sprintf("\tNode %s (AppID: %v, Activity: %s) has not polled for %s", nodeState.GetID(), nodeState.GetAppID(), nodeState.GetActivity(), pollDelta)
+				if hasround, r := nodeState.GetCurrentRound(); hasround{
+					s = fmt.Sprintf("%s, has round %v", s, r.GetRoundID())
+				}
 				noPoll = append(noPoll, s)
 			}else if updateDelta > timeToInactive {
 				s := fmt.Sprintf("\tNode %s (AppID: %v) stuck in %s for %s (last poll: %s)", nodeState.GetID(), nodeState.GetAppID(), nodeState.GetActivity(), updateDelta, pollDelta)
+				if hasround, r := nodeState.GetCurrentRound(); hasround{
+					s = fmt.Sprintf("%s, has round %v", s, r.GetRoundID())
+				}
 				notUpdating = append(notUpdating, s)
 			}else{
 				s := fmt.Sprintf("\tNode %s (AppID: %v) operating correctly in %s for %s (last poll: %s)", nodeState.GetID(), nodeState.GetAppID(), nodeState.GetActivity(), updateDelta, pollDelta)
+				if hasround, r := nodeState.GetCurrentRound(); hasround{
+					s = fmt.Sprintf("%s, has round %v", s, r.GetRoundID())
+				}
 				goodNode = append(goodNode, s)
 			}
 
