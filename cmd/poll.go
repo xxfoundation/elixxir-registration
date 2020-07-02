@@ -160,7 +160,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		}
 	}
 
-	return response, nil
+	return response, err
 }
 
 // PollNdf handles the client polling for an updated NDF
