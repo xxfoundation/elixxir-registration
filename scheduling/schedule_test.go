@@ -46,6 +46,15 @@ func TestScheduler_NonRandom(t *testing.T) {
 		t.Errorf("Unable to create state: %+v", err)
 	}
 
+	kill := make(chan chan struct{})
+
+	go func() {
+		err = Scheduler(configJson, state, kill)
+		if err != nil {
+			t.Errorf("Scheduler failed with error: %v", err)
+		}
+	}()
+
 	nodeList := make([]*id.ID, testParams.TeamSize)
 	for i := 0; i < int(testParams.TeamSize); i++ {
 		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
@@ -59,7 +68,9 @@ func TestScheduler_NonRandom(t *testing.T) {
 		if err != nil {
 			t.Errorf("Failed to add node %d to map: %v", i, err)
 		}
-		state.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
+		ns := state.GetNodeMap().GetNode(nodeList[i])
+		ns.SetLastPoll(time.Now(),t)
+		ns.GetPollingLock().Lock()
 
 		nun := node.UpdateNotification{
 			Node:         nodeID,
@@ -73,15 +84,6 @@ func TestScheduler_NonRandom(t *testing.T) {
 				i, current.NOT_STARTED, current.WAITING, err)
 		}
 	}
-
-	kill := make(chan chan struct{})
-
-	go func() {
-		err = Scheduler(configJson, state, kill)
-		if err != nil {
-			t.Errorf("Scheduler failed with error: %v", err)
-		}
-	}()
 
 	time.Sleep(1 * time.Second)
 

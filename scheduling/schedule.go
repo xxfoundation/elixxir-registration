@@ -18,6 +18,7 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
+	"sync/atomic"
 	"time"
 )
 
@@ -126,11 +127,12 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	var killed chan struct{}
 
 	numRounds := 0
+	iterationsCount := uint32(0)
 
 	// optional debug print which regularly prints the status of rounds and nodes
 	// turned on by setting DebugTrackRounds to true in the scheduling config
 	if params.DebugTrackRounds {
-		go trackRounds(params, state, pool, roundTracker)
+		go trackRounds(params, state, pool, roundTracker, &iterationsCount)
 	}
 
 	// Start receiving updates from nodes
@@ -138,16 +140,20 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		isRoundTimeout := false
 		var update node.UpdateNotification
 		var timedOutRoundID id.Round
+		hasUpdate := false
 		select {
 		// Receive a signal to kill the scheduler
 		case killed = <-killchan:
+			jww.WARN.Printf("Scheduler has recived a kill signal, exit process has begun")
 		// When we get a node update, move past the select statement
 		case update = <-state.GetNodeUpdateChannel():
+			hasUpdate = true
 		// Receive a signal indicating that a round has timed out
 		case timedOutRoundID = <-roundTimeoutTracker:
 			isRoundTimeout = true
 		}
 
+		atomic.AddUint32(&iterationsCount, 1)
 		endRound := false
 
 		if isRoundTimeout {
@@ -157,8 +163,9 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				return err
 			}
 			endRound = true
-		} else {
+		} else if hasUpdate {
 			var err error
+
 			// Handle the node's state change
 			endRound, err = HandleNodeUpdates(update, pool, state,
 				rtDelay, roundTracker)
@@ -178,6 +185,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		for {
 			// Create a new round if the pool is full
 			if pool.Len() >= int(teamFormationThreshold) && killed == nil {
+
 				// Increment round ID
 				currentID, err := state.IncrementRoundID()
 				if err != nil {
@@ -201,6 +209,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		// kill the scheduler
 		if killed != nil && numRounds == 0 {
 			close(newRoundChan)
+			jww.WARN.Printf("Scheduler is exiting due to kill signal")
 			killed <- struct{}{}
 			return nil
 		}
@@ -248,7 +257,7 @@ const timeToInactive = 3 * time.Minute
 
 // Tracks rounds, periodically outputs how many teams are in various rounds
 func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
-	roundTracker *RoundTracker) {
+	roundTracker *RoundTracker, schedulerIteration *uint32) {
 	// Period of polling the state map for logs
 	schedulingTicker := time.NewTicker(1 * time.Minute)
 
@@ -268,6 +277,8 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 
 		<-schedulingTicker.C
 		now := time.Now()
+
+		numIterations := atomic.SwapUint32(schedulerIteration, 0)
 
 		// Parse through the node map to collect nodes into round state arrays
 		nodeStates := state.GetNodeMap().GetNodeStates()
@@ -340,6 +351,9 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		}
 
 		// Output data into logs
+		jww.INFO.Printf("")
+		jww.INFO.Printf("Scheduler interations since last update: %v", numIterations)
+		jww.INFO.Printf("")
 		jww.INFO.Printf("Teams in precomp: %v", len(precompRounds))
 		jww.INFO.Printf("Teams in queued: %v", len(queuedRounds))
 		jww.INFO.Printf("Teams in realtime: %v", len(realtimeRounds))
@@ -359,7 +373,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 
 
 		if len(goodNode) > 0 {
-			jww.INFO.Printf("Nodes which operating as expected")
+			jww.INFO.Printf("Nodes operating as expected")
 			for _, s := range goodNode{
 				jww.INFO.Print(s)
 			}
