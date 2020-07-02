@@ -1,3 +1,9 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright © 2020 Privategrity Corporation                                   /
+//                                                                             /
+// All rights reserved.                                                        /
+////////////////////////////////////////////////////////////////////////////////
+
 package scheduling
 
 // Enumeration which links regions to numbers for legibility purposes

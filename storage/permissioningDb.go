@@ -24,7 +24,7 @@ func (m *DatabaseImpl) InsertApplication(application *Application, unregisteredN
 
 // Insert NodeMetric object
 func (m *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
-	jww.DEBUG.Printf("Attempting to insert node metric: %+v", metric)
+	jww.TRACE.Printf("Attempting to insert node metric: %+v", metric)
 	return m.db.Create(metric).Error
 }
 

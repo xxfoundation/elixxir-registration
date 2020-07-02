@@ -38,6 +38,8 @@ type State struct {
 
 	roundComplete chan struct{}
 
+	lastUpdate time.Time
+
 	mux sync.RWMutex
 }
 
@@ -121,9 +123,19 @@ func (s *State) Update(state states.Round, stamp time.Time) error {
 			"greater state")
 	}
 
+	s.lastUpdate = time.Now()
+
 	s.state = state
 	s.base.Timestamps[state] = uint64(stamp.UnixNano())
 	return nil
+}
+
+// returns the last time the round was updated
+func (s *State) GetLastUpdate() time.Time {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	return s.lastUpdate
 }
 
 // returns an unsigned roundinfo with all fields filled in
