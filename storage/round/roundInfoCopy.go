@@ -1,7 +1,14 @@
+////////////////////////////////////////////////////////////////////////////////
+// Copyright © 2018 Privategrity Corporation                                   /
+//                                                                             /
+// All rights reserved.                                                        /
+////////////////////////////////////////////////////////////////////////////////
+
 package round
 
 import pb "gitlab.com/elixxir/comms/mixmessages"
 
+//provides a utility function for making deep copies of roundInfo objects
 func CopyRoundInfo(ri *pb.RoundInfo) *pb.RoundInfo {
 	//copy the topology
 	topology := ri.GetTopology()
