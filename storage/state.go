@@ -140,6 +140,18 @@ func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
 		timestampsCopy[i] = stamp
 	}
 
+	//copy the errors
+	var errorsCopy []*pb.RoundError
+	if len(round.Errors) > 0 {
+		errorsCopy := make([]*pb.RoundError, len(round.Errors))
+		for i, e := range round.Errors {
+			eCopy := *e
+			sig := *(e.Signature)
+			eCopy.Signature = &sig
+			errorsCopy[i] = &eCopy
+		}
+	}
+
 	roundCopy := &pb.RoundInfo{
 		ID:                         round.GetID(),
 		UpdateID:                   updateID,
@@ -148,6 +160,7 @@ func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
 		ResourceQueueTimeoutMillis: round.GetResourceQueueTimeoutMillis(),
 		Topology:                   topologyCopy,
 		Timestamps:                 timestampsCopy,
+		Errors:                     errorsCopy,
 	}
 
 	err = signature.Sign(roundCopy, s.privateKey)

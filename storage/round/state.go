@@ -161,6 +161,18 @@ func (s *State) BuildRoundInfo() *pb.RoundInfo {
 		timestampsCopy[i] = stamp
 	}
 
+	//copy the errors
+	var errorsCopy []*pb.RoundError
+	if len(s.roundErrors) > 0 {
+		errorsCopy = make([]*pb.RoundError, len(s.roundErrors))
+		for i, e := range s.roundErrors {
+			eCopy := *e
+			sig := *(e.Signature)
+			eCopy.Signature = &sig
+			errorsCopy[i] = &eCopy
+		}
+	}
+
 	return &pb.RoundInfo{
 		ID:                         s.base.GetID(),
 		State:                      uint32(s.state),
@@ -168,6 +180,7 @@ func (s *State) BuildRoundInfo() *pb.RoundInfo {
 		Topology:                   topologyCopy,
 		Timestamps:                 timestampsCopy,
 		ResourceQueueTimeoutMillis: s.base.GetResourceQueueTimeoutMillis(),
+		Errors:                     errorsCopy,
 	}
 }
 
