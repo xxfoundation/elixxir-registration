@@ -220,8 +220,10 @@ func killRound(state *storage.NetworkState, r *round.State,
 	}
 	roundId := r.GetRoundID()
 
+	roundInfo := r.BuildRoundInfo()
+
 	// Build the round info and update the network state
-	err = state.AddRoundUpdate(r.BuildRoundInfo())
+	err = state.AddRoundUpdate(roundInfo)
 	if err != nil {
 		return errors.WithMessagef(err, "Could not issue "+
 			"update to kill round %v", r.GetRoundID())
@@ -237,7 +239,7 @@ func killRound(state *storage.NetworkState, r *round.State,
 		BatchSize:     r.BuildRoundInfo().BatchSize,
 	}
 	err = storage.PermissioningDb.InsertRoundMetric(metric,
-		r.BuildRoundInfo().Topology)
+		roundInfo.Topology)
 	if err != nil {
 		jww.WARN.Printf("Could not insert round metric: %+v", err)
 		err = nil

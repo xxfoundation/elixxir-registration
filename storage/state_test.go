@@ -99,9 +99,9 @@ func TestNewState(t *testing.T) {
 // small.
 func TestNewState_PrivateKeyError(t *testing.T) {
 	// Set up expected values
-	expectedErr := "Could not add round update 0 due to failed signature: " +
-		"Unable to sign message: crypto/rsa: key size too small for PSS " +
-		"signature"
+	expectedErr := "Could not add round update 0 for round 0 due to failed " +
+		"signature: Unable to sign message: crypto/rsa: key size too small " +
+		"for PSS signature"
 
 	// Generate private RSA key
 	privateKey, err := rsa.GenerateKey(rand.Reader, 128)
@@ -115,7 +115,7 @@ func TestNewState_PrivateKeyError(t *testing.T) {
 	// Test NewState() output
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("NewState() did not produce an error when expected."+
-			"\n\texpected: %+v\n\treceived: %+v", expectedErr, err)
+			"\n\texpected: %s\n\treceived: %s", expectedErr, err.Error())
 	}
 	if state != nil {
 		t.Errorf("NewState() unexpedly produced a non-nil NetworkState when an error was produced."+
@@ -270,9 +270,9 @@ func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
 		ID:       0,
 		UpdateID: 5,
 	}
-	expectedErr := "Could not add round update 1 due to failed signature: " +
-		"Unable to sign message: crypto/rsa: key size too small for PSS " +
-		"signature"
+	expectedErr := "Could not add round update 1 for round 0 due to failed " +
+		"signature: Unable to sign message: crypto/rsa: key size too small for " +
+		"PSS signature"
 
 	// Generate new NetworkState
 	state, _, err := generateTestNetworkState()
@@ -292,7 +292,7 @@ func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
 
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("AddRoundUpdate() did not produce an error when expected."+
-			"\n\texpected: %+v\n\treceived: %+v", expectedErr, err)
+			"\n\texpected: %s\n\treceived: %s", expectedErr, err.Error())
 	}
 }
 
