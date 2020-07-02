@@ -299,29 +299,29 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 			pollDelta := time.Duration(0)
 			updateDelta := time.Duration(0)
 
-			if now.After(lastPoll){
+			if now.After(lastPoll) {
 				pollDelta = now.Sub(lastPoll)
 			}
 
-			if now.After(lastUpdate){
+			if now.After(lastUpdate) {
 				updateDelta = now.Sub(lastUpdate)
 			}
 
 			if pollDelta > timeToInactive {
 				s := fmt.Sprintf("\tNode %s (AppID: %v, Activity: %s) has not polled for %s", nodeState.GetID(), nodeState.GetAppID(), nodeState.GetActivity(), pollDelta)
-				if hasround, r := nodeState.GetCurrentRound(); hasround{
+				if hasround, r := nodeState.GetCurrentRound(); hasround {
 					s = fmt.Sprintf("%s, has round %v", s, r.GetRoundID())
 				}
 				noPoll = append(noPoll, s)
-			}else if updateDelta > timeToInactive {
+			} else if updateDelta > timeToInactive {
 				s := fmt.Sprintf("\tNode %s (AppID: %v) stuck in %s for %s (last poll: %s)", nodeState.GetID(), nodeState.GetAppID(), nodeState.GetActivity(), updateDelta, pollDelta)
-				if hasround, r := nodeState.GetCurrentRound(); hasround{
+				if hasround, r := nodeState.GetCurrentRound(); hasround {
 					s = fmt.Sprintf("%s, has round %v", s, r.GetRoundID())
 				}
 				notUpdating = append(notUpdating, s)
-			}else{
+			} else {
 				s := fmt.Sprintf("\tNode %s (AppID: %v) operating correctly in %s for %s (last poll: %s)", nodeState.GetID(), nodeState.GetAppID(), nodeState.GetActivity(), updateDelta, pollDelta)
-				if hasround, r := nodeState.GetCurrentRound(); hasround{
+				if hasround, r := nodeState.GetCurrentRound(); hasround {
 					s = fmt.Sprintf("%s, has round %v", s, r.GetRoundID())
 				}
 				goodNode = append(goodNode, s)
@@ -368,20 +368,19 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		jww.INFO.Printf("Total Nodes: %v", len(nodeStates))
 		jww.INFO.Printf("Nodes without recent poll: %v", len(noPoll))
 		jww.INFO.Printf("Nodes without recent update: %v", len(notUpdating))
-		jww.INFO.Printf("Normally operating nodes: %v", len(nodeStates) - len(noPoll) - len(notUpdating))
+		jww.INFO.Printf("Normally operating nodes: %v", len(nodeStates)-len(noPoll)-len(notUpdating))
 		jww.INFO.Printf("")
-
 
 		if len(goodNode) > 0 {
 			jww.INFO.Printf("Nodes operating as expected")
-			for _, s := range goodNode{
+			for _, s := range goodNode {
 				jww.INFO.Print(s)
 			}
 			jww.INFO.Printf("")
 		}
 		if len(noPoll) > 0 {
 			jww.INFO.Printf("Nodes with no polls in: %s", timeToInactive)
-			for _, s := range noPoll{
+			for _, s := range noPoll {
 				jww.INFO.Print(s)
 			}
 			jww.INFO.Printf("")
@@ -389,7 +388,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 
 		if len(notUpdating) > 0 {
 			jww.INFO.Printf("Nodes with no state updates in: %s", timeToInactive)
-			for _, s := range notUpdating{
+			for _, s := range notUpdating {
 				jww.INFO.Print(s)
 			}
 			jww.INFO.Printf("")
@@ -397,7 +396,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 
 		if len(noContact) > 0 {
 			jww.INFO.Printf("Nodes which are not included due to no contact error")
-			for _, s := range noContact{
+			for _, s := range noContact {
 				jww.INFO.Print(s)
 			}
 			jww.INFO.Printf("")

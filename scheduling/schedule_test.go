@@ -69,7 +69,7 @@ func TestScheduler_NonRandom(t *testing.T) {
 			t.Errorf("Failed to add node %d to map: %v", i, err)
 		}
 		ns := state.GetNodeMap().GetNode(nodeList[i])
-		ns.SetLastPoll(time.Now(),t)
+		ns.SetLastPoll(time.Now(), t)
 		ns.GetPollingLock().Lock()
 
 		nun := node.UpdateNotification{
