@@ -167,8 +167,10 @@ func (s *State) BuildRoundInfo() *pb.RoundInfo {
 		errorsCopy = make([]*pb.RoundError, len(s.roundErrors))
 		for i, e := range s.roundErrors {
 			eCopy := *e
-			sig := *(e.Signature)
-			eCopy.Signature = &sig
+			if e.Signature != nil {
+				sig := *(e.Signature)
+				eCopy.Signature = &sig
+			}
 			errorsCopy[i] = &eCopy
 		}
 	}

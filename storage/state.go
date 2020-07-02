@@ -146,8 +146,10 @@ func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
 		errorsCopy := make([]*pb.RoundError, len(round.Errors))
 		for i, e := range round.Errors {
 			eCopy := *e
-			sig := *(e.Signature)
-			eCopy.Signature = &sig
+			if e.Signature != nil {
+				sig := *(e.Signature)
+				eCopy.Signature = &sig
+			}
 			errorsCopy[i] = &eCopy
 		}
 	}
