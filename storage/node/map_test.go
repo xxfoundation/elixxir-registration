@@ -49,12 +49,6 @@ func TestStateMap_AddNode_Happy(t *testing.T) {
 	if n.currentRound != nil {
 		t.Errorf("New Node has a curent round set incorrectly")
 	}
-
-	pollDelta := time.Now().Sub(n.lastPoll)
-
-	if pollDelta < 0 || pollDelta > time.Millisecond {
-		t.Errorf("timestap on poll is at the wrong time: %v", n.lastPoll)
-	}
 }
 
 //Tests a Node is added correctly to the state map when it is
