@@ -101,24 +101,27 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	// Check that the nodes were added to the node map
 	nodeMapNodes := impl.State.GetNodeMap().GetNodeStates()
 	if len(nodeMapNodes) != 2 {
-		t.Error("Unexpected number of nodes found in node map:\r\tGot: %i\r\tExpected: %i", len(nodeMapNodes), 2)
+		t.Errorf("Unexpected number of nodes found in node map:\r\tGot: %d\r"+
+			"\tExpected: %d", len(nodeMapNodes), 2)
 	}
 
 	if !nodeMapNodes[0].GetID().Cmp(activeNodeId) {
-		t.Error("Unexpected node ID for node 0:\r\tGot: %i\r\tExpected: %i", nodeMapNodes[0].GetID(), activeNodeId)
+		t.Errorf("Unexpected node ID for node 0:\r\tGot: %d\r\tExpected: %d",
+			nodeMapNodes[0].GetID(), activeNodeId)
 	}
 
 	if !nodeMapNodes[1].GetID().Cmp(bannedNodeId) {
-		t.Error("Unexpected node ID for node 1:\r\tGot: %i\r\tExpected: %i", nodeMapNodes[1].GetID(), bannedNodeId)
+		t.Errorf("Unexpected node ID for node 1:\r\tGot: %d\r\tExpected: %d",
+			nodeMapNodes[1].GetID(), bannedNodeId)
 	}
 
 	if nodeMapNodes[0].GetStatus() != node.Active {
-		t.Error("Unexpected status for node 0:\r\tGot: %i\r\tExpected: %i",
+		t.Errorf("Unexpected status for node 0:\r\tGot: %s\r\tExpected: %s",
 			nodeMapNodes[0].GetStatus().String(), node.Banned.String())
 	}
 
 	if nodeMapNodes[1].GetStatus() != node.Banned {
-		t.Error("Unexpected status for node 1:\r\tGot: %i\r\tExpected: %i",
+		t.Errorf("Unexpected status for node 1:\r\tGot: %s\r\tExpected: %s",
 			nodeMapNodes[1].GetStatus().String(), node.Banned.String())
 	}
 	//endregion
