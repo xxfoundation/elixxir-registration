@@ -38,6 +38,8 @@ type State struct {
 
 	roundComplete chan struct{}
 
+	lastUpdate time.Time
+
 	mux sync.RWMutex
 }
 
@@ -121,9 +123,19 @@ func (s *State) Update(state states.Round, stamp time.Time) error {
 			"greater state")
 	}
 
+	s.lastUpdate = time.Now()
+
 	s.state = state
 	s.base.Timestamps[state] = uint64(stamp.UnixNano())
 	return nil
+}
+
+// returns the last time the round was updated
+func (s *State) GetLastUpdate() time.Time {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	return s.lastUpdate
 }
 
 // returns an unsigned roundinfo with all fields filled in
@@ -133,30 +145,10 @@ func (s *State) BuildRoundInfo() *pb.RoundInfo {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 
-	//copy the topology
-	topology := s.base.GetTopology()
+	s.base.Errors = s.roundErrors
+	s.base.State = uint32(s.state)
 
-	topologyCopy := make([][]byte, len(topology))
-	for i, nid := range topology {
-		topologyCopy[i] = make([]byte, len(nid))
-		copy(topologyCopy[i], nid)
-	}
-
-	//copy the timestamps
-	timestamps := s.base.GetTimestamps()
-	timestampsCopy := make([]uint64, len(timestamps))
-	for i, stamp := range timestamps {
-		timestampsCopy[i] = stamp
-	}
-
-	return &pb.RoundInfo{
-		ID:                         s.base.GetID(),
-		State:                      uint32(s.state),
-		BatchSize:                  s.base.GetBatchSize(),
-		Topology:                   topologyCopy,
-		Timestamps:                 timestampsCopy,
-		ResourceQueueTimeoutMillis: s.base.GetResourceQueueTimeoutMillis(),
-	}
+	return CopyRoundInfo(s.base)
 }
 
 //returns the state of the round

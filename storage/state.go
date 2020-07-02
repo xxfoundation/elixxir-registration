@@ -115,48 +115,25 @@ func (s *NetworkState) GetUpdates(id int) ([]*pb.RoundInfo, error) {
 
 // AddRoundUpdate creates a copy of the round before inserting it into
 // roundUpdates.
-func (s *NetworkState) AddRoundUpdate(round *pb.RoundInfo) error {
+func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 	s.roundUpdateLock.Lock()
 	defer s.roundUpdateLock.Unlock()
+
+	roundCopy := round.CopyRoundInfo(r)
 
 	updateID, err := s.roundUpdateID.increment()
 	if err != nil {
 		return err
 	}
-
-	//copy the topology
-	topology := round.GetTopology()
-
-	topologyCopy := make([][]byte, len(topology))
-	for i, nid := range topology {
-		topologyCopy[i] = make([]byte, len(nid))
-		copy(topologyCopy[i], nid)
-	}
-
-	//copy the timestamps
-	timestamps := round.GetTimestamps()
-	timestampsCopy := make([]uint64, len(timestamps))
-	for i, stamp := range timestamps {
-		timestampsCopy[i] = stamp
-	}
-
-	roundCopy := &pb.RoundInfo{
-		ID:                         round.GetID(),
-		UpdateID:                   updateID,
-		State:                      round.GetState(),
-		BatchSize:                  round.GetBatchSize(),
-		ResourceQueueTimeoutMillis: round.GetResourceQueueTimeoutMillis(),
-		Topology:                   topologyCopy,
-		Timestamps:                 timestampsCopy,
-	}
+	roundCopy.UpdateID = updateID
 
 	err = signature.Sign(roundCopy, s.privateKey)
 	if err != nil {
 		return errors.WithMessagef(err, "Could not add round update %v "+
-			"due to failed signature", roundCopy.UpdateID)
+			"for round %v due to failed signature", roundCopy.UpdateID, roundCopy.ID)
 	}
 
-	jww.INFO.Printf("Round %v state updated to %s", round.ID,
+	jww.INFO.Printf("Round %v state updated to %s", r.ID,
 		states.Round(roundCopy.State))
 
 	jww.TRACE.Printf("Round Info: %+v", roundCopy)

@@ -48,7 +48,7 @@ func TestCreateRound_NonRandom(t *testing.T) {
 	for i := 0; i < int(testParams.TeamSize); i++ {
 		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -121,7 +121,7 @@ func TestCreateRound_Random(t *testing.T) {
 	for i := 0; i < int(testParams.TeamSize); i++ {
 		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -178,7 +178,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nodeList[i] = id.NewIdFromUInt(i, id.Node, t)
 		// Input an invalid ordering to node
-		err := testState.GetNodeMap().AddNode(nodeList[i], "BadNumber", "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], "BadNumber", "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -232,7 +232,7 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -317,7 +317,7 @@ func TestCreateSimpleRound_SemiOptimal(t *testing.T) {
 
 		// Add the node to that node map
 		// Place the node in a random region
-		err := testState.GetNodeMap().AddNode(nodeList[i], regions[index], "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], regions[index], "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -421,7 +421,7 @@ func TestCreateSimpleRound_SemiOptimal_BadRegion(t *testing.T) {
 
 		// Add the node to that node map
 		// Place the node in a random region
-		err := testState.GetNodeMap().AddNode(nodeList[i], badRegion, "", "")
+		err := testState.GetNodeMap().AddNode(nodeList[i], badRegion, "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()

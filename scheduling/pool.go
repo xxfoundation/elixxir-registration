@@ -81,14 +81,18 @@ func (wp *waitingPool) CleanOfflineNodes(timeout time.Duration) {
 	var toRemove []*node.State
 	wp.pool.Do(func(face interface{}) {
 		ns := face.(*node.State)
-		delta := now.Sub(ns.GetLastPoll())
-		if delta > timeout {
-			toRemove = append(toRemove, ns)
+		lastPoll := ns.GetLastPoll()
+		if now.After(lastPoll) {
+			delta := now.Sub(ns.GetLastPoll())
+			if delta > timeout {
+				toRemove = append(toRemove, ns)
+			}
 		}
+
 	})
 
 	for _, ns := range toRemove {
-		jww.TRACE.Printf("Node %v is offline. Removing from waiting pool", ns.GetID())
+		jww.INFO.Printf("Node %v is offline. Removing from waiting pool", ns.GetID())
 		ns.ClearRound()
 		wp.pool.Remove(ns)
 		wp.offline.Insert(ns)

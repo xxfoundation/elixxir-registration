@@ -253,7 +253,7 @@ func NewDatabase(username, password, database, address,
 	}
 
 	// Initialize the database logger
-	db.SetLogger(jww.DEBUG)
+	db.SetLogger(jww.TRACE)
 	db.LogMode(true)
 
 	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.

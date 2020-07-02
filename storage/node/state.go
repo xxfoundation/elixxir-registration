@@ -43,6 +43,9 @@ type State struct {
 	// Timestamp of the last time this Node polled
 	lastPoll time.Time
 
+	// Timestamp of the last time this Node produced an update
+	lastUpdate time.Time
+
 	// Number of polls made by the node during the current monitoring period
 	numPolls *uint64
 
@@ -54,6 +57,10 @@ type State struct {
 
 	//id of the Node
 	id *id.ID
+
+	//Application ID of the node
+	//used primarily for logging
+	applicationID uint64
 
 	// Address of node
 	nodeAddress string
@@ -83,6 +90,11 @@ func (n *State) IncrementNumPolls() {
 // Returns the current value of numPolls and then resets numPolls to zero
 func (n *State) GetAndResetNumPolls() uint64 {
 	return atomic.SwapUint64(n.numPolls, 0)
+}
+
+// Returns the current value of numPolls and then resets numPolls to zero
+func (n *State) GetAppID() uint64 {
+	return n.applicationID
 }
 
 // sets the Node to banned and then returns an update notification for signaling
@@ -181,6 +193,8 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 
 	// change the Node's activity
 	n.activity = newActivity
+	// Timestamp of the last time this Node produced an update
+	n.lastUpdate = time.Now()
 
 	//build the update notification
 	nun := UpdateNotification{
@@ -215,7 +229,7 @@ func (n *State) IsBanned() bool {
 	return n.status == Banned
 }
 
-// Gets the status of the node, atomically
+// Gets the status of connectivity to the node, atomically
 func (n *State) GetConnectivity() uint32 {
 	// Done to avoid a race condition in the case of a double poll
 	verify := atomic.CompareAndSwapUint32(n.connectivity, PortUnknown, PortVerifying)
@@ -224,6 +238,12 @@ func (n *State) GetConnectivity() uint32 {
 	} else {
 		return atomic.LoadUint32(n.connectivity)
 	}
+}
+
+// Gets the status of of the connectivity, but do not move from unknown
+// to verifying
+func (n *State) GetRawConnectivity() uint32 {
+	return atomic.LoadUint32(n.connectivity)
 }
 
 // Sets the connectivity of node to c, atomically
@@ -243,6 +263,13 @@ func (n *State) GetLastPoll() time.Time {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	return n.lastPoll
+}
+
+// gets the timestamp of the last time the Node updates
+func (n *State) GetLastUpdate() time.Time {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+	return n.lastUpdate
 }
 
 // Returns the polling lock

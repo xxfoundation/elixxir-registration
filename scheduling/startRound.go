@@ -15,7 +15,7 @@ import (
 
 // startRound is a function which takes the info from createSimpleRound and updates the
 //  node and network states in order to begin the round
-func startRound(round protoRound, state *storage.NetworkState) error {
+func startRound(round protoRound, state *storage.NetworkState, roundTracker *RoundTracker) error {
 	// Add the round to the manager
 	r, err := state.GetRoundMap().AddRound(round.ID, round.BatchSize, round.ResourceQueueTimeout,
 		round.Topology)
@@ -49,6 +49,9 @@ func startRound(round protoRound, state *storage.NetworkState) error {
 			"update to create round %v", r.GetRoundID())
 		return err
 	}
+
+	// Add round to active set of rounds
+	roundTracker.AddActiveRound(r.GetRoundID())
 
 	return nil
 }
