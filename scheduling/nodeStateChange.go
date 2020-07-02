@@ -27,7 +27,7 @@ import (
 //  A node in completed waits for all other nodes in the team to transition
 //   before the round is updated.
 func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state *storage.NetworkState,
-	realtimeDelay time.Duration, roundTracker *RoundTracker) (bool, error) {
+	realtimeDelay time.Duration, roundTracker *RoundTracker) error {
 	// Check the round's error state
 	n := state.GetNodeMap().GetNode(update.Node)
 	// when a node poll is received, the nodes polling lock is taken.  If there
@@ -37,7 +37,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	hasRound, r := n.GetCurrentRound()
 	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED && update.ToActivity != current.ERROR
 	if roundErrored {
-		return false, nil
+		return nil
 	}
 	//ban the node if it is supposed to be banned
 	if update.ToStatus == node.Banned {
@@ -52,10 +52,10 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 				jww.FATAL.Panicf("Failed to sign error message for banned node %s: %+v", update.Node, err)
 			}
 			n.ClearRound()
-			return false, killRound(state, r, banError, roundTracker)
+			return killRound(state, r, banError, roundTracker)
 		} else {
 			pool.Ban(n)
-			return false, nil
+			return nil
 		}
 	}
 
@@ -76,7 +76,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	case current.PRECOMPUTING:
 		// Check that node in precomputing does have a round
 		if !hasRound {
-			return false, errors.Errorf("Node %s without round should "+
+			return errors.Errorf("Node %s without round should "+
 				"not be moving to the %s state", update.Node, states.PRECOMPUTING)
 		}
 
@@ -93,7 +93,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	case current.STANDBY:
 		// Check that node in standby actually does have a round
 		if !hasRound {
-			return false, errors.Errorf("Node %s without round should "+
+			return errors.Errorf("Node %s without round should "+
 				"not be in %s state", update.Node, states.PRECOMPUTING)
 		}
 		// Check if the round is ready for all the nodes
@@ -103,21 +103,21 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			// Update the round for end of precomp transition
 			err := r.Update(states.STANDBY, time.Now())
 			if err != nil {
-				return false, errors.WithMessagef(err,
+				return errors.WithMessagef(err,
 					"Could not move round %v from %s to %s",
 					r.GetRoundID(), states.PRECOMPUTING, states.STANDBY)
 			}
 			// Update the round for realtime transition
 			err = r.Update(states.QUEUED, time.Now().Add(realtimeDelay))
 			if err != nil {
-				return false, errors.WithMessagef(err,
+				return errors.WithMessagef(err,
 					"Could not move round %v from %s to %s",
 					r.GetRoundID(), states.STANDBY, states.QUEUED)
 			}
 			// Build the round info and add to the networkState
 			err = state.AddRoundUpdate(r.BuildRoundInfo())
 			if err != nil {
-				return false, errors.WithMessagef(err, "Could not issue "+
+				return errors.WithMessagef(err, "Could not issue "+
 					"update for round %v transitioning from %s to %s",
 					r.GetRoundID(), states.STANDBY, states.QUEUED)
 			}
@@ -125,7 +125,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	case current.REALTIME:
 		// Check that node in standby actually does have a round
 		if !hasRound {
-			return false, errors.Errorf("Node %s without round should "+
+			return errors.Errorf("Node %s without round should "+
 				"not be moving to the %s state", update.Node, states.REALTIME)
 		}
 		// REALTIME does not use the state complete handler because it
@@ -134,7 +134,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 		if r.GetRoundState() != states.REALTIME {
 			err := r.Update(states.REALTIME, time.Now())
 			if err != nil {
-				return false, errors.WithMessagef(err,
+				return errors.WithMessagef(err,
 					"Could not move round %v from %s to %s",
 					r.GetRoundID(), states.QUEUED, states.REALTIME)
 			}
@@ -142,7 +142,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	case current.COMPLETED:
 		// Check that node in standby actually does have a round
 		if !hasRound {
-			return false, errors.Errorf("Node %s without round should "+
+			return errors.Errorf("Node %s without round should "+
 				"not be in %s state", update.Node, states.COMPLETED)
 		}
 		// Clear the round
@@ -154,7 +154,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			// Update the round for realtime transition
 			err := r.Update(states.COMPLETED, time.Now())
 			if err != nil {
-				return false, errors.WithMessagef(err,
+				return errors.WithMessagef(err,
 					"Could not move round %v from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
@@ -163,7 +163,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			roundInfo := r.BuildRoundInfo()
 			err = state.AddRoundUpdate(roundInfo)
 			if err != nil {
-				return false, errors.WithMessagef(err, "Could not issue "+
+				return errors.WithMessagef(err, "Could not issue "+
 					"update for round %v transitioning from %s to %s",
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
@@ -172,7 +172,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			r.DenoteRoundCompleted()
 			roundTracker.RemoveActiveRound(r.GetRoundID())
 			// Commit metrics about the round to storage
-			return true, StoreRoundMetric(roundInfo)
+			return StoreRoundMetric(roundInfo)
 		}
 	case current.ERROR:
 		// If in an error state, kill the round if the node has one
@@ -183,10 +183,10 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			n.ClearRound()
 			err = killRound(state, r, update.Error, roundTracker)
 		}
-		return false, err
+		return err
 	}
 
-	return false, nil
+	return nil
 }
 
 // Insert metrics about the newly-completed round into storage

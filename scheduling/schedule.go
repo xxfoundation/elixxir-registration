@@ -154,7 +154,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		}
 
 		atomic.AddUint32(&iterationsCount, 1)
-		endRound := false
 
 		if isRoundTimeout {
 			// Handle the timed out round
@@ -162,12 +161,11 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			if err != nil {
 				return err
 			}
-			endRound = true
 		} else if hasUpdate {
 			var err error
 
 			// Handle the node's state change
-			endRound, err = HandleNodeUpdates(update, pool, state,
+			err = HandleNodeUpdates(update, pool, state,
 				rtDelay, roundTracker)
 			if err != nil {
 				return err
@@ -176,11 +174,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 		// Remove offline nodes from pool to more accurately determine if pool is eligible for round creation
 		pool.CleanOfflineNodes(params.NodeCleanUpInterval * time.Second)
-
-		// If a round has finished, decrement num rounds
-		if endRound {
-			numRounds--
-		}
 
 		for {
 			// Create a new round if the pool is full
@@ -207,7 +200,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 		// If the scheduler is to be killed and no rounds are in progress,
 		// kill the scheduler
-		if killed != nil && numRounds == 0 {
+		if killed != nil && roundTracker.Len() == 0 {
 			close(newRoundChan)
 			jww.WARN.Printf("Scheduler is exiting due to kill signal")
 			killed <- struct{}{}

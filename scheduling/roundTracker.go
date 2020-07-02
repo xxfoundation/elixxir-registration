@@ -35,6 +35,14 @@ func (rt *RoundTracker) AddActiveRound(rid id.Round) {
 	rt.mux.Unlock()
 }
 
+// gives the number of members for the round tracker
+func (rt *RoundTracker) Len() int {
+	rt.mux.Lock()
+	defer rt.mux.Lock()
+
+	return len(rt.activeRounds)
+}
+
 // Removes round from active round map
 func (rt *RoundTracker) RemoveActiveRound(rid id.Round) {
 	rt.mux.Lock()
