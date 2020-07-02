@@ -65,7 +65,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 
 	// check that the activity is not error and then poll, do not count error
 	// polls so erroring nodes are not issues rounds
-	if activity != current.ERROR {
+	if activity != current.ERROR{
 		// Increment the Node's poll count
 		n.IncrementNumPolls()
 	}

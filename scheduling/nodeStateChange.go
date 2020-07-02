@@ -26,8 +26,8 @@ import (
 //  A node in standby is added to a round in preparation for realtime.
 //  A node in completed waits for all other nodes in the team to transition
 //   before the round is updated.
-func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
-	state *storage.NetworkState, realtimeDelay time.Duration) (bool, error) {
+func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state *storage.NetworkState,
+	realtimeDelay time.Duration, roundTracker *RoundTracker) (bool, error) {
 	// Check the round's error state
 	n := state.GetNodeMap().GetNode(update.Node)
 	// when a node poll is received, the nodes polling lock is taken.  If there
@@ -52,12 +52,13 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 				jww.FATAL.Panicf("Failed to sign error message for banned node %s: %+v", update.Node, err)
 			}
 			n.ClearRound()
-			return false, killRound(state, r, banError)
+			return false, killRound(state, r, banError, roundTracker)
 		} else {
 			pool.Ban(n)
 			return false, nil
 		}
 	}
+
 	//get node and round information
 	switch update.ToActivity {
 	case current.NOT_STARTED:
@@ -78,6 +79,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			return false, errors.Errorf("Node %s without round should "+
 				"not be moving to the %s state", update.Node, states.PRECOMPUTING)
 		}
+
 		// fixme: nodes selected from pool are assigned to precomp in start round, inherently are synced
 		//stateComplete := r.NodeIsReadyForTransition()
 		//if stateComplete {
@@ -168,7 +170,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 
 			//send the signal that the round is complete
 			r.DenoteRoundCompleted()
-
+			roundTracker.RemoveActiveRound(r.GetRoundID())
 			// Commit metrics about the round to storage
 			return true, StoreRoundMetric(roundInfo)
 		}
@@ -179,7 +181,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool,
 			//send the signal that the round is complete
 			r.DenoteRoundCompleted()
 			n.ClearRound()
-			err = killRound(state, r, update.Error)
+			err = killRound(state, r, update.Error, roundTracker)
 		}
 		return false, err
 	}
@@ -208,14 +210,18 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 }
 
 // killRound sets the round to failed and clears the node's round
-func killRound(state *storage.NetworkState, r *round.State, roundError *pb.RoundError) error {
+func killRound(state *storage.NetworkState, r *round.State,
+	roundError *pb.RoundError, roundTracker *RoundTracker) error {
 
 	r.AppendError(roundError)
-	_ = r.Update(states.FAILED, time.Now())
+	err := r.Update(states.FAILED, time.Now())
+	if err == nil {
+		roundTracker.RemoveActiveRound(r.GetRoundID())
+	}
 	roundId := r.GetRoundID()
 
 	// Build the round info and update the network state
-	err := state.AddRoundUpdate(r.BuildRoundInfo())
+	err = state.AddRoundUpdate(r.BuildRoundInfo())
 	if err != nil {
 		return errors.WithMessagef(err, "Could not issue "+
 			"update to kill round %v", r.GetRoundID())
@@ -237,8 +243,18 @@ func killRound(state *storage.NetworkState, r *round.State, roundError *pb.Round
 		err = nil
 	}
 
+	nid, err := id.Unmarshal(roundError.NodeId)
+	var idStr string
+	if err != nil {
+		idStr = "N/A"
+	} else {
+		idStr = nid.String()
+	}
+
+	formattedError := fmt.Sprintf("Round Error from %s: %s", idStr, roundError.Error)
+
 	// Next, attempt to insert the error for the failed round
-	err = storage.PermissioningDb.InsertRoundError(roundId, roundError.Error)
+	err = storage.PermissioningDb.InsertRoundError(roundId, formattedError)
 	if err != nil {
 		jww.WARN.Printf("Could not insert round error: %+v", err)
 		err = nil

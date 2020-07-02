@@ -93,7 +93,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		t.Errorf("Could not add round update: %s", err)
 	}
 
-	err = impl.State.GetNodeMap().AddNode(testID, "", "", "")
+	err = impl.State.GetNodeMap().AddNode(testID, "", "", "", 0)
 
 	if err != nil {
 		t.Errorf("Could nto add node: %s", err)
@@ -410,7 +410,7 @@ func TestPoll_BannedNode(t *testing.T) {
 		t.Errorf("Could not add round update: %s", err)
 	}
 
-	err = impl.State.GetNodeMap().AddNode(testID, "", "", "")
+	err = impl.State.GetNodeMap().AddNode(testID, "", "", "", 0)
 	if err != nil {
 		t.Errorf("Could nto add node: %s", err)
 	}
@@ -948,7 +948,7 @@ func TestVerifyError(t *testing.T) {
 	}
 
 	nsm := node.NewStateMap()
-	_ = nsm.AddNode(errNodeId, "", "", "")
+	_ = nsm.AddNode(errNodeId, "", "", "", 0)
 	n := nsm.GetNode(errNodeId)
 	rsm := round.NewStateMap()
 	s, _ := rsm.AddRound(id.Round(0), 4, 5*time.Minute, connect.NewCircuit([]*id.ID{errNodeId}))
