@@ -12,6 +12,7 @@ import (
 	"gitlab.com/elixxir/crypto/shuffle"
 	"gitlab.com/elixxir/registration/storage/node"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -73,7 +74,7 @@ func (wp *waitingPool) Ban(n *node.State) {
 func (wp *waitingPool) CleanOfflineNodes(timeout time.Duration) {
 	wp.mux.Lock()
 	defer wp.mux.Unlock()
-
+	atomic.StoreUint32(scheduleTracker, 82)
 	now := time.Now()
 
 	// Collect nodes whose lastPoll is longer than
@@ -91,6 +92,8 @@ func (wp *waitingPool) CleanOfflineNodes(timeout time.Duration) {
 
 	})
 
+	atomic.StoreUint32(scheduleTracker, 83)
+
 	for _, ns := range toRemove {
 		jww.INFO.Printf("Node %v is offline. Removing from waiting pool", ns.GetID())
 		ns.ClearRound()
@@ -98,6 +101,8 @@ func (wp *waitingPool) CleanOfflineNodes(timeout time.Duration) {
 		wp.offline.Insert(ns)
 		ns.SetInactive()
 	}
+
+	atomic.StoreUint32(scheduleTracker, 84)
 }
 
 // SetNodeToOnline removes a node from the offline pool and

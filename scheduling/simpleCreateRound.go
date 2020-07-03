@@ -13,6 +13,7 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"strconv"
+	"sync/atomic"
 )
 
 // createSimpleRound.go contains the logic to construct a team for a round and
@@ -22,8 +23,9 @@ import (
 // this round into the network state
 func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
-
+	atomic.StoreUint32(scheduleTracker, 100)
 	nodes, err := pool.PickNRandAtThreshold(int(params.TeamSize), int(params.TeamSize))
+	atomic.StoreUint32(scheduleTracker, 101)
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)
 	}
@@ -34,31 +36,36 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	nodeMap := state.GetNodeMap()
 	nodeStateList := make([]*node.State, params.TeamSize)
 	orderedNodeList := make([]*id.ID, params.TeamSize)
-
+	atomic.StoreUint32(scheduleTracker, 102)
 	// In the case of random ordering
 	if params.SemiOptimalOrdering {
 		// Generate a team based on latency
+		atomic.StoreUint32(scheduleTracker, 103)
 		nodeStateList, err = generateSemiOptimalOrdering(nodes)
 		if err != nil {
 			return protoRound{}, errors.WithMessage(err,
 				"Failed to generate optimal ordering")
 		}
+		atomic.StoreUint32(scheduleTracker, 104)
 
 		// Parse the node list to get the order
 		for i, n := range nodeStateList {
 			nid := n.GetID()
 			orderedNodeList[i] = nid
 		}
+		atomic.StoreUint32(scheduleTracker, 105)
 	} else if params.RandomOrdering {
+		atomic.StoreUint32(scheduleTracker, 105)
 		// Input an incrementing array of ints
 		randomIndex := make([]uint64, params.TeamSize)
 		for i := range randomIndex {
 			randomIndex[i] = uint64(i)
 		}
-
+		atomic.StoreUint32(scheduleTracker, 106)
 		// Shuffle array of ints randomly using Fisher-Yates shuffle
 		// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
 		shuffle.Shuffle(&randomIndex)
+		atomic.StoreUint32(scheduleTracker, 107)
 		for i, nid := range nodes {
 			n := nodeMap.GetNode(nid.GetID())
 			nodeStateList[i] = n
@@ -66,9 +73,11 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 			//  the nodes' topological order
 			orderedNodeList[randomIndex[i]] = nid.GetID()
 		}
+		atomic.StoreUint32(scheduleTracker, 108)
 	} else {
 		// Otherwise go in the order derived
 		// from the pool picking and the node's ordering
+		atomic.StoreUint32(scheduleTracker, 109)
 		for i, nid := range nodes {
 			n := nodeMap.GetNode(nid.GetID())
 			nodeStateList[i] = n
@@ -83,14 +92,17 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 
 			orderedNodeList[position] = nid.GetID()
 		}
+		atomic.StoreUint32(scheduleTracker, 110)
 	}
 
 	// Construct the protoround object
+	atomic.StoreUint32(scheduleTracker, 111)
 	newRound.Topology = connect.NewCircuit(orderedNodeList)
 	newRound.ID = roundID
 	newRound.BatchSize = params.BatchSize
 	newRound.NodeStateList = nodeStateList
 	newRound.ResourceQueueTimeout = params.ResourceQueueTimeout
+	atomic.StoreUint32(scheduleTracker, 112)
 	return newRound, nil
 
 }

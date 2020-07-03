@@ -30,6 +30,8 @@ const newRoundChanLen = 100
 type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error)
 
+var scheduleTracker *uint32
+
 // Scheduler constructs the teaming parameters and sets up the scheduling
 func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan chan struct{}) error {
 	var params Params
@@ -126,7 +128,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 	var killed chan struct{}
 
-	numRounds := 0
 	iterationsCount := uint32(0)
 
 	// optional debug print which regularly prints the status of rounds and nodes
@@ -141,27 +142,36 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		var update node.UpdateNotification
 		var timedOutRoundID id.Round
 		hasUpdate := false
+
+		atomic.StoreUint32(scheduleTracker, 1)
+
 		select {
 		// Receive a signal to kill the scheduler
 		case killed = <-killchan:
+			atomic.StoreUint32(scheduleTracker, 2)
 			jww.WARN.Printf("Scheduler has recived a kill signal, exit process has begun")
 		// When we get a node update, move past the select statement
 		case update = <-state.GetNodeUpdateChannel():
+			atomic.StoreUint32(scheduleTracker, 3)
 			hasUpdate = true
 		// Receive a signal indicating that a round has timed out
 		case timedOutRoundID = <-roundTimeoutTracker:
+			atomic.StoreUint32(scheduleTracker, 4)
 			isRoundTimeout = true
 		}
 
 		atomic.AddUint32(&iterationsCount, 1)
-
+		atomic.StoreUint32(scheduleTracker, 5)
 		if isRoundTimeout {
+			atomic.StoreUint32(scheduleTracker, 6)
 			// Handle the timed out round
-			err := timeoutRound(state, timedOutRoundID, roundTracker)
+			err := timeoutRound(state, timedOutRoundID, roundTracker, pool)
+			atomic.StoreUint32(scheduleTracker, 7)
 			if err != nil {
 				return err
 			}
 		} else if hasUpdate {
+			atomic.StoreUint32(scheduleTracker, 28)
 			var err error
 
 			// Handle the node's state change
@@ -171,41 +181,56 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				return err
 			}
 		}
+		atomic.StoreUint32(scheduleTracker, 29)
 
 		// Remove offline nodes from pool to more accurately determine if pool is eligible for round creation
 		pool.CleanOfflineNodes(params.NodeCleanUpInterval * time.Second)
+		atomic.StoreUint32(scheduleTracker, 30)
 
 		for {
+
+			atomic.StoreUint32(scheduleTracker, 86)
 			// Create a new round if the pool is full
 			if pool.Len() >= int(teamFormationThreshold) && killed == nil {
 
 				// Increment round ID
 				currentID, err := state.IncrementRoundID()
+
+				atomic.StoreUint32(scheduleTracker, 87)
 				if err != nil {
 					return err
 				}
 
+				atomic.StoreUint32(scheduleTracker, 88)
 				newRound, err := createRound(params, pool, currentID, state)
 				if err != nil {
 					return err
 				}
 
+				atomic.StoreUint32(scheduleTracker, 89)
+
 				// Send the round to the new round channel to be created
 				newRoundChan <- newRound
-				numRounds++
+
+				atomic.StoreUint32(scheduleTracker, 90)
 			} else {
 				break
 			}
 		}
-
+		atomic.StoreUint32(scheduleTracker, 91)
 		// If the scheduler is to be killed and no rounds are in progress,
 		// kill the scheduler
 		if killed != nil && roundTracker.Len() == 0 {
+			atomic.StoreUint32(scheduleTracker, 92)
 			close(newRoundChan)
+			atomic.StoreUint32(scheduleTracker, 93)
 			jww.WARN.Printf("Scheduler is exiting due to kill signal")
+			atomic.StoreUint32(scheduleTracker, 94)
 			killed <- struct{}{}
+			atomic.StoreUint32(scheduleTracker, 95)
 			return nil
 		}
+		atomic.StoreUint32(scheduleTracker, 96)
 
 	}
 
@@ -214,33 +239,39 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 // Helper function which handles when we receive a timed out round
 func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
-	roundTracker *RoundTracker) error {
+	roundTracker *RoundTracker, pool *waitingPool) error {
+	atomic.StoreUint32(scheduleTracker, 8)
 	// On a timeout, check if the round is completed. If not, kill it
 	ourRound := state.GetRoundMap().GetRound(timeoutRoundID)
 	roundState := ourRound.GetRoundState()
-
+	atomic.StoreUint32(scheduleTracker, 9)
 	// If the round is neither in completed or failed
 	if roundState != states.COMPLETED && roundState != states.FAILED {
+		atomic.StoreUint32(scheduleTracker, 10)
 		// Build the round error message
 		timeoutError := &pb.RoundError{
 			Id:     uint64(ourRound.GetRoundID()),
 			NodeId: id.Permissioning.Marshal(),
 			Error:  fmt.Sprintf("Round %d killed due to a round time out", ourRound.GetRoundID()),
 		}
+		atomic.StoreUint32(scheduleTracker, 11)
 		// Sign the error message with our private key
 		err := signature.Sign(timeoutError, state.GetPrivateKey())
 		if err != nil {
 			jww.FATAL.Panicf("Failed to sign error message for "+
 				"timed out round %d: %+v", ourRound.GetRoundID(), err)
 		}
+		atomic.StoreUint32(scheduleTracker, 12)
 
-		err = killRound(state, ourRound, timeoutError, roundTracker)
+		err = killRound(state, ourRound, timeoutError, roundTracker, pool)
+		atomic.StoreUint32(scheduleTracker, 13)
 		if err != nil {
+			atomic.StoreUint32(scheduleTracker, 14)
 			return errors.WithMessagef(err, "Failed to kill round %d: %s",
 				ourRound.GetRoundID(), err)
 		}
-
 	}
+	atomic.StoreUint32(scheduleTracker, 15)
 	return nil
 }
 
