@@ -377,6 +377,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		// Output data into logs
 		jww.INFO.Printf("")
 		jww.INFO.Printf("Scheduler interations since last update: %v", numIterations)
+		jww.INFO.Printf("Last Scheduler action: %v", atomic.LoadUint32(scheduleTracker))
 		jww.INFO.Printf("")
 		jww.INFO.Printf("Teams in precomp: %v", len(precompRounds))
 		jww.INFO.Printf("Teams in queued: %v", len(queuedRounds))
