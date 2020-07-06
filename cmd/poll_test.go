@@ -82,12 +82,11 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		GatewayVersion: "1.1.0",
 		ServerVersion:  "1.1.0",
 	}
-	d := uint32(0)
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
 			ID:    1,
 			State: uint32(states.PRECOMPUTING),
-		}, &d)
+		})
 
 	if err != nil {
 		t.Errorf("Could not add round update: %s", err)
@@ -399,12 +398,11 @@ func TestPoll_BannedNode(t *testing.T) {
 		Activity:   uint32(current.WAITING),
 		Error:      nil,
 	}
-	d := uint32(0)
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
 			ID:    1,
 			State: uint32(states.PRECOMPUTING),
-		}, &d)
+		})
 
 	if err != nil {
 		t.Errorf("Could not add round update: %s", err)
