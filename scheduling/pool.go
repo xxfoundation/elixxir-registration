@@ -12,7 +12,6 @@ import (
 	"gitlab.com/elixxir/crypto/shuffle"
 	"gitlab.com/elixxir/registration/storage/node"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -74,7 +73,6 @@ func (wp *waitingPool) Ban(n *node.State) {
 func (wp *waitingPool) CleanOfflineNodes(timeout time.Duration) {
 	wp.mux.Lock()
 	defer wp.mux.Unlock()
-	atomic.StoreUint32(scheduleTracker, 82)
 	now := time.Now()
 
 	// Collect nodes whose lastPoll is longer than

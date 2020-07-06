@@ -68,11 +68,3 @@ func (rt *RoundTracker) GetActiveRounds() []id.Round {
 
 	return rounds
 }
-
-/*
-// tracks how many times the scheduler runs
-type SchedulingTracker *uint32
-
-func (sc SchedulingTracker)Incrememnt(){
-	atomic.AddUint32()
-}*/
