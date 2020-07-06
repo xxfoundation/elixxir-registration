@@ -125,6 +125,7 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 	if err != nil {
 		return err
 	}
+
 	roundCopy.UpdateID = updateID
 
 	err = signature.Sign(roundCopy, s.privateKey)

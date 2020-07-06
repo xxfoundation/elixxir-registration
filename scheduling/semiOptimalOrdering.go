@@ -5,7 +5,6 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage/node"
 	"math"
-	"sync/atomic"
 )
 
 // Create a latencyTable
@@ -13,9 +12,7 @@ var latencyTable = createLatencyTable()
 
 func generateSemiOptimalOrdering(nodes []*node.State) ([]*node.State, error) {
 	// Make all permutations of nodes
-	atomic.StoreUint32(scheduleTracker, 120)
 	permutations := Permute(nodes)
-	atomic.StoreUint32(scheduleTracker, 121)
 	jww.DEBUG.Printf("Looking for most efficient teaming order")
 	optimalLatency := math.MaxInt32
 	var optimalTeam []*node.State
@@ -58,7 +55,6 @@ func generateSemiOptimalOrdering(nodes []*node.State) ([]*node.State, error) {
 		}
 
 	}
-	atomic.StoreUint32(scheduleTracker, 123)
 	return optimalTeam, nil
 }
 
