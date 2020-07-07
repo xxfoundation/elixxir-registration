@@ -126,7 +126,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 	var killed chan struct{}
 
-	numRounds := 0
 	iterationsCount := uint32(0)
 
 	// optional debug print which regularly prints the status of rounds and nodes
@@ -141,6 +140,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		var update node.UpdateNotification
 		var timedOutRoundID id.Round
 		hasUpdate := false
+
 		select {
 		// Receive a signal to kill the scheduler
 		case killed = <-killchan:
@@ -154,20 +154,17 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		}
 
 		atomic.AddUint32(&iterationsCount, 1)
-		endRound := false
-
 		if isRoundTimeout {
 			// Handle the timed out round
-			err := timeoutRound(state, timedOutRoundID, roundTracker)
+			err := timeoutRound(state, timedOutRoundID, roundTracker, pool)
 			if err != nil {
 				return err
 			}
-			endRound = true
 		} else if hasUpdate {
 			var err error
 
 			// Handle the node's state change
-			endRound, err = HandleNodeUpdates(update, pool, state,
+			err = HandleNodeUpdates(update, pool, state,
 				rtDelay, roundTracker)
 			if err != nil {
 				return err
@@ -177,17 +174,13 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		// Remove offline nodes from pool to more accurately determine if pool is eligible for round creation
 		pool.CleanOfflineNodes(params.NodeCleanUpInterval * time.Second)
 
-		// If a round has finished, decrement num rounds
-		if endRound {
-			numRounds--
-		}
-
 		for {
 			// Create a new round if the pool is full
 			if pool.Len() >= int(teamFormationThreshold) && killed == nil {
 
 				// Increment round ID
 				currentID, err := state.IncrementRoundID()
+
 				if err != nil {
 					return err
 				}
@@ -199,7 +192,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 				// Send the round to the new round channel to be created
 				newRoundChan <- newRound
-				numRounds++
 			} else {
 				break
 			}
@@ -207,13 +199,12 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 		// If the scheduler is to be killed and no rounds are in progress,
 		// kill the scheduler
-		if killed != nil && numRounds == 0 {
+		if killed != nil && roundTracker.Len() == 0 {
 			close(newRoundChan)
 			jww.WARN.Printf("Scheduler is exiting due to kill signal")
 			killed <- struct{}{}
 			return nil
 		}
-
 	}
 
 	return errors.New("single scheduler should never exit")
@@ -221,7 +212,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 // Helper function which handles when we receive a timed out round
 func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
-	roundTracker *RoundTracker) error {
+	roundTracker *RoundTracker, pool *waitingPool) error {
 	// On a timeout, check if the round is completed. If not, kill it
 	ourRound := state.GetRoundMap().GetRound(timeoutRoundID)
 	roundState := ourRound.GetRoundState()
@@ -234,6 +225,7 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 			NodeId: id.Permissioning.Marshal(),
 			Error:  fmt.Sprintf("Round %d killed due to a round time out", ourRound.GetRoundID()),
 		}
+
 		// Sign the error message with our private key
 		err := signature.Sign(timeoutError, state.GetPrivateKey())
 		if err != nil {
@@ -241,12 +233,11 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 				"timed out round %d: %+v", ourRound.GetRoundID(), err)
 		}
 
-		err = killRound(state, ourRound, timeoutError, roundTracker)
+		err = killRound(state, ourRound, timeoutError, roundTracker, pool)
 		if err != nil {
 			return errors.WithMessagef(err, "Failed to kill round %d: %s",
 				ourRound.GetRoundID(), err)
 		}
-
 	}
 	return nil
 }

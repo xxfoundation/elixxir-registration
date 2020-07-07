@@ -73,7 +73,6 @@ func (wp *waitingPool) Ban(n *node.State) {
 func (wp *waitingPool) CleanOfflineNodes(timeout time.Duration) {
 	wp.mux.Lock()
 	defer wp.mux.Unlock()
-
 	now := time.Now()
 
 	// Collect nodes whose lastPoll is longer than

@@ -24,6 +24,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
 
 	nodes, err := pool.PickNRandAtThreshold(int(params.TeamSize), int(params.TeamSize))
+
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)
 	}
@@ -59,6 +60,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 		// Shuffle array of ints randomly using Fisher-Yates shuffle
 		// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
 		shuffle.Shuffle(&randomIndex)
+
 		for i, nid := range nodes {
 			n := nodeMap.GetNode(nid.GetID())
 			nodeStateList[i] = n

@@ -50,7 +50,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
-	roundState := round.NewState_Testing(roundID, 0, t)
+	roundState := round.NewState_Testing(roundID, 0, nil, t)
 	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
@@ -63,14 +63,11 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 
 	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
 	roundTracker := NewRoundTracker()
-	roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, roundTracker)
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0, roundTracker)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
 
-	if roundEnd {
-		t.Errorf("change to state %s should not cause the round to complete", current.WAITING)
-	}
 }
 
 // Happy path
@@ -118,13 +115,9 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 		testTracker := NewRoundTracker()
-		roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
-		}
-
-		if roundEnd {
-			t.Errorf("change to state %s should not cause the round to complete", current.WAITING)
 		}
 	}
 
@@ -139,13 +132,9 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, nil)
+		err = HandleNodeUpdates(testUpdate, testPool, testState, 0, nil)
 		if err != nil {
 			t.Errorf("Error in standby happy path: %v", err)
-		}
-
-		if roundEnd {
-			t.Errorf("change to state %s should not cause the round to complete", current.STANDBY)
 		}
 
 	}
@@ -197,13 +186,9 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 		testTracker := NewRoundTracker()
-		roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
+		err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
-		}
-
-		if roundEnd {
-			t.Errorf("change to state %s should not cause the round to complete", current.STANDBY)
 		}
 
 	}
@@ -263,13 +248,9 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
+		err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
-		}
-
-		if roundEnd {
-			t.Errorf("change to state %s should not cause the round to complete", current.WAITING)
 		}
 	}
 
@@ -284,21 +265,10 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 
-		roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
+		err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
 		if err != nil {
 			t.Errorf("Expected happy path for completed: %v", err)
 		}
-
-		if i == len(nodeList)-1 {
-			if !roundEnd {
-				t.Errorf("change to state %s on last node should cause round to complete", current.COMPLETED)
-			}
-		} else {
-			if roundEnd {
-				t.Errorf("change to state %s should not cause the round to complete", current.COMPLETED)
-			}
-		}
-
 	}
 }
 
@@ -343,15 +313,10 @@ func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 		testTracker := NewRoundTracker()
 
-		roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
+		err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
 		}
-
-		if roundEnd {
-			t.Errorf("change to state %s should not cause the round to complete", current.COMPLETED)
-		}
-
 	}
 }
 
@@ -381,10 +346,11 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 	}
 
 	roundID := testState.GetRoundID()
+	topology := connect.NewCircuit(nodeList)
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
-	roundState := round.NewState_Testing(roundID, 0, t)
+	roundState := round.NewState_Testing(roundID, 0, topology, t)
 	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
@@ -405,13 +371,9 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	testTracker := NewRoundTracker()
 
-	roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
-	}
-
-	if roundEnd {
-		t.Errorf("change to state %s should not cause the round to complete", current.ERROR)
 	}
 }
 
@@ -459,13 +421,9 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 
 	// Ban the first node in the state map
 	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
-	roundEnd, err := HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
-	}
-
-	if roundEnd {
-		t.Errorf("banning a node should not complete a round")
 	}
 
 	if testPool.Len() == int(testParams.TeamSize) {
@@ -474,7 +432,9 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 			"\n\tReceived size: %v", testParams.TeamSize-1, testPool.Len())
 	}
 
-	r := round.NewState_Testing(42, 0, t)
+	topology := connect.NewCircuit(nodeList)
+
+	r := round.NewState_Testing(42, 0, topology, t)
 
 	// Get a node and set the round of the node
 	ns := testState.GetNodeMap().GetNode(nodeList[1])
@@ -491,13 +451,9 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 
 	// Ban the the second node in the state map
 	testState.GetNodeMap().GetNode(nodeList[1]).GetPollingLock().Lock()
-	roundEnd, err = HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
+	err = HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
-	}
-
-	if roundEnd {
-		t.Errorf("banning a node should not complete a round")
 	}
 
 	// Test that a node with a round gets has it's round unset
@@ -545,7 +501,9 @@ func TestKillRound(t *testing.T) {
 		testPool.Add(ns)
 	}
 
-	r := round.NewState_Testing(42, 0, t)
+	topology := connect.NewCircuit(nodeList)
+
+	r := round.NewState_Testing(42, 0, topology, t)
 
 	re := &mixmessages.RoundError{
 		Id:     0,
@@ -555,7 +513,7 @@ func TestKillRound(t *testing.T) {
 
 	tesTracker := NewRoundTracker()
 
-	err = killRound(testState, r, re, tesTracker)
+	err = killRound(testState, r, re, tesTracker, nil)
 	if err != nil {
 		t.Errorf("Unexpected error in happy path: %v", err)
 	}

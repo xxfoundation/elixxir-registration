@@ -13,7 +13,6 @@ var latencyTable = createLatencyTable()
 func generateSemiOptimalOrdering(nodes []*node.State) ([]*node.State, error) {
 	// Make all permutations of nodes
 	permutations := Permute(nodes)
-
 	jww.DEBUG.Printf("Looking for most efficient teaming order")
 	optimalLatency := math.MaxInt32
 	var optimalTeam []*node.State

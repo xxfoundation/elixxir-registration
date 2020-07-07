@@ -35,6 +35,14 @@ func (rt *RoundTracker) AddActiveRound(rid id.Round) {
 	rt.mux.Unlock()
 }
 
+// gives the number of members for the round tracker
+func (rt *RoundTracker) Len() int {
+	rt.mux.Lock()
+	defer rt.mux.Lock()
+
+	return len(rt.activeRounds)
+}
+
 // Removes round from active round map
 func (rt *RoundTracker) RemoveActiveRound(rid id.Round) {
 	rt.mux.Lock()
@@ -60,11 +68,3 @@ func (rt *RoundTracker) GetActiveRounds() []id.Round {
 
 	return rounds
 }
-
-/*
-// tracks how many times the scheduler runs
-type SchedulingTracker *uint32
-
-func (sc SchedulingTracker)Incrememnt(){
-	atomic.AddUint32()
-}*/

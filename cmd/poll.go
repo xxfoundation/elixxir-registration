@@ -71,7 +71,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	//update ip addresses if nessessary
-	err := checkIPAddresses(m, n, msg, serverAddress)
+	err := checkIPAddresses(m, n, msg, m.Comms.ProtoComms, serverAddress)
 	if err != nil {
 		err = errors.WithMessage(err, "Failed to update IP addresses")
 		return response, err
@@ -321,7 +321,7 @@ func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) 
 	return nil
 }
 
-func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, nodeAddress string) error {
+func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, comm *connect.ProtoComms, nodeAddress string) error {
 	// Get server and gateway addresses
 	gatewayAddress := msg.GatewayAddress
 
@@ -343,6 +343,11 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 		currentNDF := m.State.GetFullNdf().Get()
 
 		if nodeUpdate {
+			h, hasHost := comm.GetHost(n.GetID())
+			if !hasHost {
+				return errors.New("Could not get node host object")
+			}
+			h.UpdateAddress(nodeAddress)
 			n.SetConnectivity(node.PortUnknown)
 			if err = updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()

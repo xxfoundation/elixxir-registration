@@ -64,8 +64,9 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	})
 
 	// Make a simple auth object that will pass the checks
-	testHost, _ := connect.NewHost(testID, testString,
+	testHost, _ := impl.Comms.AddHost(testID, testString,
 		make([]byte, 0), false, true)
+
 	testAuth := &connect.Auth{
 		IsAuthenticated: true,
 		Sender:          testHost,
@@ -82,7 +83,6 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		GatewayVersion: "1.1.0",
 		ServerVersion:  "1.1.0",
 	}
-
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
 			ID:    1,
@@ -399,7 +399,6 @@ func TestPoll_BannedNode(t *testing.T) {
 		Activity:   uint32(current.WAITING),
 		Error:      nil,
 	}
-
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
 			ID:    1,

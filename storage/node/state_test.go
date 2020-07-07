@@ -166,7 +166,7 @@ func TestNodeState_Update_Valid_RequiresRound_Round_InvalidState(t *testing.T) {
 	ns := State{
 		activity:     current.WAITING,
 		lastPoll:     time.Now(),
-		currentRound: round.NewState_Testing(42, states.FAILED, t),
+		currentRound: round.NewState_Testing(42, states.FAILED, nil, t),
 	}
 
 	time.Sleep(10 * time.Millisecond)
@@ -209,7 +209,7 @@ func TestNodeState_Update_Valid_RequiresRound_Round_ValidState(t *testing.T) {
 	ns := State{
 		activity:     current.WAITING,
 		lastPoll:     time.Now(),
-		currentRound: round.NewState_Testing(42, states.PRECOMPUTING, t),
+		currentRound: round.NewState_Testing(42, states.PRECOMPUTING, nil, t),
 	}
 
 	time.Sleep(10 * time.Millisecond)
@@ -248,7 +248,7 @@ func TestNodeState_Update_Valid_RequiresNoRound_HasRound(t *testing.T) {
 	ns := State{
 		activity:     current.COMPLETED,
 		lastPoll:     time.Now(),
-		currentRound: round.NewState_Testing(42, states.PRECOMPUTING, t),
+		currentRound: round.NewState_Testing(42, states.PRECOMPUTING, nil, t),
 	}
 
 	time.Sleep(10 * time.Millisecond)
@@ -355,7 +355,7 @@ func TestNodeState_GetLastPoll(t *testing.T) {
 
 //tests that GetActivity returns the correct activity
 func TestNodeState_GetCurrentRound_Set(t *testing.T) {
-	r := round.NewState_Testing(42, 0, t)
+	r := round.NewState_Testing(42, 0, nil, t)
 	ns := State{
 		currentRound: r,
 	}
@@ -405,7 +405,7 @@ func TestNodeState_ClearRound(t *testing.T) {
 
 //tests that clear round sets the tracked roundID to nil
 func TestNodeState_SetRound_Valid(t *testing.T) {
-	r := round.NewState_Testing(42, 2, t)
+	r := round.NewState_Testing(42, 2, nil, t)
 
 	ns := State{
 		currentRound: nil,
@@ -425,8 +425,8 @@ func TestNodeState_SetRound_Valid(t *testing.T) {
 
 //tests that clear round does not set the tracked roundID errors when one is set
 func TestNodeState_SetRound_Invalid(t *testing.T) {
-	r := round.NewState_Testing(42, 0, t)
-	storedR := round.NewState_Testing(69, 0, t)
+	r := round.NewState_Testing(42, 0, nil, t)
+	storedR := round.NewState_Testing(69, 0, nil, t)
 
 	ns := State{
 		currentRound: storedR,
