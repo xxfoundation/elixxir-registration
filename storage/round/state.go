@@ -78,7 +78,7 @@ func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
 }
 
 //creates a round state object
-func NewState_Testing(id id.Round, state states.Round, t *testing.T) *State {
+func NewState_Testing(id id.Round, state states.Round, topology *connect.Circuit, t *testing.T) *State {
 	if t == nil {
 		jww.FATAL.Panic("Only for testing")
 	}
@@ -95,6 +95,7 @@ func NewState_Testing(id id.Round, state states.Round, t *testing.T) *State {
 		readyForTransition: 0,
 		mux:                sync.RWMutex{},
 		roundComplete:      roundCompleteChan,
+		topology:           topology,
 	}
 }
 

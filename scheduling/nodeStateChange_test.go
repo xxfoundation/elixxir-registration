@@ -50,7 +50,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
-	roundState := round.NewState_Testing(roundID, 0, t)
+	roundState := round.NewState_Testing(roundID, 0, nil, t)
 	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
@@ -346,10 +346,11 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 	}
 
 	roundID := testState.GetRoundID()
+	topology := connect.NewCircuit(nodeList)
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
-	roundState := round.NewState_Testing(roundID, 0, t)
+	roundState := round.NewState_Testing(roundID, 0, topology, t)
 	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool
@@ -431,7 +432,9 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 			"\n\tReceived size: %v", testParams.TeamSize-1, testPool.Len())
 	}
 
-	r := round.NewState_Testing(42, 0, t)
+	topology := connect.NewCircuit(nodeList)
+
+	r := round.NewState_Testing(42, 0, topology, t)
 
 	// Get a node and set the round of the node
 	ns := testState.GetNodeMap().GetNode(nodeList[1])
@@ -498,7 +501,9 @@ func TestKillRound(t *testing.T) {
 		testPool.Add(ns)
 	}
 
-	r := round.NewState_Testing(42, 0, t)
+	topology := connect.NewCircuit(nodeList)
+
+	r := round.NewState_Testing(42, 0, topology, t)
 
 	re := &mixmessages.RoundError{
 		Id:     0,
