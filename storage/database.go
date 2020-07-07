@@ -99,6 +99,7 @@ type Application struct {
 	Name  string
 	Url   string
 	Blurb string
+	Other string
 
 	// Location string for the Node
 	Location string
@@ -112,6 +113,7 @@ type Application struct {
 	Network string
 
 	// Social media
+	Forum     string
 	Email     string
 	Twitter   string
 	Discord   string
