@@ -64,8 +64,9 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	})
 
 	// Make a simple auth object that will pass the checks
-	testHost, _ := connect.NewHost(testID, testString,
+	testHost, _ := impl.Comms.AddHost(testID, testString,
 		make([]byte, 0), false, true)
+
 	testAuth := &connect.Auth{
 		IsAuthenticated: true,
 		Sender:          testHost,
