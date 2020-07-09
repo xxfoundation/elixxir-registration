@@ -67,6 +67,10 @@ func (t Transitions) IsValidRoundState(to current.Activity, st states.Round) boo
 
 // returns a string describing valid transitions for error messages
 func (t Transitions) GetValidRoundStateStrings(to current.Activity) string {
+	if to > current.NUM_STATES || to < 0 {
+		return "INVALID STATE"
+	}
+
 	if len(t[to].roundState) == 0 {
 		return "NO VALID TRANSITIONS"
 	}

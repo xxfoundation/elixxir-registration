@@ -67,6 +67,14 @@ func TestTransitions_GetValidRoundStateStrings(t *testing.T) {
 				expectedStrings[i], s)
 		}
 	}
+
+	// Test that an invalid state number returns an error
+	a := current.Activity(0)
+	a = 128
+	s := testTransition.GetValidRoundStateStrings(a)
+	if s != "INVALID STATE" {
+		t.Errorf("Returned a different string to expected.\n\tExpected: \"INVALID STATE\"\n\tGot: %s", s)
+	}
 }
 
 // Checks the look up function for NeedsRound produces expected results
