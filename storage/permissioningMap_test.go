@@ -268,6 +268,39 @@ func TestMapImpl_GetNode_Invalid(t *testing.T) {
 }
 
 // Happy path
+func TestMapImpl_GetNodeById(t *testing.T) {
+	m := &MapImpl{
+		nodes: make(map[string]*Node),
+	}
+
+	// Load in a registration code
+	code := "TEST"
+	testId := id.NewIdFromString(code, id.Node, t)
+	m.nodes[code] = &Node{Code: code, Id: testId.Marshal()}
+
+	// Check that the correct node is obtained
+	info, err := m.GetNodeById(testId)
+	if err != nil || info.Code != code {
+		t.Errorf("Expected to be able to obtain correct node")
+	}
+}
+
+// Error path: Nonexistent node id
+func TestMapImpl_GetNodeById_Invalid(t *testing.T) {
+	m := &MapImpl{
+		nodes: make(map[string]*Node),
+	}
+
+	testId := id.NewIdFromString("test", id.Node, t)
+
+	// Check that no node is obtained from empty map
+	info, err := m.GetNodeById(testId)
+	if err == nil || info != nil {
+		t.Errorf("Expected to not find the node")
+	}
+}
+
+// Happy path
 func TestMapImpl_GetNodesByStatus(t *testing.T) {
 	m := &MapImpl{
 		nodes: make(map[string]*Node),

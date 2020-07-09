@@ -45,6 +45,8 @@ type NodeRegistration interface {
 		gatewayAddress, gatewayCert string) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*Node, error)
+	// Get Node information for the given Node ID
+	GetNodeById(id *id.ID) (*Node, error)
 	// Return all nodes in storage with the given Status
 	GetNodesByStatus(status node.Status) ([]*Node, error)
 	// Insert Application object along with associated unregistered Node
