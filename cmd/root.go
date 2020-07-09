@@ -41,7 +41,14 @@ var (
 	clientVersion        string
 	clientVersionLock    sync.RWMutex
 	disablePermissioning bool
+	disabledNodesPath    string
+
+	// Duration between polls of the disabled Node list for updates.
+	disabledNodesPollDuration time.Duration
 )
+
+// Default duration between polls of the disabled Node list for updates.
+const defaultDisabledNodesPollDuration = time.Minute
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -204,6 +211,28 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
 		}
 
+		// Get disabled Nodes poll duration from config file or default to 1
+		// minute if not set
+		disabledNodesPollDuration = viper.GetDuration("disabledNodesPollDuration")
+		if disabledNodesPollDuration == 0 {
+			disabledNodesPollDuration = defaultDisabledNodesPollDuration
+		}
+
+		// Start routine to update disabled Nodes list
+		disabledNodePollQuitChan := make(chan struct{})
+		disabledNodesPath = viper.GetString("disabledNodesPath")
+		if disabledNodesPath != "" {
+			err = impl.State.CreateDisabledNodes(disabledNodesPath, disabledNodesPollDuration)
+			if err != nil {
+				jww.WARN.Printf("Error while parsing disabled Node list: %v", err)
+			} else {
+				go impl.State.StartPollDisabledNodes(disabledNodePollQuitChan)
+			}
+		} else {
+			jww.DEBUG.Printf("No disabled Node list path provided. Skipping " +
+				"disabled Node list polling.")
+		}
+
 		// Determine how long between storing Node metrics
 		nodeMetricInterval := time.Duration(
 			viper.GetInt64("nodeMetricInterval")) * time.Second
@@ -318,6 +347,9 @@ var rootCmd = &cobra.Command{
 
 			// Stop round metrics tracker
 			metricTrackerQuitChan <- struct{}{}
+
+			// Stop polling for disabled Nodes
+			disabledNodePollQuitChan <- struct{}{}
 
 			// Close connection to the database
 			err = closeFunc()
