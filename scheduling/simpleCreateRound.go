@@ -23,7 +23,7 @@ import (
 func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
 
-	nodes, err := pool.PickNRandAtThreshold(int(params.TeamSize), int(params.TeamSize))
+	nodes, err := pool.PickNRandAtThreshold(int(params.TeamSize), int(params.TeamSize), state.GetDisabledNodesSet())
 
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)

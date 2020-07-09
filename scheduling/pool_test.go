@@ -207,7 +207,7 @@ func TestWaitingPool_PickNRandAtThreshold(t *testing.T) {
 
 	}
 
-	nodeList, err := testPool.PickNRandAtThreshold(threshold, requestedNodes)
+	nodeList, err := testPool.PickNRandAtThreshold(threshold, requestedNodes, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -241,7 +241,7 @@ func TestWaitingPool_PickNRandAtThreshold_ThresholdErr(t *testing.T) {
 
 	}
 
-	_, err := testPool.PickNRandAtThreshold(threshold, requestedNodes)
+	_, err := testPool.PickNRandAtThreshold(threshold, requestedNodes, nil)
 	if err != nil {
 		return
 	}
@@ -270,13 +270,55 @@ func TestWaitingPool_PickNRandAtThreshold_NotEnoughNodesErr(t *testing.T) {
 
 	}
 
-	_, err := testPool.PickNRandAtThreshold(threshold, requestedNodes)
+	_, err := testPool.PickNRandAtThreshold(threshold, requestedNodes, nil)
 	if err != nil {
 		return
 	}
 
 	t.Errorf("Expected error case: "+
 		"Should not be able to pick %d nodes when only %d exist", requestedNodes, totalNodes)
+
+}
+
+func TestWaitingPool_PickNRandAtThreshold_DisabledNodes(t *testing.T) {
+	testPool := NewWaitingPool()
+	testState := setupNodeMap(t)
+
+	totalNodes := 10
+	requestedNodes := totalNodes / 2
+	threshold := totalNodes / 2
+
+	disabledNodes := set.New()
+	expectedDisabledNodes := []*node.State{}
+
+	for i := 0; i < totalNodes; i++ {
+		// Make a node state
+		newNode := setupNode(t, testState, uint64(i))
+
+		// Set last poll to a recent time
+		newNode.SetLastPoll(time.Now(), t)
+
+		// Place ancient node into pool
+		testPool.Add(newNode)
+		if i%2 == 1 {
+			disabledNodes.Insert(newNode)
+			expectedDisabledNodes = append(expectedDisabledNodes, newNode)
+		}
+	}
+
+	nodeList, err := testPool.PickNRandAtThreshold(threshold, requestedNodes, disabledNodes)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+
+	for _, state := range nodeList {
+		for _, disabledState := range expectedDisabledNodes {
+			if state == disabledState {
+				t.Errorf("PickNRandAtThreshold() added a state that should "+
+					"have been disabled.\n\treceived: %v", state)
+			}
+		}
+	}
 
 }
 
