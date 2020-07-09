@@ -45,6 +45,30 @@ func TestTransitions_IsValidTransition(t *testing.T) {
 
 }
 
+// Tests the round state strings
+func TestTransitions_GetValidRoundStateStrings(t *testing.T) {
+	testTransition := newTransitions()
+
+	var expectedStrings = make([]string, current.NUM_STATES)
+
+	expectedStrings[0] = "NO VALID TRANSITIONS"
+	expectedStrings[1] = "NO VALID TRANSITIONS"
+	expectedStrings[2] = "PRECOMPUTING"
+	expectedStrings[3] = "PRECOMPUTING"
+	expectedStrings[4] = "QUEUED, REALTIME"
+	expectedStrings[5] = "REALTIME"
+	expectedStrings[6] = "NO VALID TRANSITIONS"
+	expectedStrings[7] = "NO VALID TRANSITIONS"
+
+	for i := uint32(0); i < uint32(current.NUM_STATES); i++ {
+		s := testTransition.GetValidRoundStateStrings(current.Activity(i))
+		if s != expectedStrings[i] {
+			t.Errorf("Returned a different string to expected.\n\tExpected: %s\n\tGot: %s",
+				expectedStrings[i], s)
+		}
+	}
+}
+
 // Checks the look up function for NeedsRound produces expected results
 func TestTransitions_NeedsRound(t *testing.T) {
 	testTransition := newTransitions()
