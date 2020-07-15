@@ -83,6 +83,13 @@ func (m *DatabaseImpl) GetNode(code string) (*Node, error) {
 	return newNode, err
 }
 
+// Get Node information for the given Node ID
+func (m *DatabaseImpl) GetNodeById(id *id.ID) (*Node, error) {
+	newNode := &Node{}
+	err := m.db.First(&newNode, "id = ?", id.Marshal()).Error
+	return newNode, err
+}
+
 // Return all nodes in storage with the given Status
 func (m *DatabaseImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 	var nodes []*Node
