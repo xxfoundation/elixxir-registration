@@ -9,7 +9,6 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature"
@@ -24,6 +23,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/testkeys"
+	"gitlab.com/xx_network/comms/connect"
 	"sync"
 	"sync/atomic"
 	"testing"

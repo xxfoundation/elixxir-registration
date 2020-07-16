@@ -12,7 +12,6 @@ import (
 	"crypto/x509"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
@@ -23,6 +22,7 @@ import (
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/comms/connect"
 	"sync"
 	"time"
 )

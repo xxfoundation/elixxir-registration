@@ -7,7 +7,6 @@ package scheduling
 
 import (
 	"crypto/rand"
-	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/current"
@@ -15,6 +14,7 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/xx_network/comms/connect"
 	"strconv"
 	"testing"
 	"time"
