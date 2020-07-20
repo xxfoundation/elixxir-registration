@@ -328,10 +328,10 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	//lifecycle to check if they've already registered
 	impl.Functions.CheckRegistration = func(msg *pb.RegisteredNodeCheck) (confirmation *pb.RegisteredNodeConfirmation, e error) {
 
-		response := instance.CheckNodeRegistration(msg.RegCode)
+		response, e := instance.CheckNodeRegistration(msg)
 		// Returning any errors, such as database errors, would result in too much
 		// leaked data for a public call.
-		return &pb.RegisteredNodeConfirmation{IsRegistered: response}, nil
+		return &pb.RegisteredNodeConfirmation{IsRegistered: response}, e
 
 	}
 
