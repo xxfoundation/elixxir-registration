@@ -82,6 +82,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		Error:          nil,
 		GatewayVersion: "1.1.0",
 		ServerVersion:  "1.1.0",
+		GatewayAddress: "0.0.0.0:22840",
 	}
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
@@ -102,7 +103,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	n := impl.State.GetNodeMap().GetNode(testID)
 	n.SetConnectivity(node.PortSuccessful)
 
-	response, err := impl.Poll(testMsg, testAuth, "0.0.0.0")
+	response, err := impl.Poll(testMsg, testAuth, "0.0.0.0:11420")
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -193,7 +194,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	dummyMessage := &pb.PermissioningPoll{}
 
-	_, err = impl.Poll(dummyMessage, testAuth, "0.0.0.0")
+	_, err = impl.Poll(dummyMessage, testAuth, "0.0.0.0:11420")
 	if err == nil || err.Error() != connect.AuthError(testAuth.Sender.GetId()).Error() {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -956,5 +957,44 @@ func TestVerifyError(t *testing.T) {
 	err = verifyError(msg, n, impl)
 	if err != nil {
 		t.Error("Failed to verify error")
+	}
+}
+
+// Tests that updateGatewayAdvertisedAddress() returns the gatewayAddress when
+// no replacements need to be made.
+func TestUpdateGatewayAdvertisedAddress(t *testing.T) {
+	gatewayAddress := "0.0.0.0:22840"
+	nodeAddress := "192.168.1.1:11420"
+
+	testAddress, err := updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress)
+
+	if err != nil {
+		t.Errorf("updateGatewayAdvertisedAddress() produced an unexpected error."+
+			"\n\texpected: %v\n\treceived: %v", nil, err)
+	}
+
+	if testAddress != gatewayAddress {
+		t.Errorf("updateGatewayAdvertisedAddress() did not return the correct address."+
+			"\n\texpected: %v\n\treceived: %v", gatewayAddress, testAddress)
+	}
+}
+
+// Tests that updateGatewayAdvertisedAddress() returns the nodeAddress with the
+// gatewayAddress port when the gatewayReplaceIpPlaceholder is used.
+func TestUpdateGatewayAdvertisedAddress_Update(t *testing.T) {
+	gatewayAddress := gatewayReplaceIpPlaceholder + ":22840"
+	nodeAddress := "192.168.1.1:11420"
+	expectedAddress := "192.168.1.1:22840"
+
+	testAddress, err := updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress)
+
+	if err != nil {
+		t.Errorf("updateGatewayAdvertisedAddress() produced an unexpected error."+
+			"\n\texpected: %v\n\treceived: %v", nil, err)
+	}
+
+	if testAddress != expectedAddress {
+		t.Errorf("updateGatewayAdvertisedAddress() did not return the correct address."+
+			"\n\texpected: %v\n\treceived: %v", expectedAddress, testAddress)
 	}
 }
