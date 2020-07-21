@@ -22,9 +22,8 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/spf13/pflag v1.0.5 // indirect
-
 	github.com/spf13/viper v1.7.0
-	gitlab.com/elixxir/comms v0.0.0-20200709225743-d854f4a43382
+	gitlab.com/elixxir/comms v0.0.0-20200720224907-3f3b22b69fc5
 	gitlab.com/elixxir/crypto v0.0.0-20200707005343-97f868cbd930
 	gitlab.com/elixxir/primitives v0.0.0-20200706165052-9fe7a4fb99a3
 	google.golang.org/genproto v0.0.0-20200515170657-fc4c6c6a6587 // indirect
