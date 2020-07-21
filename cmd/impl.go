@@ -265,6 +265,9 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 			return errors.WithMessage(err, "Could not ban node")
 		}
 
+		//take the polling lock
+		ns.GetPollingLock().Lock()
+
 		/// Send the node's update notification to the scheduler
 		err = state.SendUpdateNotification(nun)
 		if err != nil {
