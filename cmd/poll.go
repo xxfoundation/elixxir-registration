@@ -105,7 +105,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	// Check the node's connectivity
-	continuePoll, err := m.checkConnectivity(n, activity)
+	continuePoll, err := m.checkConnectivity(n, activity, m.GetDisableGatewayPingFlag())
 	if err != nil || !continuePoll {
 		return response, err
 	}
@@ -413,7 +413,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 // Handles the responses to the different connectivity states of a node
 // if boolean is true the poll should continue
 func (m *RegistrationImpl) checkConnectivity(n *node.State,
-	activity current.Activity) (bool, error) {
+	activity current.Activity, disableGatewayPing bool) (bool, error) {
 
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
@@ -421,9 +421,14 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 		// Ping the server and attempt on that port
 		go func() {
 			nodeHost, exists := m.Comms.GetHost(n.GetID())
-			gwHost, err := connect.NewHost(nil, n.GetGatewayAddress(), nil, false, false)
 			nodePing := exists && nodeHost.IsOnline()
-			gwPing := err == nil && gwHost.IsOnline()
+
+			gwPing := true
+			if !disableGatewayPing {
+				gwHost, err := connect.NewHost(nil, n.GetGatewayAddress(), nil, false, false)
+				gwPing = err == nil && gwHost.IsOnline()
+			}
+
 			if nodePing && gwPing {
 				// If connection was successful, mark the port as forwarded
 				n.SetConnectivity(node.PortSuccessful)

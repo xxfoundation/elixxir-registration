@@ -42,6 +42,7 @@ type RegistrationImpl struct {
 	certFromFile            string
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
+	disableGatewayPing      bool
 
 	//registration status trackers
 	numRegistered int
@@ -78,6 +79,7 @@ type Params struct {
 	minServerVersion          version.Version
 	roundIdPath               string
 	updateIdPath              string
+	disableGatewayPing        bool
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -131,8 +133,9 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 		NdfReady:                &ndfReady,
 		Stopped:                 &roundCreationStopped,
 
-		numRegistered:   0,
-		beginScheduling: make(chan struct{}, 1),
+		numRegistered:      0,
+		beginScheduling:    make(chan struct{}, 1),
+		disableGatewayPing: disablePermissioning,
 	}
 
 	// Create timer and channel to be used by routine that clears the number of
@@ -339,4 +342,8 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	}
 
 	return impl
+}
+
+func (m *RegistrationImpl) GetDisableGatewayPingFlag() bool {
+	return m.disableGatewayPing
 }
