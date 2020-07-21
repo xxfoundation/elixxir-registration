@@ -174,6 +174,8 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Could not parse duration: %+v", err)
 		}
 
+		disableGatewayPing := viper.GetBool("disableGatewayPing")
+
 		// Populate params
 		RegParams = Params{
 			Address:                   localAddress,
@@ -195,6 +197,7 @@ var rootCmd = &cobra.Command{
 			minServerVersion:          minServerVersion,
 			roundIdPath:               roundIdPath,
 			updateIdPath:              updateIdPath,
+			disableGatewayPing:        disableGatewayPing,
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")

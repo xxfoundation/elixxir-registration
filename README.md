@@ -41,6 +41,9 @@ minGatewayVersion: "0.0.0"
 # The minimum version required of servers to connect
 minServerVersion:  "0.0.0"
 
+# Disable pinging of Gateway public IP address.
+disableGatewayPing: false
+
 # Database connection information
 dbUsername: "cmix"
 dbPassword: ""
