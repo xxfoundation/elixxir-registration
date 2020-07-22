@@ -9,10 +9,10 @@ package round
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
+	"gitlab.com/xx_network/comms/connect"
 	"math"
 	"sync"
 	"testing"
