@@ -88,7 +88,15 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 
 			//tracks if the node cannot be contacted by permissioning
 			if nodeState.GetRawConnectivity() == node.PortFailed {
+				s := fmt.Sprintf("\tNode %s (AppID: %v, Activity: %s) and Gateway with address %s cannot be contacted", nodeState.GetID(), nodeState.GetAppID(), nodeState.GetActivity(), nodeState.GetGatewayAddress())
+				noContact = append(noContact, s)
+			}
+			if nodeState.GetRawConnectivity() == node.NodePortFailed {
 				s := fmt.Sprintf("\tNode %s (AppID: %v, Activity: %s) cannot be contacted", nodeState.GetID(), nodeState.GetAppID(), nodeState.GetActivity())
+				noContact = append(noContact, s)
+			}
+			if nodeState.GetRawConnectivity() == node.GatewayPortFailed {
+				s := fmt.Sprintf("\tGateway with address %s cannot be contacted", nodeState.GetGatewayAddress())
 				noContact = append(noContact, s)
 			}
 		}

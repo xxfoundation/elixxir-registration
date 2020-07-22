@@ -24,6 +24,8 @@ const (
 	PortUnknown uint32 = iota
 	PortVerifying
 	PortSuccessful
+	NodePortFailed
+	GatewayPortFailed
 	PortFailed
 )
 
@@ -382,4 +384,8 @@ func (n *State) SetOrdering(ordering string, t *testing.T) {
 		panic("Cannot directly set node.State's ordering outside of testing")
 	}
 	n.ordering = ordering
+}
+
+func (n *State) GetGatewayAddress() string {
+	return n.gatewayAddress
 }
