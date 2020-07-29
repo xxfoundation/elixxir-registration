@@ -385,6 +385,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 				return err
 			}
 		}
+
 		if gatewayUpdate {
 			if err = updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
@@ -458,16 +459,32 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 		// do nothing
 		return true, nil
 	case node.NodePortFailed:
+
+		// this will approximately force a recheck of the node state every 3~5
+		// minutes
+		if n.GetNumPolls()%211==13{
+			n.SetConnectivity(node.PortUnknown)
+		}
 		// If only the Node port has been marked as failed,
 		// we send an error informing the node of such
 		return false, errors.Errorf("Node %s cannot be contacted "+
 			"by Permissioning, are ports properly forwarded?", n.GetID())
 	case node.GatewayPortFailed:
+		// this will approximately force a recheck of the node state every 3~5
+		// minutes
+		if n.GetNumPolls()%211==13{
+			n.SetConnectivity(node.PortUnknown)
+		}
 		// If only the Gateway port has been marked as failed,
 		// we send an error informing the node of such
 		return false, errors.Errorf("Gateway with address %s cannot be contacted "+
 			"by Permissioning, are ports properly forwarded?", n.GetGatewayAddress())
 	case node.PortFailed:
+		// this will approximately force a recheck of the node state every 3~5
+		// minutes
+		if n.GetNumPolls()%211==13{
+			n.SetConnectivity(node.PortUnknown)
+		}
 		// If the port has been marked as failed,
 		// we send an error informing the node of such
 		return false, errors.Errorf("Both Node %s and Gateway with address %s "+
