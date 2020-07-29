@@ -107,7 +107,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// Check the node's connectivity
 	continuePoll, err := m.checkConnectivity(n, activity, m.GetDisableGatewayPingFlag())
 	if err != nil || !continuePoll {
-		return response, nil
+		return response, err
 	}
 
 	// Commit updates reported by the node if node involved in the current round
@@ -459,28 +459,34 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 		// do nothing
 		return true, nil
 	case node.NodePortFailed:
-		// If only the Node port has been marked as failed,
-		// we send an error informing the node of such
+
+		// this will approximately force a recheck of the node state every 3~5
+		// minutes
 		if n.GetNumPolls()%211==13{
 			n.SetConnectivity(node.PortUnknown)
 		}
+		// If only the Node port has been marked as failed,
+		// we send an error informing the node of such
 		return false, errors.Errorf("Node %s cannot be contacted "+
 			"by Permissioning, are ports properly forwarded?", n.GetID())
 	case node.GatewayPortFailed:
-		// If only the Gateway port has been marked as failed,
-		// we send an error informing the node of such
+		// this will approximately force a recheck of the node state every 3~5
+		// minutes
 		if n.GetNumPolls()%211==13{
 			n.SetConnectivity(node.PortUnknown)
 		}
+		// If only the Gateway port has been marked as failed,
+		// we send an error informing the node of such
 		return false, errors.Errorf("Gateway with address %s cannot be contacted "+
 			"by Permissioning, are ports properly forwarded?", n.GetGatewayAddress())
 	case node.PortFailed:
-		// If the port has been marked as failed,
-		// we send an error informing the node of such
+		// this will approximately force a recheck of the node state every 3~5
+		// minutes
 		if n.GetNumPolls()%211==13{
 			n.SetConnectivity(node.PortUnknown)
 		}
-
+		// If the port has been marked as failed,
+		// we send an error informing the node of such
 		return false, errors.Errorf("Both Node %s and Gateway with address %s "+
 			"cannot be contacted by Permissioning, are ports properly forwarded?",
 			n.GetID(), n.GetGatewayAddress())
