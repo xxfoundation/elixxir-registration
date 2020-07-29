@@ -71,7 +71,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	//update ip addresses if nessessary
-	err := checkIPAddresses(m, n, msg, serverAddress)
+	err := checkIPAddresses(m, n, msg, serverAddress, auth.Sender)
 	if err != nil {
 		err = errors.WithMessage(err, "Failed to update IP addresses")
 		return response, err
@@ -102,7 +102,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// Check the node's connectivity
 	continuePoll, err := m.checkConnectivity(n, activity)
 	if err != nil || !continuePoll {
-		return response, err
+		return response, nil
 	}
 
 	// Commit updates reported by the node if node involved in the current round
@@ -321,7 +321,7 @@ func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) 
 	return nil
 }
 
-func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, nodeAddress string) error {
+func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, nodeAddress string, host *connect.Host) error {
 	// Get server and gateway addresses
 	gatewayAddress := msg.GatewayAddress
 
@@ -343,12 +343,15 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 		currentNDF := m.State.GetFullNdf().Get()
 
 		if nodeUpdate {
-			n.SetConnectivity(node.PortUnknown)
-			if err = updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
+			if err = updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err!=nil{
 				m.NDFLock.Unlock()
 				return err
 			}
+
+			host.UpdateAddress(nodeAddress)
+			n.SetConnectivity(node.PortUnknown)
 		}
+
 		if gatewayUpdate {
 			if err = updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
@@ -409,6 +412,10 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 	case node.PortFailed:
 		// If the port has been marked as failed,
 		// we send an error informing the node of such
+		if n.GetNumPolls()%211==13{
+			n.SetConnectivity(node.PortUnknown)
+		}
+
 		return false, errors.Errorf("Node %s cannot be contacted "+
 			"by Permissioning, are ports properly forwarded?", n.GetID())
 	}

@@ -93,6 +93,11 @@ func (n *State) GetAndResetNumPolls() uint64 {
 }
 
 // Returns the current value of numPolls and then resets numPolls to zero
+func (n *State) GetNumPolls() uint64 {
+	return atomic.LoadUint64(n.numPolls)
+}
+
+// Returns the current value of numPolls and then resets numPolls to zero
 func (n *State) GetAppID() uint64 {
 	return n.applicationID
 }
