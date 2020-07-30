@@ -76,7 +76,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	//update ip addresses if nessessary
-	err := checkIPAddresses(m, n, msg, m.Comms.ProtoComms, serverAddress)
+	err := checkIPAddresses(m, n, msg, auth.Sender, serverAddress)
 	if err != nil {
 		err = errors.WithMessage(err, "Failed to update IP addresses")
 		return response, err
@@ -351,7 +351,7 @@ func updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress string) (string,
 	return gatewayAddress, nil
 }
 
-func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, comm *connect.ProtoComms, nodeAddress string) error {
+func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, nodeHost *connect.Host, nodeAddress string) error {
 	// Check if the Gateway address needs to be updated
 	gatewayAddress, err := updateGatewayAdvertisedAddress(msg.GatewayAddress, nodeAddress)
 	if err != nil {
@@ -374,11 +374,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 		currentNDF := m.State.GetFullNdf().Get()
 
 		if nodeUpdate {
-			h, hasHost := comm.GetHost(n.GetID())
-			if !hasHost {
-				return errors.New("Could not get node host object")
-			}
-			h.UpdateAddress(nodeAddress)
+			nodeHost.UpdateAddress(nodeAddress)
 			n.SetConnectivity(node.PortUnknown)
 			if err = updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
@@ -424,6 +420,8 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 			nodeHost, exists := m.Comms.GetHost(n.GetID())
 			nodePing := exists && nodeHost.IsOnline()
 
+			jww.INFO.Println("disable gateway ping: ", disableGatewayPing)
+
 			gwPing := true
 			if !disableGatewayPing {
 				gwHost, err := connect.NewHost(nil, n.GetGatewayAddress(), nil, false, false)
@@ -462,7 +460,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if n.GetNumPolls()%211==13{
+		if n.GetNumPolls()%211 == 13 {
 			n.SetConnectivity(node.PortUnknown)
 		}
 		// If only the Node port has been marked as failed,
@@ -472,7 +470,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 	case node.GatewayPortFailed:
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if n.GetNumPolls()%211==13{
+		if n.GetNumPolls()%211 == 13 {
 			n.SetConnectivity(node.PortUnknown)
 		}
 		// If only the Gateway port has been marked as failed,
@@ -482,7 +480,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 	case node.PortFailed:
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if n.GetNumPolls()%211==13{
+		if n.GetNumPolls()%211 == 13 {
 			n.SetConnectivity(node.PortUnknown)
 		}
 		// If the port has been marked as failed,
