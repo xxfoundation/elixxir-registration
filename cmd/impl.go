@@ -135,7 +135,7 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 
 		numRegistered:      0,
 		beginScheduling:    make(chan struct{}, 1),
-		disableGatewayPing: disablePermissioning,
+		disableGatewayPing: params.disableGatewayPing,
 	}
 
 	// Create timer and channel to be used by routine that clears the number of

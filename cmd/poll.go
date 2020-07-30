@@ -420,8 +420,6 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 			nodeHost, exists := m.Comms.GetHost(n.GetID())
 			nodePing := exists && nodeHost.IsOnline()
 
-			jww.INFO.Println("disable gateway ping: ", disableGatewayPing)
-
 			gwPing := true
 			if !disableGatewayPing {
 				gwHost, err := connect.NewHost(nil, n.GetGatewayAddress(), nil, false, false)
