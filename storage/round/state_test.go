@@ -17,6 +17,30 @@ import (
 	"time"
 )
 
+func TestState_GetLastUpdate(t *testing.T) {
+	rid := id.Round(42)
+
+	const (
+		batchSize = 32
+		numNodes  = 5
+	)
+
+	topology := buildMockTopology(numNodes, t)
+	origTime := time.Now()
+	ns := newState(rid, batchSize, 5*time.Minute, topology, origTime)
+
+	err := ns.Update(states.PRECOMPUTING, time.Now())
+	if err != nil {
+		t.Errorf("Updating state failed: %v", err)
+	}
+
+	newTime := ns.GetLastUpdate()
+
+	if origTime.After(newTime) || origTime.Equal(newTime) {
+		t.Errorf("origTime was after or euqal to newTime")
+	}
+}
+
 func TestNewState(t *testing.T) {
 	rid := id.Round(42)
 
