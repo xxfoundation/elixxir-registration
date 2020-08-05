@@ -7,8 +7,8 @@
 package storage
 
 import (
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/primitives/id"
 	"testing"
 	"time"
 )

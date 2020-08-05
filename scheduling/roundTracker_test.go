@@ -7,7 +7,7 @@
 package scheduling
 
 import (
-	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/xx_network/primitives/id"
 	"math/rand"
 	"reflect"
 	"testing"
