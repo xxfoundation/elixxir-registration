@@ -63,12 +63,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 
 	activity := current.Activity(msg.Activity)
 
-	// check that the activity is not error and then poll, do not count error
-	// polls so erroring nodes are not issues rounds
-	if activity != current.ERROR {
-		// Increment the Node's poll count
-		n.IncrementNumPolls()
-	}
+	// Increment the Node's poll count
+	n.IncrementNumPolls()
 
 	//update ip addresses if nessessary
 	err := checkIPAddresses(m, n, msg, serverAddress)
