@@ -8,11 +8,11 @@ package scheduling
 import (
 	"crypto/rand"
 	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/xx_network/primitives/id"
 	"testing"
 )
 
@@ -124,7 +124,7 @@ func TestStartRound_BadState(t *testing.T) {
 	}
 
 	// Manually set the state of the round
-	badState := round.NewState_Testing(roundID, states.COMPLETED, t)
+	badState := round.NewState_Testing(roundID, states.COMPLETED, nil, t)
 	testState.GetRoundMap().AddRound_Testing(badState, t)
 
 	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
@@ -189,7 +189,7 @@ func TestStartRound_BadNode(t *testing.T) {
 	if err != nil {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
-	badState := round.NewState_Testing(roundID, states.COMPLETED, t)
+	badState := round.NewState_Testing(roundID, states.COMPLETED, nil, t)
 
 	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
 	if err != nil {

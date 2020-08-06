@@ -8,13 +8,14 @@ package cmd
 import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
+	pb "gitlab.com/elixxir/comms/mixmessages"
 	nodeComms "gitlab.com/elixxir/comms/node"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
+	"gitlab.com/xx_network/primitives/id"
 	"os"
 	"sync"
 	"testing"
@@ -355,7 +356,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	impl.Comms.Shutdown()
 }
 
-// Complete test of CheckNodeRegistration
+// Happy path
 func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 	// Initialize the database
 	var err error
@@ -385,30 +386,150 @@ func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
+	//Kill the connections for the next test
+	defer impl.Comms.Shutdown()
+
+	// Craft registered node id
+	testNodeID := id.NewIdFromString("A", id.Node, t)
 
 	//Register 1st node
-	err = impl.RegisterNode(id.NewIdFromString("A", id.Node, t),
+	err = impl.RegisterNode(testNodeID,
 		nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
+	// Craft message with node id registered
+	registrationMessage := &pb.RegisteredNodeCheck{
+		ID: testNodeID.Bytes(),
+	}
+
 	// Check if node that has been registered is registered
-	isRegistered := impl.CheckNodeRegistration("BBBB")
+	isRegistered, _ := impl.CheckNodeRegistration(registrationMessage)
 	if !isRegistered {
 		t.Errorf("Registration code should have been registered!")
 	}
 
+	// Craft unregistered node id
+	badNodeId := id.NewIdFromString("C", id.Node, t)
+
+	// Craft message with unregistered node id
+	badRegistrationMessage := &pb.RegisteredNodeCheck{
+		ID: badNodeId.Bytes(),
+	}
+
 	// Check if node that has NOT been registered isn't registered
-	isRegistered = impl.CheckNodeRegistration("CCCC")
+	isRegistered, _ = impl.CheckNodeRegistration(badRegistrationMessage)
 	if isRegistered {
 		t.Errorf("Registration code should not have been registered!")
 	}
 
-	//Kill the connections for the next test
-	impl.Comms.Shutdown()
+}
 
+// Error path: Pass nil message
+func TestCheckRegistration_NilMsg(t *testing.T) {
+	// Initialize the database
+	var err error
+	dblck.Lock()
+	defer dblck.Unlock()
+
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
+
+	//Create reg codes and populate the database
+	infos := make([]node.Info, 0)
+	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
+		node.Info{RegCode: "BBBB", Order: "1"},
+		node.Info{RegCode: "CCCC", Order: "2"})
+
+	storage.PopulateNodeRegistrationCodes(infos)
+
+	localParams := testParams
+	localParams.minimumNodes = 2
+
+	// Start registration server
+	impl, err := StartRegistration(localParams, nil)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	//Kill the connections for the next test
+	defer impl.Comms.Shutdown()
+
+	// Craft registered node id
+	testNodeID := id.NewIdFromString("A", id.Node, t)
+
+	//Register 1st node
+	err = impl.RegisterNode(testNodeID,
+		nodeAddr, string(nodeCert),
+		nodeAddr, string(nodeCert), "BBBB")
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+
+	_, err = impl.CheckNodeRegistration(nil)
+	if err == nil {
+		t.Errorf("Expected error path. Should not be able to pass a nil message")
+	}
+}
+
+// Error path: Check for invalid ID
+func TestCheckRegistration_InvalidID(t *testing.T) {
+	// Initialize the database
+	var err error
+	dblck.Lock()
+	defer dblck.Unlock()
+
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
+
+	//Create reg codes and populate the database
+	infos := make([]node.Info, 0)
+	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
+		node.Info{RegCode: "BBBB", Order: "1"},
+		node.Info{RegCode: "CCCC", Order: "2"})
+
+	storage.PopulateNodeRegistrationCodes(infos)
+
+	localParams := testParams
+	localParams.minimumNodes = 2
+
+	// Start registration server
+	impl, err := StartRegistration(localParams, nil)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	//Kill the connections for the next test
+	defer impl.Comms.Shutdown()
+
+	// Craft registered node id
+	testNodeID := id.NewIdFromString("A", id.Node, t)
+
+	//Register 1st node
+	err = impl.RegisterNode(testNodeID,
+		nodeAddr, string(nodeCert),
+		nodeAddr, string(nodeCert), "BBBB")
+	if err != nil {
+		t.Errorf("Expected happy path, recieved error: %+v", err)
+	}
+
+	// Craft message with unregistered node id
+	badRegistrationMessage := &pb.RegisteredNodeCheck{
+		ID: []byte("invalidId"),
+	}
+
+	_, err = impl.CheckNodeRegistration(badRegistrationMessage)
+	if err == nil {
+		t.Errorf("Expected error path. Should not be able to marshall an invalid ID")
+	}
 }
 
 func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {

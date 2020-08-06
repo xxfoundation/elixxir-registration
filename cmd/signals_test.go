@@ -4,6 +4,8 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
+// +build !windows
+
 package cmd
 
 import (

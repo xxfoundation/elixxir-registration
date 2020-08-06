@@ -7,11 +7,11 @@ package scheduling
 
 import (
 	"github.com/pkg/errors"
-	"gitlab.com/elixxir/comms/connect"
 	"gitlab.com/elixxir/crypto/shuffle"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/primitives/id"
 	"strconv"
 )
 
@@ -23,7 +23,8 @@ import (
 func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
 
-	nodes, err := pool.PickNRandAtThreshold(int(params.TeamSize), int(params.TeamSize))
+	nodes, err := pool.PickNRandAtThreshold(int(params.TeamSize), int(params.TeamSize), state.GetDisabledNodesSet())
+
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)
 	}
@@ -59,6 +60,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 		// Shuffle array of ints randomly using Fisher-Yates shuffle
 		// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
 		shuffle.Shuffle(&randomIndex)
+
 		for i, nid := range nodes {
 			n := nodeMap.GetNode(nid.GetID())
 			nodeStateList[i] = n

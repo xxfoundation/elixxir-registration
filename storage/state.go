@@ -9,18 +9,20 @@
 package storage
 
 import (
+	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/network/dataStructures"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
 	"sync"
+	"time"
 )
 
 const updateBufferLength = 1000
@@ -43,6 +45,9 @@ type NetworkState struct {
 
 	// Node NetworkState
 	nodes *node.StateMap
+
+	// List of states of Nodes to be disabled
+	disabledNodesStates *disabledNodes
 
 	// NDF state
 	partialNdf *dataStructures.Ndf
@@ -125,6 +130,7 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 	if err != nil {
 		return err
 	}
+
 	roundCopy.UpdateID = updateID
 
 	err = signature.Sign(roundCopy, s.privateKey)
@@ -214,4 +220,26 @@ func (s *NetworkState) IncrementRoundID() (id.Round, error) {
 // GetRoundID returns the round ID in a thread safe manner.
 func (s *NetworkState) GetRoundID() id.Round {
 	return id.Round(s.roundID.get())
+}
+
+// CreateDisabledNodes generates and sets a disabledNodes object that will track
+// disabled Nodes list.
+func (s *NetworkState) CreateDisabledNodes(path string, interval time.Duration) error {
+	var err error
+	s.disabledNodesStates, err = generateDisabledNodes(path, interval, s)
+	return err
+}
+
+// StartPollDisabledNodes starts the loop that polls for updates
+func (s *NetworkState) StartPollDisabledNodes(quitChan chan struct{}) {
+	s.disabledNodesStates.pollDisabledNodes(s, quitChan)
+}
+
+// GetDisabledNodesSet returns the set of states of disabled nodes.
+func (s *NetworkState) GetDisabledNodesSet() *set.Set {
+	if s.disabledNodesStates != nil {
+		return s.disabledNodesStates.getDisabledNodes()
+	}
+
+	return nil
 }

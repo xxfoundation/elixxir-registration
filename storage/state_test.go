@@ -15,10 +15,11 @@ import (
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
+	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
 	mrand "math/rand"
 	"os"
 	"reflect"
@@ -547,5 +548,109 @@ func TestNetworkState_GetRoundID(t *testing.T) {
 	if expectedID != testID {
 		t.Errorf("GetRoundID() returned an incorrect ID."+
 			"\n\texpected: %+v\n\treceived: %+v", expectedID, testID)
+	}
+}
+
+// Tests that CreateDisabledNodes() correctly generates a disabledNodes and
+// saves it to NetworkState.
+func TestNetworkState_CreateDisabledNodes(t *testing.T) {
+	// Get test data
+	testData, stateMap, expectedStateSet := generateIdLists(3, t)
+	state := &NetworkState{nodes: stateMap}
+	testData = "\n \n\n" + testData + "\n  "
+	testPath := "testDisabledNodesList.txt"
+
+	// Delete the test file at the end
+	defer func() {
+		err := os.RemoveAll(testPath)
+		if err != nil {
+			t.Fatalf("Error deleting test file %#v:\n%v", testPath, err)
+		}
+	}()
+
+	// Create test file
+	err := utils.WriteFile(testPath, []byte(testData), utils.FilePerms, utils.DirPerms)
+	if err != nil {
+		t.Fatalf("Error while creating test file: %v", err)
+	}
+
+	err = state.CreateDisabledNodes(testPath, 33*time.Millisecond)
+	if err != nil {
+		t.Errorf("CreateDisabledNodes() generated an unexpected error."+
+			"\n\texpected: %v\n\treceived: %v", nil, err)
+	}
+
+	if state.disabledNodesStates.nodes.Difference(expectedStateSet).Len() != 0 {
+		t.Errorf("CreateDisabledNodes() did not return the correct Set."+
+			"\n\texpected: %v\n\treceived: %v",
+			expectedStateSet, state.disabledNodesStates.nodes)
+	}
+}
+
+// Tests that CreateDisabledNodes() gets an error when given an invalid path.
+func TestNetworkState_CreateDisabledNodes_FileError(t *testing.T) {
+	// Generate new NetworkState
+	state, _, err := generateTestNetworkState()
+	if err != nil {
+		t.Fatalf("%+v", err)
+	}
+	testPath := "testDisabledNodesList.txt"
+	expectedErr := "Skipping polling of disabled node ID list file; error " +
+		"while accessing file: open " + testPath + ": The system cannot find " +
+		"the file specified."
+
+	err = state.CreateDisabledNodes(testPath, 33*time.Millisecond)
+	if err == nil {
+		t.Errorf("CreateDisabledNodes() did not error on invalid path."+
+			"\n\texpected: %v\n\treceived: %v", expectedErr, err)
+	}
+
+	if state.disabledNodesStates != nil {
+		t.Errorf("CreateDisabledNodes() did not set a nil object on error."+
+			"\n\texpected: %v\n\treceived: %v", nil, state.disabledNodesStates)
+	}
+}
+
+// Tests that StartPollDisabledNodes() correctly stops looping when triggering
+// the quit channel.
+func TestNetworkState_StartPollDisabledNodes(t *testing.T) {
+	// Get test data
+	state := &NetworkState{disabledNodesStates: &disabledNodes{
+		nodes:    nil,
+		path:     "testDisabledNodesList.txt",
+		interval: 33 * time.Millisecond,
+	}}
+
+	result := make(chan bool)
+	quit := make(chan struct{})
+
+	go func() {
+		state.StartPollDisabledNodes(quit)
+		result <- true
+	}()
+
+	quit <- struct{}{}
+
+	select {
+	case <-result:
+		return
+	case <-time.After(500 * time.Millisecond):
+		t.Errorf("StartPollDisabledNodes() did not correctly stop when kill command sent.")
+	}
+}
+
+// Tests that GetDisabledNodesSet() return nil when the underlying set is nil.
+func TestNetworkState_GetDisabledNodesSet(t *testing.T) {
+	// Get test data
+	state := &NetworkState{disabledNodesStates: &disabledNodes{
+		nodes:    nil,
+		path:     "testDisabledNodesList.txt",
+		interval: 33 * time.Millisecond,
+	}}
+
+	nodeSet := state.GetDisabledNodesSet()
+	if nodeSet != nil {
+		t.Errorf("GetDisabledNodesSet() did not return a nil set when "+
+			"expected.\n\texpected: %v\n\treceived: %v", nil, nodeSet)
 	}
 }

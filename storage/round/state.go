@@ -9,10 +9,10 @@ package round
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
+	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/primitives/id"
 	"math"
 	"sync"
 	"testing"
@@ -78,7 +78,7 @@ func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
 }
 
 //creates a round state object
-func NewState_Testing(id id.Round, state states.Round, t *testing.T) *State {
+func NewState_Testing(id id.Round, state states.Round, topology *connect.Circuit, t *testing.T) *State {
 	if t == nil {
 		jww.FATAL.Panic("Only for testing")
 	}
@@ -95,6 +95,7 @@ func NewState_Testing(id id.Round, state states.Round, t *testing.T) *State {
 		readyForTransition: 0,
 		mux:                sync.RWMutex{},
 		roundComplete:      roundCompleteChan,
+		topology:           topology,
 	}
 }
 

@@ -9,10 +9,10 @@ package node
 import (
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/transition"
+	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -24,6 +24,8 @@ const (
 	PortUnknown uint32 = iota
 	PortVerifying
 	PortSuccessful
+	NodePortFailed
+	GatewayPortFailed
 	PortFailed
 )
 
@@ -90,6 +92,11 @@ func (n *State) IncrementNumPolls() {
 // Returns the current value of numPolls and then resets numPolls to zero
 func (n *State) GetAndResetNumPolls() uint64 {
 	return atomic.SwapUint64(n.numPolls, 0)
+}
+
+// Returns the current value of numPolls and then resets numPolls to zero
+func (n *State) GetNumPolls() uint64 {
+	return atomic.LoadUint64(n.numPolls)
 }
 
 // Returns the current value of numPolls and then resets numPolls to zero
@@ -382,4 +389,8 @@ func (n *State) SetOrdering(ordering string, t *testing.T) {
 		panic("Cannot directly set node.State's ordering outside of testing")
 	}
 	n.ordering = ordering
+}
+
+func (n *State) GetGatewayAddress() string {
+	return n.gatewayAddress
 }

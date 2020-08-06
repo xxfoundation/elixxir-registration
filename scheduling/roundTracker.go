@@ -4,29 +4,30 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-//this is used to track which rounds are currently running for debugging
+// This is used to track which rounds are currently running for debugging.
 
 package scheduling
 
 import (
-	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/xx_network/primitives/id"
 	"sync"
 )
 
-// Tracks rounds which are active, meaning between precomputing and completed
+// RoundTracker tracks rounds that are active, meaning between precomputing and
+// completed.
 type RoundTracker struct {
 	mux          sync.Mutex
 	activeRounds map[id.Round]struct{}
 }
 
-// Creates tracker object
+// NewRoundTracker creates tracker object.
 func NewRoundTracker() *RoundTracker {
 	return &RoundTracker{
 		activeRounds: make(map[id.Round]struct{}),
 	}
 }
 
-// Adds round id to active round tracker
+// AddActiveRound adds round ID to active round tracker.
 func (rt *RoundTracker) AddActiveRound(rid id.Round) {
 	rt.mux.Lock()
 
@@ -35,7 +36,15 @@ func (rt *RoundTracker) AddActiveRound(rid id.Round) {
 	rt.mux.Unlock()
 }
 
-// Removes round from active round map
+// Len gives the number of members for the round tracker.
+func (rt *RoundTracker) Len() int {
+	rt.mux.Lock()
+	defer rt.mux.Unlock()
+
+	return len(rt.activeRounds)
+}
+
+// RemoveActiveRound removes round from active round map.
 func (rt *RoundTracker) RemoveActiveRound(rid id.Round) {
 	rt.mux.Lock()
 
@@ -46,7 +55,8 @@ func (rt *RoundTracker) RemoveActiveRound(rid id.Round) {
 	rt.mux.Unlock()
 }
 
-// Gets the amount of active rounds in the set as well as the round id's
+// GetActiveRounds gets the amount of active rounds in the set as well as the
+// round IDs.
 func (rt *RoundTracker) GetActiveRounds() []id.Round {
 	var rounds []id.Round
 
@@ -60,11 +70,3 @@ func (rt *RoundTracker) GetActiveRounds() []id.Round {
 
 	return rounds
 }
-
-/*
-// tracks how many times the scheduler runs
-type SchedulingTracker *uint32
-
-func (sc SchedulingTracker)Incrememnt(){
-	atomic.AddUint32()
-}*/

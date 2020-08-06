@@ -12,33 +12,46 @@ import (
 	"bytes"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
+	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
 	"strconv"
 	"sync/atomic"
 )
 
 // Handle registration check attempt by node. We assume
 //  the code being searched for is the node's.
-func (m *RegistrationImpl) CheckNodeRegistration(registrationCode string) bool {
+func (m *RegistrationImpl) CheckNodeRegistration(msg *mixmessages.RegisteredNodeCheck) (bool, error) {
+	//do edge check to ensure the message is not nil
+	if msg == nil {
+		return false, errors.Errorf("Message payload for registration check " +
+			"is nil. Check could not be processed")
+	}
+
+	nodeID, err := id.Unmarshal(msg.ID)
+	if err != nil {
+		return false, errors.Errorf("Message payload for registration check " +
+			"contains invalid ID. Check could not be processed")
+	}
 
 	// Check that the node hasn't already been registered. If there is an error,
 	//  then the code being checked is either invalid or not registered.
-	nodeInfo, err := storage.PermissioningDb.GetNode(registrationCode)
+	// There is no need to return database error to node
+	nodeInfo, err := storage.PermissioningDb.GetNodeById(nodeID)
 	if err != nil {
-		return false
+		return false, nil
 	}
 
 	// If the node's id is not empty, then the node has been registered
 	if !bytes.Equal(nodeInfo.Id, []byte("")) {
-		return true
+		return true, nil
 	}
 
 	// Otherwise the code has not been registered
-	return false
+	return false, nil
 
 }
 

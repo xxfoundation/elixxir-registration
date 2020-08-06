@@ -8,15 +8,86 @@ package node
 
 import (
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/xx_network/primitives/id"
 	"math"
 	"reflect"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
+
+// Test that the GetLastUpdate function returns a correct timestamp
+func TestState_GetLastUpdate(t *testing.T) {
+	origTime := time.Now()
+	ns := State{}
+
+	_, _, err := ns.Update(current.WAITING)
+	if err != nil {
+		t.Errorf("Updating state failed: %v", err)
+	}
+
+	newTime := ns.GetLastUpdate()
+
+	if origTime.After(newTime) || origTime.Equal(newTime) {
+		t.Errorf("origTime was after or euqal to newTime")
+	}
+}
+
+// Test that GetRawConnectivity returns the right connectivity type
+func TestState_GetRawConnectivity(t *testing.T) {
+	// connectivity is a *uint32, so we need to be able to make a
+	// pointer to a uint32.
+	con := PortFailed
+	ns := State{
+		connectivity: &con,
+	}
+
+	s := ns.GetRawConnectivity()
+	if s != PortFailed {
+		t.Errorf("Connectivity of State is not PortFailed")
+	}
+}
+
+func TestState_SetConnectivity(t *testing.T) {
+	// connectivity is a *uint32, so we need to be able to make a
+	// pointer to a uint32. Set this to a non-0 value for a further
+	// check.
+	con := PortSuccessful
+	ns := State{
+		connectivity: &con,
+	}
+
+	// Check that the connectivity state is still tied to our pointer
+	// and the code didn't change. Otherwise, the assumption on setup
+	// is now broken and this test needs fixed. This breaking lets you
+	// know!
+	if *ns.connectivity != PortSuccessful {
+		t.Errorf("Connectivity of State is not PortUnknown")
+	}
+
+	ns.SetConnectivity(PortVerifying)
+	if atomic.LoadUint32(ns.connectivity) != PortVerifying {
+		t.Errorf("Connectivity of State is not PortVerifying")
+	}
+}
+
+// Check that an error is returned for a valid state change while an invalid one
+// does error using the Update command
+func TestState_UpdateStateChangeError(t *testing.T) {
+	ns := State{}
+	_, _, err := ns.Update(current.WAITING)
+	if err != nil {
+		t.Errorf("Transition to WAITING should not have errored. %v", err)
+	}
+
+	_, _, err = ns.Update(current.COMPLETED)
+	if err == nil {
+		t.Errorf("Transition to COMPLETED should have errored.")
+	}
+}
 
 // tests that State update functions properly when the state it is updated
 // to is not the one it is at
@@ -166,7 +237,7 @@ func TestNodeState_Update_Valid_RequiresRound_Round_InvalidState(t *testing.T) {
 	ns := State{
 		activity:     current.WAITING,
 		lastPoll:     time.Now(),
-		currentRound: round.NewState_Testing(42, states.FAILED, t),
+		currentRound: round.NewState_Testing(42, states.FAILED, nil, t),
 	}
 
 	time.Sleep(10 * time.Millisecond)
@@ -209,7 +280,7 @@ func TestNodeState_Update_Valid_RequiresRound_Round_ValidState(t *testing.T) {
 	ns := State{
 		activity:     current.WAITING,
 		lastPoll:     time.Now(),
-		currentRound: round.NewState_Testing(42, states.PRECOMPUTING, t),
+		currentRound: round.NewState_Testing(42, states.PRECOMPUTING, nil, t),
 	}
 
 	time.Sleep(10 * time.Millisecond)
@@ -248,7 +319,7 @@ func TestNodeState_Update_Valid_RequiresNoRound_HasRound(t *testing.T) {
 	ns := State{
 		activity:     current.COMPLETED,
 		lastPoll:     time.Now(),
-		currentRound: round.NewState_Testing(42, states.PRECOMPUTING, t),
+		currentRound: round.NewState_Testing(42, states.PRECOMPUTING, nil, t),
 	}
 
 	time.Sleep(10 * time.Millisecond)
@@ -355,7 +426,7 @@ func TestNodeState_GetLastPoll(t *testing.T) {
 
 //tests that GetActivity returns the correct activity
 func TestNodeState_GetCurrentRound_Set(t *testing.T) {
-	r := round.NewState_Testing(42, 0, t)
+	r := round.NewState_Testing(42, 0, nil, t)
 	ns := State{
 		currentRound: r,
 	}
@@ -405,7 +476,7 @@ func TestNodeState_ClearRound(t *testing.T) {
 
 //tests that clear round sets the tracked roundID to nil
 func TestNodeState_SetRound_Valid(t *testing.T) {
-	r := round.NewState_Testing(42, 2, t)
+	r := round.NewState_Testing(42, 2, nil, t)
 
 	ns := State{
 		currentRound: nil,
@@ -425,8 +496,8 @@ func TestNodeState_SetRound_Valid(t *testing.T) {
 
 //tests that clear round does not set the tracked roundID errors when one is set
 func TestNodeState_SetRound_Invalid(t *testing.T) {
-	r := round.NewState_Testing(42, 0, t)
-	storedR := round.NewState_Testing(69, 0, t)
+	r := round.NewState_Testing(42, 0, nil, t)
+	storedR := round.NewState_Testing(69, 0, nil, t)
 
 	ns := State{
 		currentRound: storedR,

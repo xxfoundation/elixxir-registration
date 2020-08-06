@@ -12,16 +12,21 @@ import (
 	"bytes"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
+	"net"
 	"sync/atomic"
 )
+
+// The placeholder for the host in the Gateway address that is used to indicate
+// to permissioning to replace it with the Node's host.
+const gatewayReplaceIpPlaceholder = "CHANGE_TO_PUBLIC_IP"
 
 // Server->Permissioning unified poll function
 func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
@@ -71,7 +76,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	//update ip addresses if nessessary
-	err := checkIPAddresses(m, n, msg, serverAddress)
+	err := checkIPAddresses(m, n, msg, auth.Sender, serverAddress)
 	if err != nil {
 		err = errors.WithMessage(err, "Failed to update IP addresses")
 		return response, err
@@ -100,7 +105,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	// Check the node's connectivity
-	continuePoll, err := m.checkConnectivity(n, activity)
+	continuePoll, err := m.checkConnectivity(n, activity, m.GetDisableGatewayPingFlag())
 	if err != nil || !continuePoll {
 		return response, err
 	}
@@ -321,15 +326,41 @@ func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) 
 	return nil
 }
 
-func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, nodeAddress string) error {
-	// Get server and gateway addresses
-	gatewayAddress := msg.GatewayAddress
+// updateGatewayAdvertisedAddress checks if the Gateway's address host is set to
+// gatewayReplaceIpPlaceholder. If it is, then it is replaced with the Node's
+// host while retaining the Gateway's port.
+func updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress string) (string, error) {
+	if gatewayAddress == "" {
+		return gatewayAddress, nil
+	}
+
+	gwAddr, gwPort, err := net.SplitHostPort(gatewayAddress)
+	if err != nil {
+		return "", errors.Errorf("Error parsing Gateway address: %v", err)
+	}
+
+	if gwAddr == gatewayReplaceIpPlaceholder {
+		nAddr, _, err := net.SplitHostPort(nodeAddress)
+		if err != nil {
+			return "", errors.Errorf("Error parsing Node address: %v", err)
+		}
+
+		gatewayAddress = net.JoinHostPort(nAddr, gwPort)
+	}
+
+	return gatewayAddress, nil
+}
+
+func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, nodeHost *connect.Host, nodeAddress string) error {
+	// Check if the Gateway address needs to be updated
+	gatewayAddress, err := updateGatewayAdvertisedAddress(msg.GatewayAddress, nodeAddress)
+	if err != nil {
+		return err
+	}
 
 	// Update server and gateway addresses in state, if necessary
 	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
 	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
-
-	var err error
 
 	jww.TRACE.Printf("Received gateway and node update: %s, %s", nodeAddress,
 		gatewayAddress)
@@ -343,12 +374,14 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 		currentNDF := m.State.GetFullNdf().Get()
 
 		if nodeUpdate {
+			nodeHost.UpdateAddress(nodeAddress)
 			n.SetConnectivity(node.PortUnknown)
 			if err = updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
 			}
 		}
+
 		if gatewayUpdate {
 			if err = updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
@@ -377,19 +410,33 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 // Handles the responses to the different connectivity states of a node
 // if boolean is true the poll should continue
 func (m *RegistrationImpl) checkConnectivity(n *node.State,
-	activity current.Activity) (bool, error) {
+	activity current.Activity, disableGatewayPing bool) (bool, error) {
 
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
 		// If we are not sure on whether the port has been forwarded
 		// Ping the server and attempt on that port
 		go func() {
-			host, exists := m.Comms.GetHost(n.GetID())
-			if exists && host.IsOnline() {
+			nodeHost, exists := m.Comms.GetHost(n.GetID())
+			nodePing := exists && nodeHost.IsOnline()
+
+			gwPing := true
+			if !disableGatewayPing {
+				gwHost, err := connect.NewHost(nil, n.GetGatewayAddress(), nil, false, false)
+				gwPing = err == nil && gwHost.IsOnline()
+			}
+
+			if nodePing && gwPing {
 				// If connection was successful, mark the port as forwarded
 				n.SetConnectivity(node.PortSuccessful)
+			} else if !nodePing && gwPing {
+				// If connection to Gateway was successful but Node was not
+				n.SetConnectivity(node.NodePortFailed)
+			} else if nodePing && !gwPing {
+				// If connection to Node was successful but Gateway was not
+				n.SetConnectivity(node.GatewayPortFailed)
 			} else {
-				// If we cannot connect, mark the node as failed
+				// If we cannot connect to either address, mark the node as failed
 				n.SetConnectivity(node.PortFailed)
 			}
 		}()
@@ -404,13 +451,41 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 			return true, nil
 		}
 	case node.PortSuccessful:
-		// In the case of a successful port check, we do nothing
+		// In the case of a successful port check for both Node and Gateway, we
+		// do nothing
 		return true, nil
-	case node.PortFailed:
-		// If the port has been marked as failed,
+	case node.NodePortFailed:
+
+		// this will approximately force a recheck of the node state every 3~5
+		// minutes
+		if n.GetNumPolls()%211 == 13 {
+			n.SetConnectivity(node.PortUnknown)
+		}
+		// If only the Node port has been marked as failed,
 		// we send an error informing the node of such
 		return false, errors.Errorf("Node %s cannot be contacted "+
 			"by Permissioning, are ports properly forwarded?", n.GetID())
+	case node.GatewayPortFailed:
+		// this will approximately force a recheck of the node state every 3~5
+		// minutes
+		if n.GetNumPolls()%211 == 13 {
+			n.SetConnectivity(node.PortUnknown)
+		}
+		// If only the Gateway port has been marked as failed,
+		// we send an error informing the node of such
+		return false, errors.Errorf("Gateway with address %s cannot be contacted "+
+			"by Permissioning, are ports properly forwarded?", n.GetGatewayAddress())
+	case node.PortFailed:
+		// this will approximately force a recheck of the node state every 3~5
+		// minutes
+		if n.GetNumPolls()%211 == 13 {
+			n.SetConnectivity(node.PortUnknown)
+		}
+		// If the port has been marked as failed,
+		// we send an error informing the node of such
+		return false, errors.Errorf("Both Node %s and Gateway with address %s "+
+			"cannot be contacted by Permissioning, are ports properly forwarded?",
+			n.GetID(), n.GetGatewayAddress())
 	}
 
 	return false, nil

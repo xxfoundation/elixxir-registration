@@ -11,8 +11,8 @@ package storage
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/primitives/id"
 	"time"
 )
 
@@ -80,6 +80,13 @@ func (m *DatabaseImpl) RegisterNode(id *id.ID, code, serverAddr, serverCert,
 func (m *DatabaseImpl) GetNode(code string) (*Node, error) {
 	newNode := &Node{}
 	err := m.db.First(&newNode, "code = ?", code).Error
+	return newNode, err
+}
+
+// Get Node information for the given Node ID
+func (m *DatabaseImpl) GetNodeById(id *id.ID) (*Node, error) {
+	newNode := &Node{}
+	err := m.db.First(&newNode, "id = ?", id.Marshal()).Error
 	return newNode, err
 }
 

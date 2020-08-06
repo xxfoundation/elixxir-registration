@@ -41,6 +41,9 @@ minGatewayVersion: "0.0.0"
 # The minimum version required of servers to connect
 minServerVersion:  "0.0.0"
 
+# Disable pinging of Gateway public IP address.
+disableGatewayPing: false
+
 # Database connection information
 dbUsername: "cmix"
 dbPassword: ""
@@ -60,6 +63,14 @@ clientRegCodes:
 
 # Client version (will allow all versions with major version 0)
 clientVersion: "0.0.0"
+
+# The duration between polling the disabled Node list for updates. Optional.
+# Defaults to 1m.
+disabledNodesPollDuration: 1m
+
+# Path to the text file with a list of IDs of disabled Nodes. If no path is,
+# supplied, then the disabled Node list polling never starts.
+disabledNodesPath: "disabledNodes.txt"
 
 # === REQUIRED FOR ENABLING TLS ===
 # Path to the permissioning server private key file

@@ -9,14 +9,11 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/primitives/version"
@@ -24,6 +21,9 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/testkeys"
+	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -64,8 +64,9 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	})
 
 	// Make a simple auth object that will pass the checks
-	testHost, _ := connect.NewHost(testID, testString,
+	testHost, _ := impl.Comms.AddHost(testID, testString,
 		make([]byte, 0), false, true)
+
 	testAuth := &connect.Auth{
 		IsAuthenticated: true,
 		Sender:          testHost,
@@ -81,8 +82,8 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		Error:          nil,
 		GatewayVersion: "1.1.0",
 		ServerVersion:  "1.1.0",
+		GatewayAddress: "0.0.0.0:22840",
 	}
-
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
 			ID:    1,
@@ -102,7 +103,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	n := impl.State.GetNodeMap().GetNode(testID)
 	n.SetConnectivity(node.PortSuccessful)
 
-	response, err := impl.Poll(testMsg, testAuth, "0.0.0.0")
+	response, err := impl.Poll(testMsg, testAuth, "0.0.0.0:11420")
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -193,7 +194,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	dummyMessage := &pb.PermissioningPoll{}
 
-	_, err = impl.Poll(dummyMessage, testAuth, "0.0.0.0")
+	_, err = impl.Poll(dummyMessage, testAuth, "0.0.0.0:11420")
 	if err == nil || err.Error() != connect.AuthError(testAuth.Sender.GetId()).Error() {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -399,7 +400,6 @@ func TestPoll_BannedNode(t *testing.T) {
 		Activity:   uint32(current.WAITING),
 		Error:      nil,
 	}
-
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
 			ID:    1,
@@ -957,5 +957,44 @@ func TestVerifyError(t *testing.T) {
 	err = verifyError(msg, n, impl)
 	if err != nil {
 		t.Error("Failed to verify error")
+	}
+}
+
+// Tests that updateGatewayAdvertisedAddress() returns the gatewayAddress when
+// no replacements need to be made.
+func TestUpdateGatewayAdvertisedAddress(t *testing.T) {
+	gatewayAddress := "0.0.0.0:22840"
+	nodeAddress := "192.168.1.1:11420"
+
+	testAddress, err := updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress)
+
+	if err != nil {
+		t.Errorf("updateGatewayAdvertisedAddress() produced an unexpected error."+
+			"\n\texpected: %v\n\treceived: %v", nil, err)
+	}
+
+	if testAddress != gatewayAddress {
+		t.Errorf("updateGatewayAdvertisedAddress() did not return the correct address."+
+			"\n\texpected: %v\n\treceived: %v", gatewayAddress, testAddress)
+	}
+}
+
+// Tests that updateGatewayAdvertisedAddress() returns the nodeAddress with the
+// gatewayAddress port when the gatewayReplaceIpPlaceholder is used.
+func TestUpdateGatewayAdvertisedAddress_Update(t *testing.T) {
+	gatewayAddress := gatewayReplaceIpPlaceholder + ":22840"
+	nodeAddress := "192.168.1.1:11420"
+	expectedAddress := "192.168.1.1:22840"
+
+	testAddress, err := updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress)
+
+	if err != nil {
+		t.Errorf("updateGatewayAdvertisedAddress() produced an unexpected error."+
+			"\n\texpected: %v\n\treceived: %v", nil, err)
+	}
+
+	if testAddress != expectedAddress {
+		t.Errorf("updateGatewayAdvertisedAddress() did not return the correct address."+
+			"\n\texpected: %v\n\treceived: %v", expectedAddress, testAddress)
 	}
 }

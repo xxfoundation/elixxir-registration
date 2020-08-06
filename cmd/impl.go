@@ -12,17 +12,17 @@ import (
 	"crypto/x509"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/connect"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
 	"sync"
 	"time"
 )
@@ -42,6 +42,7 @@ type RegistrationImpl struct {
 	certFromFile            string
 	registrationsRemaining  *uint64
 	maxRegistrationAttempts uint64
+	disableGatewayPing      bool
 
 	//registration status trackers
 	numRegistered int
@@ -78,6 +79,7 @@ type Params struct {
 	minServerVersion          version.Version
 	roundIdPath               string
 	updateIdPath              string
+	disableGatewayPing        bool
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -131,8 +133,9 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 		NdfReady:                &ndfReady,
 		Stopped:                 &roundCreationStopped,
 
-		numRegistered:   0,
-		beginScheduling: make(chan struct{}, 1),
+		numRegistered:      0,
+		beginScheduling:    make(chan struct{}, 1),
+		disableGatewayPing: params.disableGatewayPing,
 	}
 
 	// Create timer and channel to be used by routine that clears the number of
@@ -265,6 +268,9 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 			return errors.WithMessage(err, "Could not ban node")
 		}
 
+		//take the polling lock
+		ns.GetPollingLock().Lock()
+
 		/// Send the node's update notification to the scheduler
 		err = state.SendUpdateNotification(nun)
 		if err != nil {
@@ -328,12 +334,16 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	//lifecycle to check if they've already registered
 	impl.Functions.CheckRegistration = func(msg *pb.RegisteredNodeCheck) (confirmation *pb.RegisteredNodeConfirmation, e error) {
 
-		response := instance.CheckNodeRegistration(msg.RegCode)
+		response, e := instance.CheckNodeRegistration(msg)
 		// Returning any errors, such as database errors, would result in too much
 		// leaked data for a public call.
-		return &pb.RegisteredNodeConfirmation{IsRegistered: response}, nil
+		return &pb.RegisteredNodeConfirmation{IsRegistered: response}, e
 
 	}
 
 	return impl
+}
+
+func (m *RegistrationImpl) GetDisableGatewayPingFlag() bool {
+	return m.disableGatewayPing
 }

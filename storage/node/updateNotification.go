@@ -10,7 +10,7 @@ package node
 import (
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/xx_network/primitives/id"
 )
 
 // UpdateNotification structure used to notify the control thread that the

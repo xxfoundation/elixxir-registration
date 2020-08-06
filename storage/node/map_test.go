@@ -8,8 +8,8 @@ package node
 
 import (
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/xx_network/primitives/id"
 	"math/rand"
 	"strings"
 	"testing"
@@ -58,7 +58,7 @@ func TestStateMap_AddNode_Invalid(t *testing.T) {
 	}
 
 	nid := id.NewIdFromUInt(2, id.Node, t)
-	r := round.NewState_Testing(42, 0, t)
+	r := round.NewState_Testing(42, 0, nil, t)
 
 	sm.nodeStates[*nid] = &State{
 		activity:     current.WAITING,
@@ -104,7 +104,7 @@ func TestStateMap_GetNode_Valid(t *testing.T) {
 	}
 
 	nid := id.NewIdFromUInt(2, id.Node, t)
-	r := round.NewState_Testing(42, 0, t)
+	r := round.NewState_Testing(42, 0, nil, t)
 
 	sm.nodeStates[*nid] = &State{
 		activity:     current.NOT_STARTED,

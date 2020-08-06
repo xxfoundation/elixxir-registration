@@ -73,7 +73,6 @@ func (wp *waitingPool) Ban(n *node.State) {
 func (wp *waitingPool) CleanOfflineNodes(timeout time.Duration) {
 	wp.mux.Lock()
 	defer wp.mux.Unlock()
-
 	now := time.Now()
 
 	// Collect nodes whose lastPoll is longer than
@@ -115,24 +114,33 @@ func (wp *waitingPool) SetNodeToOnline(ns *node.State) {
 //   those nodes.
 // If there are not enough nodes, either from the threshold or
 //   the requested nodes, this function errors
-func (wp *waitingPool) PickNRandAtThreshold(thresh, n int) ([]*node.State, error) {
+func (wp *waitingPool) PickNRandAtThreshold(thresh, n int, disabledNodesSet *set.Set) ([]*node.State, error) {
 	wp.mux.Lock()
 	defer wp.mux.Unlock()
 
+	newPool := set.New()
+
+	// Filter disabled nodes from the list
+	if disabledNodesSet != nil {
+		newPool = wp.pool.Difference(disabledNodesSet)
+	} else {
+		newPool = wp.pool
+	}
+
 	// Check that the pool meets the threshold requirement
-	if wp.pool.Len() < thresh {
-		return nil, errors.Errorf("Number of stored nodes (%v) does not reach threshold", wp.pool.Len())
+	if newPool.Len() < thresh {
+		return nil, errors.Errorf("Number of stored nodes (%v) does not reach threshold", newPool.Len())
 	}
 
 	// Check that the pool has enough nodes to satisfy n
-	if wp.pool.Len() < n {
+	if newPool.Len() < n {
 		return nil, errors.Errorf("Number of stored nodes (%v) not enough"+
-			" to pick %v nodes", wp.pool.Len(), n)
+			" to pick %v nodes", newPool.Len(), n)
 	}
 
 	// Create an incrementing list of numbers up to pool's length
-	numList := make([]uint32, wp.pool.Len())
-	for i := 0; i < wp.pool.Len(); i++ {
+	numList := make([]uint32, newPool.Len())
+	for i := 0; i < newPool.Len(); i++ {
 		numList[i] = uint32(i)
 	}
 
@@ -143,7 +151,7 @@ func (wp *waitingPool) PickNRandAtThreshold(thresh, n int) ([]*node.State, error
 	iterator := 0
 
 	// Collect nodes from pool at random
-	wp.pool.Do(func(face interface{}) {
+	newPool.Do(func(face interface{}) {
 		if numList[iterator] < uint32(n) {
 			nodeList = append(nodeList, face.(*node.State))
 		}

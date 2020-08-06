@@ -3,10 +3,10 @@ package scheduling
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/comms/connect"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/primitives/id"
 	"time"
 )
 
@@ -31,7 +31,7 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error) {
 
 	// Pick nodes from the pool
-	nodes, err := pool.PickNRandAtThreshold(int(params.Threshold), int(params.TeamSize))
+	nodes, err := pool.PickNRandAtThreshold(int(params.Threshold), int(params.TeamSize), state.GetDisabledNodesSet())
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)
 	}
