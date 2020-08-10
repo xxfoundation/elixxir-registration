@@ -8,9 +8,9 @@ package scheduling
 import (
 	"crypto/rand"
 	"github.com/golang-collections/collections/set"
-	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"reflect"
 	"testing"
