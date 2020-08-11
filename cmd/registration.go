@@ -14,8 +14,8 @@ import (
 	"crypto/sha256"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/xx_network/crypto/signature/rsa"
 	"sync/atomic"
 	"time"
 )
