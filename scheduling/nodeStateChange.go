@@ -276,23 +276,6 @@ func killRound(state *storage.NetworkState, r *round.State,
 	}
 	state.GetNodeMap().GetNodeStates()
 
-	// fix a potential error case where a node crashes after the round is
-	// created but before it updates to precomputing and then gets stuck
-	topology := r.GetTopology()
-	for i := 0; i < topology.Len(); i++ {
-		nid := topology.GetNodeAtIndex(i)
-		n := state.GetNodeMap().GetNode(nid)
-		if n != nil {
-			if n.GetActivity() == current.WAITING {
-				hasRound, rNode := n.GetCurrentRound()
-				if hasRound && rNode.GetRoundID() == r.GetRoundID() {
-					n.ClearRound()
-					pool.Add(n)
-				}
-			}
-		}
-	}
-
 	return err
 }
 
