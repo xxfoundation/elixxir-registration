@@ -122,6 +122,12 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 	}()
 
+	unstickerQuitChan := make(chan struct{})
+	// begin the thread that takes nodes stuck in waiting out of waiting
+	go func() {
+		UnstickNodes(state, pool, params.RoundTimeout*time.Second, unstickerQuitChan)
+	}()
+
 	var killed chan struct{}
 
 	iterationsCount := uint32(0)
@@ -142,6 +148,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		select {
 		// Receive a signal to kill the scheduler
 		case killed = <-killchan:
+			// Also kill the unsticker
 			jww.WARN.Printf("Scheduler has recived a kill signal, exit process has begun")
 		// When we get a node update, move past the select statement
 		case update = <-state.GetNodeUpdateChannel():
@@ -198,8 +205,11 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		// If the scheduler is to be killed and no rounds are in progress,
 		// kill the scheduler
 		if killed != nil && roundTracker.Len() == 0 {
+			// Stop round creation
 			close(newRoundChan)
 			jww.WARN.Printf("Scheduler is exiting due to kill signal")
+			// Also kill the unsticking thread
+			unstickerQuitChan <- struct{}{}
 			killed <- struct{}{}
 			return nil
 		}
