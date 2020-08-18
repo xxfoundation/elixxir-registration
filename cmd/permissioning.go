@@ -78,14 +78,21 @@ func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, 
 		return errors.Errorf("Unable to generate Node ID")
 	}
 
-	// If NodeId exists but Salt doesn't, populate the Salt
-	if len(nodeInfo.Salt) == 0 {
+	// Handle various re-registration cases
+	if len(nodeInfo.Id) != 0 {
 
-	}
+		// Ensure that generated ID matches stored ID
+		if !bytes.Equal(nodeInfo.Id, nodeId.Marshal()) {
+			return errors.Errorf("Submitted salt %+v does not match stored salt: %+v", salt, nodeInfo.Salt)
 
-	if len(nodeInfo.Id) == 0 || !bytes.Equal(nodeInfo.Id, nodeId.Marshal()) {
-		return errors.Errorf(
-			"Node with registration code %+v has already been registered", registrationCode)
+			// Ensure that salt is not already stored
+		} else if len(nodeInfo.Salt) != 0 {
+			return errors.Errorf(
+				"Node with registration code %s has already been registered", registrationCode)
+		}
+
+		// Store the newly-provided salt
+		return nil
 	}
 
 	// Attempt to insert Node into the database
