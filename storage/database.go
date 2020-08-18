@@ -41,7 +41,7 @@ var PermissioningDb Storage
 
 type NodeRegistration interface {
 	// If Node registration code is valid, add Node information
-	RegisterNode(id *id.ID, code, serverAddr, serverCert,
+	RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*Node, error)
@@ -132,6 +132,8 @@ type Node struct {
 
 	// Unique Node ID
 	Id []byte `gorm:"UNIQUE_INDEX;default: null"`
+	// Salt used for generation of Node ID
+	Salt []byte
 	// Server IP address
 	ServerAddress string
 	// Gateway IP address

@@ -302,11 +302,11 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 
 		return response, err
 	}
-	impl.Functions.RegisterNode = func(ID *id.ID, ServerAddr, ServerTlsCert,
-		GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
+	impl.Functions.RegisterNode = func(salt []byte, serverAddr, serverTlsCert, gatewayAddr,
+		gatewayTlsCert, registrationCode string) error {
 
-		err := instance.RegisterNode(ID, ServerAddr,
-			ServerTlsCert, GatewayAddr, GatewayTlsCert, RegistrationCode)
+		err := instance.RegisterNode(salt, serverAddr, serverTlsCert, gatewayAddr,
+			gatewayTlsCert, registrationCode)
 		if err != nil {
 			jww.ERROR.Printf("RegisterNode error: %+v", err)
 		}

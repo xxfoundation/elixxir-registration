@@ -100,7 +100,7 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 }
 
 // If Node registration code is valid, add Node information
-func (m *MapImpl) RegisterNode(id *id.ID, code, serverAddress, serverCert,
+func (m *MapImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddress, serverCert,
 	gatewayAddress, gatewayCert string) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
@@ -108,6 +108,7 @@ func (m *MapImpl) RegisterNode(id *id.ID, code, serverAddress, serverCert,
 	jww.INFO.Printf("Attempting to register node with code: %s", code)
 	if info := m.nodes[code]; info != nil {
 		info.Id = id.Marshal()
+		info.Salt = salt
 		info.ServerAddress = serverAddress
 		info.GatewayCertificate = gatewayCert
 		info.GatewayAddress = gatewayAddress

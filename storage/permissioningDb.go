@@ -61,11 +61,12 @@ func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte)
 }
 
 // If Node registration code is valid, add Node information
-func (m *DatabaseImpl) RegisterNode(id *id.ID, code, serverAddr, serverCert,
+func (m *DatabaseImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
 	gatewayAddress, gatewayCert string) error {
 	newNode := Node{
 		Code:               code,
 		Id:                 id.Marshal(),
+		Salt:               salt,
 		ServerAddress:      serverAddr,
 		GatewayAddress:     gatewayAddress,
 		NodeCertificate:    serverCert,

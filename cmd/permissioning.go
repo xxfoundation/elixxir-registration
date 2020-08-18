@@ -13,9 +13,11 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/xx"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"strconv"
@@ -45,8 +47,8 @@ func (m *RegistrationImpl) CheckNodeRegistration(msg *mixmessages.RegisteredNode
 		return false, nil
 	}
 
-	// If the node's id is not empty, then the node has been registered
-	if !bytes.Equal(nodeInfo.Id, []byte("")) {
+	// If the node's ID and Salt are not empty, then the node has been registered
+	if !bytes.Equal(nodeInfo.Id, []byte("")) && len(nodeInfo.Salt) > 0 {
 		return true, nil
 	}
 
@@ -56,45 +58,60 @@ func (m *RegistrationImpl) CheckNodeRegistration(msg *mixmessages.RegisteredNode
 }
 
 // Handle registration attempt by a Node
-func (m *RegistrationImpl) RegisterNode(ID *id.ID, ServerAddr, ServerTlsCert,
-	GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
+func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, gatewayAddr,
+	gatewayTlsCert, registrationCode string) error {
 
 	// Check that the node hasn't already been registered
-	nodeInfo, err := storage.PermissioningDb.GetNode(RegistrationCode)
+	nodeInfo, err := storage.PermissioningDb.GetNode(registrationCode)
 	if err != nil {
 		return errors.Errorf(
-			"Registration code %+v is invalid or not currently enabled: %+v", RegistrationCode, err)
+			"Registration code %+v is invalid or not currently enabled: %+v", registrationCode, err)
 	}
 
-	if !bytes.Equal(nodeInfo.Id, []byte("")) {
+	// Generate the Node ID
+	nodePubKey, err := rsa.LoadPublicKeyFromPem([]byte(serverTlsCert))
+	if err != nil {
+		return errors.Errorf("Node public key is invalid")
+	}
+	nodeId, err := xx.NewID(nodePubKey, salt, id.Node)
+	if err != nil {
+		return errors.Errorf("Unable to generate Node ID")
+	}
+
+	// If NodeId exists but Salt doesn't, populate the Salt
+	if len(nodeInfo.Salt) == 0 {
+
+	}
+
+	if len(nodeInfo.Id) == 0 || !bytes.Equal(nodeInfo.Id, nodeId.Marshal()) {
 		return errors.Errorf(
-			"Node with registration code %+v has already been registered", RegistrationCode)
+			"Node with registration code %+v has already been registered", registrationCode)
 	}
 
 	// Attempt to insert Node into the database
-	err = storage.PermissioningDb.RegisterNode(ID, RegistrationCode, ServerAddr,
-		ServerTlsCert, GatewayAddr, GatewayTlsCert)
+	err = storage.PermissioningDb.RegisterNode(nodeId, salt, registrationCode, serverAddr,
+		serverTlsCert, gatewayAddr, gatewayTlsCert)
 	if err != nil {
 		return errors.Errorf("unable to insert node: %+v", err)
 	}
 	jww.DEBUG.Printf("Inserted node %s into the database with code %s",
-		ID.String(), RegistrationCode)
+		nodeId.String(), registrationCode)
 
 	//add the node to the host object for authenticated communications
-	_, err = m.Comms.AddHost(ID, ServerAddr, []byte(ServerTlsCert), false, true)
+	_, err = m.Comms.AddHost(nodeId, serverAddr, []byte(serverTlsCert), false, true)
 	if err != nil {
-		return errors.Errorf("Could not register host for Server %s: %+v", ServerAddr, err)
+		return errors.Errorf("Could not register host for Server %s: %+v", serverAddr, err)
 	}
 
 	//add the node to the node map to track its state
-	err = m.State.GetNodeMap().AddNode(ID, nodeInfo.Sequence, ServerAddr, GatewayAddr, nodeInfo.ApplicationId)
+	err = m.State.GetNodeMap().AddNode(nodeId, nodeInfo.Sequence, serverAddr, gatewayAddr, nodeInfo.ApplicationId)
 	if err != nil {
 		return errors.WithMessage(err, "Could not register node with "+
 			"state tracker")
 	}
 
 	// Notify registration thread
-	return m.completeNodeRegistration(RegistrationCode)
+	return m.completeNodeRegistration(registrationCode)
 }
 
 // Loads all registered nodes and puts them into the host object and node map.
