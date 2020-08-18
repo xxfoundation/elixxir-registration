@@ -234,7 +234,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		defer l.Unlock()
 		fmt.Println("A")
 		//Register 1st node
-		err = impl.RegisterNode(id.NewIdFromString("B", id.Node, t),
+		err = impl.RegisterNode([]byte("test"),
 			nodeAddr, string(nodeCert),
 			"0.0.0.0:7900", string(gatewayCert), "BBBB")
 		if err != nil {
@@ -242,7 +242,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		}
 		fmt.Println("B")
 		//Register 2nd node
-		err = impl.RegisterNode(id.NewIdFromString("C", id.Node, t),
+		err = impl.RegisterNode([]byte("test"),
 			"0.0.0.0:6901", string(nodeCert),
 			"0.0.0.0:7901", string(gatewayCert), "CCCC")
 		if err != nil {
@@ -250,7 +250,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		}
 		fmt.Println("C")
 		//Register 3rd node
-		err = impl.RegisterNode(id.NewIdFromString("D", id.Node, t),
+		err = impl.RegisterNode([]byte("test"),
 			"0.0.0.0:6902", string(nodeCert),
 			"0.0.0.0:7902", string(gatewayCert), "DDDD")
 		if err != nil {
@@ -335,7 +335,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	}
 
 	//Register 1st node
-	err = impl.RegisterNode(id.NewIdFromString("B", id.Node, t), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
 		"0.0.0.0:7900", string(gatewayCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)

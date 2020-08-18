@@ -206,7 +206,7 @@ func TestMapImpl_RegisterNode(t *testing.T) {
 	m.nodes[code] = &Node{Code: code}
 
 	// Attempt to insert a node
-	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), code, addr,
+	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), []byte("test"), code, addr,
 		cert, gwAddr, gwCert)
 
 	// Verify the insert was successful
@@ -227,7 +227,7 @@ func TestMapImpl_RegisterNode_Invalid(t *testing.T) {
 	code := "TEST"
 
 	// Attempt to insert a node without an associated registration code
-	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), code, code,
+	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), []byte("test"), code, code,
 		code, code, code)
 
 	// Verify the insert failed

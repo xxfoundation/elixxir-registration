@@ -109,7 +109,7 @@ func TestEmptyDataBase(t *testing.T) {
 	}
 
 	//using node cert as gateway cert
-	err = impl.RegisterNode(id.NewIdFromString("test", id.Node, t), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "AAA")
 	if err == nil {
 		expectedErr := "Unable to insert node: unable to register node AAA"
@@ -149,7 +149,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 	//Register a node with that regCode
-	err = impl.RegisterNode(id.NewIdFromString("test", id.Node, t), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), newNode.Code)
 	if err != nil {
 		t.Errorf("Registered a node with a known reg code, but recieved the following error: %+v", err)
@@ -222,7 +222,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	RegParams = testParams
 
 	go func() {
-		err = impl.RegisterNode(id.NewIdFromString("test", id.Node, t), "0.0.0.0:6900", string(nodeCert),
+		err = impl.RegisterNode([]byte("test"), "0.0.0.0:6900", string(nodeCert),
 			"0.0.0.0:6900", string(nodeCert), "BBBB")
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
@@ -274,14 +274,14 @@ func TestDoubleRegistration(t *testing.T) {
 	nodeComm2 := nodeComms.StartNode(&id.TempGateway, "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
 
 	//Register 1st node
-	err = impl.RegisterNode(id.NewIdFromBytes([]byte("test"), t), nodeAddr, string(nodeCert),
+	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
 	//Register 2nd node
-	err = impl.RegisterNode(id.NewIdFromBytes([]byte("B"), t), "0.0.0.0:6901", string(nodeCert),
+	err = impl.RegisterNode([]byte("test"), "0.0.0.0:6901", string(nodeCert),
 		"0.0.0.0:6901", string(nodeCert), "BBBB")
 	//Kill the connections for the next test
 	nodeComm2.Shutdown()
@@ -328,7 +328,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 
 	go func() {
 		//Register 1st node
-		err = impl.RegisterNode(id.NewIdFromString("A", id.Node, t),
+		err = impl.RegisterNode([]byte("test"),
 			nodeAddr, string(nodeCert),
 			nodeAddr, string(nodeCert), "BBBB")
 		if err != nil {
@@ -336,7 +336,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 		}
 
 		//Register 2nd node
-		err = impl.RegisterNode(id.NewIdFromString("B", id.Node, t),
+		err = impl.RegisterNode([]byte("test"),
 			"0.0.0.0:6901", string(gatewayCert),
 			"0.0.0.0:6901", string(gatewayCert), "CCCC")
 		if err != nil {
@@ -393,7 +393,7 @@ func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 	testNodeID := id.NewIdFromString("A", id.Node, t)
 
 	//Register 1st node
-	err = impl.RegisterNode(testNodeID,
+	err = impl.RegisterNode(testNodeID.Marshal(),
 		nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
@@ -464,7 +464,7 @@ func TestCheckRegistration_NilMsg(t *testing.T) {
 	testNodeID := id.NewIdFromString("A", id.Node, t)
 
 	//Register 1st node
-	err = impl.RegisterNode(testNodeID,
+	err = impl.RegisterNode(testNodeID.Marshal(),
 		nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
@@ -514,7 +514,7 @@ func TestCheckRegistration_InvalidID(t *testing.T) {
 	testNodeID := id.NewIdFromString("A", id.Node, t)
 
 	//Register 1st node
-	err = impl.RegisterNode(testNodeID,
+	err = impl.RegisterNode(testNodeID.Marshal(),
 		nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
 	if err != nil {
