@@ -99,6 +99,12 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 	return nil
 }
 
+// Update the Salt for a given Node ID
+func (m *MapImpl) UpdateSalt(id *id.ID, salt []byte) error {
+	// TODO
+	return nil
+}
+
 // If Node registration code is valid, add Node information
 func (m *MapImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddress, serverCert,
 	gatewayAddress, gatewayCert string) error {
