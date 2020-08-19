@@ -13,6 +13,47 @@ import (
 	"time"
 )
 
+// Hidden function for one-time unit testing database implementation
+//func TestDatabaseImpl(t *testing.T) {
+//	db, _, err := NewDatabase("cmix", "", "cmix_server", "0.0.0.0", "5432")
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//
+//	testCode := "test"
+//	testId := id.NewIdFromString(testCode, id.Node, t)
+//	testAppId := uint64(10010)
+//	newApp := &Application{
+//		Id:          testAppId,
+//		Node:        Node{},
+//		Name:        testCode,
+//	}
+//	newNode := &Node{
+//		Code:               testCode,
+//		Sequence:           testCode,
+//		Status:             0,
+//		ApplicationId:      testAppId,
+//	}
+//
+//	err = db.InsertApplication(newApp, newNode)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	err = db.RegisterNode(testId, nil,
+//		testCode, "5.5.5.5", "test", "5.6.7.7", "test")
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	err = db.UpdateSalt(testId, []byte("test123"))
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//}
+
 // Happy path
 func TestMapImpl_InsertNodeMetric(t *testing.T) {
 	m := &MapImpl{nodeMetrics: make(map[uint64]*NodeMetric)}
