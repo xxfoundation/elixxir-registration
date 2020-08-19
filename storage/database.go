@@ -43,6 +43,8 @@ type NodeRegistration interface {
 	// If Node registration code is valid, add Node information
 	RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
+	// Update the Salt for a given Node ID
+	UpdateSalt(id *id.ID, salt []byte) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*Node, error)
 	// Get Node information for the given Node ID
