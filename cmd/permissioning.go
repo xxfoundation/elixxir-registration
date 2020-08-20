@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"bytes"
+	gorsa "crypto/rsa"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
@@ -18,6 +19,7 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/crypto/signature/rsa"
+	"gitlab.com/xx_network/crypto/tls"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"strconv"
@@ -69,13 +71,18 @@ func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, 
 	}
 
 	// Generate the Node ID
-	nodePubKey, err := rsa.LoadPublicKeyFromPem([]byte(serverTlsCert))
+	tlsCert, err := tls.LoadCertificate(serverTlsCert)
 	if err != nil {
-		return errors.Errorf("Node public key is invalid")
+		jww.FATAL.Panicf("Could not decode tls cert file into a"+
+			" tls cert: %v", err)
+	}
+	nodePubKey := &rsa.PublicKey{PublicKey: *tlsCert.PublicKey.(*gorsa.PublicKey)}
+	if len(salt) > 32 {
+		salt = salt[:32]
 	}
 	nodeId, err := xx.NewID(nodePubKey, salt, id.Node)
 	if err != nil {
-		return errors.Errorf("Unable to generate Node ID")
+		return errors.Errorf("Unable to generate Node ID: %+v", err)
 	}
 
 	// Handle various re-registration cases
