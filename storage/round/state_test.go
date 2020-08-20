@@ -8,8 +8,8 @@ package round
 
 import (
 	"bytes"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
-	"gitlab.com/xx_network/primitives/id"
 	"math"
 	"reflect"
 	"strings"
