@@ -7,6 +7,8 @@
 package storage
 
 import (
+	"bytes"
+	"crypto/rand"
 	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
 	"testing"
@@ -229,6 +231,49 @@ func TestMapImpl_InsertApplication_Duplicate(t *testing.T) {
 	// Verify the insert failed
 	if err == nil {
 		t.Errorf("Expected to fail inserting duplicate node registration code")
+	}
+}
+
+// Happy path
+func TestMapImpl_UpdateSalt(t *testing.T) {
+	testID := id.NewIdFromString("test", id.Node, t)
+	key := "testKey"
+	newSalt := make([]byte, 8)
+	_, _ = rand.Read(newSalt)
+
+	m := &MapImpl{
+		nodes: map[string]*Node{key: {Id: testID.Bytes(), Salt: []byte("b")}},
+	}
+
+	err := m.UpdateSalt(testID, newSalt)
+	if err != nil {
+		t.Errorf("Received unexpected error when upadting salt."+
+			"\n\terror: %v", err)
+	}
+
+	// Verify that the new salt matches the passed in salt
+	if !bytes.Equal(newSalt, m.nodes[key].Salt) {
+		t.Errorf("Node in map has unexpected salt."+
+			"\n\texpected: %d\n\treceived: %d", newSalt, m.nodes[key].Salt)
+	}
+}
+
+// Tests that MapImpl.UpdateSalt returns an error if no Node is found in the map
+// for the given ID.
+func TestMapImpl_UpdateSalt_NodeNotInMap(t *testing.T) {
+	testID := id.NewIdFromString("test", id.Node, t)
+	key := "testKey"
+	newSalt := make([]byte, 8)
+	_, _ = rand.Read(newSalt)
+
+	m := &MapImpl{
+		nodes: map[string]*Node{key: {Id: id.NewIdFromString("test3", id.Node, t).Bytes(), Salt: []byte("b")}},
+	}
+
+	err := m.UpdateSalt(testID, newSalt)
+	if err == nil {
+		t.Errorf("Did not receive an error when the Node does not exist in " +
+			"the map.")
 	}
 }
 
