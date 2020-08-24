@@ -101,7 +101,15 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 
 // Update the Salt for a given Node ID
 func (m *MapImpl) UpdateSalt(id *id.ID, salt []byte) error {
-	// TODO
+	n, err := m.GetNodeById(id)
+	if err != nil {
+		return err
+	}
+
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	n.Salt = salt
+
 	return nil
 }
 
