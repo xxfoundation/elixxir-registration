@@ -82,7 +82,7 @@ func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, 
 	}
 	nodeId, err := xx.NewID(nodePubKey, salt, id.Node)
 	if err != nil {
-		return errors.Errorf("Unable to generate Node ID: %+v", err)
+		return errors.Errorf("Unable to generate Node ID with salt %v: %+v", salt, err)
 	}
 
 	// Handle various re-registration cases
