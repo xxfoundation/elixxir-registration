@@ -73,8 +73,7 @@ func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, 
 	// Generate the Node ID
 	tlsCert, err := tls.LoadCertificate(serverTlsCert)
 	if err != nil {
-		jww.FATAL.Panicf("Could not decode tls cert file into a"+
-			" tls cert: %v", err)
+		return errors.Errorf("Could not decode server certificate into a tls cert: %v", err)
 	}
 	nodePubKey := &rsa.PublicKey{PublicKey: *tlsCert.PublicKey.(*gorsa.PublicKey)}
 	if len(salt) > 32 {

@@ -63,10 +63,9 @@ func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte)
 // Update the Salt for a given Node ID
 func (m *DatabaseImpl) UpdateSalt(id *id.ID, salt []byte) error {
 	newNode := Node{
-		Id:   id.Marshal(),
 		Salt: salt,
 	}
-	return m.db.Model(&newNode).Update(&newNode).Error
+	return m.db.First(&newNode, "id = ?", id.Marshal()).Update("salt", salt).Error
 }
 
 // If Node registration code is valid, add Node information
