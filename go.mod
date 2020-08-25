@@ -31,6 +31,4 @@ require (
 	gitlab.com/xx_network/primitives v0.0.0-20200812183720-516a65a4a9b2
 )
 
-replace (
-	google.golang.org/grpc => github.com/grpc/grpc-go v1.27.1
-)
+replace google.golang.org/grpc => github.com/grpc/grpc-go v1.27.1
