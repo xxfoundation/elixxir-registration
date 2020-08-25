@@ -9,7 +9,7 @@ package node
 import (
 	"errors"
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"time"
 )

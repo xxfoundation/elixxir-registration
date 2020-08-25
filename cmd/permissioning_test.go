@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
+	"gitlab.com/xx_network/primitives/id"
 	"testing"
 	"time"
 )

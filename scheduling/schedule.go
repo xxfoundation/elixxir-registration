@@ -185,9 +185,9 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			//nodes can be scheduled
 			var numNodesInPool int
 			disabledNodes := state.GetDisabledNodesSet()
-			if disabledNodes==nil{
-				numNodesInPool= pool.pool.Len()
-			}else{
+			if disabledNodes == nil {
+				numNodesInPool = pool.pool.Len()
+			} else {
 				numNodesInPool = pool.pool.Difference(disabledNodes).Len()
 			}
 
