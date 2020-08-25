@@ -13,8 +13,8 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"time"
 )
@@ -41,8 +41,10 @@ var PermissioningDb Storage
 
 type NodeRegistration interface {
 	// If Node registration code is valid, add Node information
-	RegisterNode(id *id.ID, code, serverAddr, serverCert,
+	RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
+	// Update the Salt for a given Node ID
+	UpdateSalt(id *id.ID, salt []byte) error
 	// Get Node information for the given Node registration code
 	GetNode(code string) (*Node, error)
 	// Get Node information for the given Node ID
@@ -132,6 +134,8 @@ type Node struct {
 
 	// Unique Node ID
 	Id []byte `gorm:"UNIQUE_INDEX;default: null"`
+	// Salt used for generation of Node ID
+	Salt []byte
 	// Server IP address
 	ServerAddress string
 	// Gateway IP address

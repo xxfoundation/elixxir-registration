@@ -11,8 +11,8 @@ package storage
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/primitives/id"
 	"time"
 )
 
@@ -60,12 +60,21 @@ func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte)
 	return m.db.Create(metric).Error
 }
 
+// Update the Salt for a given Node ID
+func (m *DatabaseImpl) UpdateSalt(id *id.ID, salt []byte) error {
+	newNode := Node{
+		Salt: salt,
+	}
+	return m.db.First(&newNode, "id = ?", id.Marshal()).Update("salt", salt).Error
+}
+
 // If Node registration code is valid, add Node information
-func (m *DatabaseImpl) RegisterNode(id *id.ID, code, serverAddr, serverCert,
+func (m *DatabaseImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
 	gatewayAddress, gatewayCert string) error {
 	newNode := Node{
 		Code:               code,
 		Id:                 id.Marshal(),
+		Salt:               salt,
 		ServerAddress:      serverAddr,
 		GatewayAddress:     gatewayAddress,
 		NodeCertificate:    serverCert,

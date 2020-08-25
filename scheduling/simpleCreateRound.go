@@ -9,10 +9,10 @@ import (
 	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/crypto/shuffle"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
-	"gitlab.com/xx_network/primitives/id"
 	"strconv"
 )
 
