@@ -9,7 +9,7 @@
 package scheduling
 
 import (
-	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/elixxir/primitives/id"
 	"sync"
 )
 

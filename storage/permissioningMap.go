@@ -12,8 +12,8 @@ import (
 	"bytes"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/primitives/id"
 	"testing"
 )
 
@@ -99,8 +99,22 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 	return nil
 }
 
+// Update the Salt for a given Node ID
+func (m *MapImpl) UpdateSalt(id *id.ID, salt []byte) error {
+	n, err := m.GetNodeById(id)
+	if err != nil {
+		return err
+	}
+
+	m.mut.Lock()
+	defer m.mut.Unlock()
+	n.Salt = salt
+
+	return nil
+}
+
 // If Node registration code is valid, add Node information
-func (m *MapImpl) RegisterNode(id *id.ID, code, serverAddress, serverCert,
+func (m *MapImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddress, serverCert,
 	gatewayAddress, gatewayCert string) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
@@ -108,6 +122,7 @@ func (m *MapImpl) RegisterNode(id *id.ID, code, serverAddress, serverCert,
 	jww.INFO.Printf("Attempting to register node with code: %s", code)
 	if info := m.nodes[code]; info != nil {
 		info.Id = id.Marshal()
+		info.Salt = salt
 		info.ServerAddress = serverAddress
 		info.GatewayCertificate = gatewayCert
 		info.GatewayAddress = gatewayAddress

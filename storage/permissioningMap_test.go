@@ -7,11 +7,54 @@
 package storage
 
 import (
+	"bytes"
+	"crypto/rand"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/primitives/id"
 	"testing"
 	"time"
 )
+
+// Hidden function for one-time unit testing database implementation
+//func TestDatabaseImpl(t *testing.T) {
+//	db, _, err := NewDatabase("cmix", "", "cmix_server", "0.0.0.0", "5432")
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//
+//	testCode := "test"
+//	testId := id.NewIdFromString(testCode, id.Node, t)
+//	testAppId := uint64(10010)
+//	newApp := &Application{
+//		Id:          testAppId,
+//		Node:        Node{},
+//		Name:        testCode,
+//	}
+//	newNode := &Node{
+//		Code:               testCode,
+//		Sequence:           testCode,
+//		Status:             0,
+//		ApplicationId:      testAppId,
+//	}
+//
+//	err = db.InsertApplication(newApp, newNode)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	err = db.RegisterNode(testId, nil,
+//		testCode, "5.5.5.5", "test", "5.6.7.7", "test")
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	err = db.UpdateSalt(testId, []byte("test123"))
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//}
 
 // Happy path
 func TestMapImpl_InsertNodeMetric(t *testing.T) {
@@ -192,6 +235,49 @@ func TestMapImpl_InsertApplication_Duplicate(t *testing.T) {
 }
 
 // Happy path
+func TestMapImpl_UpdateSalt(t *testing.T) {
+	testID := id.NewIdFromString("test", id.Node, t)
+	key := "testKey"
+	newSalt := make([]byte, 8)
+	_, _ = rand.Read(newSalt)
+
+	m := &MapImpl{
+		nodes: map[string]*Node{key: {Id: testID.Bytes(), Salt: []byte("b")}},
+	}
+
+	err := m.UpdateSalt(testID, newSalt)
+	if err != nil {
+		t.Errorf("Received unexpected error when upadting salt."+
+			"\n\terror: %v", err)
+	}
+
+	// Verify that the new salt matches the passed in salt
+	if !bytes.Equal(newSalt, m.nodes[key].Salt) {
+		t.Errorf("Node in map has unexpected salt."+
+			"\n\texpected: %d\n\treceived: %d", newSalt, m.nodes[key].Salt)
+	}
+}
+
+// Tests that MapImpl.UpdateSalt returns an error if no Node is found in the map
+// for the given ID.
+func TestMapImpl_UpdateSalt_NodeNotInMap(t *testing.T) {
+	testID := id.NewIdFromString("test", id.Node, t)
+	key := "testKey"
+	newSalt := make([]byte, 8)
+	_, _ = rand.Read(newSalt)
+
+	m := &MapImpl{
+		nodes: map[string]*Node{key: {Id: id.NewIdFromString("test3", id.Node, t).Bytes(), Salt: []byte("b")}},
+	}
+
+	err := m.UpdateSalt(testID, newSalt)
+	if err == nil {
+		t.Errorf("Did not receive an error when the Node does not exist in " +
+			"the map.")
+	}
+}
+
+// Happy path
 func TestMapImpl_RegisterNode(t *testing.T) {
 	m := &MapImpl{
 		nodes: make(map[string]*Node),
@@ -206,7 +292,7 @@ func TestMapImpl_RegisterNode(t *testing.T) {
 	m.nodes[code] = &Node{Code: code}
 
 	// Attempt to insert a node
-	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), code, addr,
+	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), []byte("test"), code, addr,
 		cert, gwAddr, gwCert)
 
 	// Verify the insert was successful
@@ -227,7 +313,7 @@ func TestMapImpl_RegisterNode_Invalid(t *testing.T) {
 	code := "TEST"
 
 	// Attempt to insert a node without an associated registration code
-	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), code, code,
+	err := m.RegisterNode(id.NewIdFromString("", id.Node, t), []byte("test"), code, code,
 		code, code, code)
 
 	// Verify the insert failed

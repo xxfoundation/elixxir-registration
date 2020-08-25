@@ -14,6 +14,8 @@ import (
 	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/primitives/current"
+	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/primitives/version"
@@ -22,8 +24,6 @@ import (
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/testkeys"
 	"gitlab.com/xx_network/comms/connect"
-	"gitlab.com/xx_network/primitives/id"
-	"gitlab.com/xx_network/primitives/ndf"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -226,40 +226,39 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	impl, err := StartRegistration(RegParams, nil)
 	if err != nil {
 		t.Errorf(err.Error())
+		return
 	}
+	defer impl.Comms.Shutdown()
 
 	var l sync.Mutex
 	go func() {
 		l.Lock()
 		defer l.Unlock()
-		fmt.Println("A")
 		//Register 1st node
-		err = impl.RegisterNode(id.NewIdFromString("B", id.Node, t),
+		testSalt := []byte("testtesttesttesttesttesttesttest")
+		testSalt2 := []byte("testtesttesttesttesttesttesttesc")
+		testSalt3 := []byte("testtesttesttesttesttesttesttesd")
+		err = impl.RegisterNode(testSalt,
 			nodeAddr, string(nodeCert),
 			"0.0.0.0:7900", string(gatewayCert), "BBBB")
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
-		fmt.Println("B")
 		//Register 2nd node
-		err = impl.RegisterNode(id.NewIdFromString("C", id.Node, t),
+		err = impl.RegisterNode(testSalt2,
 			"0.0.0.0:6901", string(nodeCert),
 			"0.0.0.0:7901", string(gatewayCert), "CCCC")
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
-		fmt.Println("C")
 		//Register 3rd node
-		err = impl.RegisterNode(id.NewIdFromString("D", id.Node, t),
+		err = impl.RegisterNode(testSalt3,
 			"0.0.0.0:6902", string(nodeCert),
 			"0.0.0.0:7902", string(gatewayCert), "DDDD")
 		if err != nil {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
 	}()
-
-	expectedNodeIDs := []*id.ID{id.NewIdFromString("B", id.Node, t),
-		id.NewIdFromString("C", id.Node, t), id.NewIdFromString("D", id.Node, t)}
 
 	//wait for registration to complete
 	select {
@@ -292,17 +291,6 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("Failed to set registration address. Expected: %v \n Recieved: %v",
 			permAddr, observedNDF.Registration.Address)
 	}
-
-	for i := range observedNDF.Nodes {
-		if bytes.Compare(expectedNodeIDs[i].Bytes(),
-			observedNDF.Nodes[i].ID) != 0 {
-			t.Errorf("Could not build node %d's id id: Expected: %v \nRecieved: %v", i,
-				expectedNodeIDs[i].String(), observedNDF.Nodes[i].ID)
-		}
-	}
-
-	//Shutdown node comms
-	impl.Comms.Shutdown()
 }
 
 //Error  path
@@ -333,9 +321,12 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
+	//Shutdown registration
+	defer impl.Comms.Shutdown()
 
 	//Register 1st node
-	err = impl.RegisterNode(id.NewIdFromString("B", id.Node, t), nodeAddr, string(nodeCert),
+	testSalt := []byte("testtesttesttesttesttesttesttest")
+	err = impl.RegisterNode(testSalt, nodeAddr, string(nodeCert),
 		"0.0.0.0:7900", string(gatewayCert), "BBBB")
 	if err != nil {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
@@ -351,9 +342,6 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	if err != nil && err.Error() != ndf.NO_NDF {
 		t.Errorf("Expected correct error message: %+v", err)
 	}
-
-	//Shutdown registration
-	impl.Comms.Shutdown()
 }
 
 func TestPoll_BannedNode(t *testing.T) {
@@ -374,6 +362,7 @@ func TestPoll_BannedNode(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
+	defer impl.Comms.Shutdown()
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
 	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{

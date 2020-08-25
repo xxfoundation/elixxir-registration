@@ -16,13 +16,13 @@ import (
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/crypto/signature/rsa"
 	"gitlab.com/elixxir/crypto/tls"
+	"gitlab.com/elixxir/primitives/id"
+	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
-	"gitlab.com/xx_network/primitives/id"
-	"gitlab.com/xx_network/primitives/ndf"
 	"sync"
 	"time"
 )
@@ -302,11 +302,11 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 
 		return response, err
 	}
-	impl.Functions.RegisterNode = func(ID *id.ID, ServerAddr, ServerTlsCert,
-		GatewayAddr, GatewayTlsCert, RegistrationCode string) error {
+	impl.Functions.RegisterNode = func(salt []byte, serverAddr, serverTlsCert, gatewayAddr,
+		gatewayTlsCert, registrationCode string) error {
 
-		err := instance.RegisterNode(ID, ServerAddr,
-			ServerTlsCert, GatewayAddr, GatewayTlsCert, RegistrationCode)
+		err := instance.RegisterNode(salt, serverAddr, serverTlsCert, gatewayAddr,
+			gatewayTlsCert, registrationCode)
 		if err != nil {
 			jww.ERROR.Printf("RegisterNode error: %+v", err)
 		}

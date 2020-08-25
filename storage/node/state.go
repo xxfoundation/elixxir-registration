@@ -9,10 +9,10 @@ package node
 import (
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/current"
+	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/transition"
-	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"sync/atomic"
 	"testing"
