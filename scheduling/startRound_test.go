@@ -61,7 +61,7 @@ func TestStartRound(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState, nil)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -127,7 +127,7 @@ func TestStartRound_BadState(t *testing.T) {
 	badState := round.NewState_Testing(roundID, states.COMPLETED, nil, t)
 	testState.GetRoundMap().AddRound_Testing(badState, t)
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState, nil)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -191,7 +191,7 @@ func TestStartRound_BadNode(t *testing.T) {
 	}
 	badState := round.NewState_Testing(roundID, states.COMPLETED, nil, t)
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState, nil)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
