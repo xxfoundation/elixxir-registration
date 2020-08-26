@@ -90,7 +90,7 @@ func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, 
 		// Ensure that generated ID matches stored ID
 		// Ensure that salt is not already stored
 		if !bytes.Equal(nodeInfo.Id, nodeId.Marshal()) {
-			return errors.Errorf("Submitted salt %+v does not match stored salt: %+v", salt, nodeInfo.Salt)
+			return errors.Errorf("Generated ID %+v does not match stored ID: %+v", nodeId.Marshal(), nodeInfo.Id)
 
 		} else if len(nodeInfo.Salt) != 0 {
 			return errors.Errorf(
