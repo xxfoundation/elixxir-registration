@@ -65,7 +65,7 @@ func TestCreateRound_NonRandom(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 
-	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState, nil)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -136,7 +136,7 @@ func TestCreateRound_Random(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 
-	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState, nil)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -194,7 +194,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	}
 
 	// Invalid ordering will cause this to fail
-	_, err = createSimpleRound(testParams, testPool, roundID, testState)
+	_, err = createSimpleRound(testParams, testPool, roundID, testState, nil)
 	if err != nil {
 		return
 	}
@@ -249,7 +249,7 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 
-	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState, nil)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -336,7 +336,7 @@ func TestCreateSimpleRound_SemiOptimal(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 
-	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState, nil)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -439,7 +439,7 @@ func TestCreateSimpleRound_SemiOptimal_BadRegion(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 
-	_, err = createSimpleRound(testParams, testPool, roundID, testState)
+	_, err = createSimpleRound(testParams, testPool, roundID, testState, nil)
 	if err != nil {
 		return
 	}
