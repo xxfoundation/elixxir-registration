@@ -24,7 +24,7 @@ const (
 	defaultRegistrationCountDuration = time.Hour * 24
 )
 
-var rateLimitErr = errors.New("Clients have exceeded registration rate limit")
+var rateLimitErr = errors.New("Too many client registrations. Try again later")
 
 // Handle registration attempt by a Client
 func (m *RegistrationImpl) RegisterUser(pubKey string) (
@@ -37,7 +37,6 @@ func (m *RegistrationImpl) RegisterUser(pubKey string) (
 	// Check rate limiting
 	if !m.registrationLimiting.Add(1) {
 		// Rate limited, fail early
-		// Will logging result in problems in case of ddos attempt?
 		return nil, rateLimitErr
 	}
 
