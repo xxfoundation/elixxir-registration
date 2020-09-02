@@ -7,7 +7,6 @@ import (
 	"gitlab.com/elixxir/registration/testkeys"
 	"gitlab.com/xx_network/primitives/id"
 	"testing"
-	"time"
 )
 
 //Happy path: tests that the function loads active and banned nodes into the maps
@@ -57,11 +56,9 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	//region Test code
 	// Create params for test registration server
 	testParams := Params{
-		CertPath:                  testkeys.GetCACertPath(),
-		KeyPath:                   testkeys.GetCAKeyPath(),
-		NdfOutputPath:             testkeys.GetNDFPath(),
-		maxRegistrationAttempts:   5,
-		registrationCountDuration: time.Hour,
+		CertPath:      testkeys.GetCACertPath(),
+		KeyPath:       testkeys.GetCAKeyPath(),
+		NdfOutputPath: testkeys.GetNDFPath(),
 	}
 	bc := make(chan bool, 1)
 	// Start registration server

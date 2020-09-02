@@ -14,6 +14,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
+	"gitlab.com/elixxir/primitives/rateLimiting"
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
@@ -32,17 +33,16 @@ const nodeCompletionChanLen = 1000
 
 // The main registration instance object
 type RegistrationImpl struct {
-	Comms                   *registration.Comms
-	params                  *Params
-	State                   *storage.NetworkState
-	Stopped                 *uint32
-	permissioningCert       *x509.Certificate
-	ndfOutputPath           string
-	NdfReady                *uint32
-	certFromFile            string
-	registrationsRemaining  *uint64
-	maxRegistrationAttempts uint64
-	disableGatewayPing      bool
+	Comms                *registration.Comms
+	params               *Params
+	State                *storage.NetworkState
+	Stopped              *uint32
+	permissioningCert    *x509.Certificate
+	ndfOutputPath        string
+	NdfReady             *uint32
+	certFromFile         string
+	registrationLimiting *rateLimiting.Bucket
+	disableGatewayPing   bool
 
 	//registration status trackers
 	numRegistered int
@@ -60,26 +60,27 @@ type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 
 // Params object for reading in configuration data
 type Params struct {
-	Address                   string
-	CertPath                  string
-	KeyPath                   string
-	NdfOutputPath             string
-	NsCertPath                string
-	NsAddress                 string
-	cmix                      ndf.Group
-	e2e                       ndf.Group
-	publicAddress             string
-	maxRegistrationAttempts   uint64
-	registrationCountDuration time.Duration
-	schedulingKillTimeout     time.Duration
-	closeTimeout              time.Duration
-	minimumNodes              uint32
-	udbId                     []byte
-	minGatewayVersion         version.Version
-	minServerVersion          version.Version
-	roundIdPath               string
-	updateIdPath              string
-	disableGatewayPing        bool
+	Address               string
+	CertPath              string
+	KeyPath               string
+	NdfOutputPath         string
+	NsCertPath            string
+	NsAddress             string
+	cmix                  ndf.Group
+	e2e                   ndf.Group
+	publicAddress         string
+	schedulingKillTimeout time.Duration
+	closeTimeout          time.Duration
+	minimumNodes          uint32
+	udbId                 []byte
+	minGatewayVersion     version.Version
+	minServerVersion      version.Version
+	roundIdPath           string
+	updateIdPath          string
+	disableGatewayPing    bool
+	// User registration can take userRegCapacity registrations in userRegLeakPeriod period of time
+	userRegCapacity   uint32
+	userRegLeakPeriod time.Duration
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -100,7 +101,6 @@ func toGroup(grp map[string]string) (*ndf.Group, error) {
 func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error) {
 
 	// Initialize variables
-	regRemaining := uint64(0)
 	ndfReady := uint32(0)
 	roundCreationStopped := uint32(0)
 
@@ -125,25 +125,18 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		State:                   state,
-		params:                  &params,
-		maxRegistrationAttempts: params.maxRegistrationAttempts,
-		registrationsRemaining:  &regRemaining,
-		ndfOutputPath:           params.NdfOutputPath,
-		NdfReady:                &ndfReady,
-		Stopped:                 &roundCreationStopped,
-
+		State:              state,
+		params:             &params,
+		ndfOutputPath:      params.NdfOutputPath,
+		NdfReady:           &ndfReady,
+		Stopped:            &roundCreationStopped,
 		numRegistered:      0,
 		beginScheduling:    make(chan struct{}, 1),
 		disableGatewayPing: params.disableGatewayPing,
 	}
 
-	// Create timer and channel to be used by routine that clears the number of
-	// registrations every time the ticker activates
-	go func() {
-		ticker := time.NewTicker(params.registrationCountDuration)
-		regImpl.registrationCapacityRestRunner(ticker, done)
-	}()
+	//regImpl.registrationLimiting = rateLimiting.Create(params.userRegCapacity, params.userRegLeakRate)
+	regImpl.registrationLimiting = rateLimiting.CreateBucket(params.userRegCapacity, params.userRegCapacity, params.userRegLeakPeriod, func(u uint32, i int64) {})
 
 	if !noTLS {
 		// Read in TLS keys from files
@@ -284,10 +277,8 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 // NewImplementation returns a registration server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
-	impl.Functions.RegisterUser = func(
-		registrationCode, pubKey string) (signature []byte, err error) {
-
-		response, err := instance.RegisterUser(registrationCode, pubKey)
+	impl.Functions.RegisterUser = func(pubKey string) ([]byte, error) {
+		response, err := instance.RegisterUser(pubKey)
 		if err != nil {
 			jww.ERROR.Printf("RegisterUser error: %+v", err)
 		}

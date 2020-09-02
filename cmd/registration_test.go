@@ -62,16 +62,16 @@ func TestMain(m *testing.M) {
 	}
 
 	testParams = Params{
-		Address:                   permAddr,
-		CertPath:                  testkeys.GetCACertPath(),
-		KeyPath:                   testkeys.GetCAKeyPath(),
-		NdfOutputPath:             testkeys.GetNDFPath(),
-		publicAddress:             permAddr,
-		maxRegistrationAttempts:   5,
-		registrationCountDuration: time.Hour,
-		minimumNodes:              3,
-		minGatewayVersion:         minGatewayVersion,
-		minServerVersion:          minServerVersion,
+		Address:           permAddr,
+		CertPath:          testkeys.GetCACertPath(),
+		KeyPath:           testkeys.GetCAKeyPath(),
+		NdfOutputPath:     testkeys.GetNDFPath(),
+		publicAddress:     permAddr,
+		userRegCapacity:   5,
+		userRegLeakPeriod: time.Hour,
+		minimumNodes:      3,
+		minGatewayVersion: minGatewayVersion,
+		minServerVersion:  minServerVersion,
 	}
 	nodeComm = nodeComms.StartNode(&id.TempGateway, nodeAddr, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
@@ -88,10 +88,10 @@ func TestMain(m *testing.M) {
 func TestEmptyDataBase(t *testing.T) {
 	//Start the registration server
 	testParams := Params{
-		CertPath:                  testkeys.GetCACertPath(),
-		KeyPath:                   testkeys.GetCAKeyPath(),
-		maxRegistrationAttempts:   5,
-		registrationCountDuration: time.Hour,
+		CertPath:          testkeys.GetCACertPath(),
+		KeyPath:           testkeys.GetCAKeyPath(),
+		userRegLeakPeriod: time.Hour,
+		userRegCapacity:   5,
 	}
 	// Start registration server
 	impl, err := StartRegistration(testParams, nil)
@@ -182,7 +182,7 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 	}
 
 	//Attempt to register a user
-	sig, err := impl.RegisterUser("AAAA", string(nodeKey))
+	sig, err := impl.RegisterUser(string(nodeKey))
 
 	if err != nil {
 		t.Errorf("Failed to register a node when it should have worked: %+v", err)
@@ -584,13 +584,13 @@ func TestValidateClientVersion_Failure(t *testing.T) {
 func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 
 	testParams2 := Params{
-		Address:                   "0.0.0.0:5905",
-		CertPath:                  testkeys.GetCACertPath(),
-		KeyPath:                   testkeys.GetCAKeyPath(),
-		NdfOutputPath:             testkeys.GetNDFPath(),
-		publicAddress:             "0.0.0.0:5905",
-		maxRegistrationAttempts:   4,
-		registrationCountDuration: 3 * time.Second,
+		Address:           "0.0.0.0:5905",
+		CertPath:          testkeys.GetCACertPath(),
+		KeyPath:           testkeys.GetCAKeyPath(),
+		NdfOutputPath:     testkeys.GetNDFPath(),
+		publicAddress:     "0.0.0.0:5905",
+		userRegCapacity:   4,
+		userRegLeakPeriod: 3 * time.Second,
 	}
 
 	// Start registration server
@@ -609,38 +609,38 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("b", "B")
+	_, err = impl.RegisterUser("b")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("c", "C")
+	_, err = impl.RegisterUser("c")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("d", "D")
+	_, err = impl.RegisterUser("D")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("e", "E")
+	_, err = impl.RegisterUser("E")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("f", "F")
+	_, err = impl.RegisterUser("F")
 	if err == nil {
 		t.Errorf("Did not fail to register a user when it should not have worked: %+v", err)
 	}
 
-	time.Sleep(testParams2.registrationCountDuration)
+	time.Sleep(testParams2.userRegLeakPeriod)
 	// Attempt to register a user
-	_, err = impl.RegisterUser("g", "G")
+	_, err = impl.RegisterUser("G")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
