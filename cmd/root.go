@@ -176,28 +176,46 @@ var rootCmd = &cobra.Command{
 
 		disableGatewayPing := viper.GetBool("disableGatewayPing")
 
+		userRegLeakPeriodString := viper.GetString("userRegLeakPeriod")
+		var userRegLeakPeriod time.Duration
+		if userRegLeakPeriodString != "" {
+			// specified, so try to parse
+			userRegLeakPeriod, err = time.ParseDuration(userRegLeakPeriodString)
+			if err != nil {
+				jww.FATAL.Panicf("Could not parse duration: %+v", err)
+			}
+		} else {
+			// use default
+			userRegLeakPeriod = time.Hour * 24
+		}
+		userRegCapacity := viper.GetUint32("userRegCapacity")
+		if userRegCapacity == 0 {
+			// use default
+			userRegCapacity = 1000
+		}
+
 		// Populate params
 		RegParams = Params{
-			Address:                   localAddress,
-			CertPath:                  certPath,
-			KeyPath:                   keyPath,
-			NdfOutputPath:             ndfOutputPath,
-			cmix:                      *cmix,
-			e2e:                       *e2e,
-			publicAddress:             publicAddress,
-			NsAddress:                 nsAddress,
-			NsCertPath:                nsCertPath,
-			maxRegistrationAttempts:   maxRegistrationAttempts,
-			registrationCountDuration: registrationCountDuration,
-			schedulingKillTimeout:     schedulingKillTimeout,
-			closeTimeout:              closeTimeout,
-			udbId:                     udbId,
-			minimumNodes:              viper.GetUint32("minimumNodes"),
-			minGatewayVersion:         minGatewayVersion,
-			minServerVersion:          minServerVersion,
-			roundIdPath:               roundIdPath,
-			updateIdPath:              updateIdPath,
-			disableGatewayPing:        disableGatewayPing,
+			Address:               localAddress,
+			CertPath:              certPath,
+			KeyPath:               keyPath,
+			NdfOutputPath:         ndfOutputPath,
+			cmix:                  *cmix,
+			e2e:                   *e2e,
+			publicAddress:         publicAddress,
+			NsAddress:             nsAddress,
+			NsCertPath:            nsCertPath,
+			schedulingKillTimeout: schedulingKillTimeout,
+			closeTimeout:          closeTimeout,
+			udbId:                 udbId,
+			minimumNodes:          viper.GetUint32("minimumNodes"),
+			minGatewayVersion:     minGatewayVersion,
+			minServerVersion:      minServerVersion,
+			roundIdPath:           roundIdPath,
+			updateIdPath:          updateIdPath,
+			disableGatewayPing:    disableGatewayPing,
+			userRegLeakPeriod:     userRegLeakPeriod,
+			userRegCapacity:       userRegCapacity,
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
