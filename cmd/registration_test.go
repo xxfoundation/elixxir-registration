@@ -182,7 +182,7 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 	}
 
 	//Attempt to register a user
-	sig, err := impl.RegisterUser(string(nodeKey))
+	sig, err := impl.RegisterUser("AAAA", string(nodeKey))
 
 	if err != nil {
 		t.Errorf("Failed to register a node when it should have worked: %+v", err)
@@ -609,38 +609,38 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("b")
+	_, err = impl.RegisterUser("", "B")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("c")
+	_, err = impl.RegisterUser("", "C")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("D")
+	_, err = impl.RegisterUser("", "D")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("E")
+	_, err = impl.RegisterUser("", "E")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("F")
+	_, err = impl.RegisterUser("", "F")
 	if err == nil {
 		t.Errorf("Did not fail to register a user when it should not have worked: %+v", err)
 	}
 
 	time.Sleep(testParams2.userRegLeakPeriod)
 	// Attempt to register a user
-	_, err = impl.RegisterUser("G")
+	_, err = impl.RegisterUser("", "G")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}

@@ -277,8 +277,8 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 // NewImplementation returns a registration server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
-	impl.Functions.RegisterUser = func(pubKey string) ([]byte, error) {
-		response, err := instance.RegisterUser(pubKey)
+	impl.Functions.RegisterUser = func(regCode string, pubKey string) ([]byte, error) {
+		response, err := instance.RegisterUser(regCode, pubKey)
 		if err != nil {
 			jww.ERROR.Printf("RegisterUser error: %+v", err)
 		}
