@@ -27,15 +27,18 @@ const (
 var rateLimitErr = errors.New("Too many client registrations. Try again later")
 
 // Handle registration attempt by a Client
-func (m *RegistrationImpl) RegisterUser(pubKey string) (
-	signature []byte, err error) {
+// Returns rsa signature and error
+func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string) ([]byte, error) {
 	// Check for pre-existing registration for this public key first
 	if user, err := storage.PermissioningDb.GetUser(pubKey); err == nil && user != nil {
 		jww.INFO.Printf("Previous registration found for %s", pubKey)
-	}
-
-	// Check rate limiting
-	if !m.registrationLimiting.Add(1) {
+	} else if regCode != "" {
+		// Fail early for non-valid reg codes
+		err = storage.PermissioningDb.UseCode(regCode)
+		if err != nil {
+			return nil, err
+		}
+	} else if regCode == "" && !m.registrationLimiting.Add(1) {
 		// Rate limited, fail early
 		return nil, rateLimitErr
 	}
