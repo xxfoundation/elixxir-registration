@@ -34,10 +34,11 @@ func TestState_GetLastUpdate(t *testing.T) {
 		t.Errorf("Updating state failed: %v", err)
 	}
 
+	time.Sleep(10*time.Millisecond)
 	newTime := ns.GetLastUpdate()
 
-	if origTime.After(newTime) || origTime.Equal(newTime) {
-		t.Errorf("origTime was after or euqal to newTime")
+	if origTime.Sub(newTime)>10*time.Millisecond {
+		t.Errorf("origTime was after or eqaul to newTime")
 	}
 }
 

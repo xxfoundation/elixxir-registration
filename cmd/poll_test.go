@@ -905,7 +905,9 @@ func TestVerifyError(t *testing.T) {
 			minServerVersion:  testVersion,
 		},
 		Comms: &registration.Comms{
-			ProtoComms: &connect.ProtoComms{},
+			ProtoComms: &connect.ProtoComms{
+				Manager: connect.NewManagerTesting(t),
+			},
 		},
 	}
 
