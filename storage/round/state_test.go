@@ -38,7 +38,7 @@ func TestState_GetLastUpdate(t *testing.T) {
 	newTime := ns.GetLastUpdate()
 
 	if origTime.Sub(newTime)>10*time.Millisecond {
-		t.Errorf("origTime was after or eqaul to newTime")
+		t.Errorf("orgtime incorrect")
 	}
 }
 
