@@ -897,6 +897,7 @@ func TestVerifyError(t *testing.T) {
 		t.Errorf("Unable to create state: %+v", err)
 	}
 	testVersion, _ := version.ParseVersion("0.0.0")
+	testManager := connect.NewManagerTesting(t)
 	impl := &RegistrationImpl{
 		State:    state,
 		NdfReady: &ndfReady,
@@ -905,7 +906,9 @@ func TestVerifyError(t *testing.T) {
 			minServerVersion:  testVersion,
 		},
 		Comms: &registration.Comms{
-			ProtoComms: &connect.ProtoComms{},
+			ProtoComms: &connect.ProtoComms{
+				Manager: testManager,
+			},
 		},
 	}
 
