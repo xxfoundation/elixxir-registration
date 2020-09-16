@@ -49,8 +49,9 @@ type RegistrationImpl struct {
 	//FIXME: it is possible that polling lock and registration lock
 	// do the same job and could conflict. reconsiderations of this logic
 	// may be fruitful
-	registrationLock sync.Mutex
-	beginScheduling  chan struct{}
+	registrationLock  sync.Mutex
+	beginScheduling   chan struct{}
+	registrationTimes map[*id.ID]int64
 
 	NDFLock sync.Mutex
 }
