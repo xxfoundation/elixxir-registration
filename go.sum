@@ -273,8 +273,8 @@ gitlab.com/elixxir/primitives v0.0.0-20200706165052-9fe7a4fb99a3/go.mod h1:OQgUZ
 gitlab.com/elixxir/primitives v0.0.0-20200708185800-a06e961280e6 h1:7xLD8w5qAKN1YqG2UiMiN3rODUACyQME83uDlVhvWLo=
 gitlab.com/elixxir/primitives v0.0.0-20200708185800-a06e961280e6/go.mod h1:OQgUZq7SjnE0b+8+iIAT2eqQF+2IFHn73tOo+aV11mg=
 gitlab.com/xx_network/comms v0.0.0-20200914214634-2d84c6e1d4c9/go.mod h1:J+GJ6fn71a4xnYVvbcrhtvWSOQIqqhaGcaej5xB3/JY=
-gitlab.com/xx_network/comms v0.0.0-20200916164747-a54b93d66431 h1:JrEKnrTS8etUjg2f6tgM0yuembGfh5U/XQJ/ARvh33M=
-gitlab.com/xx_network/comms v0.0.0-20200916164747-a54b93d66431/go.mod h1:J+GJ6fn71a4xnYVvbcrhtvWSOQIqqhaGcaej5xB3/JY=
+gitlab.com/xx_network/comms v0.0.0-20200916172635-6ab807c3c820 h1:vdozJQgrnznmHJLS38aOXprLKZXClnHJ9ljY/70aWuI=
+gitlab.com/xx_network/comms v0.0.0-20200916172635-6ab807c3c820/go.mod h1:J+GJ6fn71a4xnYVvbcrhtvWSOQIqqhaGcaej5xB3/JY=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
 go.opencensus.io v0.21.0/go.mod h1:mSImk1erAIZhrmZN+AvHh14ztQfjbGwt4TtuofqLduU=
 go.opencensus.io v0.22.0/go.mod h1:+kGneAE2xo2IficOXnaByMWTGM9T73dGwxeWcUqIpI8=
