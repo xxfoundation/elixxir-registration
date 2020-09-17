@@ -73,7 +73,7 @@ func TestMain(m *testing.M) {
 		minGatewayVersion: minGatewayVersion,
 		minServerVersion:  minServerVersion,
 	}
-	nodeComm = nodeComms.StartNode(&id.TempGateway, nodeAddr, nodeComms.NewImplementation(), nodeCert, nodeKey)
+	nodeComm = nodeComms.StartNode(&id.TempGateway, nodeAddr, 0, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
 	runFunc := func() int {
 		code := m.Run()
@@ -271,7 +271,7 @@ func TestDoubleRegistration(t *testing.T) {
 	defer impl.Comms.Shutdown()
 
 	//Create a second node to register
-	nodeComm2 := nodeComms.StartNode(&id.TempGateway, "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := nodeComms.StartNode(&id.TempGateway, "0.0.0.0:6901", 0, nodeComms.NewImplementation(), nodeCert, nodeKey)
 	defer nodeComm2.Shutdown()
 	//Register 1st node
 	testSalt := []byte("testtesttesttesttesttesttesttest")
@@ -324,7 +324,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	defer impl.Comms.Shutdown()
 
 	//Create a second node to register
-	nodeComm2 := nodeComms.StartNode(&id.TempGateway, "0.0.0.0:6901", nodeComms.NewImplementation(), nodeCert, nodeKey)
+	nodeComm2 := nodeComms.StartNode(&id.TempGateway, "0.0.0.0:6901", 0, nodeComms.NewImplementation(), nodeCert, nodeKey)
 	//Kill the connections for the next test
 	defer nodeComm2.Shutdown()
 	go func() {
