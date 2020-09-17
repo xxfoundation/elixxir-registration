@@ -15,7 +15,7 @@ import (
 )
 
 // Change this value to set the version for this build
-const currentVersion = "1.4.1"
+const currentVersion = "1.5.1"
 
 func printVersion() {
 	fmt.Printf("xx network Permissioning Server v%s -- %s\n\n",
