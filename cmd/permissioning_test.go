@@ -33,7 +33,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 
 	// Create a new ID and store a new active node into the database
 	activeNodeId := id.NewIdFromUInt(0, id.Node, t)
-	err = storage.PermissioningDb.RegisterNode(activeNodeId, []byte("test"), "AAAA", "0.0.0.0", string(crt),
+	err = storage.PermissioningDb.RegisterNode(activeNodeId, []byte("test1"), "AAAA", "0.0.0.0", string(crt),
 		"0.0.0.0", string(crt))
 	if err != nil {
 		t.Error(err)
@@ -41,11 +41,28 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 
 	// Create a new ID and store a new *banned* node into the database
 	bannedNodeId := id.NewIdFromUInt(1, id.Node, t)
-	err = storage.PermissioningDb.RegisterNode(bannedNodeId, []byte("test"), "BBBB", "0.0.0.0", string(crt),
+	err = storage.PermissioningDb.RegisterNode(bannedNodeId, []byte("test2"), "BBBB", "0.0.0.0", string(crt),
 		"0.0.0.0", string(crt))
 	if err != nil {
 		t.Error(err)
 	}
+
+	// Create a new ID and store a new *banned* node into the database
+	altNodeID1 := id.NewIdFromString("alt1", id.Node, t)
+	err = storage.PermissioningDb.RegisterNode(altNodeID1, []byte("test2"), "BBBB", "0.0.0.0", string(crt),
+		"0.0.0.0", string(crt))
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Create a new ID and store a new *banned* node into the database
+	altNodeID2 := id.NewIdFromString("alt2", id.Node, t)
+	err = storage.PermissioningDb.RegisterNode(altNodeID2, []byte("test2"), "BBBB", "0.0.0.0", string(crt),
+		"0.0.0.0", string(crt))
+	if err != nil {
+		t.Error(err)
+	}
+
 	permissioningMap := storage.PermissioningDb.NodeRegistration.(*storage.MapImpl)
 	err = permissioningMap.BannedNode(bannedNodeId, t)
 	if err != nil {

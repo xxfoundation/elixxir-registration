@@ -205,17 +205,24 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	m.NDFLock.Lock()
 	networkDef := m.State.GetFullNdf().Get()
 	gateway, n, regTime, err := assembleNdf(regCode)
-	nodeID, err := id.Unmarshal(n.ID)
-	if err != nil {
-		return errors.Errorf("Error parsing node ID: %v", err)
-	}
-	m.registrationTimes[nodeID] = regTime
-
 	if err != nil {
 		m.NDFLock.Unlock()
 		err := errors.Errorf("unable to assemble topology: %+v", err)
 		jww.ERROR.Print(err.Error())
 		return errors.Errorf("Could not complete registration: %+v", err)
+	}
+
+	nodeID, err := id.Unmarshal(n.ID)
+	if err != nil {
+		m.NDFLock.Unlock()
+		return errors.WithMessage(err, "Error parsing node ID")
+	}
+
+	m.registrationTimes[nodeID] = regTime
+	err = m.insertNdf(networkDef, gateway, n, regTime)
+	if err != nil {
+		m.NDFLock.Unlock()
+		return errors.WithMessage(err, "Failed to insert nodes in definition")
 	}
 
 	// update the internal state with the newly-updated ndf
@@ -246,51 +253,28 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	return nil
 }
 
+// Insert a node into the NDF, preserving ordering
 func (m *RegistrationImpl) insertNdf(definition *ndf.NetworkDefinition, g ndf.Gateway,
 	n ndf.Node, regTime int64) error {
 	index := sort.Search(len(definition.Nodes), func(i int) bool {
 		nid, _ := id.Unmarshal(definition.Nodes[i].ID)
 		return m.registrationTimes[nid] >= regTime
 	})
+	// If the node is already in the NDF, replace the current entry with the more recent one
 	if index < len(definition.Nodes) && bytes.Compare(definition.Nodes[index].ID, n.ID) == 0 {
 		definition.Nodes[index] = n
 		definition.Gateways[index] = g
 	} else {
-		cmpId, err := id.Unmarshal(definition.Nodes[index].ID)
-		if err != nil {
-			return errors.Errorf("Faield to unmarshal ID from definition: %+v", err)
-		}
-		nid, err := id.Unmarshal(n.ID)
-		if err != nil {
-			return errors.Errorf("Failed to unmarshal ID: %+v", err)
-		}
-		if m.registrationTimes[cmpId] > m.registrationTimes[nid] {
-			definition.Nodes = append(definition.Nodes[0:index], append([]ndf.Node{n}, definition.Nodes[index:]...)...)
-			definition.Gateways = append(definition.Gateways[0:index], append([]ndf.Gateway{g}, definition.Gateways[index:]...)...)
-		} else {
-			index++
-			definition.Nodes = append(definition.Nodes[0:index], append([]ndf.Node{n}, definition.Nodes[index:]...)...)
-			definition.Gateways = append(definition.Gateways[0:index], append([]ndf.Gateway{g}, definition.Gateways[index:]...)...)
-		}
+		// Otherwise, index is where it should be inserted.  Extend arrays and insert in proper slot
+		definition.Nodes = append(definition.Nodes, ndf.Node{})
+		copy(definition.Nodes[index+1:], definition.Nodes[index:])
+		definition.Nodes[index] = n
+
+		definition.Gateways = append(definition.Gateways, ndf.Gateway{})
+		copy(definition.Gateways[index+1:], definition.Gateways[index:])
+		definition.Gateways[index] = g
 	}
 	return nil
-}
-
-// helper function which appends the ndf to the maximum order
-func appendNdf(definition *ndf.NetworkDefinition, order int) {
-	// Avoid causing a divide by zero panic if both order and definition.Nodes is zero, 0 % 0 is incalculable
-	lengthDifference := 0
-	if order == 0 && len(definition.Nodes) == 0 {
-		lengthDifference = 1
-	} else {
-		lengthDifference = (order - len(definition.Nodes)) + 1
-	}
-
-	gwExtension := make([]ndf.Gateway, lengthDifference)
-	nodeExtension := make([]ndf.Node, lengthDifference)
-	definition.Nodes = append(definition.Nodes, nodeExtension...)
-	definition.Gateways = append(definition.Gateways, gwExtension...)
-
 }
 
 // Assemble information for the given registration code

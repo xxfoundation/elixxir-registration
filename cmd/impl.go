@@ -134,6 +134,7 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 		numRegistered:      0,
 		beginScheduling:    make(chan struct{}, 1),
 		disableGatewayPing: params.disableGatewayPing,
+		registrationTimes:  make(map[*id.ID]int64),
 	}
 
 	//regImpl.registrationLimiting = rateLimiting.Create(params.userRegCapacity, params.userRegLeakRate)
