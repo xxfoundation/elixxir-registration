@@ -22,7 +22,6 @@ import (
 	"gitlab.com/xx_network/crypto/tls"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
-	"sort"
 	"sync/atomic"
 )
 
@@ -218,7 +217,7 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		return errors.WithMessage(err, "Error parsing node ID")
 	}
 
-	m.registrationTimes[nodeID] = regTime
+	m.registrationTimes[nodeID.String()] = regTime
 	err = m.insertNdf(networkDef, gateway, n, regTime)
 	if err != nil {
 		m.NDFLock.Unlock()
@@ -256,23 +255,24 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 // Insert a node into the NDF, preserving ordering
 func (m *RegistrationImpl) insertNdf(definition *ndf.NetworkDefinition, g ndf.Gateway,
 	n ndf.Node, regTime int64) error {
-	index := sort.Search(len(definition.Nodes), func(i int) bool {
-		nid, _ := id.Unmarshal(definition.Nodes[i].ID)
-		return m.registrationTimes[nid] >= regTime
-	})
-	// If the node is already in the NDF, replace the current entry with the more recent one
-	if index < len(definition.Nodes) && bytes.Compare(definition.Nodes[index].ID, n.ID) == 0 {
-		definition.Nodes[index] = n
-		definition.Gateways[index] = g
-	} else {
-		// Otherwise, index is where it should be inserted.  Extend arrays and insert in proper slot
-		definition.Nodes = append(definition.Nodes, ndf.Node{})
-		copy(definition.Nodes[index+1:], definition.Nodes[index:])
-		definition.Nodes[index] = n
+	var i int
+	for i = 0; i < len(definition.Nodes); i++ {
+		nid, err := id.Unmarshal(definition.Nodes[i].ID)
+		if err != nil {
+			return errors.Errorf("Could not unmarshal ID from definition: %+v", err)
+		}
+		cmpTime := m.registrationTimes[nid.String()]
+		if regTime < cmpTime {
+			break
+		}
+	}
 
-		definition.Gateways = append(definition.Gateways, ndf.Gateway{})
-		copy(definition.Gateways[index+1:], definition.Gateways[index:])
-		definition.Gateways[index] = g
+	if i == len(definition.Nodes) {
+		definition.Nodes = append(definition.Nodes, n)
+		definition.Gateways = append(definition.Gateways, g)
+	} else {
+		definition.Nodes = append(definition.Nodes[0:i], append([]ndf.Node{n}, definition.Nodes[i:]...)...)
+		definition.Gateways = append(definition.Gateways[0:i], append([]ndf.Gateway{g}, definition.Gateways[i:]...)...)
 	}
 	return nil
 }
@@ -309,7 +309,7 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int64, error) {
 		TlsCertificate: nodeInfo.GatewayCertificate,
 	}
 
-	return gateway, n, nodeInfo.DateRegistered.Unix(), nil
+	return gateway, n, nodeInfo.DateRegistered.UnixNano(), nil
 }
 
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
