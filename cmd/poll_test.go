@@ -65,7 +65,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 
 	// Make a simple auth object that will pass the checks
 	testHost, _ := impl.Comms.AddHost(testID, testString,
-		make([]byte, 0), false, true)
+		make([]byte, 0), connect.GetDefaultHostParams())
 
 	testAuth := &connect.Auth{
 		IsAuthenticated: true,
@@ -186,7 +186,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Make a simple auth object that will fail the checks
 	testHost, _ := connect.NewHost(id.NewIdFromString(testString, id.Node, t),
-		testString, make([]byte, 0), false, true)
+		testString, make([]byte, 0), connect.GetDefaultHostParams())
 	testAuth := &connect.Auth{
 		IsAuthenticated: false,
 		Sender:          testHost,
@@ -374,7 +374,7 @@ func TestPoll_BannedNode(t *testing.T) {
 
 	// Make a simple auth object that will pass the checks
 	testHost, _ := connect.NewHost(testID, testString,
-		make([]byte, 0), false, true)
+		make([]byte, 0), connect.GetDefaultHostParams())
 	testAuth := &connect.Auth{
 		IsAuthenticated: true,
 		Sender:          testHost,
@@ -897,6 +897,7 @@ func TestVerifyError(t *testing.T) {
 		t.Errorf("Unable to create state: %+v", err)
 	}
 	testVersion, _ := version.ParseVersion("0.0.0")
+	testManager := connect.NewManagerTesting(t)
 	impl := &RegistrationImpl{
 		State:    state,
 		NdfReady: &ndfReady,
@@ -905,12 +906,16 @@ func TestVerifyError(t *testing.T) {
 			minServerVersion:  testVersion,
 		},
 		Comms: &registration.Comms{
-			ProtoComms: &connect.ProtoComms{},
+			ProtoComms: &connect.ProtoComms{
+				Manager: testManager,
+			},
 		},
 	}
 
 	errNodeId := id.NewIdFromString("node", id.Node, t)
-	_, err = impl.Comms.AddHost(errNodeId, "0.0.0.0:8000", nodeCert, false, false)
+	params := connect.GetDefaultHostParams()
+	params.AuthEnabled = false
+	_, err = impl.Comms.AddHost(errNodeId, "0.0.0.0:8000", nodeCert, params)
 	if err != nil {
 		t.Error("Failed to add host")
 	}
