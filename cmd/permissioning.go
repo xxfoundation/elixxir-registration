@@ -59,9 +59,19 @@ func (m *RegistrationImpl) CheckNodeRegistration(msg *mixmessages.RegisteredNode
 
 }
 
+// An atomic counter for which regcode we're using next, when disableRegCodes is enabled
+var curNodeReg = uint32(0)
+var curNodeRegPtr = &curNodeReg
+
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, gatewayAddr,
 	gatewayTlsCert, registrationCode string) error {
+
+	// If disableRegCodes is set, we atomically increase curNodeReg and use the previous code in the sequence
+	if disableRegCodes {
+		regNum := atomic.AddUint32(curNodeRegPtr, 1)
+		registrationCode = regCodeInfos[regNum-1].RegCode
+	}
 
 	// Check that the node hasn't already been registered
 	nodeInfo, err := storage.PermissioningDb.GetNode(registrationCode)

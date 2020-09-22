@@ -43,6 +43,10 @@ var (
 	disablePermissioning bool
 	disabledNodesPath    string
 
+	// Storage of registration codes from file so it can be loaded from disableRegCodes
+	regCodeInfos    []node.Info
+	disableRegCodes bool
+
 	// Duration between polls of the disabled Node list for updates.
 	disabledNodesPollDuration time.Duration
 )
@@ -119,7 +123,7 @@ var rootCmd = &cobra.Command{
 		// Populate Node registration codes into the database
 		RegCodesFilePath := viper.GetString("regCodesFilePath")
 		if RegCodesFilePath != "" {
-			regCodeInfos, err := node.LoadInfo(RegCodesFilePath)
+			regCodeInfos, err = node.LoadInfo(RegCodesFilePath)
 			if err != nil {
 				jww.ERROR.Printf("Failed to load registration codes from the "+
 					"file %s: %+v", RegCodesFilePath, err)
@@ -429,6 +433,9 @@ func init() {
 
 	rootCmd.Flags().BoolVar(&noTLS, "noTLS", false,
 		"Runs without TLS enabled")
+
+	rootCmd.Flags().BoolVar(&disableRegCodes, "disableRegCodes", false,
+		"Automatically provide registration codes to Nodes. (For testing only)")
 
 	rootCmd.Flags().StringP("close-timeout", "t", "60s",
 		("Amount of time to wait for rounds to stop running after" +
