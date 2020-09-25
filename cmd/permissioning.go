@@ -22,6 +22,7 @@ import (
 	"gitlab.com/xx_network/crypto/tls"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"strconv"
 	"sync/atomic"
 )
 
@@ -203,7 +204,7 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	// Add the new node to the topology
 	m.NDFLock.Lock()
 	networkDef := m.State.GetFullNdf().Get()
-	gateway, n, regTime, err := assembleNdf(regCode)
+	gateway, n, regTime, order, err := assembleNdf(regCode)
 	if err != nil {
 		m.NDFLock.Unlock()
 		err := errors.Errorf("unable to assemble topology: %+v", err)
@@ -211,17 +212,27 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
-	nodeID, err := id.Unmarshal(n.ID)
-	if err != nil {
-		m.NDFLock.Unlock()
-		return errors.WithMessage(err, "Error parsing node ID")
-	}
+	if order != -1 {
+		// fixme: consider removing. this allows clients to remain agnostic of teaming order
+		//  by forcing team order == ndf order for simple non-random
+		if order >= len(networkDef.Nodes) {
+			appendNdf(networkDef, order)
+		}
+		networkDef.Gateways[order] = gateway
+		networkDef.Nodes[order] = n
+	} else {
+		nodeID, err := id.Unmarshal(n.ID)
+		if err != nil {
+			m.NDFLock.Unlock()
+			return errors.WithMessage(err, "Error parsing node ID")
+		}
 
-	m.registrationTimes[nodeID.String()] = regTime
-	err = m.insertNdf(networkDef, gateway, n, regTime)
-	if err != nil {
-		m.NDFLock.Unlock()
-		return errors.WithMessage(err, "Failed to insert nodes in definition")
+		m.registrationTimes[*nodeID] = regTime
+		err = m.insertNdf(networkDef, gateway, n, regTime)
+		if err != nil {
+			m.NDFLock.Unlock()
+			return errors.WithMessage(err, "Failed to insert nodes in definition")
+		}
 	}
 
 	// update the internal state with the newly-updated ndf
@@ -252,6 +263,23 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	return nil
 }
 
+// helper function which appends the ndf to the maximum order
+func appendNdf(definition *ndf.NetworkDefinition, order int) {
+	// Avoid causing a divide by zero panic if both order and definition.Nodes is zero, 0 % 0 is incalculable
+	lengthDifference := 0
+	if order == 0 && len(definition.Nodes) == 0 {
+		lengthDifference = 1
+	} else {
+		lengthDifference = (order - len(definition.Nodes)) + 1
+	}
+
+	gwExtension := make([]ndf.Gateway, lengthDifference)
+	nodeExtension := make([]ndf.Node, lengthDifference)
+	definition.Nodes = append(definition.Nodes, nodeExtension...)
+	definition.Gateways = append(definition.Gateways, gwExtension...)
+
+}
+
 // Insert a node into the NDF, preserving ordering
 func (m *RegistrationImpl) insertNdf(definition *ndf.NetworkDefinition, g ndf.Gateway,
 	n ndf.Node, regTime int64) error {
@@ -261,7 +289,7 @@ func (m *RegistrationImpl) insertNdf(definition *ndf.NetworkDefinition, g ndf.Ga
 		if err != nil {
 			return errors.Errorf("Could not unmarshal ID from definition: %+v", err)
 		}
-		cmpTime := m.registrationTimes[nid.String()]
+		cmpTime := m.registrationTimes[*nid]
 		if regTime < cmpTime {
 			break
 		}
@@ -278,19 +306,19 @@ func (m *RegistrationImpl) insertNdf(definition *ndf.NetworkDefinition, g ndf.Ga
 }
 
 // Assemble information for the given registration code
-func assembleNdf(code string) (ndf.Gateway, ndf.Node, int64, error) {
+func assembleNdf(code string) (ndf.Gateway, ndf.Node, int64, int, error) {
 
 	// Get node information for each registration code
 	nodeInfo, err := storage.PermissioningDb.GetNode(code)
 	if err != nil {
-		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf(
+		return ndf.Gateway{}, ndf.Node{}, 0, 0, errors.Errorf(
 			"unable to obtain node for registration"+
 				" code %+v: %+v", code, err)
 	}
 
 	nodeID, err := id.Unmarshal(nodeInfo.Id)
 	if err != nil {
-		return ndf.Gateway{}, ndf.Node{}, 0, errors.Errorf("Error parsing node ID: %v", err)
+		return ndf.Gateway{}, ndf.Node{}, 0, 0, errors.Errorf("Error parsing node ID: %v", err)
 	}
 
 	n := ndf.Node{
@@ -309,7 +337,12 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int64, error) {
 		TlsCertificate: nodeInfo.GatewayCertificate,
 	}
 
-	return gateway, n, nodeInfo.DateRegistered.UnixNano(), nil
+	order, err := strconv.Atoi(nodeInfo.Sequence)
+	if err != nil {
+		return gateway, n, -1, 1, nil
+	}
+
+	return gateway, n, nodeInfo.DateRegistered.UnixNano(), order, nil
 }
 
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and

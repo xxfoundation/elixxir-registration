@@ -51,7 +51,7 @@ type RegistrationImpl struct {
 	// may be fruitful
 	registrationLock  sync.Mutex
 	beginScheduling   chan struct{}
-	registrationTimes map[string]int64
+	registrationTimes map[id.ID]int64
 
 	NDFLock sync.Mutex
 }
@@ -134,7 +134,7 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 		numRegistered:      0,
 		beginScheduling:    make(chan struct{}, 1),
 		disableGatewayPing: params.disableGatewayPing,
-		registrationTimes:  make(map[string]int64),
+		registrationTimes:  make(map[id.ID]int64),
 	}
 
 	//regImpl.registrationLimiting = rateLimiting.Create(params.userRegCapacity, params.userRegLeakRate)
