@@ -29,6 +29,7 @@ var rateLimitErr = errors.New("Too many client registrations. Try again later")
 // Handle registration attempt by a Client
 // Returns rsa signature and error
 func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string) ([]byte, error) {
+	jww.INFO.Printf("RegisterUser %s", pubKey)
 	// Check for pre-existing registration for this public key first
 	if user, err := storage.PermissioningDb.GetUser(pubKey); err == nil && user != nil {
 		jww.INFO.Printf("Previous registration found for %s", pubKey)
@@ -36,10 +37,12 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string) ([]byte, 
 		// Fail early for non-valid reg codes
 		err = storage.PermissioningDb.UseCode(regCode)
 		if err != nil {
+			jww.INFO.Printf("RegisterUser error: %+v", err)
 			return nil, err
 		}
 	} else if regCode == "" && !m.registrationLimiting.Add(1) {
 		// Rate limited, fail early
+		jww.INFO.Printf("RegisterUser error: %+v", rateLimitErr)
 		return nil, rateLimitErr
 	}
 
@@ -50,6 +53,7 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string) ([]byte, 
 	data := h.Sum(nil)
 	sig, err := rsa.Sign(rand.Reader, m.State.GetPrivateKey(), crypto.SHA256, data, nil)
 	if err != nil {
+		jww.INFO.Printf("RegisterUser error: can't sign pubkey")
 		return make([]byte, 0), errors.Errorf(
 			"Unable to sign client public key: %+v", err)
 	}
@@ -62,7 +66,7 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string) ([]byte, 
 	}
 
 	// Return signed public key to Client
-	jww.INFO.Printf("Registration for public key %+v complete!", pubKey)
+	jww.INFO.Printf("RegisterUser for public key %+v complete!", pubKey)
 	return sig, nil
 }
 

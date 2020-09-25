@@ -18,6 +18,7 @@ import (
 	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/crypto/tls"
 	"gitlab.com/xx_network/primitives/id"
@@ -59,9 +60,19 @@ func (m *RegistrationImpl) CheckNodeRegistration(msg *mixmessages.RegisteredNode
 
 }
 
+// An atomic counter for which regcode we're using next, when disableRegCodes is enabled
+var curNodeReg = uint32(0)
+var curNodeRegPtr = &curNodeReg
+
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, gatewayAddr,
 	gatewayTlsCert, registrationCode string) error {
+
+	// If disableRegCodes is set, we atomically increase curNodeReg and use the previous code in the sequence
+	if disableRegCodes {
+		regNum := atomic.AddUint32(curNodeRegPtr, 1)
+		registrationCode = regCodeInfos[regNum-1].RegCode
+	}
 
 	// Check that the node hasn't already been registered
 	nodeInfo, err := storage.PermissioningDb.GetNode(registrationCode)
@@ -111,7 +122,7 @@ func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, 
 		nodeId.String(), registrationCode)
 
 	//add the node to the host object for authenticated communications
-	_, err = m.Comms.AddHost(nodeId, serverAddr, []byte(serverTlsCert), false, true)
+	_, err = m.Comms.AddHost(nodeId, serverAddr, []byte(serverTlsCert), connect.GetDefaultHostParams())
 	if err != nil {
 		return errors.Errorf("Could not register host for Server %s: %+v", serverAddr, err)
 	}
@@ -141,7 +152,7 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
 		nid, err := id.Unmarshal(n.Id)
 
 		//add the node to the host object for authenticated communications
-		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), false, true)
+		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), connect.GetDefaultHostParams())
 		if err != nil {
 			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
 		}
@@ -168,7 +179,7 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
 		nid, err := id.Unmarshal(n.Id)
 
 		//add the node to the host object for authenticated communications
-		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), false, true)
+		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), connect.GetDefaultHostParams())
 		if err != nil {
 			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
 		}

@@ -422,7 +422,9 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 
 			gwPing := true
 			if !disableGatewayPing {
-				gwHost, err := connect.NewHost(nil, n.GetGatewayAddress(), nil, false, false)
+				params := connect.GetDefaultHostParams()
+				params.AuthEnabled = false
+				gwHost, err := connect.NewHost(nil, n.GetGatewayAddress(), nil, params)
 				gwPing = err == nil && gwHost.IsOnline()
 			}
 
