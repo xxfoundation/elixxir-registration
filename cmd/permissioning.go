@@ -22,6 +22,7 @@ import (
 	"gitlab.com/xx_network/crypto/tls"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/comms/connect"
 	"strconv"
 	"sync/atomic"
 )
@@ -121,7 +122,7 @@ func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, 
 		nodeId.String(), registrationCode)
 
 	//add the node to the host object for authenticated communications
-	_, err = m.Comms.AddHost(nodeId, serverAddr, []byte(serverTlsCert), false, true)
+	_, err = m.Comms.AddHost(nodeId, serverAddr, []byte(serverTlsCert), connect.GetDefaultHostParams())
 	if err != nil {
 		return errors.Errorf("Could not register host for Server %s: %+v", serverAddr, err)
 	}
@@ -151,7 +152,7 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
 		nid, err := id.Unmarshal(n.Id)
 
 		//add the node to the host object for authenticated communications
-		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), false, true)
+		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), connect.GetDefaultHostParams())
 		if err != nil {
 			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
 		}
@@ -178,7 +179,7 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
 		nid, err := id.Unmarshal(n.Id)
 
 		//add the node to the host object for authenticated communications
-		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), false, true)
+		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), connect.GetDefaultHostParams())
 		if err != nil {
 			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
 		}
