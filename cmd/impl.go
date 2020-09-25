@@ -49,8 +49,9 @@ type RegistrationImpl struct {
 	//FIXME: it is possible that polling lock and registration lock
 	// do the same job and could conflict. reconsiderations of this logic
 	// may be fruitful
-	registrationLock sync.Mutex
-	beginScheduling  chan struct{}
+	registrationLock  sync.Mutex
+	beginScheduling   chan struct{}
+	registrationTimes map[id.ID]int64
 
 	NDFLock sync.Mutex
 }
@@ -133,6 +134,7 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 		numRegistered:      0,
 		beginScheduling:    make(chan struct{}, 1),
 		disableGatewayPing: params.disableGatewayPing,
+		registrationTimes:  make(map[id.ID]int64),
 	}
 
 	//regImpl.registrationLimiting = rateLimiting.Create(params.userRegCapacity, params.userRegLeakRate)

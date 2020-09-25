@@ -15,6 +15,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
 	"testing"
+	"time"
 )
 
 // Insert Application object along with associated unregistered Node
@@ -128,6 +129,7 @@ func (m *MapImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddress, serv
 		info.GatewayAddress = gatewayAddress
 		info.NodeCertificate = serverCert
 		info.Status = uint8(node.Active)
+		info.DateRegistered = time.Now()
 		return nil
 	}
 	return errors.Errorf("unable to register node %s", code)
