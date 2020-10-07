@@ -40,10 +40,16 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string) ([]byte, 
 			jww.INFO.Printf("RegisterUser error: %+v", err)
 			return nil, err
 		}
-	} else if regCode == "" && !m.registrationLimiting.Add(1) {
-		// Rate limited, fail early
-		jww.INFO.Printf("RegisterUser error: %+v", rateLimitErr)
-		return nil, rateLimitErr
+	} else if regCode == "" {
+		success := m.registrationLimiting.Add(1)
+		err := storage.WriteUserRegBucket(m.registrationLimiting, m.userRegBucketPath)
+		if err != nil {
+			jww.ERROR.Printf("Error writing reg bucket: %v", err)
+		}
+		if !success {
+			jww.INFO.Printf("RegisterUser error: %v", rateLimitErr)
+			return nil, rateLimitErr
+		}
 	}
 
 	// Use hardcoded keypair to sign Client-provided public key

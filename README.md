@@ -108,6 +108,13 @@ schedulingConfigPath: "Scheduling_Simple_NonRandom.json"
 schedulingKillTimeout: 10s
 # Time the registration waits for rounds to close out and stop (optional)
 closeTimeout: 60s
+
+# Path to the leaky bucket used to limit user registration
+userRegBucketPath: "userRegBucket.json"
+# Number of registrations that the user reg bucket will allow over time
+userRegCapacity: 1000
+# Period of time over which the user reg bucket will allow that many registrations
+userRegLeakPeriod: 24h
 ```
 
 ### SchedulingConfig template:

@@ -42,6 +42,7 @@ type RegistrationImpl struct {
 	NdfReady             *uint32
 	certFromFile         string
 	registrationLimiting *rateLimiting.Bucket
+	userRegBucketPath    string
 	disableGatewayPing   bool
 
 	//registration status trackers
@@ -82,6 +83,7 @@ type Params struct {
 	// User registration can take userRegCapacity registrations in userRegLeakPeriod period of time
 	userRegCapacity   uint32
 	userRegLeakPeriod time.Duration
+	userRegBucketPath string
 }
 
 // toGroup takes a group represented by a map of string to string,
@@ -135,10 +137,17 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 		beginScheduling:    make(chan struct{}, 1),
 		disableGatewayPing: params.disableGatewayPing,
 		registrationTimes:  make(map[id.ID]int64),
+		userRegBucketPath:  params.userRegBucketPath,
 	}
 
-	//regImpl.registrationLimiting = rateLimiting.Create(params.userRegCapacity, params.userRegLeakRate)
-	regImpl.registrationLimiting = rateLimiting.CreateBucket(params.userRegCapacity, params.userRegCapacity, params.userRegLeakPeriod, func(u uint32, i int64) {})
+	if params.userRegBucketPath != "" {
+		regImpl.registrationLimiting, err = storage.ReadUserRegBucket(params.userRegBucketPath)
+	}
+
+	if regImpl.registrationLimiting == nil {
+		// In this case, the bucket wasn't deserialized successfully, so we'll make a new one
+		regImpl.registrationLimiting = rateLimiting.CreateBucket(params.userRegCapacity, params.userRegCapacity, params.userRegLeakPeriod, func(u uint32, i int64) {})
+	}
 
 	if !noTLS {
 		// Read in TLS keys from files

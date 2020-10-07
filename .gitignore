@@ -12,3 +12,5 @@ localdev_*
 # Ignore logs
 *.log
 testkeys/ndf.json
+# Ignore files written as side effect of tests
+*/.test_files/

@@ -86,6 +86,7 @@ var rootCmd = &cobra.Command{
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
 		roundIdPath := viper.GetString("roundIdPath")
 		updateIdPath := viper.GetString("updateIdPath")
+		userRegBucketPath := viper.GetString("userRegBucketPath")
 
 		maxRegistrationAttempts := viper.GetUint64("maxRegistrationAttempts")
 		if maxRegistrationAttempts == 0 {
@@ -220,6 +221,7 @@ var rootCmd = &cobra.Command{
 			disableGatewayPing:    disableGatewayPing,
 			userRegLeakPeriod:     userRegLeakPeriod,
 			userRegCapacity:       userRegCapacity,
+			userRegBucketPath:     userRegBucketPath,
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
