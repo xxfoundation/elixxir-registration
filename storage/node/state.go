@@ -149,14 +149,14 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 		return n.updateInactive(newActivity)
 	}
 
-	//if the activity is the one that the Node is already in, do nothing
-	if oldActivity == newActivity {
-		return false, UpdateNotification{}, nil
-	}
-
 	// Check the round error state
 	if n.currentRound != nil && n.currentRound.GetRoundState() == states.FAILED && newActivity != current.ERROR {
 		return false, UpdateNotification{}, errors.New("Round has failed, state cannot be updated")
+	}
+
+	//if the activity is the one that the Node is already in, do nothing
+	if oldActivity == newActivity {
+		return false, UpdateNotification{}, nil
 	}
 
 	//check that teh activity transition is valid
