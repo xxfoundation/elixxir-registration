@@ -78,6 +78,43 @@ type Storage struct {
 	NodeRegistration
 }
 
+// Key-value store used for persisting Permissioning State information
+type State struct {
+	Key   string `gorm:"primary_key"`
+	Value string `gorm:"NOT NULL"`
+}
+
+//
+func (m *DatabaseImpl) UpsertState(state *State) error {
+	// Build a transaction to prevent race conditions
+	return m.db.Transaction(func(tx *gorm.DB) error {
+		// Initialize variable for returning existing value from the database
+		oldState := &State{}
+
+		// Attempt to insert state into the database,
+		// or if it already exists, replace oldState with the database value
+		err := tx.FirstOrCreate(oldState, state).Error
+		if err != nil {
+			return err
+		}
+
+		// If oldState is already present in the database, overwrite it with state
+		if oldState.Value != state.Value {
+			return tx.Save(state).Error
+		}
+
+		// Commit
+		return nil
+	})
+}
+
+//
+func (m *DatabaseImpl) GetValue(key string) (string, error) {
+	result := &State{Key: key}
+	err := m.db.Take(result).Error
+	return result.Value, err
+}
+
 // Struct representing a RegistrationCode table in the database
 type RegistrationCode struct {
 	// Registration code acts as the primary key
@@ -274,7 +311,7 @@ func NewDatabase(username, password, database, address,
 	// Initialize the database schema
 	// WARNING: Order is important. Do not change without database testing
 	models := []interface{}{
-		&RegistrationCode{}, &User{},
+		&RegistrationCode{}, &User{}, &State{},
 		&Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
 		&RoundError{},
 	}
