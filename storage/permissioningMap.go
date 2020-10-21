@@ -4,7 +4,7 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles the Map backend for the permissioning server
+// Handles the MapImpl for permissioning-based functionality
 
 package storage
 

@@ -4,7 +4,7 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles the database ORM for nodes
+// Handles the DatabaseImpl for permissioning-based functionality
 
 package storage
 
