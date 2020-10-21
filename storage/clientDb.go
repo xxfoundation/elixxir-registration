@@ -4,7 +4,7 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles the database ORM for clients
+// Handles the DatabaseImpl for client-related functionality
 
 package storage
 

@@ -4,7 +4,7 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles the Map backend for registration codes
+// Handles the MapImpl for client-based functionality
 
 package storage
 

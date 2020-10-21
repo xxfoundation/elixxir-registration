@@ -4,7 +4,7 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles high level database control
+// Handles low level database control and interfaces
 
 package storage
 
@@ -18,6 +18,40 @@ import (
 	"sync"
 	"time"
 )
+
+// Global variable for database interaction
+var PermissioningDb Storage
+
+// API for the storage layer
+type Storage struct {
+	// Stored database interface
+	database
+}
+
+// Interface declaration for storage methods
+type database interface {
+	// Permissioning methods
+	UpsertState(state *State) error
+	GetStateValue(key string) (string, error)
+	InsertNodeMetric(metric *NodeMetric) error
+	InsertRoundMetric(metric *RoundMetric, topology [][]byte) error
+	InsertRoundError(roundId id.Round, errStr string) error
+
+	// Node methods
+	InsertApplication(application *Application, unregisteredNode *Node) error
+	RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
+		gatewayAddress, gatewayCert string) error
+	UpdateSalt(id *id.ID, salt []byte) error
+	GetNode(code string) (*Node, error)
+	GetNodeById(id *id.ID) (*Node, error)
+	GetNodesByStatus(status node.Status) ([]*Node, error)
+
+	// Client methods
+	InsertClientRegCode(code string, uses int) error
+	UseCode(code string) error
+	GetUser(publicKey string) (*User, error)
+	InsertUser(publicKey string) error
+}
 
 // Struct implementing the Database Interface with an underlying DB
 type DatabaseImpl struct {
@@ -36,83 +70,10 @@ type MapImpl struct {
 	mut               sync.Mutex
 }
 
-// Global variable for database interaction
-var PermissioningDb Storage
-
-type NodeRegistration interface {
-	// If Node registration code is valid, add Node information
-	RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
-		gatewayAddress, gatewayCert string) error
-	// Update the Salt for a given Node ID
-	UpdateSalt(id *id.ID, salt []byte) error
-	// Get Node information for the given Node registration code
-	GetNode(code string) (*Node, error)
-	// Get Node information for the given Node ID
-	GetNodeById(id *id.ID) (*Node, error)
-	// Return all nodes in storage with the given Status
-	GetNodesByStatus(status node.Status) ([]*Node, error)
-	// Insert Application object along with associated unregistered Node
-	InsertApplication(application *Application, unregisteredNode *Node) error
-	// Insert NodeMetric object
-	InsertNodeMetric(metric *NodeMetric) error
-	// Insert RoundMetric object with associated topology
-	InsertRoundMetric(metric *RoundMetric, topology [][]byte) error
-	// Insert RoundError object
-	InsertRoundError(roundId id.Round, errStr string) error
-}
-
-type ClientRegistration interface {
-	// Inserts Client registration code with given number of uses
-	InsertClientRegCode(code string, uses int) error
-	// If Client registration code is valid, decrements remaining uses
-	UseCode(code string) error
-	// Gets User from the database
-	GetUser(publicKey string) (*User, error)
-	// Inserts User into the database
-	InsertUser(publicKey string) error
-}
-
-// Interface database storage operations
-type Storage struct {
-	ClientRegistration
-	NodeRegistration
-}
-
-// Key-value store used for persisting Permissioning State information
+// Key-Value store used for persisting Permissioning State information
 type State struct {
 	Key   string `gorm:"primary_key"`
 	Value string `gorm:"NOT NULL"`
-}
-
-//
-func (m *DatabaseImpl) UpsertState(state *State) error {
-	// Build a transaction to prevent race conditions
-	return m.db.Transaction(func(tx *gorm.DB) error {
-		// Initialize variable for returning existing value from the database
-		oldState := &State{}
-
-		// Attempt to insert state into the database,
-		// or if it already exists, replace oldState with the database value
-		err := tx.FirstOrCreate(oldState, state).Error
-		if err != nil {
-			return err
-		}
-
-		// If oldState is already present in the database, overwrite it with state
-		if oldState.Value != state.Value {
-			return tx.Save(state).Error
-		}
-
-		// Commit
-		return nil
-	})
-}
-
-//
-func (m *DatabaseImpl) GetValue(key string) (string, error) {
-	result := &State{Key: key}
-	err := m.db.Take(result).Error
-	return result.Value, err
 }
 
 // Struct representing a RegistrationCode table in the database
@@ -285,16 +246,14 @@ func NewDatabase(username, password, database, address,
 		defer jww.INFO.Println("Map backend initialized successfully!")
 
 		return Storage{
-			ClientRegistration: ClientRegistration(&MapImpl{
-				clients: make(map[string]*RegistrationCode),
-				users:   make(map[string]bool),
-			}),
-			NodeRegistration: NodeRegistration(&MapImpl{
+			&MapImpl{
 				applications: make(map[uint64]*Application),
 				nodes:        make(map[string]*Node),
 				nodeMetrics:  make(map[uint64]*NodeMetric),
 				roundMetrics: make(map[uint64]*RoundMetric),
-			})}, func() error { return nil }, nil
+				clients:      make(map[string]*RegistrationCode),
+				users:        make(map[string]bool),
+			}}, func() error { return nil }, nil
 	}
 
 	// Initialize the database logger
@@ -322,16 +281,8 @@ func NewDatabase(username, password, database, address,
 		}
 	}
 
-	// Build the interface
-	di := &DatabaseImpl{
-		db: db,
-	}
-
 	jww.INFO.Println("Database backend initialized successfully!")
-	return Storage{
-		ClientRegistration: di,
-		NodeRegistration:   di,
-	}, db.Close, nil
+	return Storage{&DatabaseImpl{db: db}}, db.Close, nil
 
 }
 
