@@ -220,18 +220,17 @@ func (s *NetworkState) GetNodeUpdateChannel() <-chan node.UpdateNotification {
 
 // Helper to increment the RoundId or UpdateId depending on the given key
 func (s *NetworkState) increment(key string) (uint64, error) {
-	oldId, err := PermissioningDb.GetStateValue(key)
+	oldIdStr, err := PermissioningDb.GetStateValue(key)
 	if err != nil {
 		return 0, errors.Errorf("Unable to obtain current %s: %+v", key, err)
 	}
 
-	newId, err := strconv.ParseUint(oldId, 10, 64)
+	oldId, err := strconv.ParseUint(oldIdStr, 10, 64)
 	if err != nil {
 		return 0, errors.Errorf("Unable to parse current %s: %+v", key, err)
 	}
-	newId += 1
 
-	return newId, s.setId(key, newId)
+	return oldId, s.setId(key, oldId+1)
 }
 
 // Helper to set the roundId or updateId value

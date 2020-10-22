@@ -41,7 +41,7 @@ func TestScheduler_NonRandom(t *testing.T) {
 			"PermissioningKey is %+v", err, pk)
 	}
 	// Start registration server
-	state, err := storage.NewState(pk, "", "")
+	state, err := storage.NewState(pk)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}

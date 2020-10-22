@@ -44,6 +44,11 @@ func TestNewState(t *testing.T) {
 		t.Fatalf("Failed to generate new NDF:\n%v", err)
 	}
 
+	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	// Generate private RSA key
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -51,7 +56,7 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, "", "")
+	state, err := NewState(privateKey)
 	if err != nil {
 		t.Errorf("NewState() produced an unexpected error:\n%v", err)
 	}
@@ -104,6 +109,12 @@ func TestNewState_PrivateKeyError(t *testing.T) {
 		"signature: Unable to sign message: crypto/rsa: key size too small " +
 		"for PSS signature"
 
+	var err error
+	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	// Generate private RSA key
 	privateKey, err := rsa.GenerateKey(rand.Reader, 128)
 	if err != nil {
@@ -111,12 +122,12 @@ func TestNewState_PrivateKeyError(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, "", "")
+	state, err := NewState(privateKey)
 
 	// Test NewState() output
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("NewState() did not produce an error when expected."+
-			"\n\texpected: %s\n\treceived: %s", expectedErr, err.Error())
+			"\n\texpected: %s\n\treceived: %s", expectedErr, err)
 	}
 	if state != nil {
 		t.Errorf("NewState() unexpedly produced a non-nil NetworkState when an error was produced."+
@@ -225,8 +236,6 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	state.roundUpdateID.id = 1
-
 	// Call AddRoundUpdate()
 	err = state.AddRoundUpdate(testRoundInfo)
 	if err != nil {
@@ -274,6 +283,11 @@ func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
 	expectedErr := "Could not add round update 1 for round 0 due to failed " +
 		"signature: Unable to sign message: crypto/rsa: key size too small for " +
 		"PSS signature"
+	var err error
+	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	// Generate new NetworkState
 	state, _, err := generateTestNetworkState()
@@ -491,7 +505,7 @@ func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 	}
 
 	// Generate new NetworkState using the private key
-	state, err := NewState(privateKey, "", "")
+	state, err := NewState(privateKey)
 	if err != nil {
 		return state, privateKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
 	}
@@ -502,14 +516,23 @@ func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 // Tests that IncrementRoundID() increments the ID correctly.
 func TestNetworkState_IncrementRoundID(t *testing.T) {
 	testID := uint64(9843)
+	var err error
+	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+		t.FailNow()
+	}
+	err = PermissioningDb.UpsertState(&State{
+		Key:   RoundIdKey,
+		Value: fmt.Sprintf("%d", testID),
+	})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	testPath := "testRoundID.txt"
 	incrementAmount := uint64(10)
-	testState := NetworkState{
-		roundID: &stateID{
-			id:   testID,
-			path: testPath,
-		},
-	}
+	testState := NetworkState{}
 
 	defer func() {
 		err := os.RemoveAll(testPath)
@@ -536,14 +559,27 @@ func TestNetworkState_IncrementRoundID(t *testing.T) {
 // Tests that GetRoundID() returns the correct value.
 func TestNetworkState_GetRoundID(t *testing.T) {
 	expectedID := id.Round(9843)
-	testState := NetworkState{
-		roundID: &stateID{
-			id:   uint64(expectedID),
-			path: "testRoundID.txt",
-		},
+
+	var err error
+	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+		t.FailNow()
+	}
+	err = PermissioningDb.UpsertState(&State{
+		Key:   RoundIdKey,
+		Value: fmt.Sprintf("%d", expectedID),
+	})
+	if err != nil {
+		t.Errorf(err.Error())
 	}
 
-	testID := testState.GetRoundID()
+	testState := NetworkState{}
+
+	testID, err := testState.GetRoundID()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	if expectedID != testID {
 		t.Errorf("GetRoundID() returned an incorrect ID."+

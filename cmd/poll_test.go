@@ -44,7 +44,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	impl, err := StartRegistration(testParams, nil)
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
@@ -135,7 +135,7 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk, "", "")
+	state, err := storage.NewState(pk)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -163,7 +163,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
-	state, err := storage.NewState(getTestKey(), "", "")
+	state, err := storage.NewState(getTestKey())
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -223,7 +223,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	RegParams.minimumNodes = 3
 	fmt.Println("-A")
 	// Start registration server
-	impl, err := StartRegistration(RegParams, nil)
+	impl, err := StartRegistration(RegParams)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -316,7 +316,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	RegParams.minimumNodes = 3
 
 	// Start registration server
-	impl, err := StartRegistration(testParams, nil)
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -358,7 +358,7 @@ func TestPoll_BannedNode(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	impl, err := StartRegistration(testParams, nil)
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
@@ -892,7 +892,7 @@ func TestVerifyError(t *testing.T) {
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk, "", "")
+	state, err := storage.NewState(pk)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
