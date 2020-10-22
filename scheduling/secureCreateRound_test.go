@@ -2,7 +2,6 @@ package scheduling
 
 import (
 	"crypto/rand"
-	"fmt"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/crypto/signature/rsa"
@@ -334,8 +333,6 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	}
 
 	duration := time.Now().Sub(start)
-	fmt.Printf("CreateRound took: %v\n", duration)
-
 	expectedDuration := int64(40)
 
 	// Check that it did not take an excessive amount of time

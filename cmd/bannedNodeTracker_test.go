@@ -64,12 +64,10 @@ func TestBannedNodeTracker(t *testing.T) {
 	}
 
 	// Clean out banned nodes
-	fmt.Println("1")
 	err = BannedNodeTracker(impl)
 	if err != nil {
 		t.Errorf("Error with node tracker: %v", err)
 	}
-	fmt.Println("2")
 
 	updatedDef := testState.GetFullNdf().Get()
 	if len(updatedDef.Nodes) != 1 {

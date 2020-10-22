@@ -221,7 +221,6 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
 	RegParams.udbId = udbId
 	RegParams.minimumNodes = 3
-	fmt.Println("-A")
 	// Start registration server
 	impl, err := StartRegistration(RegParams)
 	if err != nil {
