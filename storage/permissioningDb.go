@@ -15,22 +15,22 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 )
 
-// Inserts the given State into database if it does not exist
-// Or updates the database State if its value does not match the given State
+// Inserts the given State into Database if it does not exist
+// Or updates the Database State if its value does not match the given State
 func (m *DatabaseImpl) UpsertState(state *State) error {
 	// Build a transaction to prevent race conditions
 	return m.db.Transaction(func(tx *gorm.DB) error {
-		// Initialize variable for returning existing value from the database
+		// Initialize variable for returning existing value from the Database
 		oldState := &State{}
 
-		// Attempt to insert state into the database,
-		// or if it already exists, replace oldState with the database value
+		// Attempt to insert state into the Database,
+		// or if it already exists, replace oldState with the Database value
 		err := tx.FirstOrCreate(oldState, state).Error
 		if err != nil {
 			return err
 		}
 
-		// If oldState is already present in the database, overwrite it with state
+		// If oldState is already present in the Database, overwrite it with state
 		if oldState.Value != state.Value {
 			return tx.Save(state).Error
 		}
@@ -40,7 +40,7 @@ func (m *DatabaseImpl) UpsertState(state *State) error {
 	})
 }
 
-// Returns a State's value from database with the given key
+// Returns a State's value from Database with the given key
 // Or an error if a matching State does not exist
 func (m *DatabaseImpl) GetStateValue(key string) (string, error) {
 	result := &State{Key: key}

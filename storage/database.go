@@ -4,7 +4,7 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles low level database control and interfaces
+// Handles low level Database control and interfaces
 
 package storage
 
@@ -19,17 +19,17 @@ import (
 	"time"
 )
 
-// Global variable for database interaction
+// Global variable for Database interaction
 var PermissioningDb Storage
 
 // API for the storage layer
 type Storage struct {
-	// Stored database interface
-	database
+	// Stored Database interface
+	Database
 }
 
-// Interface declaration for storage methods
-type database interface {
+// Interface declaration for Storage methods
+type Database interface {
 	// Permissioning methods
 	UpsertState(state *State) error
 	GetStateValue(key string) (string, error)
@@ -55,7 +55,7 @@ type database interface {
 
 // Struct implementing the Database Interface with an underlying DB
 type DatabaseImpl struct {
-	db *gorm.DB // Stored database connection
+	db *gorm.DB // Stored Database connection
 }
 
 // Struct implementing the Database Interface with an underlying Map
@@ -76,7 +76,7 @@ type State struct {
 	Value string `gorm:"NOT NULL"`
 }
 
-// Struct representing a RegistrationCode table in the database
+// Struct representing a RegistrationCode table in the Database
 type RegistrationCode struct {
 	// Registration code acts as the primary key
 	Code string `gorm:"primary_key"`
@@ -84,13 +84,13 @@ type RegistrationCode struct {
 	RemainingUses int
 }
 
-// Struct representing the User table in the database
+// Struct representing the User table in the Database
 type User struct {
 	// User TLS public certificate in PEM string format
 	PublicKey string `gorm:"primary_key"`
 }
 
-// Struct representing the Node's Application table in the database
+// Struct representing the Node's Application table in the Database
 type Application struct {
 	// The Application's unique ID
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:false"`
@@ -123,7 +123,7 @@ type Application struct {
 	Medium    string
 }
 
-// Struct representing the Node table in the database
+// Struct representing the Node table in the Database
 type Node struct {
 	// Registration code acts as the primary key
 	Code string `gorm:"primary_key"`
@@ -158,7 +158,7 @@ type Node struct {
 	Topologies []Topology `gorm:"foreignkey:NodeId;association_foreignkey:Id"`
 }
 
-// Struct representing Node Metrics table in the database
+// Struct representing Node Metrics table in the Database
 type NodeMetric struct {
 	// Auto-incrementing primary key (Do not set)
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:true"`
@@ -182,7 +182,7 @@ type Topology struct {
 	Order uint8 `gorm:"NOT NULL"`
 }
 
-// Struct representing Round Metrics table in the database
+// Struct representing Round Metrics table in the Database
 type RoundMetric struct {
 	// Unique ID of the round as assigned by the network
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:false"`
@@ -201,7 +201,7 @@ type RoundMetric struct {
 	RoundErrors []RoundError `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
 }
 
-// Struct representing Round Errors table in the database
+// Struct representing Round Errors table in the Database
 type RoundError struct {
 	// Auto-incrementing primary key (Do not set)
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:true"`
@@ -213,20 +213,20 @@ type RoundError struct {
 	Error string `gorm:"NOT NULL"`
 }
 
-// Initialize the Database interface with database backend
+// Initialize the Database interface with Database backend
 // Returns a Storage interface, Close function, and error
 func NewDatabase(username, password, database, address,
 	port string) (Storage, func() error, error) {
 
 	var err error
 	var db *gorm.DB
-	//connect to the database if the correct information is provided
+	//connect to the Database if the correct information is provided
 	if address != "" && port != "" {
-		// Create the database connection
+		// Create the Database connection
 		connectString := fmt.Sprintf(
 			"host=%s port=%s user=%s dbname=%s sslmode=disable",
 			address, port, username, database)
-		// Handle empty database password
+		// Handle empty Database password
 		if len(password) > 0 {
 			connectString += fmt.Sprintf(" password=%s", password)
 		}
@@ -234,11 +234,11 @@ func NewDatabase(username, password, database, address,
 	}
 
 	// Return the map-backend interface
-	// in the event there is a database error or information is not provided
+	// in the event there is a Database error or information is not provided
 	if (address == "" || port == "") || err != nil {
 
 		if err != nil {
-			jww.WARN.Printf("Unable to initialize database backend: %+v", err)
+			jww.WARN.Printf("Unable to initialize Database backend: %+v", err)
 		} else {
 			jww.WARN.Printf("Database backend connection information not provided")
 		}
@@ -256,19 +256,19 @@ func NewDatabase(username, password, database, address,
 			}}, func() error { return nil }, nil
 	}
 
-	// Initialize the database logger
+	// Initialize the Database logger
 	db.SetLogger(jww.TRACE)
 	db.LogMode(true)
 
 	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
 	db.DB().SetMaxIdleConns(10)
-	// SetMaxOpenConns sets the maximum number of open connections to the database.
+	// SetMaxOpenConns sets the maximum number of open connections to the Database.
 	db.DB().SetMaxOpenConns(100)
 	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
 	db.DB().SetConnMaxLifetime(24 * time.Hour)
 
-	// Initialize the database schema
-	// WARNING: Order is important. Do not change without database testing
+	// Initialize the Database schema
+	// WARNING: Order is important. Do not change without Database testing
 	models := []interface{}{
 		&RegistrationCode{}, &User{}, &State{},
 		&Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
@@ -286,7 +286,7 @@ func NewDatabase(username, password, database, address,
 
 }
 
-// Adds Client registration codes to the database
+// Adds Client registration codes to the Database
 func PopulateClientRegistrationCodes(codes []string, uses int) {
 	for _, code := range codes {
 		err := PermissioningDb.InsertClientRegCode(code, uses)
@@ -297,7 +297,7 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 	}
 }
 
-// Adds Node registration codes to the database
+// Adds Node registration codes to the Database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
 	// TODO: This will eventually need to be updated to intake applications too
 	i := 1

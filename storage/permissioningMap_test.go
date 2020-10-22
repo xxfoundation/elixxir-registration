@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// Hidden function for one-time unit testing database implementation
+// Hidden function for one-time unit testing Database implementation
 //func TestDatabaseImpl(t *testing.T) {
 //	db, _, err := NewDatabase("cmix", "", "cmix_server", "0.0.0.0", "5432")
 //	if err != nil {

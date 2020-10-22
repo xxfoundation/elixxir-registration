@@ -14,14 +14,14 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 )
 
-// Inserts the given State into database if it does not exist
-// Or updates the database State if its value does not match the given State
+// Inserts the given State into Database if it does not exist
+// Or updates the Database State if its value does not match the given State
 func (m *MapImpl) UpsertState(state *State) error {
 	// TODO & Test
 	return nil
 }
 
-// Returns a State's value from database with the given key
+// Returns a State's value from Database with the given key
 // Or an error if a matching State does not exist
 func (m *MapImpl) GetStateValue(key string) (string, error) {
 	// TODO & Test

@@ -50,14 +50,14 @@ func (m *DatabaseImpl) UseCode(code string) error {
 	return nil
 }
 
-// Gets User from the database
+// Gets User from the Database
 func (m *DatabaseImpl) GetUser(publicKey string) (*User, error) {
 	user := &User{}
 	result := m.db.First(&user, "public_key = ?", publicKey)
 	return user, result.Error
 }
 
-// Inserts User into the database
+// Inserts User into the Database
 func (m *DatabaseImpl) InsertUser(publicKey string) error {
 	user := &User{
 		PublicKey: publicKey,
