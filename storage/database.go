@@ -67,6 +67,7 @@ type MapImpl struct {
 	nodeMetrics       map[uint64]*NodeMetric
 	nodeMetricCounter uint64
 	roundMetrics      map[uint64]*RoundMetric
+	states            map[string]string
 	mut               sync.Mutex
 }
 
@@ -75,6 +76,12 @@ type State struct {
 	Key   string `gorm:"primary_key"`
 	Value string `gorm:"NOT NULL"`
 }
+
+// Enumerates Keys in the State table
+const (
+	UpdateIdKey = "UpdateId"
+	RoundIdKey  = "RoundId"
+)
 
 // Struct representing a RegistrationCode table in the Database
 type RegistrationCode struct {
@@ -253,6 +260,7 @@ func NewDatabase(username, password, database, address,
 				roundMetrics: make(map[uint64]*RoundMetric),
 				clients:      make(map[string]*RegistrationCode),
 				users:        make(map[string]bool),
+				states:       make(map[string]string),
 			}}, func() error { return nil }, nil
 	}
 

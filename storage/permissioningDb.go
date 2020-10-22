@@ -17,9 +17,9 @@ import (
 
 // Inserts the given State into Database if it does not exist
 // Or updates the Database State if its value does not match the given State
-func (m *DatabaseImpl) UpsertState(state *State) error {
+func (d *DatabaseImpl) UpsertState(state *State) error {
 	// Build a transaction to prevent race conditions
-	return m.db.Transaction(func(tx *gorm.DB) error {
+	return d.db.Transaction(func(tx *gorm.DB) error {
 		// Initialize variable for returning existing value from the Database
 		oldState := &State{}
 
@@ -42,30 +42,30 @@ func (m *DatabaseImpl) UpsertState(state *State) error {
 
 // Returns a State's value from Database with the given key
 // Or an error if a matching State does not exist
-func (m *DatabaseImpl) GetStateValue(key string) (string, error) {
+func (d *DatabaseImpl) GetStateValue(key string) (string, error) {
 	result := &State{Key: key}
-	err := m.db.Take(result).Error
+	err := d.db.Take(result).Error
 	return result.Value, err
 }
 
 // Insert NodeMetric object
-func (m *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
+func (d *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
 	jww.TRACE.Printf("Attempting to insert node metric: %+v", metric)
-	return m.db.Create(metric).Error
+	return d.db.Create(metric).Error
 }
 
 // Insert RoundError object
-func (m *DatabaseImpl) InsertRoundError(roundId id.Round, errStr string) error {
+func (d *DatabaseImpl) InsertRoundError(roundId id.Round, errStr string) error {
 	roundErr := &RoundError{
 		RoundMetricId: uint64(roundId),
 		Error:         errStr,
 	}
 	jww.DEBUG.Printf("Attempting to insert round error: %+v", roundErr)
-	return m.db.Create(roundErr).Error
+	return d.db.Create(roundErr).Error
 }
 
 // Insert RoundMetric object with associated topology
-func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
+func (d *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
 
 	// Build the Topology
 	metric.Topologies = make([]Topology, len(topology))
@@ -83,5 +83,5 @@ func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte)
 
 	// Save the RoundMetric
 	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
-	return m.db.Create(metric).Error
+	return d.db.Create(metric).Error
 }

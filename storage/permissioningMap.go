@@ -17,15 +17,24 @@ import (
 // Inserts the given State into Database if it does not exist
 // Or updates the Database State if its value does not match the given State
 func (m *MapImpl) UpsertState(state *State) error {
-	// TODO & Test
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	m.states[state.Key] = state.Value
 	return nil
 }
 
 // Returns a State's value from Database with the given key
 // Or an error if a matching State does not exist
 func (m *MapImpl) GetStateValue(key string) (string, error) {
-	// TODO & Test
-	return "", nil
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	if val, ok := m.states[key]; ok {
+		return val, nil
+	} else {
+		return "", errors.Errorf("Unable to locate state for key %s", key)
+	}
 }
 
 // Insert NodeMetric object

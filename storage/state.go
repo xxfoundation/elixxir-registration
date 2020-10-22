@@ -10,6 +10,7 @@ package storage
 
 import (
 	"github.com/golang-collections/collections/set"
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -21,7 +22,8 @@ import (
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
-	"sync"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -32,16 +34,11 @@ type NetworkState struct {
 	// NetworkState parameters
 	privateKey *rsa.PrivateKey
 
-	// The ID of the current round
-	roundID *stateID
-
 	// Round state
-	rounds          *round.StateMap
-	roundUpdates    *dataStructures.Updates
-	roundUpdateID   *stateID
-	roundUpdateLock sync.Mutex
-	roundData       *dataStructures.Data
-	update          chan node.UpdateNotification // For triggering updates to top level
+	rounds       *round.StateMap
+	roundUpdates *dataStructures.Updates
+	roundData    *dataStructures.Data
+	update       chan node.UpdateNotification // For triggering updates to top level
 
 	// Node NetworkState
 	nodes *node.StateMap
@@ -55,7 +52,7 @@ type NetworkState struct {
 }
 
 // NewState returns a new NetworkState object.
-func NewState(pk *rsa.PrivateKey, roundIdPath, updateIdPath string) (*NetworkState, error) {
+func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
 		return nil, err
@@ -65,36 +62,49 @@ func NewState(pk *rsa.PrivateKey, roundIdPath, updateIdPath string) (*NetworkSta
 		return nil, err
 	}
 
-	// Create round ID
-	roundID, err := loadOrCreateStateID(roundIdPath, 1)
-	if err != nil {
-		return nil, errors.Errorf("Failed to load round ID from path: %+v", err)
-	}
-
-	// Create increment ID
-	updateRoundID, err := loadOrCreateStateID(updateIdPath, 0)
-	if err != nil {
-		return nil, errors.Errorf("Failed to load update ID from path: %+v", err)
-	}
-
 	state := &NetworkState{
-		roundID:       roundID,
-		rounds:        round.NewStateMap(),
-		roundUpdates:  dataStructures.NewUpdates(),
-		update:        make(chan node.UpdateNotification, updateBufferLength),
-		nodes:         node.NewStateMap(),
-		fullNdf:       fullNdf,
-		partialNdf:    partialNdf,
-		privateKey:    pk,
-		roundUpdateID: updateRoundID,
+		rounds:       round.NewStateMap(),
+		roundUpdates: dataStructures.NewUpdates(),
+		update:       make(chan node.UpdateNotification, updateBufferLength),
+		nodes:        node.NewStateMap(),
+		fullNdf:      fullNdf,
+		partialNdf:   partialNdf,
+		privateKey:   pk,
+	}
+
+	// Obtain round & update Id from Storage
+	// Ignore not found in Storage errors, zero-value will be handled below
+	updateId, err := state.GetUpdateID()
+	if err != nil &&
+		!errors.Is(err, gorm.ErrRecordNotFound) &&
+		!strings.Contains(err.Error(), "Unable to locate state for key") {
+		return nil, err
+	}
+	roundId, err := state.GetRoundID()
+	if err != nil &&
+		!errors.Is(err, gorm.ErrRecordNotFound) &&
+		!strings.Contains(err.Error(), "Unable to locate state for key") {
+		return nil, err
 	}
 
 	// Updates are handled in the uint space, as a result, the designator for
 	// update 0 also designates that no updates are known by the server. To
 	// avoid this collision, permissioning will skip this update as well.
-	if updateRoundID.get() == 0 {
-		// Insert dummy update
+	if updateId == 0 {
+		// Set update Id to start at 0
+		err = state.setId(UpdateIdKey, 0)
+		if err != nil {
+			return nil, err
+		}
+		// Then insert a dummy and increment to 1
 		err = state.AddRoundUpdate(&pb.RoundInfo{})
+		if err != nil {
+			return nil, err
+		}
+	}
+	if roundId == 0 {
+		// Set round Id to start at 1
+		err = state.setId(RoundIdKey, 1)
 		if err != nil {
 			return nil, err
 		}
@@ -121,12 +131,10 @@ func (s *NetworkState) GetUpdates(id int) ([]*pb.RoundInfo, error) {
 // AddRoundUpdate creates a copy of the round before inserting it into
 // roundUpdates.
 func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
-	s.roundUpdateLock.Lock()
-	defer s.roundUpdateLock.Unlock()
 
 	roundCopy := round.CopyRoundInfo(r)
 
-	updateID, err := s.roundUpdateID.increment()
+	updateID, err := s.IncrementUpdateID()
 	if err != nil {
 		return err
 	}
@@ -210,16 +218,68 @@ func (s *NetworkState) GetNodeUpdateChannel() <-chan node.UpdateNotification {
 	return s.update
 }
 
-// IncrementRoundID increments the round ID in a thread safe manner. If an error
-// occurs while updating the ID file, then it is returned.
-func (s *NetworkState) IncrementRoundID() (id.Round, error) {
-	roundID, err := s.roundID.increment()
-	return id.Round(roundID), err
+// Helper to increment the RoundId or UpdateId depending on the given key
+func (s *NetworkState) increment(key string) (uint64, error) {
+	oldId, err := PermissioningDb.GetStateValue(key)
+	if err != nil {
+		return 0, errors.Errorf("Unable to obtain current %s: %+v", key, err)
+	}
+
+	newId, err := strconv.ParseUint(oldId, 10, 64)
+	if err != nil {
+		return 0, errors.Errorf("Unable to parse current %s: %+v", key, err)
+	}
+	newId += 1
+
+	return newId, s.setId(key, newId)
 }
 
-// GetRoundID returns the round ID in a thread safe manner.
-func (s *NetworkState) GetRoundID() id.Round {
-	return id.Round(s.roundID.get())
+// Helper to set the roundId or updateId value
+func (s *NetworkState) setId(key string, newVal uint64) error {
+	err := PermissioningDb.UpsertState(&State{
+		Key:   key,
+		Value: strconv.FormatUint(newVal, 10),
+	})
+	if err != nil {
+		return errors.Errorf("Unable to update current round ID: %+v", err)
+	}
+	return nil
+}
+
+// Helper to return the RoundId or UpdateId depending on the given key
+func (s *NetworkState) get(key string) (uint64, error) {
+	roundIdStr, err := PermissioningDb.GetStateValue(key)
+	if err != nil {
+		return 0, errors.Errorf("Unable to obtain current %s: %+v", key, err)
+	}
+
+	roundId, err := strconv.ParseUint(roundIdStr, 10, 64)
+	if err != nil {
+		return 0, errors.Errorf("Unable to parse current %s: %+v", key, err)
+	}
+	return roundId, nil
+}
+
+// IncrementRoundID increments the round ID
+func (s *NetworkState) IncrementRoundID() (id.Round, error) {
+	roundId, err := s.increment(RoundIdKey)
+	return id.Round(roundId), err
+}
+
+// IncrementUpdateID increments the update ID
+func (s *NetworkState) IncrementUpdateID() (uint64, error) {
+	return s.increment(UpdateIdKey)
+}
+
+// GetRoundID returns the round ID
+func (s *NetworkState) GetRoundID() (id.Round, error) {
+	roundId, err := s.get(RoundIdKey)
+	return id.Round(roundId), err
+}
+
+// GetRoundID returns the update ID
+func (s *NetworkState) GetUpdateID() (uint64, error) {
+	return s.get(UpdateIdKey)
 }
 
 // CreateDisabledNodes generates and sets a disabledNodes object that will track

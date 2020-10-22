@@ -71,9 +71,8 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		KeyPath:       testkeys.GetCAKeyPath(),
 		NdfOutputPath: testkeys.GetNDFPath(),
 	}
-	bc := make(chan bool, 1)
 	// Start registration server
-	impl, err := StartRegistration(testParams, bc)
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Error(err)
 	}
