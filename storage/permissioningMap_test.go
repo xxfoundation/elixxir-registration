@@ -14,11 +14,42 @@ import (
 
 // Hidden function for one-time unit testing Database implementation
 //func TestDatabaseImpl(t *testing.T) {
+//	jww.SetLogThreshold(jww.LevelTrace)
+//	jww.SetStdoutThreshold(jww.LevelTrace)
+//
 //	db, _, err := NewDatabase("cmix", "", "cmix_server", "0.0.0.0", "5432")
 //	if err != nil {
 //		t.Errorf(err.Error())
 //		return
 //	}
+//
+//	err = db.UpsertState(&State{
+//		Key:   RoundIdKey,
+//		Value: "10",
+//	})
+//	if err != nil {
+//		t.Errorf(err.Error())
+//	}
+//
+//	val, err := db.GetStateValue(RoundIdKey)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//	}
+//	jww.FATAL.Printf(val)
+//
+//	err = db.UpsertState(&State{
+//		Key:   RoundIdKey,
+//		Value: "20",
+//	})
+//	if err != nil {
+//		t.Errorf(err.Error())
+//	}
+//
+//	val, err = db.GetStateValue(RoundIdKey)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//	}
+//	jww.FATAL.Printf(val)
 //
 //	testCode := "test"
 //	testId := id.NewIdFromString(testCode, id.Node, t)

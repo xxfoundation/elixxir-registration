@@ -20,19 +20,19 @@ import (
 func (d *DatabaseImpl) UpsertState(state *State) error {
 	// Build a transaction to prevent race conditions
 	return d.db.Transaction(func(tx *gorm.DB) error {
-		// Initialize variable for returning existing value from the Database
-		oldState := &State{}
+		// Make a copy of the provided state
+		newState := *state
 
 		// Attempt to insert state into the Database,
-		// or if it already exists, replace oldState with the Database value
-		err := tx.FirstOrCreate(oldState, state).Error
+		// or if it already exists, replace state with the Database value
+		err := tx.FirstOrCreate(state, &State{Key: state.Key}).Error
 		if err != nil {
 			return err
 		}
 
-		// If oldState is already present in the Database, overwrite it with state
-		if oldState.Value != state.Value {
-			return tx.Save(state).Error
+		// If state is already present in the Database, overwrite it with newState
+		if newState.Value != state.Value {
+			return tx.Save(newState).Error
 		}
 
 		// Commit
