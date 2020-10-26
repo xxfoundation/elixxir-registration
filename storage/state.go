@@ -24,6 +24,7 @@ import (
 	"gitlab.com/xx_network/primitives/ndf"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -41,7 +42,8 @@ type NetworkState struct {
 	update       chan node.UpdateNotification // For triggering updates to top level
 
 	// Node NetworkState
-	nodes *node.StateMap
+	nodes     *node.StateMap
+	updateMux sync.Mutex
 
 	// List of states of Nodes to be disabled
 	disabledNodesStates *disabledNodes
@@ -131,9 +133,10 @@ func (s *NetworkState) GetUpdates(id int) ([]*pb.RoundInfo, error) {
 // AddRoundUpdate creates a copy of the round before inserting it into
 // roundUpdates.
 func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
+	s.updateMux.Lock()
+	defer s.updateMux.Unlock()
 
 	roundCopy := round.CopyRoundInfo(r)
-
 	updateID, err := s.IncrementUpdateID()
 	if err != nil {
 		return err
