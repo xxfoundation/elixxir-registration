@@ -29,6 +29,9 @@ updateIdPath: "updateId.txt"
 # UDB ID
 udbID: 1
 
+# Path to UDB public key PEM file
+udbPubKeyPemPath: "udbPubKey.pem"
+
 # Public address, used in NDF it gives to client
 publicAdress: "0.0.0.0:11420"
 

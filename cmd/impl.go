@@ -74,6 +74,7 @@ type Params struct {
 	closeTimeout          time.Duration
 	minimumNodes          uint32
 	udbId                 []byte
+	udbPubKeyPemPath      string
 	minGatewayVersion     version.Version
 	minServerVersion      version.Version
 	roundIdPath           string
@@ -157,17 +158,25 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 
 	}
 
+	// Load the UDB public key PEM from file
+	udbPubKeyPem, err := utils.ReadFile(params.udbPubKeyPemPath)
+	if err != nil {
+		return nil, errors.Errorf("failed to read UDB public key PEM: %+v", err)
+	}
+
 	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        RegParams.publicAddress,
 			TlsCertificate: regImpl.certFromFile,
 		},
-
 		Timestamp: time.Now(),
-		UDB:       ndf.UDB{ID: RegParams.udbId},
-		E2E:       RegParams.e2e,
-		CMIX:      RegParams.cmix,
+		UDB: ndf.UDB{
+			ID:        params.udbId,
+			PubKeyPem: string(udbPubKeyPem),
+		},
+		E2E:  RegParams.e2e,
+		CMIX: RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
 		Nodes:    make([]ndf.Node, 0),
