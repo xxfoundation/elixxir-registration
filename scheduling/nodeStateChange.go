@@ -267,6 +267,7 @@ func killRound(state *storage.NetworkState, r *round.State,
 	}
 
 	formattedError := fmt.Sprintf("Round Error from %s: %s", idStr, roundError.Error)
+	jww.INFO.Print(formattedError)
 
 	// Next, attempt to insert the error for the failed round
 	err = storage.PermissioningDb.InsertRoundError(roundId, formattedError)
