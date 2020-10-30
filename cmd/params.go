@@ -32,6 +32,7 @@ type Params struct {
 	closeTimeout          time.Duration
 	minimumNodes          uint32
 	udbId                 []byte
+	udbPubKeyPemPath      string
 	minGatewayVersion     version.Version
 	minServerVersion      version.Version
 	disableGatewayPing    bool
