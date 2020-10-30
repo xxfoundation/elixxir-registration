@@ -139,6 +139,8 @@ var rootCmd = &cobra.Command{
 		udbId := make([]byte, 32)
 		udbId[len(udbId)-1] = byte(viper.GetInt("udbID"))
 
+		udbPubKeyPemPath := viper.GetString("udbPubKeyPemPath")
+
 		//load the scheduling params file as a string
 		SchedulingConfigPath := viper.GetString("schedulingConfigPath")
 		SchedulingConfig, err := utils.ReadFile(SchedulingConfigPath)
@@ -210,6 +212,7 @@ var rootCmd = &cobra.Command{
 			schedulingKillTimeout: schedulingKillTimeout,
 			closeTimeout:          closeTimeout,
 			udbId:                 udbId,
+			udbPubKeyPemPath:      udbPubKeyPemPath,
 			minimumNodes:          viper.GetUint32("minimumNodes"),
 			minGatewayVersion:     minGatewayVersion,
 			minServerVersion:      minServerVersion,
