@@ -15,7 +15,6 @@ import (
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/primitives/rateLimiting"
-	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -24,6 +23,7 @@ import (
 	"gitlab.com/xx_network/crypto/tls"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/utils"
 	"sync"
 	"time"
 )

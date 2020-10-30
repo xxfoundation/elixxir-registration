@@ -6,7 +6,7 @@
 package storage
 
 import (
-	"gitlab.com/elixxir/primitives/utils"
+	"gitlab.com/xx_network/primitives/utils"
 	"os"
 	"strconv"
 	"testing"
