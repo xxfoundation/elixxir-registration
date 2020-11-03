@@ -9,9 +9,9 @@ package storage
 import (
 	"crypto/rand"
 	"github.com/golang-collections/collections/set"
-	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/utils"
 	"os"
 	"reflect"
 	"strings"

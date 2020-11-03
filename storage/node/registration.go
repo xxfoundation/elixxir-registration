@@ -9,7 +9,7 @@ package node
 import (
 	"encoding/json"
 	"github.com/pkg/errors"
-	"gitlab.com/elixxir/primitives/utils"
+	"gitlab.com/xx_network/primitives/utils"
 )
 
 type Info struct {
