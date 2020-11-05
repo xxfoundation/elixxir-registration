@@ -59,6 +59,7 @@ type NodeRegistration interface {
 	InsertRoundMetric(metric *RoundMetric, topology [][]byte) error
 	// Insert RoundError object
 	InsertRoundError(roundId id.Round, errStr string) error
+	UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error
 }
 
 type ClientRegistration interface {

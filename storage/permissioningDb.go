@@ -71,7 +71,7 @@ func (m *DatabaseImpl) UpdateSalt(id *id.ID, salt []byte) error {
 // If Node registration code is valid, add Node information
 func (m *DatabaseImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
 	gatewayAddress, gatewayCert string) error {
-	newNode := Node{
+	newNode := &Node{
 		Code:               code,
 		Id:                 id.Marshal(),
 		Salt:               salt,
@@ -83,6 +83,19 @@ func (m *DatabaseImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddr, se
 		DateRegistered:     time.Now(),
 	}
 	return m.db.Model(&newNode).Update(&newNode).Error
+}
+
+// Update the address fields for the Node with the given id
+func (m *DatabaseImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
+	newNode := &Node{
+		Id:             id.Marshal(),
+		ServerAddress:  nodeAddr,
+		GatewayAddress: gwAddr,
+	}
+	return m.db.Model(newNode).Where("id = ?", id).Updates(map[string]interface{}{
+		"server_address":  nodeAddr,
+		"gateway_address": gwAddr,
+	}).Error
 }
 
 // Get Node information for the given Node registration code
