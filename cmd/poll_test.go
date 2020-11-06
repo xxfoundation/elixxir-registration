@@ -973,9 +973,9 @@ func TestUpdateGatewayAdvertisedAddress(t *testing.T) {
 }
 
 // Tests that updateGatewayAdvertisedAddress() returns the nodeAddress with the
-// gatewayAddress port when the gatewayReplaceIpPlaceholder is used.
+// gatewayAddress port when the IpPlaceholder is used.
 func TestUpdateGatewayAdvertisedAddress_Update(t *testing.T) {
-	gatewayAddress := gatewayReplaceIpPlaceholder + ":22840"
+	gatewayAddress := IpPlaceholder + ":22840"
 	nodeAddress := "192.168.1.1:11420"
 	expectedAddress := "192.168.1.1:22840"
 
