@@ -134,6 +134,22 @@ func (m *MapImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddress, serv
 
 }
 
+// Update the address fields for the Node with the given id
+func (m *MapImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	for _, v := range m.nodes {
+		if bytes.Compare(v.Id, id.Marshal()) == 0 {
+			v.GatewayAddress = gwAddr
+			v.ServerAddress = nodeAddr
+			return nil
+		}
+	}
+
+	return errors.Errorf("unable to update addresses for %s", id.String())
+}
+
 // Get Node information for the given Node registration code
 func (m *MapImpl) GetNode(code string) (*Node, error) {
 	m.mut.Lock()
