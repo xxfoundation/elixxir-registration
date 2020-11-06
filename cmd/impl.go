@@ -114,6 +114,12 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	}
 
+	// Load the UDB public key PEM from file
+	udbPubKeyPem, err := utils.ReadFile(params.udbPubKeyPemPath)
+	if err != nil {
+		return nil, errors.Errorf("failed to read UDB public key PEM: %+v", err)
+	}
+
 	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: ndf.Registration{
@@ -122,7 +128,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		},
 
 		Timestamp: time.Now(),
-		UDB:       ndf.UDB{ID: RegParams.udbId},
+		UDB:       ndf.UDB{ID: RegParams.udbId, PubKeyPem: string(udbPubKeyPem)},
 		E2E:       RegParams.e2e,
 		CMIX:      RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order

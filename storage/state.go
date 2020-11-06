@@ -222,6 +222,7 @@ func (s *NetworkState) GetNodeUpdateChannel() <-chan node.UpdateNotification {
 }
 
 // Helper to increment the RoundId or UpdateId depending on the given key
+// FIXME: Get and set should be coupled to avoid race conditions
 func (s *NetworkState) increment(key string) (uint64, error) {
 	oldIdStr, err := PermissioningDb.GetStateValue(key)
 	if err != nil {
