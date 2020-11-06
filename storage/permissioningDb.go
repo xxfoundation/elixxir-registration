@@ -92,7 +92,7 @@ func (m *DatabaseImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) e
 		ServerAddress:  nodeAddr,
 		GatewayAddress: gwAddr,
 	}
-	return m.db.Model(newNode).Where("id = ?", id).Updates(map[string]interface{}{
+	return m.db.Model(newNode).Where("id = ?", newNode.Id).Updates(map[string]interface{}{
 		"server_address":  nodeAddr,
 		"gateway_address": gwAddr,
 	}).Error
