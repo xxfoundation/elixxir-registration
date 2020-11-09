@@ -20,7 +20,6 @@ import (
 	"gitlab.com/xx_network/crypto/signature"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
-	"net"
 	"sync/atomic"
 )
 
@@ -326,45 +325,17 @@ func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) 
 	return nil
 }
 
-// updateGatewayAdvertisedAddress checks if the Gateway's address host is set to
-// IpPlaceholder. If it is, then it is replaced with the Node's
-// host while retaining the Gateway's port.
-func updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress string) (string, error) {
-	if gatewayAddress == "" {
-		return gatewayAddress, nil
-	}
-
-	gwAddr, gwPort, err := net.SplitHostPort(gatewayAddress)
-	if err != nil {
-		return "", errors.Errorf("Error parsing Gateway address: %v", err)
-	}
-
-	if gwAddr == IpPlaceholder {
-		nAddr, _, err := net.SplitHostPort(nodeAddress)
-		if err != nil {
-			return "", errors.Errorf("Error parsing Node address: %v", err)
-		}
-
-		gatewayAddress = net.JoinHostPort(nAddr, gwPort)
-	}
-
-	return gatewayAddress, nil
-}
-
 func checkIPAddresses(m *RegistrationImpl, n *node.State,
 	msg *pb.PermissioningPoll, nodeHost *connect.Host) error {
 
-	// Check if the Gateway address needs to be updated
-	gatewayAddress, err := updateGatewayAdvertisedAddress(msg.GatewayAddress, msg.ServerAddress)
-	if err != nil {
-		return err
-	}
+	// Pull the addresses out of the message
+	gatewayAddress, nodeAddress := msg.GatewayAddress, msg.ServerAddress
 
 	// Update server and gateway addresses in state, if necessary
-	nodeUpdate := n.UpdateNodeAddresses(msg.ServerAddress)
+	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
 	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
 
-	jww.TRACE.Printf("Received gateway and node update: %s, %s", msg.ServerAddress,
+	jww.TRACE.Printf("Received gateway and node update: %s, %s", nodeAddress,
 		gatewayAddress)
 
 	// If state required changes, then check the NDF
@@ -376,30 +347,30 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		currentNDF := m.State.GetFullNdf().Get()
 
 		if nodeUpdate {
-			nodeHost.UpdateAddress(msg.ServerAddress)
+			nodeHost.UpdateAddress(nodeAddress)
 			n.SetConnectivity(node.PortUnknown)
-			if err = updateNdfNodeAddr(n.GetID(), msg.ServerAddress, currentNDF); err != nil {
+			if err := updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
 			}
 		}
 
 		if gatewayUpdate {
-			if err = updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
+			if err := updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
 			}
 		}
 
 		// Update the internal state with the newly-updated ndf
-		if err = m.State.UpdateNdf(currentNDF); err != nil {
+		if err := m.State.UpdateNdf(currentNDF); err != nil {
 			m.NDFLock.Unlock()
 			return err
 		}
 		m.NDFLock.Unlock()
 
 		// Output the current topology to a JSON file
-		err = outputToJSON(currentNDF, m.ndfOutputPath)
+		err := outputToJSON(currentNDF, m.ndfOutputPath)
 		if err != nil {
 			err := errors.Errorf("unable to output NDF JSON file: %+v", err)
 			jww.ERROR.Print(err.Error())
