@@ -20,13 +20,12 @@ import (
 	"gitlab.com/xx_network/crypto/signature"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
-	"net"
 	"sync/atomic"
 )
 
 // The placeholder for the host in the Gateway address that is used to indicate
 // to permissioning to replace it with the Node's host.
-const gatewayReplaceIpPlaceholder = "CHANGE_TO_PUBLIC_IP"
+const IpPlaceholder = "CHANGE_TO_PUBLIC_IP"
 
 // Server->Permissioning unified poll function
 func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
@@ -76,7 +75,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	//update ip addresses if nessessary
-	err := checkIPAddresses(m, n, msg, auth.Sender, serverAddress)
+	err := checkIPAddresses(m, n, msg, auth.Sender)
 	if err != nil {
 		err = errors.WithMessage(err, "Failed to update IP addresses")
 		return response, err
@@ -326,37 +325,11 @@ func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) 
 	return nil
 }
 
-// updateGatewayAdvertisedAddress checks if the Gateway's address host is set to
-// gatewayReplaceIpPlaceholder. If it is, then it is replaced with the Node's
-// host while retaining the Gateway's port.
-func updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress string) (string, error) {
-	if gatewayAddress == "" {
-		return gatewayAddress, nil
-	}
+func checkIPAddresses(m *RegistrationImpl, n *node.State,
+	msg *pb.PermissioningPoll, nodeHost *connect.Host) error {
 
-	gwAddr, gwPort, err := net.SplitHostPort(gatewayAddress)
-	if err != nil {
-		return "", errors.Errorf("Error parsing Gateway address: %v", err)
-	}
-
-	if gwAddr == gatewayReplaceIpPlaceholder {
-		nAddr, _, err := net.SplitHostPort(nodeAddress)
-		if err != nil {
-			return "", errors.Errorf("Error parsing Node address: %v", err)
-		}
-
-		gatewayAddress = net.JoinHostPort(nAddr, gwPort)
-	}
-
-	return gatewayAddress, nil
-}
-
-func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningPoll, nodeHost *connect.Host, nodeAddress string) error {
-	// Check if the Gateway address needs to be updated
-	gatewayAddress, err := updateGatewayAdvertisedAddress(msg.GatewayAddress, nodeAddress)
-	if err != nil {
-		return err
-	}
+	// Pull the addresses out of the message
+	gatewayAddress, nodeAddress := msg.GatewayAddress, msg.ServerAddress
 
 	// Update server and gateway addresses in state, if necessary
 	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
@@ -368,7 +341,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 	// If state required changes, then check the NDF
 	if nodeUpdate || gatewayUpdate {
 
-		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", nodeAddress,
+		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", msg.ServerAddress,
 			gatewayAddress)
 		m.NDFLock.Lock()
 		currentNDF := m.State.GetFullNdf().Get()
@@ -376,28 +349,28 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State, msg *pb.PermissioningP
 		if nodeUpdate {
 			nodeHost.UpdateAddress(nodeAddress)
 			n.SetConnectivity(node.PortUnknown)
-			if err = updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
+			if err := updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
 			}
 		}
 
 		if gatewayUpdate {
-			if err = updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
+			if err := updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
 			}
 		}
 
 		// Update the internal state with the newly-updated ndf
-		if err = m.State.UpdateNdf(currentNDF); err != nil {
+		if err := m.State.UpdateNdf(currentNDF); err != nil {
 			m.NDFLock.Unlock()
 			return err
 		}
 		m.NDFLock.Unlock()
 
 		// Output the current topology to a JSON file
-		err = outputToJSON(currentNDF, m.ndfOutputPath)
+		err := outputToJSON(currentNDF, m.ndfOutputPath)
 		if err != nil {
 			err := errors.Errorf("unable to output NDF JSON file: %+v", err)
 			jww.ERROR.Print(err.Error())
