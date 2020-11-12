@@ -10,7 +10,6 @@ package storage
 
 import (
 	"github.com/golang-collections/collections/set"
-	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -78,13 +77,13 @@ func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 	// Ignore not found in Storage errors, zero-value will be handled below
 	updateId, err := state.GetUpdateID()
 	if err != nil &&
-		!errors.Is(err, gorm.ErrRecordNotFound) &&
+		!strings.Contains(err.Error(), "record not found") &&
 		!strings.Contains(err.Error(), "Unable to locate state for key") {
 		return nil, err
 	}
 	roundId, err := state.GetRoundID()
 	if err != nil &&
-		!errors.Is(err, gorm.ErrRecordNotFound) &&
+		!strings.Contains(err.Error(), "record not found") &&
 		!strings.Contains(err.Error(), "Unable to locate state for key") {
 		return nil, err
 	}
