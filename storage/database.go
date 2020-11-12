@@ -19,17 +19,8 @@ import (
 	"time"
 )
 
-// Global variable for Database interaction
-var PermissioningDb Storage
-
-// API for the storage layer
-type Storage struct {
-	// Stored Database interface
-	Database
-}
-
 // Interface declaration for Storage methods
-type Database interface {
+type database interface {
 	// Permissioning methods
 	UpsertState(state *State) error
 	GetStateValue(key string) (string, error)
