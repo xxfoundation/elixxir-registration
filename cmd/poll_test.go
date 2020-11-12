@@ -44,7 +44,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	impl, err := StartRegistration(testParams, nil)
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
@@ -135,7 +135,7 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk, "", "")
+	state, err := storage.NewState(pk)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -163,7 +163,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
-	state, err := storage.NewState(getTestKey(), "", "")
+	state, err := storage.NewState(getTestKey())
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -221,9 +221,8 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
 	RegParams.udbId = udbId
 	RegParams.minimumNodes = 3
-	fmt.Println("-A")
 	// Start registration server
-	impl, err := StartRegistration(RegParams, nil)
+	impl, err := StartRegistration(RegParams)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -316,7 +315,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	RegParams.minimumNodes = 3
 
 	// Start registration server
-	impl, err := StartRegistration(testParams, nil)
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -358,7 +357,7 @@ func TestPoll_BannedNode(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	impl, err := StartRegistration(testParams, nil)
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
@@ -892,7 +891,7 @@ func TestVerifyError(t *testing.T) {
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk, "", "")
+	state, err := storage.NewState(pk)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -951,44 +950,5 @@ func TestVerifyError(t *testing.T) {
 	err = verifyError(msg, n, impl)
 	if err != nil {
 		t.Error("Failed to verify error")
-	}
-}
-
-// Tests that updateGatewayAdvertisedAddress() returns the gatewayAddress when
-// no replacements need to be made.
-func TestUpdateGatewayAdvertisedAddress(t *testing.T) {
-	gatewayAddress := "0.0.0.0:22840"
-	nodeAddress := "192.168.1.1:11420"
-
-	testAddress, err := updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress)
-
-	if err != nil {
-		t.Errorf("updateGatewayAdvertisedAddress() produced an unexpected error."+
-			"\n\texpected: %v\n\treceived: %v", nil, err)
-	}
-
-	if testAddress != gatewayAddress {
-		t.Errorf("updateGatewayAdvertisedAddress() did not return the correct address."+
-			"\n\texpected: %v\n\treceived: %v", gatewayAddress, testAddress)
-	}
-}
-
-// Tests that updateGatewayAdvertisedAddress() returns the nodeAddress with the
-// gatewayAddress port when the gatewayReplaceIpPlaceholder is used.
-func TestUpdateGatewayAdvertisedAddress_Update(t *testing.T) {
-	gatewayAddress := gatewayReplaceIpPlaceholder + ":22840"
-	nodeAddress := "192.168.1.1:11420"
-	expectedAddress := "192.168.1.1:22840"
-
-	testAddress, err := updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress)
-
-	if err != nil {
-		t.Errorf("updateGatewayAdvertisedAddress() produced an unexpected error."+
-			"\n\texpected: %v\n\treceived: %v", nil, err)
-	}
-
-	if testAddress != expectedAddress {
-		t.Errorf("updateGatewayAdvertisedAddress() did not return the correct address."+
-			"\n\texpected: %v\n\treceived: %v", expectedAddress, testAddress)
 	}
 }

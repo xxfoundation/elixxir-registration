@@ -84,8 +84,6 @@ var rootCmd = &cobra.Command{
 		nsCertPath := viper.GetString("nsCertPath")
 		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
-		roundIdPath := viper.GetString("roundIdPath")
-		updateIdPath := viper.GetString("updateIdPath")
 
 		maxRegistrationAttempts := viper.GetUint64("maxRegistrationAttempts")
 		if maxRegistrationAttempts == 0 {
@@ -218,8 +216,6 @@ var rootCmd = &cobra.Command{
 			minimumNodes:          viper.GetUint32("minimumNodes"),
 			minGatewayVersion:     minGatewayVersion,
 			minServerVersion:      minServerVersion,
-			roundIdPath:           roundIdPath,
-			updateIdPath:          updateIdPath,
 			disableGatewayPing:    disableGatewayPing,
 			userRegLeakPeriod:     userRegLeakPeriod,
 			userRegCapacity:       userRegCapacity,
@@ -228,8 +224,7 @@ var rootCmd = &cobra.Command{
 		jww.INFO.Println("Starting Permissioning Server...")
 
 		// Start registration server
-		quitRegistrationCapacity := make(chan bool)
-		impl, err := StartRegistration(RegParams, quitRegistrationCapacity)
+		impl, err := StartRegistration(RegParams)
 		if err != nil {
 			jww.FATAL.Panicf(err.Error())
 		}
@@ -353,12 +348,6 @@ var rootCmd = &cobra.Command{
 				jww.ERROR.Print("couldn't stop round creation!")
 			}
 
-			// Try a non-blocking send for the registration capacity
-			select {
-			case quitRegistrationCapacity <- true:
-			default:
-			}
-
 			bannedNodeTrackerQuitChan <- struct{}{}
 
 			// Prevent node updates after round creation stops
@@ -441,12 +430,12 @@ func init() {
 		"Automatically provide registration codes to Nodes. (For testing only)")
 
 	rootCmd.Flags().StringP("close-timeout", "t", "60s",
-		("Amount of time to wait for rounds to stop running after" +
-			" receiving the SIGUSR1 and SIGTERM signals"))
+		"Amount of time to wait for rounds to stop running after"+
+			" receiving the SIGUSR1 and SIGTERM signals")
 
 	rootCmd.Flags().StringP("kill-timeout", "k", "60s",
-		("Amount of time to wait for round creation to stop after" +
-			" receiving the SIGUSR2 and SIGTERM signals"))
+		"Amount of time to wait for round creation to stop after"+
+			" receiving the SIGUSR2 and SIGTERM signals")
 
 	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
 		false, "Disables registration server checking for ndf updates")

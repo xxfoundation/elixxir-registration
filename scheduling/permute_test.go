@@ -71,7 +71,7 @@ func TestPermute(t *testing.T) {
 func factorial(n int) int {
 	factVal := 1
 	if n < 0 {
-		fmt.Print("Factorial of negative number doesn't exist.")
+		fmt.Println("Factorial of negative number doesn't exist.")
 	} else {
 		for i := 1; i <= n; i++ {
 			factVal *= i

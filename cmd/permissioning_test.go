@@ -58,7 +58,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		t.Error(err)
 	}
 
-	permissioningMap := storage.PermissioningDb.NodeRegistration.(*storage.MapImpl)
+	permissioningMap := storage.PermissioningDb.GetMapImpl(t)
 	err = permissioningMap.BannedNode(bannedNodeId, t)
 	if err != nil {
 		t.Error(err)
@@ -72,9 +72,8 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		NdfOutputPath:    testkeys.GetNDFPath(),
 		udbPubKeyPemPath: testkeys.GetUdbPubKeyPemPath(),
 	}
-	bc := make(chan bool, 1)
 	// Start registration server
-	impl, err := StartRegistration(testParams, bc)
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Error(err)
 	}
@@ -116,7 +115,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	def := impl.State.GetFullNdf().Get()
 	id0, err := id.Unmarshal(def.Nodes[0].ID)
 	if err != nil {
-		t.Error("Failed to unmartial ID")
+		t.Error("Failed to unmarshal ID")
 	}
 	if !id0.Cmp(activeNodeId) {
 		t.Errorf("Unexpected node ID for node 0:\n\tGot: %d\n\tExpected: %d",
@@ -125,7 +124,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 
 	id1, err := id.Unmarshal(def.Nodes[1].ID)
 	if err != nil {
-		t.Error("Failed to unmartial ID")
+		t.Error("Failed to unmarshal ID")
 	}
 	if !id1.Cmp(bannedNodeId) {
 		t.Errorf("Unexpected node ID for node 1:\n\tGot: %d\n\tExpected: %d",
@@ -134,7 +133,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 
 	id2, err := id.Unmarshal(def.Nodes[2].ID)
 	if err != nil {
-		t.Error("Failed to unmartial ID")
+		t.Error("Failed to unmarshal ID")
 	}
 	if !id2.Cmp(altNodeID) {
 		t.Errorf("Unexpected node ID for node 2:\n\tGot: %d\n\tExpected: %d",

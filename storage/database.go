@@ -4,7 +4,7 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles high level database control
+// Handles low level Database control and interfaces
 
 package storage
 
@@ -19,9 +19,34 @@ import (
 	"time"
 )
 
+// Interface declaration for Storage methods
+type database interface {
+	// Permissioning methods
+	UpsertState(state *State) error
+	GetStateValue(key string) (string, error)
+	InsertNodeMetric(metric *NodeMetric) error
+	InsertRoundMetric(metric *RoundMetric, topology [][]byte) error
+	InsertRoundError(roundId id.Round, errStr string) error
+
+	// Node methods
+	InsertApplication(application *Application, unregisteredNode *Node) error
+	RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
+		gatewayAddress, gatewayCert string) error
+	UpdateSalt(id *id.ID, salt []byte) error
+	GetNode(code string) (*Node, error)
+	GetNodeById(id *id.ID) (*Node, error)
+	GetNodesByStatus(status node.Status) ([]*Node, error)
+
+	// Client methods
+	InsertClientRegCode(code string, uses int) error
+	UseCode(code string) error
+	GetUser(publicKey string) (*User, error)
+	InsertUser(publicKey string) error
+}
+
 // Struct implementing the Database Interface with an underlying DB
 type DatabaseImpl struct {
-	db *gorm.DB // Stored database connection
+	db *gorm.DB // Stored Database connection
 }
 
 // Struct implementing the Database Interface with an underlying Map
@@ -33,52 +58,23 @@ type MapImpl struct {
 	nodeMetrics       map[uint64]*NodeMetric
 	nodeMetricCounter uint64
 	roundMetrics      map[uint64]*RoundMetric
+	states            map[string]string
 	mut               sync.Mutex
 }
 
-// Global variable for database interaction
-var PermissioningDb Storage
-
-type NodeRegistration interface {
-	// If Node registration code is valid, add Node information
-	RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
-		gatewayAddress, gatewayCert string) error
-	// Update the Salt for a given Node ID
-	UpdateSalt(id *id.ID, salt []byte) error
-	// Get Node information for the given Node registration code
-	GetNode(code string) (*Node, error)
-	// Get Node information for the given Node ID
-	GetNodeById(id *id.ID) (*Node, error)
-	// Return all nodes in storage with the given Status
-	GetNodesByStatus(status node.Status) ([]*Node, error)
-	// Insert Application object along with associated unregistered Node
-	InsertApplication(application *Application, unregisteredNode *Node) error
-	// Insert NodeMetric object
-	InsertNodeMetric(metric *NodeMetric) error
-	// Insert RoundMetric object with associated topology
-	InsertRoundMetric(metric *RoundMetric, topology [][]byte) error
-	// Insert RoundError object
-	InsertRoundError(roundId id.Round, errStr string) error
+// Key-Value store used for persisting Permissioning State information
+type State struct {
+	Key   string `gorm:"primary_key"`
+	Value string `gorm:"NOT NULL"`
 }
 
-type ClientRegistration interface {
-	// Inserts Client registration code with given number of uses
-	InsertClientRegCode(code string, uses int) error
-	// If Client registration code is valid, decrements remaining uses
-	UseCode(code string) error
-	// Gets User from the database
-	GetUser(publicKey string) (*User, error)
-	// Inserts User into the database
-	InsertUser(publicKey string) error
-}
+// Enumerates Keys in the State table
+const (
+	UpdateIdKey = "UpdateId"
+	RoundIdKey  = "RoundId"
+)
 
-// Interface database storage operations
-type Storage struct {
-	ClientRegistration
-	NodeRegistration
-}
-
-// Struct representing a RegistrationCode table in the database
+// Struct representing a RegistrationCode table in the Database
 type RegistrationCode struct {
 	// Registration code acts as the primary key
 	Code string `gorm:"primary_key"`
@@ -86,13 +82,13 @@ type RegistrationCode struct {
 	RemainingUses int
 }
 
-// Struct representing the User table in the database
+// Struct representing the User table in the Database
 type User struct {
 	// User TLS public certificate in PEM string format
 	PublicKey string `gorm:"primary_key"`
 }
 
-// Struct representing the Node's Application table in the database
+// Struct representing the Node's Application table in the Database
 type Application struct {
 	// The Application's unique ID
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:false"`
@@ -125,7 +121,7 @@ type Application struct {
 	Medium    string
 }
 
-// Struct representing the Node table in the database
+// Struct representing the Node table in the Database
 type Node struct {
 	// Registration code acts as the primary key
 	Code string `gorm:"primary_key"`
@@ -160,7 +156,7 @@ type Node struct {
 	Topologies []Topology `gorm:"foreignkey:NodeId;association_foreignkey:Id"`
 }
 
-// Struct representing Node Metrics table in the database
+// Struct representing Node Metrics table in the Database
 type NodeMetric struct {
 	// Auto-incrementing primary key (Do not set)
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:true"`
@@ -184,7 +180,7 @@ type Topology struct {
 	Order uint8 `gorm:"NOT NULL"`
 }
 
-// Struct representing Round Metrics table in the database
+// Struct representing Round Metrics table in the Database
 type RoundMetric struct {
 	// Unique ID of the round as assigned by the network
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:false"`
@@ -203,7 +199,7 @@ type RoundMetric struct {
 	RoundErrors []RoundError `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
 }
 
-// Struct representing Round Errors table in the database
+// Struct representing Round Errors table in the Database
 type RoundError struct {
 	// Auto-incrementing primary key (Do not set)
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:true"`
@@ -215,20 +211,20 @@ type RoundError struct {
 	Error string `gorm:"NOT NULL"`
 }
 
-// Initialize the Database interface with database backend
+// Initialize the Database interface with Database backend
 // Returns a Storage interface, Close function, and error
 func NewDatabase(username, password, database, address,
 	port string) (Storage, func() error, error) {
 
 	var err error
 	var db *gorm.DB
-	//connect to the database if the correct information is provided
+	//connect to the Database if the correct information is provided
 	if address != "" && port != "" {
-		// Create the database connection
+		// Create the Database connection
 		connectString := fmt.Sprintf(
 			"host=%s port=%s user=%s dbname=%s sslmode=disable",
 			address, port, username, database)
-		// Handle empty database password
+		// Handle empty Database password
 		if len(password) > 0 {
 			connectString += fmt.Sprintf(" password=%s", password)
 		}
@@ -236,11 +232,11 @@ func NewDatabase(username, password, database, address,
 	}
 
 	// Return the map-backend interface
-	// in the event there is a database error or information is not provided
+	// in the event there is a Database error or information is not provided
 	if (address == "" || port == "") || err != nil {
 
 		if err != nil {
-			jww.WARN.Printf("Unable to initialize database backend: %+v", err)
+			jww.WARN.Printf("Unable to initialize Database backend: %+v", err)
 		} else {
 			jww.WARN.Printf("Database backend connection information not provided")
 		}
@@ -248,33 +244,32 @@ func NewDatabase(username, password, database, address,
 		defer jww.INFO.Println("Map backend initialized successfully!")
 
 		return Storage{
-			ClientRegistration: ClientRegistration(&MapImpl{
-				clients: make(map[string]*RegistrationCode),
-				users:   make(map[string]bool),
-			}),
-			NodeRegistration: NodeRegistration(&MapImpl{
+			&MapImpl{
 				applications: make(map[uint64]*Application),
 				nodes:        make(map[string]*Node),
 				nodeMetrics:  make(map[uint64]*NodeMetric),
 				roundMetrics: make(map[uint64]*RoundMetric),
-			})}, func() error { return nil }, nil
+				clients:      make(map[string]*RegistrationCode),
+				users:        make(map[string]bool),
+				states:       make(map[string]string),
+			}}, func() error { return nil }, nil
 	}
 
-	// Initialize the database logger
+	// Initialize the Database logger
 	db.SetLogger(jww.TRACE)
 	db.LogMode(true)
 
 	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
 	db.DB().SetMaxIdleConns(10)
-	// SetMaxOpenConns sets the maximum number of open connections to the database.
+	// SetMaxOpenConns sets the maximum number of open connections to the Database.
 	db.DB().SetMaxOpenConns(100)
 	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
 	db.DB().SetConnMaxLifetime(24 * time.Hour)
 
-	// Initialize the database schema
-	// WARNING: Order is important. Do not change without database testing
+	// Initialize the Database schema
+	// WARNING: Order is important. Do not change without Database testing
 	models := []interface{}{
-		&RegistrationCode{}, &User{},
+		&RegistrationCode{}, &User{}, &State{},
 		&Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
 		&RoundError{},
 	}
@@ -285,20 +280,12 @@ func NewDatabase(username, password, database, address,
 		}
 	}
 
-	// Build the interface
-	di := &DatabaseImpl{
-		db: db,
-	}
-
 	jww.INFO.Println("Database backend initialized successfully!")
-	return Storage{
-		ClientRegistration: di,
-		NodeRegistration:   di,
-	}, db.Close, nil
+	return Storage{&DatabaseImpl{db: db}}, db.Close, nil
 
 }
 
-// Adds Client registration codes to the database
+// Adds Client registration codes to the Database
 func PopulateClientRegistrationCodes(codes []string, uses int) {
 	for _, code := range codes {
 		err := PermissioningDb.InsertClientRegCode(code, uses)
@@ -309,7 +296,7 @@ func PopulateClientRegistrationCodes(codes []string, uses int) {
 	}
 }
 
-// Adds Node registration codes to the database
+// Adds Node registration codes to the Database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
 	// TODO: This will eventually need to be updated to intake applications too
 	i := 1

@@ -15,7 +15,6 @@ import (
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/primitives/rateLimiting"
-	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
@@ -27,9 +26,6 @@ import (
 	"sync"
 	"time"
 )
-
-//generally large buffer, should be roughly as many nodes as are expected
-const nodeCompletionChanLen = 1000
 
 // The main registration instance object
 type RegistrationImpl struct {
@@ -59,48 +55,8 @@ type RegistrationImpl struct {
 //function used to schedule nodes
 type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 
-// Params object for reading in configuration data
-type Params struct {
-	Address               string
-	CertPath              string
-	KeyPath               string
-	NdfOutputPath         string
-	NsCertPath            string
-	NsAddress             string
-	cmix                  ndf.Group
-	e2e                   ndf.Group
-	publicAddress         string
-	schedulingKillTimeout time.Duration
-	closeTimeout          time.Duration
-	minimumNodes          uint32
-	udbId                 []byte
-	udbPubKeyPemPath      string
-	minGatewayVersion     version.Version
-	minServerVersion      version.Version
-	roundIdPath           string
-	updateIdPath          string
-	disableGatewayPing    bool
-	// User registration can take userRegCapacity registrations in userRegLeakPeriod period of time
-	userRegCapacity   uint32
-	userRegLeakPeriod time.Duration
-}
-
-// toGroup takes a group represented by a map of string to string,
-// then uses the prime and generator to create an ndf group object.
-func toGroup(grp map[string]string) (*ndf.Group, error) {
-	jww.DEBUG.Printf("Group is: %v", grp)
-	pStr, pOk := grp["prime"]
-	gStr, gOk := grp["generator"]
-
-	if !gOk || !pOk {
-		return nil, errors.Errorf("Invalid Group Config "+
-			"(prime: %v, generator: %v", pOk, gOk)
-	}
-	return &ndf.Group{Prime: pStr, Generator: gStr}, nil
-}
-
 // Configure and start the Permissioning Server
-func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error) {
+func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Initialize variables
 	ndfReady := uint32(0)
@@ -119,8 +75,8 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 			"PermissioningKey is %+v", err, pk)
 	}
 
-	//initilize the state tracking object
-	state, err := storage.NewState(pk, params.roundIdPath, params.updateIdPath)
+	// Initialize the state tracking object
+	state, err := storage.NewState(pk)
 	if err != nil {
 		return nil, err
 	}
@@ -170,13 +126,11 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 			Address:        RegParams.publicAddress,
 			TlsCertificate: regImpl.certFromFile,
 		},
+
 		Timestamp: time.Now(),
-		UDB: ndf.UDB{
-			ID:        params.udbId,
-			PubKeyPem: string(udbPubKeyPem),
-		},
-		E2E:  RegParams.e2e,
-		CMIX: RegParams.cmix,
+		UDB:       ndf.UDB{ID: RegParams.udbId, PubKeyPem: string(udbPubKeyPem)},
+		E2E:       RegParams.e2e,
+		CMIX:      RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
 		Nodes:    make([]ndf.Node, 0),
@@ -239,8 +193,8 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 
 		var newNodes []ndf.Node
 		// Loop through NDF nodes to remove any that are banned
-		for i, node := range def.Nodes {
-			ndfNodeID, err := id.Unmarshal(node.ID)
+		for i, n := range def.Nodes {
+			ndfNodeID, err := id.Unmarshal(n.ID)
 			if err != nil {
 				return errors.WithMessage(err, "Failed to unmarshal node id from NDF")
 			}

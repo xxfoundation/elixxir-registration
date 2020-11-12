@@ -27,10 +27,15 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 		BatchSize:      32,
 		RandomOrdering: false,
 	}
+	var err error
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -46,7 +51,10 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 		}
 	}
 
-	roundID := testState.GetRoundID()
+	roundID, err := testState.GetRoundID()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
@@ -81,7 +89,7 @@ func TestHandleNodeStateChance_Waiting_SetNodeToOnline(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -97,7 +105,10 @@ func TestHandleNodeStateChance_Waiting_SetNodeToOnline(t *testing.T) {
 		}
 	}
 
-	roundID := testState.GetRoundID()
+	roundID, err := testState.GetRoundID()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
@@ -138,7 +149,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -155,7 +166,10 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	}
 	circuit := connect.NewCircuit(nodeList)
 
-	roundID := testState.GetRoundID()
+	roundID, err := testState.GetRoundID()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, 5*time.Minute, circuit)
 	if err != nil {
@@ -211,7 +225,7 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -270,7 +284,7 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -287,7 +301,10 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 	}
 	circuit := connect.NewCircuit(nodeList)
 
-	roundID := testState.GetRoundID()
+	roundID, err := testState.GetRoundID()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, 5*time.Minute, circuit)
 	if err != nil {
@@ -341,7 +358,7 @@ func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -386,9 +403,15 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 		RandomOrdering: false,
 	}
 
+	var err error
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -404,7 +427,10 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 		}
 	}
 
-	roundID := testState.GetRoundID()
+	roundID, err := testState.GetRoundID()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 	topology := connect.NewCircuit(nodeList)
 
 	// Set a round for the node in order to fully test the code path for
@@ -427,7 +453,6 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 	}
 	testState.GetNodeMap().GetNode(testUpdate.Node).GetPollingLock().Lock()
 
-	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	testTracker := NewRoundTracker()
 
 	err = HandleNodeUpdates(testUpdate, testPool, testState, 0, testTracker)
@@ -446,7 +471,7 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -535,7 +560,7 @@ func TestKillRound(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -589,7 +614,7 @@ func TestHandleNodeUpdates_Precomputing_RoundError(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -637,7 +662,7 @@ func TestHandleNodeUpdates_Realtime(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -653,7 +678,10 @@ func TestHandleNodeUpdates_Realtime(t *testing.T) {
 		}
 	}
 
-	roundID := testState.GetRoundID()
+	roundID, err := testState.GetRoundID()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
@@ -687,7 +715,7 @@ func TestHandleNodeUpdates_Realtime_RoundError(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -736,7 +764,7 @@ func TestHandleNodeUpdates_Realtime_UpdateError(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -752,7 +780,10 @@ func TestHandleNodeUpdates_Realtime_UpdateError(t *testing.T) {
 		}
 	}
 
-	roundID := testState.GetRoundID()
+	roundID, err := testState.GetRoundID()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
@@ -790,7 +821,7 @@ func TestHandleNodeUpdates_RoundErrored(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -806,7 +837,10 @@ func TestHandleNodeUpdates_RoundErrored(t *testing.T) {
 		}
 	}
 
-	roundID := testState.GetRoundID()
+	roundID, err := testState.GetRoundID()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
@@ -841,7 +875,7 @@ func TestHandleNodeUpdates_NOT_STARTED(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
