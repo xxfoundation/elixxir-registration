@@ -279,9 +279,9 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 		return response, err
 	}
 
-	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth, serverAddress string) (*pb.PermissionPollResponse, error) {
+	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
 		//ensure a bad poll can not take down the permisisoning server
-		response, err := instance.Poll(msg, auth, serverAddress)
+		response, err := instance.Poll(msg, auth)
 
 		return response, err
 	}
