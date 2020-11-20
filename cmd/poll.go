@@ -23,13 +23,8 @@ import (
 	"sync/atomic"
 )
 
-// The placeholder for the host in the Gateway address that is used to indicate
-// to permissioning to replace it with the Node's host.
-const IpPlaceholder = "CHANGE_TO_PUBLIC_IP"
-
 // Server->Permissioning unified poll function
-func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
-	serverAddress string) (*pb.PermissionPollResponse, error) {
+func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
 
 	// Initialize the response
 	response := &pb.PermissionPollResponse{}

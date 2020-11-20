@@ -103,7 +103,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	n := impl.State.GetNodeMap().GetNode(testID)
 	n.SetConnectivity(node.PortSuccessful)
 
-	response, err := impl.Poll(testMsg, testAuth, "0.0.0.0:11420")
+	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -151,7 +151,7 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 
 	dummyMessage := &pb.PermissioningPoll{}
 
-	_, err = impl.Poll(dummyMessage, nil, "")
+	_, err = impl.Poll(dummyMessage, nil)
 	if err == nil || err.Error() != ndf.NO_NDF {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -194,7 +194,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	dummyMessage := &pb.PermissioningPoll{}
 
-	_, err = impl.Poll(dummyMessage, testAuth, "0.0.0.0:11420")
+	_, err = impl.Poll(dummyMessage, testAuth)
 	if err == nil || err.Error() != connect.AuthError(testAuth.Sender.GetId()).Error() {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -408,7 +408,7 @@ func TestPoll_BannedNode(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	_, err = impl.Poll(testMsg, testAuth, "")
+	_, err = impl.Poll(testMsg, testAuth)
 	if err != nil {
 		return
 	}
