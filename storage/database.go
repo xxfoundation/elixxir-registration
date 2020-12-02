@@ -36,6 +36,7 @@ type database interface {
 	GetNode(code string) (*Node, error)
 	GetNodeById(id *id.ID) (*Node, error)
 	GetNodesByStatus(status node.Status) ([]*Node, error)
+	UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error
 
 	// Client methods
 	InsertClientRegCode(code string, uses int) error

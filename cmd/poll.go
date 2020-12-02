@@ -15,6 +15,7 @@ import (
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/version"
+	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/crypto/signature"
@@ -338,6 +339,13 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 
 		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", msg.ServerAddress,
 			gatewayAddress)
+
+		// Update address information in Storage
+		err = storage.PermissioningDb.UpdateNodeAddresses(nodeHost.GetId(), nodeAddress, gatewayAddress)
+		if err != nil {
+			return err
+		}
+
 		m.NDFLock.Lock()
 		currentNDF := m.State.GetFullNdf().Get()
 
