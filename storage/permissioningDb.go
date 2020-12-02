@@ -85,16 +85,3 @@ func (d *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte)
 	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
 	return d.db.Create(metric).Error
 }
-
-// Update the address fields for the Node with the given id
-func (d *DatabaseImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
-	newNode := &Node{
-		Id:             id.Marshal(),
-		ServerAddress:  nodeAddr,
-		GatewayAddress: gwAddr,
-	}
-	return d.db.Model(newNode).Where("id = ?", newNode.Id).Updates(map[string]interface{}{
-		"server_address":  nodeAddr,
-		"gateway_address": gwAddr,
-	}).Error
-}

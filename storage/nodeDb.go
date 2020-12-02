@@ -65,3 +65,16 @@ func (d *DatabaseImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 	err := d.db.Where("status = ?", uint8(status)).Find(&nodes).Error
 	return nodes, err
 }
+
+// Update the address fields for the Node with the given id
+func (d *DatabaseImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
+	newNode := &Node{
+		Id:             id.Marshal(),
+		ServerAddress:  nodeAddr,
+		GatewayAddress: gwAddr,
+	}
+	return d.db.Model(newNode).Where("id = ?", newNode.Id).Updates(map[string]interface{}{
+		"server_address":  nodeAddr,
+		"gateway_address": gwAddr,
+	}).Error
+}

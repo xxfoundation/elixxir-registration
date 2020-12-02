@@ -203,30 +203,3 @@ func TestMapImpl_InsertRoundError(t *testing.T) {
 		t.Errorf("Mismatched Error returned!")
 	}
 }
-
-// Happy path
-func TestMapImpl_UpdateNodeAddresses(t *testing.T) {
-	m := &MapImpl{
-		nodes: make(map[string]*Node),
-	}
-
-	testString := "test"
-	testId := id.NewIdFromString(testString, id.Node, t)
-	testResult := "newAddr"
-	m.nodes[testString] = &Node{
-		Code:           testString,
-		Id:             testId.Marshal(),
-		ServerAddress:  testString,
-		GatewayAddress: testString,
-	}
-
-	err := m.UpdateNodeAddresses(testId, testResult, testResult)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	if result := m.nodes[testString]; result.ServerAddress != testResult || result.GatewayAddress != testResult {
-		t.Errorf("Field values did not update correctly, got Node %s Gateway %s",
-			result.ServerAddress, result.GatewayAddress)
-	}
-}
