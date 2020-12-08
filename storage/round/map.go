@@ -52,6 +52,8 @@ func (rsm *StateMap) GetRound(id id.Round) *State {
 	return rsm.rounds[id]
 }
 
+// add a schedule to delete timestamp
+
 // Cleans out rounds from round map.
 // ONLY to be used upon round completion
 func (rsm *StateMap) DeleteRound(id id.Round) {

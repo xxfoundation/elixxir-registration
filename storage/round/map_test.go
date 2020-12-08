@@ -114,6 +114,7 @@ func TestStateMap_GetNode_invalid(t *testing.T) {
 	}
 }
 
+// Happy path
 func TestStateMap_DeleteRound(t *testing.T) {
 	sm := &StateMap{
 		rounds: make(map[id.Round]*State),
