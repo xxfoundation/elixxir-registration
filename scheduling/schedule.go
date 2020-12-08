@@ -114,6 +114,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				// Signals the round has been completed.
 				// In this case, we can exit the go-routine
 				case <-ourRound.GetRoundCompletedChan():
+					state.GetRoundMap().DeleteRound(roundID)
 					return
 				}
 			}(newRound.ID)

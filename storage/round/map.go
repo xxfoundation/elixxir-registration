@@ -52,6 +52,16 @@ func (rsm *StateMap) GetRound(id id.Round) *State {
 	return rsm.rounds[id]
 }
 
+// Cleans out rounds from round map.
+// ONLY to be used upon round completion
+func (rsm *StateMap) DeleteRound(id id.Round) {
+	// Delete the round from the map
+	rsm.mux.Lock()
+	delete(rsm.rounds, id)
+	rsm.mux.Unlock()
+	return
+}
+
 //adds rounds for testing without checks
 func (rsm *StateMap) AddRound_Testing(state *State, t *testing.T) {
 	if t == nil {

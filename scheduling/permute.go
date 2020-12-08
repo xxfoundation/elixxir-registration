@@ -19,23 +19,23 @@ func Permute(items []*node.State) [][]*node.State {
 	var output [][]*node.State
 
 	// Place inline to make appending output easier
-	helper = func(items []*node.State, n int) {
-		if n == 1 {
+	helper = func(items []*node.State, numItems int) {
+		if numItems == 1 {
 			// Create a copy and append the copy to the output
 			ourCopy := make([]*node.State, len(items))
 			copy(ourCopy, items)
 			output = append(output, ourCopy)
 		} else {
-			for i := 0; i < n; i++ {
-				helper(items, n-1)
+			for i := 0; i < numItems; i++ {
+				helper(items, numItems-1)
 				// Swap choice dependent on parity of k (even or odd)
-				if n%2 == 1 {
+				if numItems%2 == 1 {
 					// Swap the values
-					items[i], items[n-1] = items[n-1], items[i]
+					items[i], items[numItems-1] = items[numItems-1], items[i]
 
 				} else {
 					// Swap the values
-					items[0], items[n-1] = items[n-1], items[0]
+					items[0], items[numItems-1] = items[numItems-1], items[0]
 
 				}
 			}

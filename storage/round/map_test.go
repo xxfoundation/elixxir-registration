@@ -114,6 +114,23 @@ func TestStateMap_GetNode_invalid(t *testing.T) {
 	}
 }
 
+func TestStateMap_DeleteRound(t *testing.T) {
+	sm := &StateMap{
+		rounds: make(map[id.Round]*State),
+	}
+	rid := id.Round(2)
+	sm.rounds[rid] = &State{}
+
+	sm.DeleteRound(rid)
+
+	// Check that the round is empty upon deletion
+	r := sm.GetRound(rid)
+	if r != nil {
+		t.Errorf("Round retrieved after deletion from map")
+	}
+
+}
+
 func buildMockTopology(numNodes int, t *testing.T) *connect.Circuit {
 	nodeLst := make([]*id.ID, numNodes)
 	for i := 0; i < numNodes; i++ {
