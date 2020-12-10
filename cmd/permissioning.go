@@ -235,7 +235,6 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		return errors.WithMessage(err, "Failed to insert nodes in definition")
 	}
 
-
 	// update the internal state with the newly-updated ndf
 	err = m.State.UpdateNdf(networkDef)
 	m.NDFLock.Unlock()
@@ -307,7 +306,7 @@ func (m *RegistrationImpl) insertNdf(definition *ndf.NetworkDefinition, g ndf.Ga
 }
 
 // Assemble information for the given registration code
-func assembleNdf(code string) (ndf.Gateway, ndf.Node, int64,  error) {
+func assembleNdf(code string) (ndf.Gateway, ndf.Node, int64, error) {
 
 	// Get node information for each registration code
 	nodeInfo, err := storage.PermissioningDb.GetNode(code)
