@@ -37,7 +37,7 @@ func TestState_GetLastUpdate(t *testing.T) {
 	newTime := ns.GetLastUpdate()
 
 	if origTime.After(newTime) || origTime.Equal(newTime) {
-		t.Errorf("origTime was after or euqal to newTime")
+		t.Errorf("origTime was after or equal to newTime")
 	}
 }
 

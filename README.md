@@ -29,8 +29,11 @@ updateIdPath: "updateId.txt"
 # UDB ID
 udbID: 1
 
-# Path to UDB public key PEM file
-udbPubKeyPemPath: "udbPubKey.pem"
+# Path to UDB cert file
+udbCertPath: "udb.crt"
+
+# Address for UDB
+udbAddress: "1.2.3.4:11420"
 
 # Public address, used in NDF it gives to client
 publicAdress: "0.0.0.0:11420"

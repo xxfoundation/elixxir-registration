@@ -114,10 +114,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	}
 
-	// Load the UDB public key PEM from file
-	udbPubKeyPem, err := utils.ReadFile(params.udbPubKeyPemPath)
+	// Load the UDB cert from file
+	udbCert, err := utils.ReadFile(params.udbCertPath)
 	if err != nil {
-		return nil, errors.Errorf("failed to read UDB public key PEM: %+v", err)
+		return nil, errors.Errorf("failed to read UDB cert: %+v", err)
 	}
 
 	// Construct the NDF
@@ -128,9 +128,13 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		},
 
 		Timestamp: time.Now(),
-		UDB:       ndf.UDB{ID: RegParams.udbId, PubKeyPem: string(udbPubKeyPem)},
-		E2E:       RegParams.e2e,
-		CMIX:      RegParams.cmix,
+		UDB: ndf.UDB{
+			ID:      RegParams.udbId,
+			Cert:    string(udbCert),
+			Address: RegParams.udbAddress,
+		},
+		E2E:  RegParams.e2e,
+		CMIX: RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
 		Nodes:    make([]ndf.Node, 0),
