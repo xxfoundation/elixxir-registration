@@ -36,6 +36,9 @@ type State struct {
 	// List of round errors received from nodes
 	roundErrors []*pb.RoundError
 
+	// List of client errors received from nodes
+	clientErrors []*pb.ClientError
+
 	roundComplete chan struct{}
 
 	lastUpdate time.Time
@@ -147,6 +150,7 @@ func (s *State) BuildRoundInfo() *pb.RoundInfo {
 	defer s.mux.RUnlock()
 
 	s.base.Errors = s.roundErrors
+	s.base.ClientErrors = s.clientErrors
 	s.base.State = uint32(s.state)
 
 	return CopyRoundInfo(s.base)
@@ -182,6 +186,14 @@ func (s *State) AppendError(roundError *pb.RoundError) {
 	}
 
 	s.roundErrors = append(s.roundErrors, roundError)
+}
+
+// Append a round error to our list of stored rounderrors
+func (s *State) AppendClientErrors(clientErrors []*pb.ClientError) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	s.clientErrors = append(s.clientErrors, clientErrors...)
 }
 
 //returns the channel used to stop the round timeout

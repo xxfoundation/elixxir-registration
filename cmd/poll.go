@@ -64,13 +64,13 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	activity := current.Activity(msg.Activity)
 
 	// check that the activity is not error and then poll, do not count error
-	// polls so erroring nodes are not issues rounds
+	// polls so erring nodes are not issues rounds
 	if activity != current.ERROR {
 		// Increment the Node's poll count
 		n.IncrementNumPolls()
 	}
 
-	//update ip addresses if nessessary
+	// update ip addresses if necessary
 	err := checkIPAddresses(m, n, msg, auth.Sender)
 	if err != nil {
 		err = errors.WithMessage(err, "Failed to update IP addresses")
@@ -122,9 +122,19 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		return response, err
 	}
 
+	// update does edge checking. It ensures the state change received was a
+	// valid one and the state of the node and
+	// any associated round allows for that change. If the change was not
+	// acceptable, it is not recorded and an error is returned, which is
+	// propagated to the node
+	isUpdate, updateNotification, err := n.Update(current.Activity(msg.Activity))
+	if err != nil {
+		return response, err
+	}
+
 	// Return early before we get the polling lock if round creation stopped
 	stopped := atomic.LoadUint32(m.Stopped) == 1
-	if !stopped {
+	if !stopped && isUpdate {
 		// when a node poll is received, the nodes polling lock is taken here. If
 		// there is no update, it is released in this endpoint, otherwise it is
 		// released in the scheduling algorithm which blocks all future polls until
@@ -136,28 +146,17 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 			n.GetPollingLock().Unlock()
 			return response, err
 		}
-	}
 
-	// update does edge checking. It ensures the state change recieved was a
-	// valid one and the state fo the node and
-	// any associated round allows for that change. If the change was not
-	// acceptable, it is not recorded and an error is returned, which is
-	// propagated to the node
-	update, updateNotification, err := n.Update(current.Activity(msg.Activity))
-	if !stopped {
-		//if updating to an error state, attach the error the the update
-		if update && err == nil && updateNotification.ToActivity == current.ERROR {
+		// If updating to an error state, attach the error the the update
+		if updateNotification.ToActivity == current.ERROR {
 			updateNotification.Error = msg.Error
 		}
+		updateNotification.ClientErrors = msg.ClientErrors
 
-		//if an update ocured, report it to the control thread
-		if update {
-			err = m.State.SendUpdateNotification(updateNotification)
-		} else {
-			n.GetPollingLock().Unlock()
-		}
+		//if an update occurred, report it to the control thread
+		err = m.State.SendUpdateNotification(updateNotification)
+		n.GetPollingLock().Unlock()
 	}
-
 	return response, err
 }
 
