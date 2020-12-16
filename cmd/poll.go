@@ -155,7 +155,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 		//if an update occurred, report it to the control thread
 		err = m.State.SendUpdateNotification(updateNotification)
-		n.GetPollingLock().Unlock()
 	}
 	return response, err
 }
