@@ -159,8 +159,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	}
 
 	// Update occurred, report it to the control thread
-	err = m.State.SendUpdateNotification(updateNotification)
-	return response, err
+	return response, m.State.SendUpdateNotification(updateNotification)
 }
 
 // PollNdf handles the client polling for an updated NDF
