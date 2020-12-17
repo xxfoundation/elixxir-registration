@@ -124,6 +124,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 		return response, err
 	}
 
+	// Return early before we get the polling lock if round creation stopped
+	stopped := atomic.LoadUint32(m.Stopped) == 1
+	if stopped {
+		return response, err
+	}
+
 	// when a node poll is received, the nodes polling lock is taken here. If
 	// there is no update, it is released in this endpoint, otherwise it is
 	// released in the scheduling algorithm which blocks all future polls until
@@ -142,22 +148,18 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	// acceptable, it is not recorded and an error is returned, which is
 	// propagated to the node
 	isUpdate, updateNotification, err := n.Update(current.Activity(msg.Activity))
-	if err != nil {
+	if !isUpdate || err != nil {
+		n.GetPollingLock().Unlock()
 		return response, err
 	}
 
-	// Return early before we get the polling lock if round creation stopped
-	stopped := atomic.LoadUint32(m.Stopped) == 1
-	if !stopped && isUpdate {
-
-		// If updating to an error state, attach the error the the update
-		if updateNotification.ToActivity == current.ERROR {
-			updateNotification.Error = msg.Error
-		}
-
-		//if an update occurred, report it to the control thread
-		err = m.State.SendUpdateNotification(updateNotification)
+	// If updating to an error state, attach the error the the update
+	if updateNotification.ToActivity == current.ERROR {
+		updateNotification.Error = msg.Error
 	}
+
+	// Update occurred, report it to the control thread
+	err = m.State.SendUpdateNotification(updateNotification)
 	return response, err
 }
 
