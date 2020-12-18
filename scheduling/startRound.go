@@ -10,25 +10,26 @@ import (
 	"github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
+	"gitlab.com/elixxir/registration/storage/round"
 	"time"
 )
 
 // startRound is a function which takes the info from createSimpleRound and updates the
 //  node and network states in order to begin the round
-func startRound(round protoRound, state *storage.NetworkState, roundTracker *RoundTracker) error {
+func startRound(round protoRound, state *storage.NetworkState, roundTracker *RoundTracker) (*round.State, error) {
 	// Add the round to the manager
 	r, err := state.GetRoundMap().AddRound(round.ID, round.BatchSize, round.ResourceQueueTimeout,
 		round.Topology)
 	if err != nil {
 		err = errors.WithMessagef(err, "Failed to create new round %v", round.ID)
-		return err
+		return nil, err
 	}
 
 	// Move the round to precomputing
 	err = r.Update(states.PRECOMPUTING, time.Now())
 	if err != nil {
 		err = errors.WithMessagef(err, "Could not move new round into %s", states.PRECOMPUTING)
-		return err
+		return nil, err
 	}
 
 	// Tag all nodes to the round
@@ -38,7 +39,7 @@ func startRound(round protoRound, state *storage.NetworkState, roundTracker *Rou
 		err := n.SetRound(r)
 		if err != nil {
 			err = errors.WithMessagef(err, "could not add round %v to node %s", r.GetRoundID(), n.GetID())
-			return err
+			return nil, err
 		}
 	}
 
@@ -47,11 +48,11 @@ func startRound(round protoRound, state *storage.NetworkState, roundTracker *Rou
 	if err != nil {
 		err = errors.WithMessagef(err, "Could not issue "+
 			"update to create round %v", r.GetRoundID())
-		return err
+		return nil, err
 	}
 
 	// Add round to active set of rounds
 	roundTracker.AddActiveRound(r.GetRoundID())
 
-	return nil
+	return r, nil
 }
