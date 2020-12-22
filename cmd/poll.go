@@ -170,51 +170,6 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]b
 		return nil, errors.New(ndf.NO_NDF)
 	}
 
-	// Handle client request
-	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
-		// Do not return NDF if client hash matches
-		if isSame := m.State.GetPartialNdf().CompareHash(theirNdfHash); isSame {
-			return nil, nil
-		}
-
-		// Send the json of the client
-		jww.TRACE.Printf("Returning a new NDF to client!")
-		jww.TRACE.Printf("Sending the following ndf: %v", m.State.GetPartialNdf().Get())
-		return m.State.GetPartialNdf().Get().Marshal()
-	}
-
-	// Do not return NDF if backend hash matches
-	if isSame := m.State.GetFullNdf().CompareHash(theirNdfHash); isSame {
-		return nil, nil
-	}
-
-	//Send the json of the ndf
-	jww.TRACE.Printf("Returning a new NDF to a back-end server!")
-	return m.State.GetFullNdf().Get().Marshal()
-}
-
-// PollNdf handles the client polling for an updated NDF
-func (m *RegistrationImpl) PollPartialNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
-
-	// Ensure the NDF is ready to be returned
-	regComplete := atomic.LoadUint32(m.NdfReady)
-	if regComplete != 1 {
-		return nil, errors.New(ndf.NO_NDF)
-	}
-
-	// Handle client request
-	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
-		// Do not return NDF if client hash matches
-		if isSame := m.State.GetPartialNdf().CompareHash(theirNdfHash); isSame {
-			return nil, nil
-		}
-
-		// Send the json of the client
-		jww.TRACE.Printf("Returning a new NDF to client!")
-		jww.TRACE.Printf("Sending the following ndf: %v", m.State.GetPartialNdf().Get())
-		return m.State.GetPartialNdf().Get().Marshal()
-	}
-
 	// Do not return NDF if backend hash matches
 	if isSame := m.State.GetPartialNdf().CompareHash(theirNdfHash); isSame {
 		return nil, nil
