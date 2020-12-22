@@ -77,6 +77,11 @@ import (
 //		t.Errorf(err.Error())
 //		return
 //	}
+//	err = db.UpdateNodeAddresses(testId, "6.6.6.6", "6.6.7.7")
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
 //	err = db.UpdateSalt(testId, []byte("test123"))
 //	if err != nil {
 //		t.Errorf(err.Error())
