@@ -39,6 +39,9 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	if roundErrored {
 		return nil
 	}
+	if update.ClientErrors != nil && len(update.ClientErrors) > 0 {
+		r.AppendClientErrors(update.ClientErrors)
+	}
 	//ban the node if it is supposed to be banned
 	if update.ToStatus == node.Banned {
 		if hasRound {

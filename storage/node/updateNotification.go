@@ -22,4 +22,5 @@ type UpdateNotification struct {
 	FromActivity current.Activity
 	ToActivity   current.Activity
 	Error        *mixmessages.RoundError
+	ClientErrors []*mixmessages.ClientError
 }
