@@ -333,6 +333,8 @@ gitlab.com/xx_network/crypto v0.0.5-0.20201125005132-fd9d3cd31e0b/go.mod h1:+lcQ
 gitlab.com/xx_network/crypto v0.0.5-0.20201130191038-b4f77b62e2c2 h1:bFNiKUoiWpno/gPNWbBsIbTjO1yJmhzj/VlXjnqEBAQ=
 gitlab.com/xx_network/crypto v0.0.5-0.20201130191038-b4f77b62e2c2/go.mod h1:+lcQEy+Th4eswFgQDwT0EXKp4AXrlubxalwQFH5O0Mk=
 gitlab.com/xx_network/crypto v0.0.5-0.20201203175549-582fde7fcbe1/go.mod h1:NM4Lk3//mOSlWwySpaH8FMmYZNm8qtjr6EawfaAHzH4=
+gitlab.com/xx_network/crypto v0.0.5-0.20201209162436-bc2308a94174 h1:KpVvbYTWFpEz7MgzbG3YzIcOsNQrUBCCLwRDC2sDqv8=
+gitlab.com/xx_network/crypto v0.0.5-0.20201209162436-bc2308a94174/go.mod h1:NM4Lk3//mOSlWwySpaH8FMmYZNm8qtjr6EawfaAHzH4=
 gitlab.com/xx_network/crypto v0.0.5-0.20201215233953-36cca1af8b2f h1:Qdd2h1FsX8KLdcAHn6TcT93ex23p3qcuwkg7XjAAx/g=
 gitlab.com/xx_network/crypto v0.0.5-0.20201215233953-36cca1af8b2f/go.mod h1:NM4Lk3//mOSlWwySpaH8FMmYZNm8qtjr6EawfaAHzH4=
 gitlab.com/xx_network/primitives v0.0.0-20200803231956-9b192c57ea7c/go.mod h1:wtdCMr7DPePz9qwctNoAUzZtbOSHSedcK++3Df3psjA=
