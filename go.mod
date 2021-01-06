@@ -25,10 +25,10 @@ require (
 	github.com/spf13/viper v1.7.0
 	gitlab.com/elixxir/comms v0.0.4-0.20210104224025-4e1cedc524a1
 	gitlab.com/elixxir/crypto v0.0.7-0.20210104223925-7dfd3ad55d5c
-	gitlab.com/elixxir/primitives v0.0.3-0.20210104223605-0e47af99d9d5
-	gitlab.com/xx_network/comms v0.0.4-0.20201217200138-87075d5b4ffd
-	gitlab.com/xx_network/crypto v0.0.5-0.20201217195719-cc31e1d1eee3
-	gitlab.com/xx_network/primitives v0.0.4-0.20201216174909-808eb0fc97fc
+	gitlab.com/elixxir/primitives v0.0.3-0.20210106014507-bf3dfe228fa6
+	gitlab.com/xx_network/comms v0.0.4-0.20210106014446-be163ef3ccce
+	gitlab.com/xx_network/crypto v0.0.5-0.20210106014410-0554a33a7124
+	gitlab.com/xx_network/primitives v0.0.4-0.20210106014326-691ebfca3b07
 )
 
 replace google.golang.org/grpc => github.com/grpc/grpc-go v1.27.1
