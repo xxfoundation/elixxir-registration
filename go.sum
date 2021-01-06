@@ -298,6 +298,8 @@ gitlab.com/elixxir/comms v0.0.4-0.20201215214310-78b71bb2bee0 h1:0l2HIt7Iw78j93j
 gitlab.com/elixxir/comms v0.0.4-0.20201215214310-78b71bb2bee0/go.mod h1:F5wQaxr3uG2LgFrRrG/fDK8nxhpVUhHkJkNAxuWjEHw=
 gitlab.com/elixxir/comms v0.0.4-0.20201222203301-3ac9ed0add05 h1:7hE2WQOW6oCUtAn8FlWE4PsSHko5S5E5AFDhkwuoXRE=
 gitlab.com/elixxir/comms v0.0.4-0.20201222203301-3ac9ed0add05/go.mod h1:qvxbypPJrr5pvkeKv/QiO2B51jCi5nc3W//OAppP22g=
+gitlab.com/elixxir/comms v0.0.4-0.20210104224025-4e1cedc524a1 h1:3jDUt9oQoGiWeLPGWCZGJnufAcoANeEqCHsqEDipmWc=
+gitlab.com/elixxir/comms v0.0.4-0.20210104224025-4e1cedc524a1/go.mod h1:5vrxoymQ4GE9WKEq9HPTcgIHGyOo/ETE1Oy4FgDcvmo=
 gitlab.com/elixxir/comms v0.0.4-0.20210106001934-9bb3731ad8be h1:dik4speCpj3jtAxIBwQkpDp1bTSpnQ64iM1+oNJEWrw=
 gitlab.com/elixxir/comms v0.0.4-0.20210106001934-9bb3731ad8be/go.mod h1:b7vEcqwZMTIe1XyHq6PeO1LL/HwGOjCSadLirkGCux0=
 gitlab.com/elixxir/crypto v0.0.0-20200804182833-984246dea2c4/go.mod h1:ucm9SFKJo+K0N2GwRRpaNr+tKXMIOVWzmyUD0SbOu2c=
@@ -307,6 +309,8 @@ gitlab.com/elixxir/crypto v0.0.6 h1:c94CGzBTV7LgInGHfmeJHrqq9nIc/WEOLUd9OeQBN74=
 gitlab.com/elixxir/crypto v0.0.6/go.mod h1:V8lricBRpa8v1ySymXQ1/lsb+8/lSak5S7ZWRT6OACY=
 gitlab.com/elixxir/crypto v0.0.7-0.20201222203132-9b4cc1ae3da6 h1:Vyf2wJ1/CoHLznATpI+z84OJQ+sgAbpVLT9P1CNjSVI=
 gitlab.com/elixxir/crypto v0.0.7-0.20201222203132-9b4cc1ae3da6/go.mod h1:NsIzH+TN592lMcmJGVzxUE64dObXuci7jo0qajyGahI=
+gitlab.com/elixxir/crypto v0.0.7-0.20210104223925-7dfd3ad55d5c h1:/iLLZvu5mbFXxcjLoguZwKxHslEmaTqR4csfa8X1zIQ=
+gitlab.com/elixxir/crypto v0.0.7-0.20210104223925-7dfd3ad55d5c/go.mod h1:cEn3ghYlk7Fhz1dOu3OEw9v9nIZNYH6hqnjHlTLxFiA=
 gitlab.com/elixxir/crypto v0.0.7-0.20210106001826-bf1cc50f1a2c h1:kBkotwOC51VqfW/IDlI5oWfzOHgr0gVbqGQuXXXzcnE=
 gitlab.com/elixxir/crypto v0.0.7-0.20210106001826-bf1cc50f1a2c/go.mod h1:MnrerbUo/MQyhBhcHTy+y1ekfELCaAt8xrV6by2gEKY=
 gitlab.com/elixxir/primitives v0.0.0-20200731184040-494269b53b4d h1:OKWTmYN5q8XVHo8JXThIH0TCuvl/fLXR7MGVacpqfRg=
@@ -323,6 +327,8 @@ gitlab.com/elixxir/primitives v0.0.3-0.20201222223538-5d17b9119eec h1:QHwM+VOj40
 gitlab.com/elixxir/primitives v0.0.3-0.20201222223538-5d17b9119eec/go.mod h1:5Z8fce94mks0aFhMvzftx2jJpDx4/pzDU20G2oTiU9w=
 gitlab.com/elixxir/primitives v0.0.3-0.20201229212305-2ab1e938b1cb h1:7LMaemxU2c3qlsK/4m4/sXVj5OWdn+9rhXC2u6b03aQ=
 gitlab.com/elixxir/primitives v0.0.3-0.20201229212305-2ab1e938b1cb/go.mod h1:5Z8fce94mks0aFhMvzftx2jJpDx4/pzDU20G2oTiU9w=
+gitlab.com/elixxir/primitives v0.0.3-0.20210104223605-0e47af99d9d5 h1:gFnu6lXLNG7jMRpR0990iRimotw1eMsV4wQU9tce3JQ=
+gitlab.com/elixxir/primitives v0.0.3-0.20210104223605-0e47af99d9d5/go.mod h1:BLL0lkR9foigqmsz1p3OLnwACBhS9fd3mVk9Ftflg9E=
 gitlab.com/elixxir/primitives v0.0.3-0.20210106001742-69578b457afa h1:qjuFd1G1v8YjumEF7RHf9hF/7idxvNYX9HIwTmQ6U0U=
 gitlab.com/elixxir/primitives v0.0.3-0.20210106001742-69578b457afa/go.mod h1:RigMLE2qLcqgRcPFUHRmA1ChSRVf5AuvKLFYxrJr6is=
 gitlab.com/xx_network/comms v0.0.0-20200805174823-841427dd5023/go.mod h1:owEcxTRl7gsoM8c3RQ5KAm5GstxrJp5tn+6JfQ4z5Hw=
@@ -333,6 +339,8 @@ gitlab.com/xx_network/comms v0.0.4-0.20201202185034-73f7778df8fe h1:hGP9NmUEYFYS
 gitlab.com/xx_network/comms v0.0.4-0.20201202185034-73f7778df8fe/go.mod h1:YViGbRj7FjJYoaO4NpALGEd9dK/l8uUT000FEBbUTL8=
 gitlab.com/xx_network/comms v0.0.4-0.20201215221519-b4c92324b090 h1:7J8iMiX7B6tNwbinP00GIARZy+O0L9P0IM8KcxXMK8g=
 gitlab.com/xx_network/comms v0.0.4-0.20201215221519-b4c92324b090/go.mod h1:YViGbRj7FjJYoaO4NpALGEd9dK/l8uUT000FEBbUTL8=
+gitlab.com/xx_network/comms v0.0.4-0.20201217200138-87075d5b4ffd h1:4LjS3UuBNA/AaglIJ+k1IBoxYgCWt+FM1MPYxjAFfaQ=
+gitlab.com/xx_network/comms v0.0.4-0.20201217200138-87075d5b4ffd/go.mod h1:/vIk6tSrDqk/7HZOdrbSXZT+kEL43HIoz60AoZTzTXg=
 gitlab.com/xx_network/comms v0.0.4-0.20201222193955-56206d700360 h1:IlPemXfxV/yyUl5bAV5yATQKtmrsL7SMzho5FqAUv0s=
 gitlab.com/xx_network/comms v0.0.4-0.20201222193955-56206d700360/go.mod h1:YViGbRj7FjJYoaO4NpALGEd9dK/l8uUT000FEBbUTL8=
 gitlab.com/xx_network/comms v0.0.4-0.20210106001723-9e94893d0208 h1:laOdKhWrQkoyI2OSoi9IOBLqe/8OHL6KdAMVvLWqJXc=
@@ -350,6 +358,8 @@ gitlab.com/xx_network/crypto v0.0.5-0.20201209162436-bc2308a94174 h1:KpVvbYTWFpE
 gitlab.com/xx_network/crypto v0.0.5-0.20201209162436-bc2308a94174/go.mod h1:NM4Lk3//mOSlWwySpaH8FMmYZNm8qtjr6EawfaAHzH4=
 gitlab.com/xx_network/crypto v0.0.5-0.20201215233953-36cca1af8b2f h1:Qdd2h1FsX8KLdcAHn6TcT93ex23p3qcuwkg7XjAAx/g=
 gitlab.com/xx_network/crypto v0.0.5-0.20201215233953-36cca1af8b2f/go.mod h1:NM4Lk3//mOSlWwySpaH8FMmYZNm8qtjr6EawfaAHzH4=
+gitlab.com/xx_network/crypto v0.0.5-0.20201217195719-cc31e1d1eee3 h1:xXJAkvhHZl5CUX8/9rqe8hod5FbqZrxwMuT8cG48Mxs=
+gitlab.com/xx_network/crypto v0.0.5-0.20201217195719-cc31e1d1eee3/go.mod h1:iHCS8UOFndbXivLTeIarxN8TKbi3NcanZj29KtMzs2o=
 gitlab.com/xx_network/crypto v0.0.5-0.20210106001644-a7c339164e03 h1:sxJgCjDZ/8XKyNvq5qWwCwK62ZkWJ2nh8FwivEK4Qqw=
 gitlab.com/xx_network/crypto v0.0.5-0.20210106001644-a7c339164e03/go.mod h1:zo4aMyBGcG7ZdLFA0F9Rx5GU2p0hYgTCJhoYzrCvCM8=
 gitlab.com/xx_network/primitives v0.0.0-20200803231956-9b192c57ea7c/go.mod h1:wtdCMr7DPePz9qwctNoAUzZtbOSHSedcK++3Df3psjA=
@@ -360,6 +370,8 @@ gitlab.com/xx_network/primitives v0.0.3-0.20201116234927-44e42fc91e7c h1:mYId667
 gitlab.com/xx_network/primitives v0.0.3-0.20201116234927-44e42fc91e7c/go.mod h1:cs0QlFpdMDI6lAo61lDRH2JZz+3aVkHy+QogOB6F/qc=
 gitlab.com/xx_network/primitives v0.0.3 h1:RBJGPtphUyDvN8iG8+VTF8tr5iT9f5WHo0NCbenspYE=
 gitlab.com/xx_network/primitives v0.0.3/go.mod h1:cs0QlFpdMDI6lAo61lDRH2JZz+3aVkHy+QogOB6F/qc=
+gitlab.com/xx_network/primitives v0.0.4-0.20201216174909-808eb0fc97fc h1:nZ0kNhQfkEr4TIpf1MQxOIWiSd1M1YTE2JrFA1SPSD4=
+gitlab.com/xx_network/primitives v0.0.4-0.20201216174909-808eb0fc97fc/go.mod h1:cs0QlFpdMDI6lAo61lDRH2JZz+3aVkHy+QogOB6F/qc=
 gitlab.com/xx_network/primitives v0.0.4-0.20201223182549-bc1a11a8b9d5 h1:F4//D2AGx4MqHDeEzWiPJwi0RY9Qnr2CvhydaD0G3sM=
 gitlab.com/xx_network/primitives v0.0.4-0.20201223182549-bc1a11a8b9d5/go.mod h1:cs0QlFpdMDI6lAo61lDRH2JZz+3aVkHy+QogOB6F/qc=
 gitlab.com/xx_network/primitives v0.0.4-0.20201229212313-fe33d9809f27 h1:JGpYRKkhPw58dlhii/wH8N9uWZ1AOTyVw3b6ZYdndA8=
