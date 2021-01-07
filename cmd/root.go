@@ -21,6 +21,7 @@ import (
 	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/utils"
 	"net"
 	"os"
@@ -137,8 +138,9 @@ var rootCmd = &cobra.Command{
 		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
 		// Get UDB ID, cert path, and address
-		udbId := make([]byte, 32)
-		udbId[len(udbId)-1] = byte(viper.GetInt("udbID"))
+		udbId := make([]byte, 33)
+		udbId[len(udbId)-2] = byte(viper.GetInt("udbID"))
+		udbId[len(udbId)-1] = byte(id.User)
 		udbCertPath := viper.GetString("udbCertPath")
 		udbAddress := viper.GetString("udbAddress")
 
