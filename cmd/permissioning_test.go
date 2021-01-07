@@ -67,10 +67,10 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	//region Test code
 	// Create params for test registration server
 	testParams := Params{
-		CertPath:         testkeys.GetCACertPath(),
-		KeyPath:          testkeys.GetCAKeyPath(),
-		NdfOutputPath:    testkeys.GetNDFPath(),
-		udbPubKeyPemPath: testkeys.GetUdbPubKeyPemPath(),
+		CertPath:      testkeys.GetCACertPath(),
+		KeyPath:       testkeys.GetCAKeyPath(),
+		NdfOutputPath: testkeys.GetNDFPath(),
+		udbCertPath:   testkeys.GetUdbCertPath(),
 	}
 	// Start registration server
 	impl, err := StartRegistration(testParams)

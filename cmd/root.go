@@ -136,10 +136,11 @@ var rootCmd = &cobra.Command{
 		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
 		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
+		// Get UDB ID, cert path, and address
 		udbId := make([]byte, 32)
 		udbId[len(udbId)-1] = byte(viper.GetInt("udbID"))
-
-		udbPubKeyPemPath := viper.GetString("udbPubKeyPemPath")
+		udbCertPath := viper.GetString("udbCertPath")
+		udbAddress := viper.GetString("udbAddress")
 
 		//load the scheduling params file as a string
 		SchedulingConfigPath := viper.GetString("schedulingConfigPath")
@@ -212,7 +213,8 @@ var rootCmd = &cobra.Command{
 			schedulingKillTimeout: schedulingKillTimeout,
 			closeTimeout:          closeTimeout,
 			udbId:                 udbId,
-			udbPubKeyPemPath:      udbPubKeyPemPath,
+			udbCertPath:           udbCertPath,
+			udbAddress:            udbAddress,
 			minimumNodes:          viper.GetUint32("minimumNodes"),
 			minGatewayVersion:     minGatewayVersion,
 			minServerVersion:      minServerVersion,
