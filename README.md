@@ -27,7 +27,7 @@ roundIdPath: "roundId.txt"
 updateIdPath: "updateId.txt"
 
 # UDB ID
-udbID: 1
+udbID: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMD"
 
 # Path to UDB cert file
 udbCertPath: "udb.crt"
