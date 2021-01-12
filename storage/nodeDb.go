@@ -5,7 +5,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Handles the DatabaseImpl for node-related functionality
-//+build database darwin linux windows
+//+build !stateless
 
 package storage
 

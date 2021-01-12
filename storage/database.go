@@ -5,7 +5,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Handles Database backend functionality
-//+build database darwin linux windows
+//+build !stateless
 
 package storage
 

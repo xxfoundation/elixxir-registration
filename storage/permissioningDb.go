@@ -5,7 +5,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Handles the DatabaseImpl for permissioning-based functionality
-//+build database darwin linux windows
+//+build !stateless
 
 package storage
 
