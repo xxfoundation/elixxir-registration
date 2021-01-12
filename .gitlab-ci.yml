@@ -79,9 +79,13 @@ build:
     - mkdir -p release
     - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' ./...
     - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.linux64 main.go
+    - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.linux64 main.go
     - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.win64 main.go
+    - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.win64 main.go
     - GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.win32 main.go
+    - GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.win32 main.go
     - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.darwin64 main.go
+    - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.darwin64 main.go
   artifacts:
     paths:
      - release/
