@@ -9,6 +9,7 @@
 package storage
 
 import (
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
 	"sync"
@@ -201,4 +202,35 @@ type RoundError struct {
 
 	// String of error that occurred during the Round
 	Error string `gorm:"NOT NULL"`
+}
+
+// Adds Client registration codes to the Database
+func PopulateClientRegistrationCodes(codes []string, uses int) {
+	for _, code := range codes {
+		err := PermissioningDb.InsertClientRegCode(code, uses)
+		if err != nil {
+			jww.ERROR.Printf("Unable to populate Client registration code: %+v",
+				err)
+		}
+	}
+}
+
+// Adds Node registration codes to the Database
+func PopulateNodeRegistrationCodes(infos []node.Info) {
+	// TODO: This will eventually need to be updated to intake applications too
+	i := 1
+	for _, info := range infos {
+		err := PermissioningDb.InsertApplication(&Application{
+			Id: uint64(i),
+		}, &Node{
+			Code:          info.RegCode,
+			Sequence:      info.Order,
+			ApplicationId: uint64(i),
+		})
+		if err != nil {
+			jww.ERROR.Printf("Unable to populate Node registration code: %+v",
+				err)
+		}
+		i++
+	}
 }
