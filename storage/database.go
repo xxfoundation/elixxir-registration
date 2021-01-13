@@ -61,7 +61,7 @@ func NewDatabase(username, password, database, address,
 				nodeMetrics:  make(map[uint64]*NodeMetric),
 				roundMetrics: make(map[uint64]*RoundMetric),
 				clients:      make(map[string]*RegistrationCode),
-				users:        make(map[string]bool),
+				users:        make(map[string]string),
 				states:       make(map[string]string),
 			}}, func() error { return nil }, nil
 	}

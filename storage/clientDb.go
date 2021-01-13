@@ -59,9 +59,10 @@ func (d *DatabaseImpl) GetUser(publicKey string) (*User, error) {
 }
 
 // Inserts User into the Database
-func (d *DatabaseImpl) InsertUser(publicKey string) error {
+func (d *DatabaseImpl) InsertUser(publicKey, receptionKey string) error {
 	user := &User{
-		PublicKey: publicKey,
+		PublicKey:    publicKey,
+		ReceptionKey: receptionKey,
 	}
 	return d.db.Create(user).Error
 }

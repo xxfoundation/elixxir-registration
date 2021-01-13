@@ -39,14 +39,14 @@ type database interface {
 	InsertClientRegCode(code string, uses int) error
 	UseCode(code string) error
 	GetUser(publicKey string) (*User, error)
-	InsertUser(publicKey string) error
+	InsertUser(publicKey, receptionKey string) error
 }
 
 // Struct implementing the Database Interface with an underlying Map
 type MapImpl struct {
 	clients           map[string]*RegistrationCode
 	nodes             map[string]*Node
-	users             map[string]bool
+	users             map[string]string
 	applications      map[uint64]*Application
 	nodeMetrics       map[uint64]*NodeMetric
 	nodeMetricCounter uint64
@@ -79,6 +79,8 @@ type RegistrationCode struct {
 type User struct {
 	// User TLS public certificate in PEM string format
 	PublicKey string `gorm:"primary_key"`
+	// User reception key in PEM string format
+	ReceptionKey string `gorm:"NOT NULL"`
 }
 
 // Struct representing the Node's Application table in the Database
