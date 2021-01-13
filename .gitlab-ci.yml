@@ -9,7 +9,7 @@ cache:
 variables:
   REPO_DIR: gitlab.com/elixxir
   REPO_NAME: registration
-  DOCKER_IMAGE: elixxirlabs/cuda-go:latest
+  DOCKER_IMAGE: elixxirlabs/cuda-go:go1.13-cuda11.1-mc
   MIN_CODE_COVERAGE: "0.0"
 
 before_script:
@@ -86,6 +86,9 @@ build:
     - GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.win32 main.go
     - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.darwin64 main.go
     - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.darwin64 main.go
+    - mkdir upload
+    - mv release/registration.stateless.* upload/
+    - /upload-artifacts.sh upload/
   artifacts:
     paths:
      - release/
