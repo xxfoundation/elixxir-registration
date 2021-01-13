@@ -22,21 +22,6 @@ type DatabaseImpl struct {
 	db *gorm.DB // Stored Database connection
 }
 
-// Initialize the database interface with Map backend
-func NewMap() Storage {
-	defer jww.INFO.Println("Map backend initialized successfully!")
-	return Storage{
-		&MapImpl{
-			applications: make(map[uint64]*Application),
-			nodes:        make(map[string]*Node),
-			nodeMetrics:  make(map[uint64]*NodeMetric),
-			roundMetrics: make(map[uint64]*RoundMetric),
-			clients:      make(map[string]*RegistrationCode),
-			users:        make(map[string]string),
-			states:       make(map[string]string),
-		}}
-}
-
 // Initialize the database interface with Database backend
 // Returns a Storage interface, Close function, and error
 func NewDatabase(username, password, database, address,

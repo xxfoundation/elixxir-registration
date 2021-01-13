@@ -206,6 +206,21 @@ type RoundError struct {
 	Error string `gorm:"NOT NULL"`
 }
 
+// Initialize the database interface with Map backend
+func NewMap() Storage {
+	defer jww.INFO.Println("Map backend initialized successfully!")
+	return Storage{
+		&MapImpl{
+			applications: make(map[uint64]*Application),
+			nodes:        make(map[string]*Node),
+			nodeMetrics:  make(map[uint64]*NodeMetric),
+			roundMetrics: make(map[uint64]*RoundMetric),
+			clients:      make(map[string]*RegistrationCode),
+			users:        make(map[string]string),
+			states:       make(map[string]string),
+		}}
+}
+
 // Adds Client registration codes to the Database
 func PopulateClientRegistrationCodes(codes []string, uses int) {
 	for _, code := range codes {
