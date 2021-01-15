@@ -80,7 +80,7 @@ type User struct {
 	// User TLS public certificate in PEM string format
 	PublicKey string `gorm:"primary_key"`
 	// User reception key in PEM string format
-	ReceptionKey string `gorm:"NOT NULL"`
+	ReceptionKey string `gorm:"NOT NULL;UNIQUE"`
 }
 
 // Struct representing the Node's Application table in the Database
