@@ -59,7 +59,8 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string) ([]byte, 
 	}
 
 	// Record the user public key for duplicate registration support
-	err = storage.PermissioningDb.InsertUser(pubKey)
+	// TODO: Pass in receptionKey
+	err = storage.PermissioningDb.InsertUser(pubKey, "")
 	if err != nil {
 		jww.WARN.Printf("Unable to store user: %+v",
 			errors.New(err.Error()))
