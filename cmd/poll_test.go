@@ -135,7 +135,7 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk)
+	state, err := storage.NewState(pk, 8)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -163,7 +163,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
-	state, err := storage.NewState(getTestKey())
+	state, err := storage.NewState(getTestKey(), 8)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -891,7 +891,7 @@ func TestVerifyError(t *testing.T) {
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk)
+	state, err := storage.NewState(pk, 8)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -944,7 +944,7 @@ func TestVerifyError(t *testing.T) {
 	_ = nsm.AddNode(errNodeId, "", "", "", 0)
 	n := nsm.GetNode(errNodeId)
 	rsm := round.NewStateMap()
-	s, _ := rsm.AddRound(id.Round(0), 4, 5*time.Minute, connect.NewCircuit([]*id.ID{errNodeId}))
+	s, _ := rsm.AddRound(id.Round(0), 4, 8, 5*time.Minute, connect.NewCircuit([]*id.ID{errNodeId}))
 	_ = n.SetRound(s)
 
 	err = verifyError(msg, n, impl)

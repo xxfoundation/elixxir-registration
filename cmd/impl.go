@@ -76,7 +76,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// Initialize the state tracking object
-	state, err := storage.NewState(pk)
+	state, err := storage.NewState(pk, params.addressSpace)
 	if err != nil {
 		return nil, err
 	}

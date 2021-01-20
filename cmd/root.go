@@ -139,8 +139,8 @@ var rootCmd = &cobra.Command{
 
 		// Get UDB ID, cert path, and address
 		udbId := make([]byte, 33)
-		udbIDStr :=viper.GetString("udbID")
-		if _, err := base64.StdEncoding.Decode(udbId, []byte(udbIDStr)); err!=nil{
+		udbIDStr := viper.GetString("udbID")
+		if _, err := base64.StdEncoding.Decode(udbId, []byte(udbIDStr)); err != nil {
 			jww.FATAL.Panicf("Failed to decode UDB ID: %s", udbIDStr)
 		}
 
@@ -226,6 +226,7 @@ var rootCmd = &cobra.Command{
 			disableGatewayPing:    disableGatewayPing,
 			userRegLeakPeriod:     userRegLeakPeriod,
 			userRegCapacity:       userRegCapacity,
+			addressSpace:          viper.GetUint32("addressSpace"),
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
