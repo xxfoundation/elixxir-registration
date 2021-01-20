@@ -184,14 +184,15 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 	}
 
 	//Attempt to register a user
-	sig, err := impl.RegisterUser("AAAA", string(nodeKey))
+	sig, receptionSig, err := impl.RegisterUser("AAAA", string(nodeKey), string(nodeKey))
 
 	if err != nil {
 		t.Errorf("Failed to register a node when it should have worked: %+v", err)
 	}
 
-	if sig == nil {
-		t.Errorf("Failed to sign public key, recieved %+v as a signature", sig)
+	if sig == nil || receptionSig == nil {
+		t.Errorf("Failed to sign public key, recieved %+v as a signature & %+v as a receptionSignature",
+			sig, receptionSig)
 	}
 	impl.Comms.Shutdown()
 }
@@ -612,38 +613,38 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("", "B")
+	_, _, err = impl.RegisterUser("", "B", "C")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("", "C")
+	_, _, err = impl.RegisterUser("", "C", "D")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("", "D")
+	_, _, err = impl.RegisterUser("", "D", "E")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("", "E")
+	_, _, err = impl.RegisterUser("", "E", "F")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
 
 	// Attempt to register a user
-	_, err = impl.RegisterUser("", "F")
+	_, _, err = impl.RegisterUser("", "F", "G")
 	if err == nil {
 		t.Errorf("Did not fail to register a user when it should not have worked: %+v", err)
 	}
 
 	time.Sleep(testParams2.userRegLeakPeriod)
 	// Attempt to register a user
-	_, err = impl.RegisterUser("", "G")
+	_, _, err = impl.RegisterUser("", "G", "H")
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
