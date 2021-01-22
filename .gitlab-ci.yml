@@ -86,7 +86,7 @@ build:
     - GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.win32 main.go
     - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.darwin64 main.go
     - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.darwin64 main.go
-    - mkdir upload
+    - mkdir -p upload
     - mv release/registration.stateless.* upload/
     - /upload-artifacts.sh upload/
   artifacts:

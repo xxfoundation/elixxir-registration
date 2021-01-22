@@ -76,7 +76,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// Initialize the state tracking object
-	state, err := storage.NewState(pk)
+	state, err := storage.NewState(pk, params.addressSpace)
 	if err != nil {
 		return nil, err
 	}
@@ -246,12 +246,12 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 // NewImplementation returns a registration server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
-	impl.Functions.RegisterUser = func(regCode string, pubKey string) ([]byte, error) {
-		response, err := instance.RegisterUser(regCode, pubKey)
+	impl.Functions.RegisterUser = func(regCode string, pubKey, receptionPubKey string) ([]byte, []byte, error) {
+		transmissionSig, receptionSig, err := instance.RegisterUser(regCode, pubKey, receptionPubKey)
 		if err != nil {
 			jww.ERROR.Printf("RegisterUser error: %+v", err)
 		}
-		return response, err
+		return transmissionSig, receptionSig, err
 	}
 
 	impl.Functions.GetCurrentClientVersion = func() (version string, err error) {

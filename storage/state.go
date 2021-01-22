@@ -51,10 +51,13 @@ type NetworkState struct {
 	// NDF state
 	partialNdf *dataStructures.Ndf
 	fullNdf    *dataStructures.Ndf
+
+	// Address space size
+	addressSpaceSize uint32
 }
 
 // NewState returns a new NetworkState object.
-func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
+func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32) (*NetworkState, error) {
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
 		return nil, err
@@ -65,13 +68,14 @@ func NewState(pk *rsa.PrivateKey) (*NetworkState, error) {
 	}
 
 	state := &NetworkState{
-		rounds:       round.NewStateMap(),
-		roundUpdates: dataStructures.NewUpdates(),
-		update:       make(chan node.UpdateNotification, updateBufferLength),
-		nodes:        node.NewStateMap(),
-		fullNdf:      fullNdf,
-		partialNdf:   partialNdf,
-		privateKey:   pk,
+		rounds:           round.NewStateMap(),
+		roundUpdates:     dataStructures.NewUpdates(),
+		update:           make(chan node.UpdateNotification, updateBufferLength),
+		nodes:            node.NewStateMap(),
+		fullNdf:          fullNdf,
+		partialNdf:       partialNdf,
+		privateKey:       pk,
+		addressSpaceSize: addressSpaceSize,
 	}
 
 	// Obtain round & update Id from Storage
@@ -203,6 +207,11 @@ func (s *NetworkState) GetRoundMap() *round.StateMap {
 // GetNodeMap returns the map of nodes.
 func (s *NetworkState) GetNodeMap() *node.StateMap {
 	return s.nodes
+}
+
+// GetAddressSpaceSize returns the address space size
+func (s *NetworkState) GetAddressSpaceSize() uint32 {
+	return s.addressSpaceSize
 }
 
 // NodeUpdateNotification sends a notification to the control thread of an
