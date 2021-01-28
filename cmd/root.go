@@ -376,6 +376,9 @@ var rootCmd = &cobra.Command{
 			}
 		})
 
+		// Start listening for incoming connections
+		impl.Comms.Listen()
+
 		// Block forever to prevent the program ending
 		select {}
 	},

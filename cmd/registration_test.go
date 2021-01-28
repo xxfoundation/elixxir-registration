@@ -98,7 +98,7 @@ func TestEmptyDataBase(t *testing.T) {
 	if err != nil {
 		t.Errorf(err.Error())
 	}
-
+	impl.Comms.Listen()
 	dblck.Lock()
 	defer dblck.Unlock()
 
@@ -128,6 +128,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
+	impl.Comms.Listen()
 	defer impl.Comms.Shutdown()
 	dblck.Lock()
 	defer dblck.Unlock()
@@ -166,6 +167,7 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to start: %+v", err)
 	}
+	impl.Comms.Listen()
 	dblck.Lock()
 	defer dblck.Unlock()
 
@@ -220,6 +222,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
+	impl.Comms.Listen()
 	defer impl.Comms.Shutdown()
 	RegParams = testParams
 
@@ -268,6 +271,7 @@ func TestDoubleRegistration(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
+	impl.Comms.Listen()
 	defer impl.Comms.Shutdown()
 
 	//Create a second node to register
@@ -321,6 +325,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
+	impl.Comms.Listen()
 	defer impl.Comms.Shutdown()
 
 	//Create a second node to register
@@ -384,6 +389,7 @@ func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
+	impl.Comms.Listen()
 	//Kill the connections for the next test
 	defer impl.Comms.Shutdown()
 
@@ -455,6 +461,7 @@ func TestCheckRegistration_NilMsg(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
+	impl.Comms.Listen()
 	//Kill the connections for the next test
 	defer impl.Comms.Shutdown()
 
@@ -505,6 +512,7 @@ func TestCheckRegistration_InvalidID(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
+	impl.Comms.Listen()
 	//Kill the connections for the next test
 	defer impl.Comms.Shutdown()
 

@@ -48,6 +48,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
+	impl.Comms.Listen()
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
 	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
@@ -228,6 +229,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
+	impl.Comms.Listen()
 	defer impl.Comms.Shutdown()
 
 	var l sync.Mutex
@@ -321,6 +323,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
+	impl.Comms.Listen()
 	//Shutdown registration
 	defer impl.Comms.Shutdown()
 
@@ -362,6 +365,7 @@ func TestPoll_BannedNode(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
+	impl.Comms.Listen()
 	defer impl.Comms.Shutdown()
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
