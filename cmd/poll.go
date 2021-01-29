@@ -153,9 +153,15 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth,
 	if updateNotification.ToActivity == current.ERROR {
 		updateNotification.Error = msg.Error
 	}
+	err = m.State.SendUpdateNotification(updateNotification)
+	if err!=nil{
+		jww.WARN.Printf("Failed to send update notification, " +
+			"is the update thread running?")
+		n.GetPollingLock().Unlock()
+	}
 
 	// Update occurred, report it to the control thread
-	return response, m.State.SendUpdateNotification(updateNotification)
+	return response, err
 }
 
 // PollNdf handles the client polling for an updated NDF

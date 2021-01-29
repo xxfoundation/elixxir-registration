@@ -68,7 +68,7 @@ func (rid *stateID) increment() (uint64, error) {
 		idBytes := []byte(strconv.FormatUint(newID, 10))
 		err := utils.WriteFile(rid.path, idBytes, utils.FilePerms, utils.DirPerms)
 		if err != nil {
-			return 0, err
+			return 0, errors.WithMessagef(err, "can't update to %d", newID)
 		}
 	} else {
 		jww.WARN.Printf("The state ID path is empty, updating ID file skipped.")
