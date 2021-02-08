@@ -268,7 +268,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	}
 
 	l.Lock()
-	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
+	observedNDFBytes, err := impl.PollNdf(nil)
 	l.Unlock()
 	if err != nil {
 		t.Errorf("failed to update ndf: %v", err)
@@ -334,7 +334,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Make a client ndf hash that is not up to date
 	clientNdfHash := []byte("test")
 
-	_, err = impl.PollNdf(clientNdfHash, &connect.Auth{})
+	_, err = impl.PollNdf(clientNdfHash)
 	if err == nil {
 		t.Error("Expected error path, should not have an ndf ready")
 	}

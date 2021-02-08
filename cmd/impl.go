@@ -274,9 +274,9 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 
 		return err
 	}
-	impl.Functions.PollNdf = func(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
+	impl.Functions.PollNdf = func(theirNdfHash []byte) ([]byte, error) {
 
-		response, err := instance.PollNdf(theirNdfHash, auth)
+		response, err := instance.PollNdf(theirNdfHash)
 		if err != nil && err.Error() != ndf.NO_NDF {
 			jww.ERROR.Printf("PollNdf error: %+v", err)
 		}

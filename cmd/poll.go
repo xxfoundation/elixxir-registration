@@ -158,7 +158,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 }
 
 // PollNdf handles the client polling for an updated NDF
-func (m *RegistrationImpl) PollNdf(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
+func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) ([]byte, error) {
 
 	// Ensure the NDF is ready to be returned
 	regComplete := atomic.LoadUint32(m.NdfReady)
