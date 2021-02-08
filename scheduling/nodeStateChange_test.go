@@ -171,7 +171,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, 5*time.Minute, circuit)
+	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, 8, 5*time.Minute, circuit)
 	if err != nil {
 		t.Errorf("Failed to add round: %v", err)
 	}
@@ -306,7 +306,7 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, 5*time.Minute, circuit)
+	roundState, err := testState.GetRoundMap().AddRound(roundID, testParams.BatchSize, 8, 5*time.Minute, circuit)
 	if err != nil {
 		t.Errorf("Failed to add round: %v", err)
 	}
