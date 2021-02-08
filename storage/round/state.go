@@ -47,7 +47,7 @@ type State struct {
 }
 
 //creates a round state object
-func newState(id id.Round, batchsize, addressSpaceSize uint32, resourceQueueTimeout time.Duration,
+func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
 	topology *connect.Circuit, pendingTs time.Time) *State {
 
 	strTopology := make([][]byte, topology.Len())
@@ -71,7 +71,6 @@ func newState(id id.Round, batchsize, addressSpaceSize uint32, resourceQueueTime
 			Topology:                   strTopology,
 			Timestamps:                 timestamps,
 			ResourceQueueTimeoutMillis: uint32(resourceQueueTimeout),
-			AddressSpaceSize:           addressSpaceSize,
 		},
 		topology:           topology,
 		state:              states.PENDING,
