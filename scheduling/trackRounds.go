@@ -52,6 +52,10 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 				precompNodes++
 			}
 
+			if nodeState.IsBanned(){
+				continue
+			}
+
 			//tracks which nodes have not acted recently
 			lastPoll := nodeState.GetLastPoll()
 			lastUpdate := nodeState.GetLastUpdate()
