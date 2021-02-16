@@ -9,11 +9,10 @@
 package cmd
 
 import (
-	"crypto"
 	"crypto/rand"
-	"crypto/sha256"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/crypto/hash"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"time"
@@ -48,9 +47,9 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string, reception
 
 	// Use hardcoded keypair to sign Client-provided public key
 	//Create a hash, hash the pubKey and then truncate it
-	h := sha256.New()
+	h, _ := hash.NewCMixHash()
 	h.Write([]byte(pubKey))
-	transmissionSig, err := rsa.Sign(rand.Reader, m.State.GetPrivateKey(), crypto.SHA256, h.Sum(nil), nil)
+	transmissionSig, err := rsa.Sign(rand.Reader, m.State.GetPrivateKey(), hash.CMixHash, h.Sum(nil), nil)
 	if err != nil {
 		jww.INFO.Printf("RegisterUser error: can't sign pubkey")
 		return make([]byte, 0), make([]byte, 0), errors.Errorf(
@@ -59,7 +58,7 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string, reception
 
 	h.Reset()
 	h.Write([]byte(receptionKey))
-	receptionSig, err := rsa.Sign(rand.Reader, m.State.GetPrivateKey(), crypto.SHA256, h.Sum(nil), nil)
+	receptionSig, err := rsa.Sign(rand.Reader, m.State.GetPrivateKey(), hash.CMixHash, h.Sum(nil), nil)
 	// Record the user public key for duplicate registration support
 	// TODO: Pass in receptionKey
 	err = storage.PermissioningDb.InsertUser(pubKey, receptionKey)
