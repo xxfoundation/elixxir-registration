@@ -23,6 +23,17 @@ import (
 //		return
 //	}
 //
+//	result, err := db.GetLatestEphemeralLength()
+//	if err != nil {
+//		t.Errorf(err.Error())
+//	}
+//	jww.INFO.Printf("%+v", result)
+//	result2, err := db.GetEphemeralLengths()
+//	if err != nil {
+//		t.Errorf(err.Error())
+//	}
+//	jww.INFO.Printf("%#v", result2)
+//
 //	err = db.UpsertState(&State{
 //		Key:   RoundIdKey,
 //		Value: "10",

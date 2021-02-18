@@ -94,3 +94,15 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 	m.roundMetrics[metric.Id] = metric
 	return nil
 }
+
+// Obtain latest (and largest, by implication) ephemeral length
+// TODO
+func (m *MapImpl) GetLatestEphemeralLength() (*EphemeralLength, error) {
+	return nil, nil
+}
+
+// Obtain all EphemeralLength from Storage
+// TODO
+func (m *MapImpl) GetEphemeralLengths() ([]*EphemeralLength, error) {
+	return nil, nil
+}

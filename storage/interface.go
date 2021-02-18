@@ -24,6 +24,8 @@ type database interface {
 	InsertNodeMetric(metric *NodeMetric) error
 	InsertRoundMetric(metric *RoundMetric, topology [][]byte) error
 	InsertRoundError(roundId id.Round, errStr string) error
+	GetLatestEphemeralLength() (*EphemeralLength, error)
+	GetEphemeralLengths() ([]*EphemeralLength, error)
 
 	// Node methods
 	InsertApplication(application *Application, unregisteredNode *Node) error
@@ -204,6 +206,12 @@ type RoundError struct {
 
 	// String of error that occurred during the Round
 	Error string `gorm:"NOT NULL"`
+}
+
+// Struct representing the validity period of an ephemeral ID length
+type EphemeralLength struct {
+	Length    uint8     `gorm:"primary_key;AUTO_INCREMENT:false"`
+	Timestamp time.Time `gorm:"NOT NULL;UNIQUE"`
 }
 
 // Initialize the database interface with Map backend

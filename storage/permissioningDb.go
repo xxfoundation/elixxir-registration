@@ -86,3 +86,15 @@ func (d *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte)
 	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
 	return d.db.Create(metric).Error
 }
+
+// Obtain latest (and largest, by implication) ephemeral length
+func (d *DatabaseImpl) GetLatestEphemeralLength() (*EphemeralLength, error) {
+	result := &EphemeralLength{}
+	return result, d.db.Last(result).Error
+}
+
+// Obtain all EphemeralLength from Storage
+func (d *DatabaseImpl) GetEphemeralLengths() ([]*EphemeralLength, error) {
+	var result []*EphemeralLength
+	return result, d.db.Find(&result).Error
+}
