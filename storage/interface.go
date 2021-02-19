@@ -26,6 +26,7 @@ type database interface {
 	InsertRoundError(roundId id.Round, errStr string) error
 	GetLatestEphemeralLength() (*EphemeralLength, error)
 	GetEphemeralLengths() ([]*EphemeralLength, error)
+	InsertEphemeralLength(length *EphemeralLength) error
 
 	// Node methods
 	InsertApplication(application *Application, unregisteredNode *Node) error
@@ -54,6 +55,7 @@ type MapImpl struct {
 	nodeMetricCounter uint64
 	roundMetrics      map[uint64]*RoundMetric
 	states            map[string]string
+	ephemeralLengths  map[uint8]*EphemeralLength
 	mut               sync.Mutex
 }
 
@@ -219,13 +221,14 @@ func NewMap() Storage {
 	defer jww.INFO.Println("Map backend initialized successfully!")
 	return Storage{
 		&MapImpl{
-			applications: make(map[uint64]*Application),
-			nodes:        make(map[string]*Node),
-			nodeMetrics:  make(map[uint64]*NodeMetric),
-			roundMetrics: make(map[uint64]*RoundMetric),
-			clients:      make(map[string]*RegistrationCode),
-			users:        make(map[string]string),
-			states:       make(map[string]string),
+			applications:     make(map[uint64]*Application),
+			nodes:            make(map[string]*Node),
+			nodeMetrics:      make(map[uint64]*NodeMetric),
+			roundMetrics:     make(map[uint64]*RoundMetric),
+			clients:          make(map[string]*RegistrationCode),
+			users:            make(map[string]string),
+			states:           make(map[string]string),
+			ephemeralLengths: make(map[uint8]*EphemeralLength),
 		}}
 }
 
