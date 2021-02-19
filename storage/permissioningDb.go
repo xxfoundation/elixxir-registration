@@ -16,9 +16,11 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 )
 
-// Inserts the given State into Database if it does not exist
+// Inserts the given State into Storage if it does not exist
 // Or updates the Database State if its value does not match the given State
 func (d *DatabaseImpl) UpsertState(state *State) error {
+	jww.TRACE.Printf("Attempting to insert State into DB: %+v", state)
+
 	// Build a transaction to prevent race conditions
 	return d.db.Transaction(func(tx *gorm.DB) error {
 		// Make a copy of the provided state
@@ -41,31 +43,32 @@ func (d *DatabaseImpl) UpsertState(state *State) error {
 	})
 }
 
-// Returns a State's value from Database with the given key
+// Returns a State's value from Storage with the given key
 // Or an error if a matching State does not exist
 func (d *DatabaseImpl) GetStateValue(key string) (string, error) {
 	result := &State{Key: key}
 	err := d.db.Take(result).Error
+	jww.TRACE.Printf("Obtained State from DB: %+v", result)
 	return result.Value, err
 }
 
-// Insert NodeMetric object
+// Insert new NodeMetric object into Storage
 func (d *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
-	jww.TRACE.Printf("Attempting to insert node metric: %+v", metric)
+	jww.TRACE.Printf("Attempting to insert NodeMetric into DB: %+v", metric)
 	return d.db.Create(metric).Error
 }
 
-// Insert RoundError object
+// Insert new RoundError object into Storage
 func (d *DatabaseImpl) InsertRoundError(roundId id.Round, errStr string) error {
 	roundErr := &RoundError{
 		RoundMetricId: uint64(roundId),
 		Error:         errStr,
 	}
-	jww.DEBUG.Printf("Attempting to insert round error: %+v", roundErr)
+	jww.TRACE.Printf("Attempting to insert RoundError into DB: %+v", roundErr)
 	return d.db.Create(roundErr).Error
 }
 
-// Insert RoundMetric object with associated topology
+// Insert new RoundMetric object with associated topology into Storage
 func (d *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
 
 	// Build the Topology
@@ -83,6 +86,28 @@ func (d *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte)
 	}
 
 	// Save the RoundMetric
-	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
+	jww.TRACE.Printf("Attempting to insert RoundMetric into DB: %+v", metric)
 	return d.db.Create(metric).Error
+}
+
+// Returns newest (and largest, by implication) EphemeralLength from Storage
+func (d *DatabaseImpl) GetLatestEphemeralLength() (*EphemeralLength, error) {
+	result := &EphemeralLength{}
+	err := d.db.Last(result).Error
+	jww.TRACE.Printf("Obtained latest EphemeralLength from DB: %+v", result)
+	return result, err
+}
+
+// Returns all EphemeralLength from Storage
+func (d *DatabaseImpl) GetEphemeralLengths() ([]*EphemeralLength, error) {
+	var result []*EphemeralLength
+	err := d.db.Find(&result).Error
+	jww.TRACE.Printf("Obtained EphemeralLengths from DB: %+v", result)
+	return result, err
+}
+
+// Insert new EphemeralLength into Storage
+func (d *DatabaseImpl) InsertEphemeralLength(length *EphemeralLength) error {
+	jww.TRACE.Printf("Attempting to insert EphemeralLength into DB: %+v", length)
+	return d.db.Create(length).Error
 }

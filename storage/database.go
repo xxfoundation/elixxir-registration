@@ -71,7 +71,7 @@ func NewDatabase(username, password, database, address,
 	models := []interface{}{
 		&RegistrationCode{}, &User{}, &State{},
 		&Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
-		&RoundError{},
+		&RoundError{}, EphemeralLength{},
 	}
 	for _, model := range models {
 		err = db.AutoMigrate(model).Error

@@ -8,6 +8,7 @@ package storage
 
 import (
 	"gitlab.com/xx_network/primitives/id"
+	"strings"
 	"testing"
 	"time"
 )
@@ -22,6 +23,17 @@ import (
 //		t.Errorf(err.Error())
 //		return
 //	}
+//
+//	result, err := db.GetLatestEphemeralLength()
+//	if err != nil {
+//		t.Errorf(err.Error())
+//	}
+//	jww.INFO.Printf("%+v", result)
+//	result2, err := db.GetEphemeralLengths()
+//	if err != nil {
+//		t.Errorf(err.Error())
+//	}
+//	jww.INFO.Printf("%#v", result2)
 //
 //	err = db.UpsertState(&State{
 //		Key:   RoundIdKey,
@@ -201,5 +213,124 @@ func TestMapImpl_InsertRoundError(t *testing.T) {
 	}
 	if insertedMetric.RoundErrors[1].Error != newErrors[1] {
 		t.Errorf("Mismatched Error returned!")
+	}
+}
+
+// Happy path
+func TestMapImpl_InsertEphemeralLength(t *testing.T) {
+	m := &MapImpl{ephemeralLengths: make(map[uint8]*EphemeralLength)}
+
+	el := &EphemeralLength{
+		Length:    10,
+		Timestamp: time.Now(),
+	}
+	err := m.InsertEphemeralLength(el)
+	if err != nil {
+		t.Errorf("Unable to insert EphLen: %+v", err)
+	}
+
+	if m.ephemeralLengths[el.Length] == nil {
+		t.Errorf("Expected to find inserted EphLen: %d", el.Length)
+	}
+}
+
+// Error path
+func TestMapImpl_InsertEphemeralLengthErr(t *testing.T) {
+	m := &MapImpl{ephemeralLengths: make(map[uint8]*EphemeralLength)}
+
+	el := &EphemeralLength{
+		Length:    10,
+		Timestamp: time.Now(),
+	}
+	// Manually add duplicate entry
+	m.ephemeralLengths[el.Length] = el
+
+	err := m.InsertEphemeralLength(el)
+	if err == nil {
+		t.Errorf("Expected failure from duplicate EphLen!")
+	}
+}
+
+// Happy path
+func TestMapImpl_GetEphemeralLengths(t *testing.T) {
+	m := &MapImpl{ephemeralLengths: make(map[uint8]*EphemeralLength)}
+	testLen := 64
+
+	// Make a bunch of results to insert
+	for i := 0; i < testLen; i++ {
+		el := &EphemeralLength{
+			Length:    uint8(i),
+			Timestamp: time.Now(),
+		}
+		m.ephemeralLengths[el.Length] = el
+	}
+
+	result, err := m.GetEphemeralLengths()
+	if err != nil {
+		t.Errorf("Unable to get all EphLen: %+v", err)
+	}
+
+	if len(result) != testLen {
+		t.Errorf("Didn't get correct number of EphLen, Got %d Expected %d", len(result), testLen)
+	}
+}
+
+// Error path
+func TestMapImpl_GetEphemeralLengthsErr(t *testing.T) {
+	m := &MapImpl{ephemeralLengths: make(map[uint8]*EphemeralLength)}
+	result, err := m.GetEphemeralLengths()
+	if result != nil || err == nil {
+		t.Errorf("Expected error getting bad EphLens!")
+	}
+}
+
+// Happy path
+func TestMapImpl_GetLatestEphemeralLength(t *testing.T) {
+	m := &MapImpl{ephemeralLengths: make(map[uint8]*EphemeralLength)}
+
+	// Make a bunch of results to insert
+	maxLen := 50
+	for i := 0; i <= maxLen; i += 5 {
+
+		el := &EphemeralLength{
+			Length: uint8(i),
+			// Unlike the real world, decrease Timestamp as Length increases
+			// in order to ensure latest EphemeralLength is based on Length
+			Timestamp: time.Now().Add(time.Duration(-i) * time.Minute),
+		}
+		m.ephemeralLengths[el.Length] = el
+	}
+
+	result, err := m.GetLatestEphemeralLength()
+	if err != nil {
+		t.Errorf("Unable to get latest EphLen: %+v", err)
+	}
+
+	if result.Length != uint8(maxLen) {
+		t.Errorf("Latest EphLen incorrect: Got %d, expected %d", result.Length, maxLen)
+	}
+}
+
+// Error path
+func TestMapImpl_GetLatestEphemeralLengthErr(t *testing.T) {
+	m := &MapImpl{ephemeralLengths: make(map[uint8]*EphemeralLength)}
+	result, err := m.GetLatestEphemeralLength()
+	if result != nil || err == nil {
+		t.Errorf("Expected error getting bad latest EphLen!")
+	}
+}
+
+// Test error path to ensure error message stays consistent
+func TestMapImpl_GetStateValue(t *testing.T) {
+	m := &MapImpl{states: make(map[string]string)}
+
+	_, err := m.GetStateValue("test")
+	if err == nil {
+		t.Errorf("Expected error getting bad state value!")
+		return
+	}
+
+	if !strings.Contains(err.Error(), "Unable to locate state for key") {
+		t.Errorf("Invalid error message getting bad state value: Got %s", err.Error())
 	}
 }
