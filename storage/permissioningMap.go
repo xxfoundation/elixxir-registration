@@ -43,6 +43,8 @@ func (m *MapImpl) GetStateValue(key string) (string, error) {
 
 // Insert new NodeMetric object into Storage
 func (m *MapImpl) InsertNodeMetric(metric *NodeMetric) error {
+	jww.TRACE.Printf("Attempting to insert NodeMetric into Map: %+v", metric)
+
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -51,31 +53,28 @@ func (m *MapImpl) InsertNodeMetric(metric *NodeMetric) error {
 
 	// Add to map
 	metric.Id = m.nodeMetricCounter
-	jww.TRACE.Printf("Attempting to insert NodeMetric into Map: %+v", metric)
 	m.nodeMetrics[m.nodeMetricCounter] = metric
 	return nil
 }
 
 // Insert new RoundError object into Storage
 func (m *MapImpl) InsertRoundError(roundId id.Round, errStr string) error {
-	m.mut.Lock()
-	defer m.mut.Unlock()
 	rid := uint64(roundId)
-
 	roundErr := RoundError{
 		Id:            0, // Currently useless in MapImpl
 		RoundMetricId: rid,
 		Error:         errStr,
 	}
+
 	jww.TRACE.Printf("Attempting to insert RoundError into Map: %+v", roundErr)
+	m.mut.Lock()
 	m.roundMetrics[rid].RoundErrors = append(m.roundMetrics[rid].RoundErrors, roundErr)
+	m.mut.Unlock()
 	return nil
 }
 
 // Insert new RoundMetric object with associated topology into Storage
 func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
-	m.mut.Lock()
-	defer m.mut.Unlock()
 
 	// Build Topology objects
 	metric.Topologies = make([]Topology, len(topology))
@@ -94,7 +93,9 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 
 	// Add to map
 	jww.TRACE.Printf("Attempting to insert RoundMetric into Map: %+v", metric)
+	m.mut.Lock()
 	m.roundMetrics[metric.Id] = metric
+	m.mut.Unlock()
 	return nil
 }
 
