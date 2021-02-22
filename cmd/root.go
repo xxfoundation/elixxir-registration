@@ -86,16 +86,6 @@ var rootCmd = &cobra.Command{
 		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
 
-		maxRegistrationAttempts := viper.GetUint64("maxRegistrationAttempts")
-		if maxRegistrationAttempts == 0 {
-			maxRegistrationAttempts = defaultMaxRegistrationAttempts
-		}
-
-		registrationCountDuration := viper.GetDuration("registrationCountDuration")
-		if registrationCountDuration == 0 {
-			registrationCountDuration = defaultRegistrationCountDuration
-		}
-
 		// Set up database connection
 		rawAddr := viper.GetString("dbAddress")
 

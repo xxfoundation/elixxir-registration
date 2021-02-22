@@ -15,12 +15,6 @@ import (
 	"gitlab.com/elixxir/crypto/hash"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/xx_network/crypto/signature/rsa"
-	"time"
-)
-
-const (
-	defaultMaxRegistrationAttempts   = uint64(500)
-	defaultRegistrationCountDuration = time.Hour * 24
 )
 
 var rateLimitErr = errors.New("Too many client registrations. Try again later")

@@ -110,9 +110,6 @@ nsAddress: ""
 # Path to certificate for the notification server
 nsCertPath: ""
 
-maxRegistrationAttempts: 500
-registrationCountDuration: 24h
-
 # Maximum number of connections per period
 userRegCapacity: 1000
 # How often the number of connections is reset
