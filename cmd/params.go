@@ -32,6 +32,7 @@ type Params struct {
 	closeTimeout          time.Duration
 	minimumNodes          uint32
 	udbId                 []byte
+	udbDhPubKey           []byte
 	udbCertPath           string
 	udbAddress            string
 	minGatewayVersion     version.Version
