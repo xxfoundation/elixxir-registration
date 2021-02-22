@@ -72,6 +72,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		NdfOutputPath: testkeys.GetNDFPath(),
 		udbCertPath:   testkeys.GetUdbCertPath(),
 	}
+
 	// Start registration server
 	impl, err := StartRegistration(testParams)
 	if err != nil {

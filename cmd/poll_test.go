@@ -218,8 +218,8 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	storage.PopulateNodeRegistrationCodes(infos)
 
 	RegParams = testParams
-	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-	RegParams.udbId = udbId
+	udbId := id.NewIdFromUInt(5, id.User, t)
+	RegParams.udbId = udbId.Marshal()
 	RegParams.minimumNodes = 3
 	// Start registration server
 	impl, err := StartRegistration(RegParams)
@@ -281,7 +281,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	}
 
 	fmt.Printf("\n\n\nndf: %v\n\n\n", observedNDF.Nodes)
-	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
+	if bytes.Compare(observedNDF.UDB.ID, udbId.Marshal()) != 0 {
 		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v, \nNdf: %+v",
 			udbId, observedNDF.UDB.ID, observedNDF)
 	}
@@ -310,8 +310,8 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 	//Setup udb configurations
-	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-	RegParams.udbId = udbId
+	udbId := id.NewIdFromUInt(5, id.User, t)
+	RegParams.udbId = udbId.Marshal()
 	RegParams.minimumNodes = 3
 
 	// Start registration server

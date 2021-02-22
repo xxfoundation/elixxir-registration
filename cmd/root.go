@@ -9,7 +9,6 @@
 package cmd
 
 import (
-	"encoding/base64"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/go-homedir"
@@ -17,6 +16,7 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	"gitlab.com/elixxir/client/interfaces/contact"
 	"gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/scheduling"
@@ -81,7 +81,7 @@ var rootCmd = &cobra.Command{
 		ndfOutputPath := viper.GetString("ndfOutputPath")
 		setClientVersion(viper.GetString("clientVersion"))
 		ipAddr := viper.GetString("publicAddress")
-		//Get Notification Server address and cert Path
+		// Get Notification Server address and cert Path
 		nsCertPath := viper.GetString("nsCertPath")
 		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
@@ -127,17 +127,14 @@ var rootCmd = &cobra.Command{
 		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
 		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
-		// Get UDB ID, cert path, and address
-		udbId := make([]byte, 33)
-		udbIDStr := viper.GetString("udbID")
-		if _, err := base64.StdEncoding.Decode(udbId, []byte(udbIDStr)); err != nil {
-			jww.FATAL.Panicf("Failed to decode UDB ID: %s", udbIDStr)
-		}
+		// Get user discovery ID and DH public key from contact file
+		udbId, udbDhPubKey := readUdContact(viper.GetString("udContactPath"))
 
+		// Get UDB cert path and address
 		udbCertPath := viper.GetString("udbCertPath")
 		udbAddress := viper.GetString("udbAddress")
 
-		//load the scheduling params file as a string
+		// load the scheduling params file as a string
 		SchedulingConfigPath := viper.GetString("schedulingConfigPath")
 		SchedulingConfig, err := utils.ReadFile(SchedulingConfigPath)
 		if err != nil {
@@ -208,6 +205,7 @@ var rootCmd = &cobra.Command{
 			schedulingKillTimeout: schedulingKillTimeout,
 			closeTimeout:          closeTimeout,
 			udbId:                 udbId,
+			udbDhPubKey:           udbDhPubKey,
 			udbCertPath:           udbCertPath,
 			udbAddress:            udbAddress,
 			minimumNodes:          viper.GetUint32("minimumNodes"),
@@ -450,11 +448,25 @@ func init() {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}
 
+	err = viper.BindPFlag("schedulingKillTimeout",
+		rootCmd.Flags().Lookup("kill-timeout"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
+
+	rootCmd.Flags().String("udContactPath", "",
+		"Location of the user discovery contact file.")
+
+	err = viper.BindPFlag("udContactPath", rootCmd.Flags().Lookup("udContactPath"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
+
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	//Use default config location if none is passed
+	// Use default config location if none is passed
 	if cfgFile == "" {
 		// Find home directory.
 		home, err := homedir.Dir()
@@ -581,4 +593,29 @@ func initLog() {
 			jww.SetLogOutput(logFile)
 		}
 	}
+}
+
+// readUdContact reads and unmarshal the contact from file and returns the
+// marshaled ID and DH public key.
+func readUdContact(filePath string) ([]byte, []byte) {
+	if filePath == "" {
+		return nil, nil
+	}
+
+	data, err := utils.ReadFile(filePath)
+	if err != nil {
+		jww.FATAL.Panicf("Failed to read contact file: %+v", err)
+	}
+
+	c, err := contact.Unmarshal(data)
+	if err != nil {
+		jww.FATAL.Panicf("Failed to unmarshal contact: %+v", err)
+	}
+
+	dhPubKeyJson, err := c.DhPubKey.MarshalJSON()
+	if err != nil {
+		jww.FATAL.Panicf("Failed to marshal contact DH public key: %+v", err)
+	}
+
+	return c.ID.Marshal(), dhPubKeyJson
 }

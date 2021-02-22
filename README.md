@@ -24,8 +24,8 @@ ndfOutputPath: "ndf.json"
 # teams worth of nodes at minimum.
 minimumNodes: 3
 
-# UDB ID
-udbID: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMD"
+# "Location of the user discovery contact file.
+udContactPath: "udContact.bin"
 
 # Path to UDB cert file
 udbCertPath: "udb.crt"

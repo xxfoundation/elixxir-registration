@@ -29,6 +29,9 @@ func TestState_GetLastUpdate(t *testing.T) {
 	origTime := time.Now()
 	ns := newState(rid, batchSize, 8, 5*time.Minute, topology, origTime)
 
+	// Sleep required due to low clock resolution on Windows
+	time.Sleep(1 * time.Millisecond)
+
 	err := ns.Update(states.PRECOMPUTING, time.Now())
 	if err != nil {
 		t.Errorf("Updating state failed: %v", err)

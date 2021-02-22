@@ -85,9 +85,9 @@ func TestMain(m *testing.M) {
 	os.Exit(runFunc())
 }
 
-//Error path: Test an insertion on an empty database
+// Error path: Test an insertion on an empty database
 func TestEmptyDataBase(t *testing.T) {
-	//Start the registration server
+	// Start the registration server
 	testParams := Params{
 		CertPath:          testkeys.GetCACertPath(),
 		KeyPath:           testkeys.GetCAKeyPath(),
@@ -110,7 +110,7 @@ func TestEmptyDataBase(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	//using node cert as gateway cert
+	// using node cert as gateway cert
 	err = impl.RegisterNode([]byte("test"), nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "AAA")
 	if err == nil {
@@ -140,7 +140,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	//Insert a sample regCode
+	// Insert a sample regCode
 	applicationId := uint64(10)
 	newNode := &storage.Node{
 		Code:          "AAAA",
@@ -152,7 +152,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
-	//Register a node with that regCode
+	// Register a node with that regCode
 	testSalt := []byte("testtesttesttesttesttesttesttest")
 	err = impl.RegisterNode(testSalt, nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), newNode.Code)
@@ -161,9 +161,9 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	}
 }
 
-//Happy Path:  Insert a reg code along with a node
+// Happy Path:  Insert a reg code along with a node
 func TestRegCodeExists_RegUser(t *testing.T) {
-	//Initialize an implementation and the permissioning server
+	// Initialize an implementation and the permissioning server
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start: %+v", err)
@@ -177,13 +177,13 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	//Insert regcodes into it
+	// Insert regcodes into it
 	err = storage.PermissioningDb.InsertClientRegCode("AAAA", 100)
 	if err != nil {
 		t.Errorf("Failed to insert client reg code %+v", err)
 	}
 
-	//Attempt to register a user
+	// Attempt to register a user
 	sig, receptionSig, err := impl.RegisterUser("AAAA", string(nodeKey), string(nodeKey))
 
 	if err != nil {
@@ -197,7 +197,7 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 	impl.Comms.Shutdown()
 }
 
-//Attempt to register a node after the
+// Attempt to register a node after the
 func TestCompleteRegistration_HappyPath(t *testing.T) {
 	// Initialize the database
 	var err error
@@ -210,7 +210,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	//Insert a sample regCode
+	// Insert a sample regCode
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"})
 
@@ -244,7 +244,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	}
 }
 
-//Error path: test that trying to register with the same reg code fails
+// Error path: test that trying to register with the same reg code fails
 func TestDoubleRegistration(t *testing.T) {
 	// Initialize the database
 	var err error
@@ -257,7 +257,7 @@ func TestDoubleRegistration(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	//Create reg codes and populate the database
+	// Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
 		node.Info{RegCode: "BBBB", Order: "1"},
@@ -273,10 +273,10 @@ func TestDoubleRegistration(t *testing.T) {
 	}
 	defer impl.Comms.Shutdown()
 
-	//Create a second node to register
+	// Create a second node to register
 	nodeComm2 := nodeComms.StartNode(&id.TempGateway, "0.0.0.0:6901", 0, nodeComms.NewImplementation(), nodeCert, nodeKey)
 	defer nodeComm2.Shutdown()
-	//Register 1st node
+	// Register 1st node
 	testSalt := []byte("testtesttesttesttesttesttesttest")
 	err = impl.RegisterNode(testSalt, nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
@@ -284,7 +284,7 @@ func TestDoubleRegistration(t *testing.T) {
 		t.Errorf("Expected happy path, recieved error: %+v", err)
 	}
 
-	//Register 2nd node
+	// Register 2nd node
 	err = impl.RegisterNode(testSalt, "0.0.0.0:6901", string(nodeCert),
 		"0.0.0.0:6901", string(nodeCert), "BBBB")
 	if err != nil {
@@ -294,7 +294,7 @@ func TestDoubleRegistration(t *testing.T) {
 	t.Errorf("Expected happy path, recieved error: %+v", err)
 }
 
-//Happy path: attempt to register 2 nodes
+// Happy path: attempt to register 2 nodes
 func TestTopology_MultiNodes(t *testing.T) {
 	// Initialize the database
 	var err error
@@ -307,7 +307,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	//Create reg codes and populate the database
+	// Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
 		node.Info{RegCode: "BBBB", Order: "1"},
@@ -326,13 +326,13 @@ func TestTopology_MultiNodes(t *testing.T) {
 	}
 	defer impl.Comms.Shutdown()
 
-	//Create a second node to register
+	// Create a second node to register
 	nodeComm2 := nodeComms.StartNode(&id.TempGateway, "0.0.0.0:6901", 0, nodeComms.NewImplementation(), nodeCert, nodeKey)
-	//Kill the connections for the next test
+	// Kill the connections for the next test
 	defer nodeComm2.Shutdown()
 	go func() {
 		testSalt := []byte("testtesttesttesttesttesttesttest")
-		//Register 1st node
+		// Register 1st node
 		err = impl.RegisterNode(testSalt,
 			nodeAddr, string(nodeCert),
 			nodeAddr, string(nodeCert), "BBBB")
@@ -340,7 +340,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 			t.Errorf("Expected happy path, recieved error: %+v", err)
 		}
 
-		//Register 2nd node
+		// Register 2nd node
 		err = impl.RegisterNode(testSalt,
 			"0.0.0.0:6901", string(gatewayCert),
 			"0.0.0.0:6901", string(gatewayCert), "CCCC")
@@ -370,7 +370,7 @@ func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	//Create reg codes and populate the database
+	// Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
 		node.Info{RegCode: "BBBB", Order: "1"},
@@ -387,13 +387,13 @@ func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
-	//Kill the connections for the next test
+	// Kill the connections for the next test
 	defer impl.Comms.Shutdown()
 
 	// Craft registered node id
 	testNodeID := id.NewIdFromString("A", id.Node, t)
 
-	//Register 1st node
+	// Register 1st node
 	err = impl.RegisterNode(testNodeID.Marshal(),
 		nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
@@ -441,7 +441,7 @@ func TestCheckRegistration_NilMsg(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	//Create reg codes and populate the database
+	// Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
 		node.Info{RegCode: "BBBB", Order: "1"},
@@ -458,13 +458,13 @@ func TestCheckRegistration_NilMsg(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
-	//Kill the connections for the next test
+	// Kill the connections for the next test
 	defer impl.Comms.Shutdown()
 
 	// Craft registered node id
 	testNodeID := id.NewIdFromString("A", id.Node, t)
 
-	//Register 1st node
+	// Register 1st node
 	err = impl.RegisterNode(testNodeID.Marshal(),
 		nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")
@@ -491,7 +491,7 @@ func TestCheckRegistration_InvalidID(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	//Create reg codes and populate the database
+	// Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
 		node.Info{RegCode: "BBBB", Order: "1"},
@@ -508,13 +508,13 @@ func TestCheckRegistration_InvalidID(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
-	//Kill the connections for the next test
+	// Kill the connections for the next test
 	defer impl.Comms.Shutdown()
 
 	// Craft registered node id
 	testNodeID := id.NewIdFromString("A", id.Node, t)
 
-	//Register 1st node
+	// Register 1st node
 	err = impl.RegisterNode(testNodeID.Marshal(),
 		nodeAddr, string(nodeCert),
 		nodeAddr, string(nodeCert), "BBBB")

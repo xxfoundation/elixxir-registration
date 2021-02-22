@@ -24,6 +24,9 @@ func TestState_GetLastUpdate(t *testing.T) {
 	origTime := time.Now()
 	ns := State{}
 
+	// Sleep required due to low clock resolution on Windows
+	time.Sleep(1 * time.Millisecond)
+
 	_, _, err := ns.Update(current.WAITING)
 	if err != nil {
 		t.Errorf("Updating state failed: %v", err)

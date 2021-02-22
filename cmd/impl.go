@@ -129,9 +129,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 		Timestamp: time.Now(),
 		UDB: ndf.UDB{
-			ID:      RegParams.udbId,
-			Cert:    string(udbCert),
-			Address: RegParams.udbAddress,
+			ID:       RegParams.udbId,
+			Cert:     string(udbCert),
+			Address:  RegParams.udbAddress,
+			DhPubKey: RegParams.udbDhPubKey,
 		},
 		E2E:  RegParams.e2e,
 		CMIX: RegParams.cmix,
