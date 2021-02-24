@@ -141,6 +141,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		Nodes:            make([]ndf.Node, 0),
 		Gateways:         make([]ndf.Gateway, 0),
 		AddressSpaceSize: params.addressSpace,
+		ClientVersion:    RegParams.minClientVersion.String(),
 	}
 
 	// Assemble notification server information if configured
@@ -254,15 +255,6 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 			jww.ERROR.Printf("RegisterUser error: %+v", err)
 		}
 		return transmissionSig, receptionSig, err
-	}
-
-	impl.Functions.GetCurrentClientVersion = func() (version string, err error) {
-		response, err := instance.GetCurrentClientVersion()
-		if err != nil {
-			jww.ERROR.Printf("GetCurrentClientVersion error: %+v", err)
-		}
-
-		return response, err
 	}
 	impl.Functions.RegisterNode = func(salt []byte, serverAddr, serverTlsCert, gatewayAddr,
 		gatewayTlsCert, registrationCode string) error {
