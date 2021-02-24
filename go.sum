@@ -325,6 +325,8 @@ gitlab.com/elixxir/comms v0.0.4-0.20210218234550-f2e03b19bdb2 h1:p5GunVi5sP9atTw
 gitlab.com/elixxir/comms v0.0.4-0.20210218234550-f2e03b19bdb2/go.mod h1:GCbfPWB7VF5ZeDsLBCwfy0JiquG4OK6gsRjaIS66+yg=
 gitlab.com/elixxir/comms v0.0.4-0.20210223195527-d5bc4fbb0d9b h1:KO9n5MY24B3HLZJ2aLj6CAxJgrQ4NL6y/pDlXhvM1Fc=
 gitlab.com/elixxir/comms v0.0.4-0.20210223195527-d5bc4fbb0d9b/go.mod h1:4OEQ9pDRH3lX7+DshjZw6848fnVMWe3ZXSTQ+oG4G4Y=
+gitlab.com/elixxir/comms v0.0.4-0.20210224021944-cd529dde0d9c h1:RKcc/BQvang3/18U7YRAZo8vremQ3uWpuX1vrF5J0A4=
+gitlab.com/elixxir/comms v0.0.4-0.20210224021944-cd529dde0d9c/go.mod h1:znfqB4b+psDERWqk4ouIJZsLHOKJCTz0fdU2f4vuL/Q=
 gitlab.com/elixxir/crypto v0.0.0-20200804182833-984246dea2c4/go.mod h1:ucm9SFKJo+K0N2GwRRpaNr+tKXMIOVWzmyUD0SbOu2c=
 gitlab.com/elixxir/crypto v0.0.3/go.mod h1:ZNgBOblhYToR4m8tj4cMvJ9UsJAUKq+p0gCp07WQmhA=
 gitlab.com/elixxir/crypto v0.0.7-0.20210114172156-b576829ba7d8 h1:KhhsuPn+aPzZ66jdbbRF55SurogvQ/X9KuMWkXtmq+U=
@@ -364,6 +366,9 @@ gitlab.com/xx_network/comms v0.0.4-0.20210216174438-0790d1f1f225 h1:ZVxPD76xDLdT
 gitlab.com/xx_network/comms v0.0.4-0.20210216174438-0790d1f1f225/go.mod h1:e7dy2wznC4U4bG/U3xFGYYsnnd8zHOhoSxzFkGPQYX4=
 gitlab.com/xx_network/comms v0.0.4-0.20210223181809-c8f2acdf4670 h1:MrRsSpz23MHY8ZPsRt8pziZLWE51qvJBwXzXacxqOO4=
 gitlab.com/xx_network/comms v0.0.4-0.20210223181809-c8f2acdf4670/go.mod h1:c/NEKv1QiZWYEp6fRc9ti1fds/eUWoyIckeEm+9ZvBU=
+gitlab.com/xx_network/comms v0.0.4-0.20210223220534-20e7c178c125/go.mod h1:c/NEKv1QiZWYEp6fRc9ti1fds/eUWoyIckeEm+9ZvBU=
+gitlab.com/xx_network/comms v0.0.4-0.20210224021132-c5b1caeb0e58 h1:gXa3Id2m4rWpufWuHpsvbHV565xLWGOJg6bnJz0Xvho=
+gitlab.com/xx_network/comms v0.0.4-0.20210224021132-c5b1caeb0e58/go.mod h1:c/NEKv1QiZWYEp6fRc9ti1fds/eUWoyIckeEm+9ZvBU=
 gitlab.com/xx_network/crypto v0.0.3/go.mod h1:DF2HYvvCw9wkBybXcXAgQMzX+MiGbFPjwt3t17VRqRE=
 gitlab.com/xx_network/crypto v0.0.4/go.mod h1:+lcQEy+Th4eswFgQDwT0EXKp4AXrlubxalwQFH5O0Mk=
 gitlab.com/xx_network/crypto v0.0.5-0.20210107183440-804e0f8b7d22 h1:SQga1vOuAGzbYURnBjG0f37r7WmWKZRdiqmdopaNMb4=
