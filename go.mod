@@ -21,11 +21,11 @@ require (
 	github.com/ugorji/go v1.1.4 // indirect
 	github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77 // indirect
 	gitlab.com/elixxir/client v1.2.1-0.20210222224029-4300043d7ce8
-	gitlab.com/elixxir/comms v0.0.4-0.20210223210438-35bdbcaf78be
-	gitlab.com/elixxir/crypto v0.0.7-0.20210223210315-b2072c080b0f
-	gitlab.com/elixxir/primitives v0.0.3-0.20210223210226-cccb5f7d4839
-	gitlab.com/xx_network/comms v0.0.4-0.20210223210205-6d1cb7fde5d1
-	gitlab.com/xx_network/crypto v0.0.5-0.20210223210125-9c1a8a8f1ec6
+	gitlab.com/elixxir/comms v0.0.4-0.20210224021944-cd529dde0d9c
+	gitlab.com/elixxir/crypto v0.0.7-0.20210216174551-f806f79610eb
+	gitlab.com/elixxir/primitives v0.0.3-0.20210216174458-2a23825c1eb1
+	gitlab.com/xx_network/comms v0.0.4-0.20210224021132-c5b1caeb0e58
+	gitlab.com/xx_network/crypto v0.0.5-0.20210216174356-e81e1ddf8fb7
 	gitlab.com/xx_network/primitives v0.0.4-0.20210219231511-983054dbee36
 )
 
