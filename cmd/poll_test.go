@@ -274,7 +274,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("failed to update ndf: %v", err)
 	}
 
-	observedNDF, _, err := ndf.DecodeNDF(string(observedNDFBytes))
+	observedNDF, err := ndf.Unmarshal(observedNDFBytes)
 	if err != nil {
 		t.Errorf("Could not decode ndf: %v\nNdf output: %s", err,
 			string(observedNDFBytes))
