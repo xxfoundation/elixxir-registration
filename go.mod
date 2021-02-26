@@ -21,12 +21,12 @@ require (
 	github.com/ugorji/go v1.1.4 // indirect
 	github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77 // indirect
 	gitlab.com/elixxir/client v1.2.1-0.20210222224029-4300043d7ce8
-	gitlab.com/elixxir/comms v0.0.4-0.20210225221619-5a3e81a0f21f
-	gitlab.com/elixxir/crypto v0.0.7-0.20210225184707-8e497d2c904e
-	gitlab.com/elixxir/primitives v0.0.3-0.20210225184649-54d1b20caf89
-	gitlab.com/xx_network/comms v0.0.4-0.20210225184643-04d57ac38237
-	gitlab.com/xx_network/crypto v0.0.5-0.20210225184630-793a5fc60d3a
-	gitlab.com/xx_network/primitives v0.0.4-0.20210225002641-4e446b2531ea
+	gitlab.com/elixxir/comms v0.0.4-0.20210226172424-ab8c1dc47e40
+	gitlab.com/elixxir/crypto v0.0.7-0.20210226172354-61ccadb9e62b
+	gitlab.com/elixxir/primitives v0.0.3-0.20210226172337-12a5b835ae9c
+	gitlab.com/xx_network/comms v0.0.4-0.20210226172330-06c9cfcbe7a9
+	gitlab.com/xx_network/crypto v0.0.5-0.20210226172317-cc20fe85f961
+	gitlab.com/xx_network/primitives v0.0.4-0.20210226165312-9df25e918a42
 )
 
 replace google.golang.org/grpc => github.com/grpc/grpc-go v1.27.1
