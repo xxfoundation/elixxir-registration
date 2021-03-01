@@ -18,12 +18,12 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/spf13/viper v1.7.1
 	gitlab.com/elixxir/client v1.2.1-0.20210222224029-4300043d7ce8
-	gitlab.com/elixxir/comms v0.0.4-0.20210224193109-e8dd662ec218
-	gitlab.com/elixxir/crypto v0.0.7-0.20210223210315-b2072c080b0f
-	gitlab.com/elixxir/primitives v0.0.3-0.20210223210226-cccb5f7d4839
-	gitlab.com/xx_network/comms v0.0.4-0.20210224201327-b0ce36c0c989
-	gitlab.com/xx_network/crypto v0.0.5-0.20210223210125-9c1a8a8f1ec6
-	gitlab.com/xx_network/primitives v0.0.4-0.20210224190828-4e0728a36eb3
+	gitlab.com/elixxir/comms v0.0.4-0.20210301173501-38cf2a1fc999
+	gitlab.com/elixxir/crypto v0.0.7-0.20210226194937-5d641d5a31bc
+	gitlab.com/elixxir/primitives v0.0.3-0.20210301171428-ad09b913b569
+	gitlab.com/xx_network/comms v0.0.4-0.20210226194929-ea05928f74b7
+	gitlab.com/xx_network/crypto v0.0.5-0.20210226194923-5f470e2a2533
+	gitlab.com/xx_network/primitives v0.0.4-0.20210301172945-82f5d4248c04
 )
 
 replace google.golang.org/grpc => github.com/grpc/grpc-go v1.27.1
