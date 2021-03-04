@@ -54,7 +54,6 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string, reception
 	h.Write([]byte(receptionKey))
 	receptionSig, err := rsa.Sign(rand.Reader, m.State.GetPrivateKey(), hash.CMixHash, h.Sum(nil), nil)
 	// Record the user public key for duplicate registration support
-	// TODO: Pass in receptionKey
 	err = storage.PermissioningDb.InsertUser(pubKey, receptionKey)
 	if err != nil {
 		jww.WARN.Printf("Unable to store user: %+v",
@@ -62,7 +61,7 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string, reception
 	}
 
 	// Return signed public key to Client
-	jww.INFO.Printf("RegisterUser for public key %+v complete!", pubKey)
+	jww.DEBUG.Printf("RegisterUser for code [%s] complete!", regCode)
 	return transmissionSig, receptionSig, nil
 }
 
