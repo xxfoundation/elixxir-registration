@@ -3,7 +3,6 @@ module gitlab.com/elixxir/registration
 go 1.13
 
 require (
-	github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6 // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20200428022330-06a60b6afbbc // indirect
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
@@ -18,14 +17,12 @@ require (
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/spf13/viper v1.7.1
-	github.com/ugorji/go v1.1.4 // indirect
-	github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77 // indirect
 	gitlab.com/elixxir/client v1.2.1-0.20210222224029-4300043d7ce8
-	gitlab.com/elixxir/comms v0.0.4-0.20210226210011-90ecec9bfc98
-	gitlab.com/elixxir/crypto v0.0.7-0.20210226175801-f490fc89ffdd
-	gitlab.com/elixxir/primitives v0.0.3-0.20210226175744-d424cb7261fd
-	gitlab.com/xx_network/comms v0.0.4-0.20210226175738-04b6c562dd2f
-	gitlab.com/xx_network/crypto v0.0.5-0.20210226175725-80576a407b2d
+	gitlab.com/elixxir/comms v0.0.4-0.20210302195849-ee75575d614b
+	gitlab.com/elixxir/crypto v0.0.7-0.20210226194937-5d641d5a31bc
+	gitlab.com/elixxir/primitives v0.0.3-0.20210304231024-6e483533729f
+	gitlab.com/xx_network/comms v0.0.4-0.20210303175419-d244a9576345
+	gitlab.com/xx_network/crypto v0.0.5-0.20210226194923-5f470e2a2533
 	gitlab.com/xx_network/primitives v0.0.4-0.20210226175628-2b2742ebb772
 )
 
