@@ -23,7 +23,7 @@ require (
 	gitlab.com/elixxir/primitives v0.0.3-0.20210305221357-0b3f19cc3c8a
 	gitlab.com/xx_network/comms v0.0.4-0.20210305221336-a7e28febdbf6
 	gitlab.com/xx_network/crypto v0.0.5-0.20210305221255-f0ef174f5135
-	gitlab.com/xx_network/primitives v0.0.4-0.20210303180604-1ee442e6463f
+	gitlab.com/xx_network/primitives v0.0.4-0.20210308175329-436b0c8753ea
 )
 
 replace google.golang.org/grpc => github.com/grpc/grpc-go v1.27.1
