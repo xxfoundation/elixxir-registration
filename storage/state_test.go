@@ -515,7 +515,6 @@ func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 		return nil, privKey, errors.Errorf("Could not load public key: %v", err)
 	}
 
-
 	// Generate new NetworkState using the private key
 	state, err := NewState(privKey, 8)
 	if err != nil {
