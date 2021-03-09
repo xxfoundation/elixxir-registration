@@ -280,7 +280,6 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 			string(observedNDFBytes))
 	}
 
-	fmt.Printf("\n\n\nndf: %v\n\n\n", observedNDF.Nodes)
 	if bytes.Compare(observedNDF.UDB.ID, udbId.Marshal()) != 0 {
 		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v, \nNdf: %+v",
 			udbId, observedNDF.UDB.ID, observedNDF)
