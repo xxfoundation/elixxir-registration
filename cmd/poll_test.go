@@ -11,6 +11,7 @@ import (
 	"fmt"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
+	"gitlab.com/elixxir/comms/testutils"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/primitives/version"
@@ -121,14 +122,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 // Error path: Ndf not ready
 func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 
-	// Read in private key
-	key, err := utils.ReadFile(testkeys.GetCAKeyPath())
-	if err != nil {
-		t.Errorf("failed to read key at %+v: %+v",
-			testkeys.GetCAKeyPath(), err)
-	}
-
-	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	pk, err := testutils.LoadPrivateKeyTesting(t)
 	if err != nil {
 		t.Errorf("Failed to parse permissioning server key: %+v. "+
 			"PermissioningKey is %+v", err, pk)
@@ -877,13 +871,7 @@ func TestVerifyError(t *testing.T) {
 	}
 
 	// Read in private key
-	key, err := utils.ReadFile(testkeys.GetCAKeyPath())
-	if err != nil {
-		t.Errorf("failed to read key at %+v: %+v",
-			testkeys.GetCAKeyPath(), err)
-	}
-
-	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	pk, err := testutils.LoadPrivateKeyTesting(t)
 	if err != nil {
 		t.Errorf("Failed to parse permissioning server key: %+v. "+
 			"PermissioningKey is %+v", err, pk)
