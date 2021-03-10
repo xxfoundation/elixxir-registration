@@ -156,6 +156,13 @@ var rootCmd = &cobra.Command{
 				minServerVersionString, err)
 		}
 
+		minClientVersionString := viper.GetString("minClientVersion")
+		minClientVersion, err := version.ParseVersion(minClientVersionString)
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse minClientVersion %#v: %+v",
+				minClientVersionString, err)
+		}
+
 		// Get the amount of time to wait for scheduling to end
 		// This should default to 10 seconds in StartRegistration if not set
 		schedulingKillTimeout, err := time.ParseDuration(
@@ -211,6 +218,7 @@ var rootCmd = &cobra.Command{
 			minimumNodes:          viper.GetUint32("minimumNodes"),
 			minGatewayVersion:     minGatewayVersion,
 			minServerVersion:      minServerVersion,
+			minClientVersion:      minClientVersion,
 			disableGatewayPing:    disableGatewayPing,
 			userRegLeakPeriod:     userRegLeakPeriod,
 			userRegCapacity:       userRegCapacity,
