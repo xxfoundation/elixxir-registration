@@ -159,7 +159,7 @@ func getRegion(region string) (int, error) {
 		return WesternEurope, nil
 	case "CentralEurope":
 		return CentralEurope, nil
-	case "EasternEurope":
+	case "EasternEurope", "EastEurope":
 		return EasternEurope, nil
 	case "MiddleEast":
 		return MiddleEast, nil
