@@ -95,14 +95,13 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			}
 			lastRound = time.Now()
 
-			err = startRound(newRound, state, roundTracker)
+			ourRound, err := startRound(newRound, state, roundTracker)
 			if err != nil {
 				break
 			}
 
-			go func(roundID id.Round) {
+			go func(roundID id.Round, localRound *round.State) {
 				// Allow for round the to be added to the map
-				ourRound := state.GetRoundMap().GetRound(roundID)
 				roundTimer := time.NewTimer(params.RoundTimeout * time.Second)
 				select {
 				// Wait for the timer to go off
@@ -113,10 +112,11 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 					roundTimeoutTracker <- roundID
 				// Signals the round has been completed.
 				// In this case, we can exit the go-routine
-				case <-ourRound.GetRoundCompletedChan():
+				case <-localRound.GetRoundCompletedChan():
+					state.GetRoundMap().DeleteRound(roundID)
 					return
 				}
-			}(newRound.ID)
+			}(newRound.ID, ourRound)
 		}
 
 		jww.ERROR.Printf("Round creation thread should never exit: %s", err)
