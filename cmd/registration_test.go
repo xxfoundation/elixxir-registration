@@ -533,23 +533,6 @@ func TestCheckRegistration_InvalidID(t *testing.T) {
 	}
 }
 
-func TestRegistrationImpl_GetCurrentClientVersion(t *testing.T) {
-	impl, err := StartRegistration(testParams)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-	testVersion := "0.0.0a"
-	setClientVersion(testVersion)
-	ver, err := impl.GetCurrentClientVersion()
-	if err != nil {
-		t.Error(err)
-	}
-	if ver != testVersion {
-		t.Errorf("Version was %+v, expected %+v", ver, testVersion)
-	}
-}
-
 // Test a case that should pass validation
 func TestValidateClientVersion_Success(t *testing.T) {
 	err := validateVersion("0.0.0a")

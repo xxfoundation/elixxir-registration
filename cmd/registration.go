@@ -64,11 +64,3 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string, reception
 	jww.DEBUG.Printf("RegisterUser for code [%s] complete!", regCode)
 	return transmissionSig, receptionSig, nil
 }
-
-// This has to be part of RegistrationImpl and has to return an error because
-// of the way our comms are structured
-func (m *RegistrationImpl) GetCurrentClientVersion() (version string, err error) {
-	clientVersionLock.RLock()
-	defer clientVersionLock.RUnlock()
-	return clientVersion, nil
-}
