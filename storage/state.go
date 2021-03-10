@@ -28,7 +28,7 @@ import (
 	"time"
 )
 
-const updateBufferLength = 1000
+const updateBufferLength = 10000
 
 // NetworkState structure used for keeping track of NDF and Round state.
 type NetworkState struct {
