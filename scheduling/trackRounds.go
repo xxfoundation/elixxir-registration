@@ -28,6 +28,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		notUpdating := make([]string, 0)
 		goodNode := make([]string, 0)
 		noContact := make([]string, 0)
+		banned := make([]string, 0)
 
 		precompRounds := make([]*round.State, 0)
 		queuedRounds := make([]*round.State, 0)
@@ -43,6 +44,13 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		nodeStates := state.GetNodeMap().GetNodeStates()
 
 		for _, nodeState := range nodeStates {
+
+			if nodeState.IsBanned(){
+				bStr := fmt.Sprintf("\tNode %s (AppID: %v) is banned ", nodeState.GetID(), nodeState.GetAppID())
+				banned = append(banned, bStr)
+				continue
+			}
+
 			switch nodeState.GetActivity() {
 			case current.WAITING:
 				waitingNodes++
@@ -136,6 +144,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		jww.INFO.Printf("Nodes without recent poll: %v", len(noPoll))
 		jww.INFO.Printf("Nodes without recent update: %v", len(notUpdating))
 		jww.INFO.Printf("Normally operating nodes: %v", len(nodeStates)-len(noPoll)-len(notUpdating))
+		jww.INFO.Printf("Banned nodes: %v", len(banned))
 		jww.INFO.Printf("")
 
 		if len(goodNode) > 0 {
@@ -164,6 +173,14 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		if len(noContact) > 0 {
 			jww.INFO.Printf("Nodes which are not included due to no contact error")
 			for _, s := range noContact {
+				jww.INFO.Print(s)
+			}
+			jww.INFO.Printf("")
+		}
+
+		if len(banned)>0{
+			jww.INFO.Printf("Banned nodes:")
+			for _, s := range banned{
 				jww.INFO.Print(s)
 			}
 			jww.INFO.Printf("")
