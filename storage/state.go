@@ -78,6 +78,7 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32) (*NetworkState, error
 		roundUpdates:     dataStructures.NewUpdates(),
 		update:           make(chan node.UpdateNotification, updateBufferLength),
 		nodes:            node.NewStateMap(),
+		unprunedNdf: 	  &ndf.NetworkDefinition{},
 		fullNdf:          fullNdf,
 		partialNdf:       partialNdf,
 		privateKey:       pk,
