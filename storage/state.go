@@ -214,8 +214,15 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 
 		for i, n := range newNdf.Nodes{
 			if bytes.Equal(n.ID,toPruneNodeBytes){
-				newNdf.Nodes = append(newNdf.Nodes[:i],newNdf.Nodes[i+1:]...)
-				newNdf.Gateways = append(newNdf.Gateways[:i],newNdf.Gateways[i+1:]...)
+				// If we are at the end, we just have to exclude the final element
+				// (avoids off-by-one error caused by other deletion logic)
+				if len(newNdf.Nodes) - 1 == i {
+					newNdf.Nodes = newNdf.Nodes[:i]
+					newNdf.Gateways = newNdf.Gateways[:i]
+				} else {
+					newNdf.Nodes = append(newNdf.Nodes[:i], newNdf.Nodes[i+1:]...)
+					newNdf.Gateways = append(newNdf.Gateways[:i], newNdf.Gateways[i+1:]...)
+				}
 			}
 		}
 	}
