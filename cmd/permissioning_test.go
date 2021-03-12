@@ -113,7 +113,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		t.Errorf("Unexpected number of nodes found in node map:\n\tGot: %d\n"+
 			"\tExpected: %d", len(nodeMapNodes), expected_nodes)
 	}
-	def := impl.State.GetFullNdf().Get()
+	def := impl.State.GetUnprunedNdf()
 	id0, err := id.Unmarshal(def.Nodes[0].ID)
 	if err != nil {
 		t.Error("Failed to unmarshal ID")

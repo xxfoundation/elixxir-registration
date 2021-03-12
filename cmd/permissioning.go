@@ -213,7 +213,7 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 	// Add the new node to the topology
 	m.NDFLock.Lock()
-	networkDef := m.State.GetFullNdf().Get()
+	networkDef := m.State.GetUnprunedNdf()
 	gateway, n, regTime, err := assembleNdf(regCode)
 	if err != nil {
 		m.NDFLock.Unlock()
@@ -233,6 +233,12 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	if err != nil {
 		m.NDFLock.Unlock()
 		return errors.WithMessage(err, "Failed to insert nodes in definition")
+	}
+
+	//set the node as pruned if pruning is not disabled to ensure they have
+	//to be online to get scheduled
+	if !m.params.disableNDFPruning {
+		m.State.SetPrunedNode(nodeID)
 	}
 
 	// update the internal state with the newly-updated ndf

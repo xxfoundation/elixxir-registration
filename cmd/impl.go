@@ -188,7 +188,7 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 
 	impl.NDFLock.Lock()
 	defer impl.NDFLock.Unlock()
-	def := state.GetFullNdf().Get()
+	def := state.GetUnprunedNdf()
 
 	// Parse through the returned node list
 	for _, n := range bannedNodes {

@@ -9,6 +9,7 @@
 package storage
 
 import (
+	"bytes"
 	"github.com/golang-collections/collections/set"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -49,6 +50,11 @@ type NetworkState struct {
 	disabledNodesStates *disabledNodes
 
 	// NDF state
+
+	unprunedNdf *ndf.NetworkDefinition
+
+	pruneListMux sync.RWMutex
+	pruneList  map[id.ID]interface{}
 	partialNdf *dataStructures.Ndf
 	fullNdf    *dataStructures.Ndf
 
@@ -76,6 +82,7 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32) (*NetworkState, error
 		partialNdf:       partialNdf,
 		privateKey:       pk,
 		addressSpaceSize: addressSpaceSize,
+		pruneList: 		  make(map[id.ID]interface{}),
 	}
 
 	// Obtain round & update Id from Storage
@@ -117,6 +124,36 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32) (*NetworkState, error
 	}
 
 	return state, nil
+}
+
+func (s *NetworkState) SetPrunedNodes(ids []*id.ID) {
+	s.pruneListMux.Lock()
+	defer s.pruneListMux.Unlock()
+
+	s.pruneList = make(map[id.ID]interface{})
+
+	for _, i := range ids{
+		s.pruneList[*i]=nil
+	}
+}
+
+func (s *NetworkState) SetPrunedNode(id *id.ID) {
+	s.pruneListMux.Lock()
+	defer s.pruneListMux.Unlock()
+
+	s.pruneList[*id]=nil
+}
+
+func (s *NetworkState) IsPruned(node *id.ID)bool {
+	s.pruneListMux.RLock()
+	defer s.pruneListMux.RUnlock()
+
+	_, exists := s.pruneList[*node]
+	return exists
+}
+
+func (s *NetworkState) GetUnprunedNdf() *ndf.NetworkDefinition {
+	return s.unprunedNdf
 }
 
 // GetFullNdf returns the full NDF.
@@ -164,6 +201,26 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
+
+	ndfCopy := *newNdf
+	s.unprunedNdf = &ndfCopy
+
+	s.pruneListMux.RLock()
+
+	//prune the NDF
+	for toPruneNode := range s.pruneList{
+		toPruneNodeBytes := toPruneNode.Bytes()
+
+		for i, n := range newNdf.Nodes{
+			if bytes.Equal(n.ID,toPruneNodeBytes){
+				newNdf.Nodes = append(newNdf.Nodes[:i],newNdf.Nodes[i+1:]...)
+				newNdf.Gateways = append(newNdf.Gateways[:i],newNdf.Gateways[i+1:]...)
+			}
+		}
+	}
+	s.pruneListMux.RUnlock()
+
+
 	// Build NDF comms messages
 	fullNdfMsg := &pb.NDF{}
 	fullNdfMsg.Ndf, err = newNdf.Marshal()
