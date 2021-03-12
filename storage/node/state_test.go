@@ -8,9 +8,9 @@ package node
 
 import (
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/xx_network/primitives/id"
 	"math"
 	"reflect"
 	"strings"
@@ -24,6 +24,9 @@ func TestState_GetLastUpdate(t *testing.T) {
 	origTime := time.Now()
 	ns := State{}
 
+	// Sleep required due to low clock resolution on Windows
+	time.Sleep(1 * time.Millisecond)
+
 	_, _, err := ns.Update(current.WAITING)
 	if err != nil {
 		t.Errorf("Updating state failed: %v", err)
@@ -32,7 +35,7 @@ func TestState_GetLastUpdate(t *testing.T) {
 	newTime := ns.GetLastUpdate()
 
 	if origTime.After(newTime) || origTime.Equal(newTime) {
-		t.Errorf("origTime was after or euqal to newTime")
+		t.Errorf("origTime was after or equal to newTime")
 	}
 }
 

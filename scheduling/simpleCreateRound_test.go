@@ -7,11 +7,11 @@ package scheduling
 
 import (
 	"crypto/rand"
-	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/crypto/signature/rsa"
+	"gitlab.com/xx_network/primitives/id"
 	mathRand "math/rand"
 	"reflect"
 	"strconv"
@@ -32,7 +32,7 @@ func TestCreateRound_NonRandom(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey, 8)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -105,7 +105,7 @@ func TestCreateRound_Random(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey, 8)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -167,7 +167,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey, 8)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -218,7 +218,7 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey, 8)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -292,7 +292,7 @@ func TestCreateSimpleRound_SemiOptimal(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey, 8)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -401,7 +401,7 @@ func TestCreateSimpleRound_SemiOptimal_BadRegion(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey, 8)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

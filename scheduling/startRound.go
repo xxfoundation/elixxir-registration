@@ -6,8 +6,10 @@
 package scheduling
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"github.com/spf13/jwalterweatherman"
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/round"
@@ -18,7 +20,7 @@ import (
 //  node and network states in order to begin the round
 func startRound(round protoRound, state *storage.NetworkState, roundTracker *RoundTracker) (*round.State, error) {
 	// Add the round to the manager
-	r, err := state.GetRoundMap().AddRound(round.ID, round.BatchSize, round.ResourceQueueTimeout,
+	r, err := state.GetRoundMap().AddRound(round.ID, round.BatchSize, state.GetAddressSpaceSize(), round.ResourceQueueTimeout,
 		round.Topology)
 	if err != nil {
 		err = errors.WithMessagef(err, "Failed to create new round %v", round.ID)
@@ -53,6 +55,13 @@ func startRound(round protoRound, state *storage.NetworkState, roundTracker *Rou
 
 	// Add round to active set of rounds
 	roundTracker.AddActiveRound(r.GetRoundID())
+
+	//print the round to the log
+	roundPrnt := fmt.Sprintf("Scheduling round %d with nodes: ", round.ID)
+	for i := 0; i < round.Topology.Len(); i++ {
+		roundPrnt += fmt.Sprintf("\n\t (%d/%d) %s", i+1, round.Topology.Len(), round.Topology.GetNodeAtIndex(i))
+	}
+	jww.DEBUG.Println(roundPrnt)
 
 	return r, nil
 }

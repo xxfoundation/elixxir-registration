@@ -4,45 +4,47 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles the Map backend for the permissioning server
+// Handles the MapImpl for permissioning-based functionality
 
 package storage
 
 import (
-	"bytes"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/registration/storage/node"
-	"testing"
+	"gitlab.com/xx_network/primitives/id"
 )
 
-// Insert Application object along with associated unregistered Node
-func (m *MapImpl) InsertApplication(application *Application, unregisteredNode *Node) error {
+// Inserts the given State into Storage if it does not exist
+// Or updates the Database State if its value does not match the given State
+func (m *MapImpl) UpsertState(state *State) error {
+	jww.TRACE.Printf("Attempting to insert State into Map: %+v", state)
+
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
-	jww.INFO.Printf("Adding application: %d", application.Id)
-	jww.INFO.Printf("Adding node registration code: %s with Order Info: %s",
-		unregisteredNode.Code, unregisteredNode.Sequence)
-
-	// Enforce unique keys
-	if m.nodes[unregisteredNode.Code] != nil {
-		return errors.Errorf("node registration code %s already exists",
-			unregisteredNode.Code)
-	}
-	if m.applications[application.Id] != nil {
-		return errors.Errorf("application ID %d already exists",
-			application.Id)
-	}
-
-	m.nodes[unregisteredNode.Code] = unregisteredNode
-	m.applications[application.Id] = application
+	m.states[state.Key] = state.Value
 	return nil
 }
 
-// Insert NodeMetric object
+// Returns a State's value from Storage with the given key
+// Or an error if a matching State does not exist
+func (m *MapImpl) GetStateValue(key string) (string, error) {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	if val, ok := m.states[key]; ok {
+		jww.TRACE.Printf("Obtained State from Map: %+v", val)
+		return val, nil
+	}
+
+	// NOTE: Other code depends on this error string
+	return "", errors.Errorf("Unable to locate state for key %s", key)
+}
+
+// Insert new NodeMetric object into Storage
 func (m *MapImpl) InsertNodeMetric(metric *NodeMetric) error {
+	jww.TRACE.Printf("Attempting to insert NodeMetric into Map: %+v", metric)
+
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
@@ -51,32 +53,28 @@ func (m *MapImpl) InsertNodeMetric(metric *NodeMetric) error {
 
 	// Add to map
 	metric.Id = m.nodeMetricCounter
-	jww.DEBUG.Printf("Attempting to insert node metric: %+v", metric)
 	m.nodeMetrics[m.nodeMetricCounter] = metric
 	return nil
 }
 
-// Insert RoundError object
+// Insert new RoundError object into Storage
 func (m *MapImpl) InsertRoundError(roundId id.Round, errStr string) error {
-	m.mut.Lock()
-	defer m.mut.Unlock()
 	rid := uint64(roundId)
+	roundErr := RoundError{
+		Id:            0, // Currently useless in MapImpl
+		RoundMetricId: rid,
+		Error:         errStr,
+	}
 
-	m.roundMetrics[rid].RoundErrors = append(
-		m.roundMetrics[rid].RoundErrors,
-		RoundError{
-			Id:            0, // Currently useless in MapImpl
-			RoundMetricId: rid,
-			Error:         errStr,
-		},
-	)
+	jww.TRACE.Printf("Attempting to insert RoundError into Map: %+v", roundErr)
+	m.mut.Lock()
+	m.roundMetrics[rid].RoundErrors = append(m.roundMetrics[rid].RoundErrors, roundErr)
+	m.mut.Unlock()
 	return nil
 }
 
-// Insert RoundMetric object with associated topology
+// Insert new RoundMetric object with associated topology into Storage
 func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
-	m.mut.Lock()
-	defer m.mut.Unlock()
 
 	// Build Topology objects
 	metric.Topologies = make([]Topology, len(topology))
@@ -94,119 +92,63 @@ func (m *MapImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) erro
 	}
 
 	// Add to map
-	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
+	jww.TRACE.Printf("Attempting to insert RoundMetric into Map: %+v", metric)
+	m.mut.Lock()
 	m.roundMetrics[metric.Id] = metric
+	m.mut.Unlock()
 	return nil
 }
 
-// Update the Salt for a given Node ID
-func (m *MapImpl) UpdateSalt(id *id.ID, salt []byte) error {
-	n, err := m.GetNodeById(id)
-	if err != nil {
-		return err
+// Returns newest (and largest, by implication) EphemeralLength from Storage
+func (m *MapImpl) GetLatestEphemeralLength() (*EphemeralLength, error) {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	if len(m.ephemeralLengths) == 0 {
+		return nil, errors.Errorf("Unable to locate any EphemeralLengths")
 	}
+
+	largest := uint8(0)
+	for k := range m.ephemeralLengths {
+		if k > largest {
+			largest = k
+		}
+	}
+	result := m.ephemeralLengths[largest]
+	jww.TRACE.Printf("Obtained latest EphemeralLength from Map: %+v", result)
+	return result, nil
+}
+
+// Returns all EphemeralLength from Storage
+func (m *MapImpl) GetEphemeralLengths() ([]*EphemeralLength, error) {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	if len(m.ephemeralLengths) == 0 {
+		return nil, errors.Errorf("Unable to locate any EphemeralLengths")
+	}
+
+	result := make([]*EphemeralLength, len(m.ephemeralLengths))
+	i := 0
+	for _, v := range m.ephemeralLengths {
+		result[i] = v
+		i++
+	}
+	jww.TRACE.Printf("Obtained EphemeralLengths from Map: %+v", result)
+	return result, nil
+}
+
+// Insert new EphemeralLength into Storage
+func (m *MapImpl) InsertEphemeralLength(length *EphemeralLength) error {
+	jww.TRACE.Printf("Attempting to insert EphemeralLength into Map: %+v", length)
 
 	m.mut.Lock()
 	defer m.mut.Unlock()
-	n.Salt = salt
 
+	if m.ephemeralLengths[length.Length] != nil {
+		return errors.Errorf("ephemeral length %d already exists", length.Length)
+	}
+
+	m.ephemeralLengths[length.Length] = length
 	return nil
-}
-
-// If Node registration code is valid, add Node information
-func (m *MapImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddress, serverCert,
-	gatewayAddress, gatewayCert string) error {
-	m.mut.Lock()
-	defer m.mut.Unlock()
-
-	jww.INFO.Printf("Attempting to register node with code: %s", code)
-	if info := m.nodes[code]; info != nil {
-		info.Id = id.Marshal()
-		info.Salt = salt
-		info.ServerAddress = serverAddress
-		info.GatewayCertificate = gatewayCert
-		info.GatewayAddress = gatewayAddress
-		info.NodeCertificate = serverCert
-		info.Status = uint8(node.Active)
-		return nil
-	}
-	return errors.Errorf("unable to register node %s", code)
-
-}
-
-// Update the address fields for the Node with the given id
-func (m *MapImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
-	m.mut.Lock()
-	defer m.mut.Unlock()
-
-	for _, v := range m.nodes {
-		if bytes.Compare(v.Id, id.Marshal()) == 0 {
-			v.GatewayAddress = gwAddr
-			v.ServerAddress = nodeAddr
-			return nil
-		}
-	}
-
-	return errors.Errorf("unable to update addresses for %s", id.String())
-}
-
-// Get Node information for the given Node registration code
-func (m *MapImpl) GetNode(code string) (*Node, error) {
-	m.mut.Lock()
-	defer m.mut.Unlock()
-
-	info := m.nodes[code]
-	if info == nil {
-		return nil, errors.Errorf("unable to get node %s", code)
-	}
-	return info, nil
-}
-
-// Get Node information for the given Node ID
-func (m *MapImpl) GetNodeById(id *id.ID) (*Node, error) {
-	m.mut.Lock()
-	defer m.mut.Unlock()
-
-	for _, v := range m.nodes {
-		if bytes.Compare(v.Id, id.Marshal()) == 0 {
-			return v, nil
-		}
-	}
-	return nil, errors.Errorf("unable to get node %s", id.String())
-}
-
-// Return all nodes in storage with the given Status
-func (m *MapImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
-	m.mut.Lock()
-	defer m.mut.Unlock()
-
-	nodes := make([]*Node, 0)
-	for _, v := range m.nodes {
-		if node.Status(v.Status) == status {
-			nodes = append(nodes, v)
-		}
-	}
-	return nodes, nil
-}
-
-// If Node registration code is valid, add Node information
-func (m *MapImpl) BannedNode(id *id.ID, t interface{}) error {
-	// Ensure we're called from a test only
-	switch t.(type) {
-	case *testing.T:
-	case *testing.M:
-	case *testing.B:
-	default:
-		jww.FATAL.Panicf("BannedNode permissioning map function called outside testing")
-	}
-
-	m.mut.Lock()
-	defer m.mut.Unlock()
-	for _, n := range m.nodes {
-		if bytes.Compare(n.Id, id.Bytes()) == 0 {
-			n.Status = uint8(node.Banned)
-			return nil
-		}
-	}
-	return errors.New("Node could not be found in map")
 }

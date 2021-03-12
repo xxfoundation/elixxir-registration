@@ -4,42 +4,72 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles the database ORM for nodes
+// Handles the DatabaseImpl for permissioning-based functionality
+//+build !stateless
 
 package storage
 
 import (
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/registration/storage/node"
-	"time"
+	"gitlab.com/xx_network/primitives/id"
 )
 
-// Insert Application object along with associated unregistered Node
-func (m *DatabaseImpl) InsertApplication(application *Application, unregisteredNode *Node) error {
-	application.Node = *unregisteredNode
-	return m.db.Create(application).Error
+// Inserts the given State into Storage if it does not exist
+// Or updates the Database State if its value does not match the given State
+func (d *DatabaseImpl) UpsertState(state *State) error {
+	jww.TRACE.Printf("Attempting to insert State into DB: %+v", state)
+
+	// Build a transaction to prevent race conditions
+	return d.db.Transaction(func(tx *gorm.DB) error {
+		// Make a copy of the provided state
+		newState := *state
+
+		// Attempt to insert state into the Database,
+		// or if it already exists, replace state with the Database value
+		err := tx.FirstOrCreate(state, &State{Key: state.Key}).Error
+		if err != nil {
+			return err
+		}
+
+		// If state is already present in the Database, overwrite it with newState
+		if newState.Value != state.Value {
+			return tx.Save(newState).Error
+		}
+
+		// Commit
+		return nil
+	})
 }
 
-// Insert NodeMetric object
-func (m *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
-	jww.TRACE.Printf("Attempting to insert node metric: %+v", metric)
-	return m.db.Create(metric).Error
+// Returns a State's value from Storage with the given key
+// Or an error if a matching State does not exist
+func (d *DatabaseImpl) GetStateValue(key string) (string, error) {
+	result := &State{Key: key}
+	err := d.db.Take(result).Error
+	jww.TRACE.Printf("Obtained State from DB: %+v", result)
+	return result.Value, err
 }
 
-// Insert RoundError object
-func (m *DatabaseImpl) InsertRoundError(roundId id.Round, errStr string) error {
+// Insert new NodeMetric object into Storage
+func (d *DatabaseImpl) InsertNodeMetric(metric *NodeMetric) error {
+	jww.TRACE.Printf("Attempting to insert NodeMetric into DB: %+v", metric)
+	return d.db.Create(metric).Error
+}
+
+// Insert new RoundError object into Storage
+func (d *DatabaseImpl) InsertRoundError(roundId id.Round, errStr string) error {
 	roundErr := &RoundError{
 		RoundMetricId: uint64(roundId),
 		Error:         errStr,
 	}
-	jww.DEBUG.Printf("Attempting to insert round error: %+v", roundErr)
-	return m.db.Create(roundErr).Error
+	jww.TRACE.Printf("Attempting to insert RoundError into DB: %+v", roundErr)
+	return d.db.Create(roundErr).Error
 }
 
-// Insert RoundMetric object with associated topology
-func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
+// Insert new RoundMetric object with associated topology into Storage
+func (d *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte) error {
 
 	// Build the Topology
 	metric.Topologies = make([]Topology, len(topology))
@@ -56,65 +86,28 @@ func (m *DatabaseImpl) InsertRoundMetric(metric *RoundMetric, topology [][]byte)
 	}
 
 	// Save the RoundMetric
-	jww.DEBUG.Printf("Attempting to insert round metric: %+v", metric)
-	return m.db.Create(metric).Error
+	jww.TRACE.Printf("Attempting to insert RoundMetric into DB: %+v", metric)
+	return d.db.Create(metric).Error
 }
 
-// Update the Salt for a given Node ID
-func (m *DatabaseImpl) UpdateSalt(id *id.ID, salt []byte) error {
-	newNode := Node{
-		Salt: salt,
-	}
-	return m.db.First(&newNode, "id = ?", id.Marshal()).Update("salt", salt).Error
+// Returns newest (and largest, by implication) EphemeralLength from Storage
+func (d *DatabaseImpl) GetLatestEphemeralLength() (*EphemeralLength, error) {
+	result := &EphemeralLength{}
+	err := d.db.Last(result).Error
+	jww.TRACE.Printf("Obtained latest EphemeralLength from DB: %+v", result)
+	return result, err
 }
 
-// If Node registration code is valid, add Node information
-func (m *DatabaseImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
-	gatewayAddress, gatewayCert string) error {
-	newNode := &Node{
-		Code:               code,
-		Id:                 id.Marshal(),
-		Salt:               salt,
-		ServerAddress:      serverAddr,
-		GatewayAddress:     gatewayAddress,
-		NodeCertificate:    serverCert,
-		GatewayCertificate: gatewayCert,
-		Status:             uint8(node.Active),
-		DateRegistered:     time.Now(),
-	}
-	return m.db.Model(&newNode).Update(&newNode).Error
+// Returns all EphemeralLength from Storage
+func (d *DatabaseImpl) GetEphemeralLengths() ([]*EphemeralLength, error) {
+	var result []*EphemeralLength
+	err := d.db.Find(&result).Error
+	jww.TRACE.Printf("Obtained EphemeralLengths from DB: %+v", result)
+	return result, err
 }
 
-// Update the address fields for the Node with the given id
-func (m *DatabaseImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
-	newNode := &Node{
-		Id:             id.Marshal(),
-		ServerAddress:  nodeAddr,
-		GatewayAddress: gwAddr,
-	}
-	return m.db.Model(newNode).Where("id = ?", newNode.Id).Updates(map[string]interface{}{
-		"server_address":  nodeAddr,
-		"gateway_address": gwAddr,
-	}).Error
-}
-
-// Get Node information for the given Node registration code
-func (m *DatabaseImpl) GetNode(code string) (*Node, error) {
-	newNode := &Node{}
-	err := m.db.First(&newNode, "code = ?", code).Error
-	return newNode, err
-}
-
-// Get Node information for the given Node ID
-func (m *DatabaseImpl) GetNodeById(id *id.ID) (*Node, error) {
-	newNode := &Node{}
-	err := m.db.First(&newNode, "id = ?", id.Marshal()).Error
-	return newNode, err
-}
-
-// Return all nodes in storage with the given Status
-func (m *DatabaseImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
-	var nodes []*Node
-	err := m.db.Where("status = ?", uint8(status)).Find(&nodes).Error
-	return nodes, err
+// Insert new EphemeralLength into Storage
+func (d *DatabaseImpl) InsertEphemeralLength(length *EphemeralLength) error {
+	jww.TRACE.Printf("Attempting to insert EphemeralLength into DB: %+v", length)
+	return d.db.Create(length).Error
 }

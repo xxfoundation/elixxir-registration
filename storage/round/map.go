@@ -9,8 +9,8 @@ package round
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/primitives/id"
 	"sync"
 	"testing"
 	"time"
@@ -31,7 +31,7 @@ func NewStateMap() *StateMap {
 }
 
 // Adds a new round state to the structure. Will not overwrite an existing one.
-func (rsm *StateMap) AddRound(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
+func (rsm *StateMap) AddRound(id id.Round, batchsize, addressSpaceSize uint32, resourceQueueTimeout time.Duration,
 	topology *connect.Circuit) (*State, error) {
 	rsm.mux.Lock()
 	defer rsm.mux.Unlock()
@@ -40,7 +40,7 @@ func (rsm *StateMap) AddRound(id id.Round, batchsize uint32, resourceQueueTimeou
 		return nil, errors.New("cannot add a round which already exists")
 	}
 
-	rsm.rounds[id] = newState(id, batchsize, resourceQueueTimeout, topology, time.Now())
+	rsm.rounds[id] = newState(id, batchsize, addressSpaceSize, resourceQueueTimeout, topology, time.Now())
 
 	return rsm.rounds[id], nil
 }

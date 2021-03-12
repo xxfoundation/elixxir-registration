@@ -4,7 +4,7 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles the Map backend for registration codes
+// Handles the MapImpl for client-based functionality
 
 package storage
 
@@ -58,16 +58,17 @@ func (m *MapImpl) UseCode(code string) error {
 
 // Gets User from the map
 func (m *MapImpl) GetUser(publicKey string) (*User, error) {
-	if ok := m.users[publicKey]; ok {
+	if rk, ok := m.users[publicKey]; ok {
 		return &User{
-			PublicKey: publicKey,
+			PublicKey:    publicKey,
+			ReceptionKey: rk,
 		}, nil
 	}
 	return nil, errors.New("user does not exist")
 }
 
 // Inserts User into the map
-func (m *MapImpl) InsertUser(publicKey string) error {
-	m.users[publicKey] = true
+func (m *MapImpl) InsertUser(publicKey, receptionKey string) error {
+	m.users[publicKey] = receptionKey
 	return nil
 }

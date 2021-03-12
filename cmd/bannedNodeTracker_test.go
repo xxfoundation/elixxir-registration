@@ -8,11 +8,11 @@ package cmd
 import (
 	"crypto/rand"
 	"fmt"
-	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/crypto/signature/rsa"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
 	"sync"
 	"testing"
 )
@@ -28,7 +28,7 @@ func TestBannedNodeTracker(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey, 8)
 	impl := &RegistrationImpl{
 		State:   testState,
 		NDFLock: sync.Mutex{},
@@ -64,12 +64,10 @@ func TestBannedNodeTracker(t *testing.T) {
 	}
 
 	// Clean out banned nodes
-	fmt.Println("1")
 	err = BannedNodeTracker(impl)
 	if err != nil {
 		t.Errorf("Error with node tracker: %v", err)
 	}
-	fmt.Println("2")
 
 	updatedDef := testState.GetFullNdf().Get()
 	if len(updatedDef.Nodes) != 1 {

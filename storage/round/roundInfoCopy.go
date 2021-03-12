@@ -48,5 +48,6 @@ func CopyRoundInfo(ri *pb.RoundInfo) *pb.RoundInfo {
 		Timestamps:                 timestampsCopy,
 		ResourceQueueTimeoutMillis: ri.GetResourceQueueTimeoutMillis(),
 		Errors:                     errorsCopy,
+		AddressSpaceSize:           ri.GetAddressSpaceSize(),
 	}
 }

@@ -14,43 +14,40 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
-	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/crypto/tls"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
-	"gitlab.com/elixxir/primitives/utils"
-	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/crypto/signature/rsa"
+	"gitlab.com/xx_network/crypto/tls"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/rateLimiting"
+	"gitlab.com/xx_network/primitives/utils"
 	"sync"
 	"time"
 )
 
-//generally large buffer, should be roughly as many nodes as are expected
-const nodeCompletionChanLen = 1000
-
 // The main registration instance object
 type RegistrationImpl struct {
-	Comms                   *registration.Comms
-	params                  *Params
-	State                   *storage.NetworkState
-	Stopped                 *uint32
-	permissioningCert       *x509.Certificate
-	ndfOutputPath           string
-	NdfReady                *uint32
-	certFromFile            string
-	registrationsRemaining  *uint64
-	maxRegistrationAttempts uint64
-	disableGatewayPing      bool
+	Comms                *registration.Comms
+	params               *Params
+	State                *storage.NetworkState
+	Stopped              *uint32
+	permissioningCert    *x509.Certificate
+	ndfOutputPath        string
+	NdfReady             *uint32
+	certFromFile         string
+	registrationLimiting *rateLimiting.Bucket
+	disableGatewayPing   bool
 
 	//registration status trackers
 	numRegistered int
 	//FIXME: it is possible that polling lock and registration lock
 	// do the same job and could conflict. reconsiderations of this logic
 	// may be fruitful
-	registrationLock sync.Mutex
-	beginScheduling  chan struct{}
+	registrationLock  sync.Mutex
+	beginScheduling   chan struct{}
+	registrationTimes map[id.ID]int64
 
 	NDFLock sync.Mutex
 }
@@ -58,49 +55,10 @@ type RegistrationImpl struct {
 //function used to schedule nodes
 type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 
-// Params object for reading in configuration data
-type Params struct {
-	Address                   string
-	CertPath                  string
-	KeyPath                   string
-	NdfOutputPath             string
-	NsCertPath                string
-	NsAddress                 string
-	cmix                      ndf.Group
-	e2e                       ndf.Group
-	publicAddress             string
-	maxRegistrationAttempts   uint64
-	registrationCountDuration time.Duration
-	schedulingKillTimeout     time.Duration
-	closeTimeout              time.Duration
-	minimumNodes              uint32
-	udbId                     []byte
-	minGatewayVersion         version.Version
-	minServerVersion          version.Version
-	roundIdPath               string
-	updateIdPath              string
-	disableGatewayPing        bool
-}
-
-// toGroup takes a group represented by a map of string to string,
-// then uses the prime and generator to create an ndf group object.
-func toGroup(grp map[string]string) (*ndf.Group, error) {
-	jww.DEBUG.Printf("Group is: %v", grp)
-	pStr, pOk := grp["prime"]
-	gStr, gOk := grp["generator"]
-
-	if !gOk || !pOk {
-		return nil, errors.Errorf("Invalid Group Config "+
-			"(prime: %v, generator: %v", pOk, gOk)
-	}
-	return &ndf.Group{Prime: pStr, Generator: gStr}, nil
-}
-
 // Configure and start the Permissioning Server
-func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error) {
+func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Initialize variables
-	regRemaining := uint64(0)
 	ndfReady := uint32(0)
 	roundCreationStopped := uint32(0)
 
@@ -117,33 +75,27 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 			"PermissioningKey is %+v", err, pk)
 	}
 
-	//initilize the state tracking object
-	state, err := storage.NewState(pk, params.roundIdPath, params.updateIdPath)
+	// Initialize the state tracking object
+	state, err := storage.NewState(pk, params.addressSpace)
 	if err != nil {
 		return nil, err
 	}
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		State:                   state,
-		params:                  &params,
-		maxRegistrationAttempts: params.maxRegistrationAttempts,
-		registrationsRemaining:  &regRemaining,
-		ndfOutputPath:           params.NdfOutputPath,
-		NdfReady:                &ndfReady,
-		Stopped:                 &roundCreationStopped,
-
+		State:              state,
+		params:             &params,
+		ndfOutputPath:      params.NdfOutputPath,
+		NdfReady:           &ndfReady,
+		Stopped:            &roundCreationStopped,
 		numRegistered:      0,
 		beginScheduling:    make(chan struct{}, 1),
 		disableGatewayPing: params.disableGatewayPing,
+		registrationTimes:  make(map[id.ID]int64),
 	}
 
-	// Create timer and channel to be used by routine that clears the number of
-	// registrations every time the ticker activates
-	go func() {
-		ticker := time.NewTicker(params.registrationCountDuration)
-		regImpl.registrationCapacityRestRunner(ticker, done)
-	}()
+	//regImpl.registrationLimiting = rateLimiting.Create(params.userRegCapacity, params.userRegLeakRate)
+	regImpl.registrationLimiting = rateLimiting.CreateBucket(params.userRegCapacity, params.userRegCapacity, params.userRegLeakPeriod, func(u uint32, i int64) {})
 
 	if !noTLS {
 		// Read in TLS keys from files
@@ -162,6 +114,12 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 
 	}
 
+	// Load the UDB cert from file
+	udbCert, err := utils.ReadFile(params.udbCertPath)
+	if err != nil {
+		return nil, errors.Errorf("failed to read UDB cert: %+v", err)
+	}
+
 	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: ndf.Registration{
@@ -170,13 +128,20 @@ func StartRegistration(params Params, done chan bool) (*RegistrationImpl, error)
 		},
 
 		Timestamp: time.Now(),
-		UDB:       ndf.UDB{ID: RegParams.udbId},
-		E2E:       RegParams.e2e,
-		CMIX:      RegParams.cmix,
+		UDB: ndf.UDB{
+			ID:       RegParams.udbId,
+			Cert:     string(udbCert),
+			Address:  RegParams.udbAddress,
+			DhPubKey: RegParams.udbDhPubKey,
+		},
+		E2E:  RegParams.e2e,
+		CMIX: RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
-		Nodes:    make([]ndf.Node, 0),
-		Gateways: make([]ndf.Gateway, 0),
+		Nodes:            make([]ndf.Node, 0),
+		Gateways:         make([]ndf.Gateway, 0),
+		AddressSpaceSize: params.addressSpace,
+		ClientVersion:    RegParams.minClientVersion.String(),
 	}
 
 	// Assemble notification server information if configured
@@ -235,8 +200,8 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 
 		var newNodes []ndf.Node
 		// Loop through NDF nodes to remove any that are banned
-		for i, node := range def.Nodes {
-			ndfNodeID, err := id.Unmarshal(node.ID)
+		for i, n := range def.Nodes {
+			ndfNodeID, err := id.Unmarshal(n.ID)
 			if err != nil {
 				return errors.WithMessage(err, "Failed to unmarshal node id from NDF")
 			}
@@ -284,23 +249,12 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 // NewImplementation returns a registration server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
-	impl.Functions.RegisterUser = func(
-		registrationCode, pubKey string) (signature []byte, err error) {
-
-		response, err := instance.RegisterUser(registrationCode, pubKey)
+	impl.Functions.RegisterUser = func(regCode string, pubKey, receptionPubKey string) ([]byte, []byte, error) {
+		transmissionSig, receptionSig, err := instance.RegisterUser(regCode, pubKey, receptionPubKey)
 		if err != nil {
 			jww.ERROR.Printf("RegisterUser error: %+v", err)
 		}
-		return response, err
-	}
-
-	impl.Functions.GetCurrentClientVersion = func() (version string, err error) {
-		response, err := instance.GetCurrentClientVersion()
-		if err != nil {
-			jww.ERROR.Printf("GetCurrentClientVersion error: %+v", err)
-		}
-
-		return response, err
+		return transmissionSig, receptionSig, err
 	}
 	impl.Functions.RegisterNode = func(salt []byte, serverAddr, serverTlsCert, gatewayAddr,
 		gatewayTlsCert, registrationCode string) error {
@@ -313,9 +267,9 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 
 		return err
 	}
-	impl.Functions.PollNdf = func(theirNdfHash []byte, auth *connect.Auth) ([]byte, error) {
+	impl.Functions.PollNdf = func(theirNdfHash []byte) ([]byte, error) {
 
-		response, err := instance.PollNdf(theirNdfHash, auth)
+		response, err := instance.PollNdf(theirNdfHash)
 		if err != nil && err.Error() != ndf.NO_NDF {
 			jww.ERROR.Printf("PollNdf error: %+v", err)
 		}
@@ -323,9 +277,9 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 		return response, err
 	}
 
-	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth, serverAddress string) (*pb.PermissionPollResponse, error) {
+	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
 		//ensure a bad poll can not take down the permisisoning server
-		response, err := instance.Poll(msg, auth, serverAddress)
+		response, err := instance.Poll(msg, auth)
 
 		return response, err
 	}
