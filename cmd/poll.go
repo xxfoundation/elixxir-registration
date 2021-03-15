@@ -36,12 +36,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 			"is nil, poll cannot be processed")
 	}
 
-	// Ensure the NDF is ready to be returned
-	regComplete := atomic.LoadUint32(m.NdfReady)
-	if regComplete != 1 {
-		return response, errors.New(ndf.NO_NDF)
-	}
-
 	// Ensure client is properly authenticated
 	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
 		return response, connect.AuthError(auth.Sender.GetId())
@@ -77,11 +71,19 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		return nil, err
 	}
 
-	// check that the activity is not error and then poll, do not count error
-	// polls so erring nodes are not issues rounds
-	if activity != current.ERROR {
-		// Increment the Node's poll count
-		n.IncrementNumPolls()
+	// Check the node's connectivity
+	continuePoll, err := m.checkConnectivity(n, activity, m.GetDisableGatewayPingFlag())
+	if err != nil || !continuePoll {
+		return response, err
+	}
+
+	// Increment the Node's poll count
+	n.IncrementNumPolls()
+
+	// Ensure the NDF is ready to be returned
+	regComplete := atomic.LoadUint32(m.NdfReady)
+	if regComplete != 1 {
+		return response, errors.New(ndf.NO_NDF)
 	}
 
 	// Return updated NDF if provided hash does not match current NDF hash
@@ -96,12 +98,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	// Fetch latest round updates
 	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
 	if err != nil {
-		return response, err
-	}
-
-	// Check the node's connectivity
-	continuePoll, err := m.checkConnectivity(n, activity, m.GetDisableGatewayPingFlag())
-	if err != nil || !continuePoll {
 		return response, err
 	}
 
@@ -359,13 +355,6 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 			return err
 		}
 		m.NDFLock.Unlock()
-
-		// Output the current topology to a JSON file
-		err = outputToJSON(currentNDF, m.ndfOutputPath)
-		if err != nil {
-			err := errors.Errorf("unable to output NDF JSON file: %+v", err)
-			jww.ERROR.Print(err.Error())
-		}
 	}
 
 	return nil

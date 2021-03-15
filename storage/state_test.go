@@ -56,7 +56,7 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, 8)
+	state, err := NewState(privateKey, 8, "")
 	if err != nil {
 		t.Errorf("NewState() produced an unexpected error:\n%v", err)
 	}
@@ -122,7 +122,7 @@ func TestNewState_PrivateKeyError(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, 8)
+	state, err := NewState(privateKey, 8, "")
 
 	// Test NewState() output
 	if err == nil || err.Error() != expectedErr {
@@ -505,7 +505,7 @@ func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 	}
 
 	// Generate new NetworkState using the private key
-	state, err := NewState(privateKey, 8)
+	state, err := NewState(privateKey, 8, "")
 	if err != nil {
 		return state, privateKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
 	}

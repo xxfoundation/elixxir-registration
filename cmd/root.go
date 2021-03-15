@@ -306,7 +306,13 @@ var rootCmd = &cobra.Command{
 					}
 
 					if !RegParams.disableNDFPruning {
+						jww.DEBUG.Printf("Setting %d pruned nodes", len(toPrune))
 						impl.State.SetPrunedNodes(toPrune)
+						err := impl.State.UpdateNdf(impl.State.GetUnprunedNdf())
+						if err!=nil{
+							jww.ERROR.Printf("Failed to regenerate the " +
+								"NDF after changing pruning")
+						}
 					}
 				}
 			}

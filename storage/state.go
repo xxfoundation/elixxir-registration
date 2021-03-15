@@ -9,7 +9,6 @@
 package storage
 
 import (
-	"bytes"
 	"github.com/golang-collections/collections/set"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
@@ -23,6 +22,7 @@ import (
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/utils"
 	"strconv"
 	"strings"
 	"sync"
@@ -60,10 +60,12 @@ type NetworkState struct {
 
 	// Address space size
 	addressSpaceSize uint32
+
+	ndfOutputPath string
 }
 
 // NewState returns a new NetworkState object.
-func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32) (*NetworkState, error) {
+func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string) (*NetworkState, error) {
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
 		return nil, err
@@ -84,6 +86,7 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32) (*NetworkState, error
 		privateKey:       pk,
 		addressSpaceSize: addressSpaceSize,
 		pruneList: 		  make(map[id.ID]interface{}),
+		ndfOutputPath: 	  ndfOutputPath,
 	}
 
 	// Obtain round & update Id from Storage
@@ -203,29 +206,21 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 // UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 
-	ndfCopy := *newNdf
-	s.unprunedNdf = &ndfCopy
+	ndfMarshabled, _ := newNdf.Marshal()
+	s.unprunedNdf, _ = ndf.Unmarshal(ndfMarshabled)
 
 	s.pruneListMux.RLock()
 
 	//prune the NDF
-	for toPruneNode := range s.pruneList{
-		toPruneNodeBytes := toPruneNode.Bytes()
-
-		for i, n := range newNdf.Nodes{
-			if bytes.Equal(n.ID,toPruneNodeBytes){
-				// If we are at the end, we just have to exclude the final element
-				// (avoids off-by-one error caused by other deletion logic)
-				if len(newNdf.Nodes) - 1 == i {
-					newNdf.Nodes = newNdf.Nodes[:i]
-					newNdf.Gateways = newNdf.Gateways[:i]
-				} else {
-					newNdf.Nodes = append(newNdf.Nodes[:i], newNdf.Nodes[i+1:]...)
-					newNdf.Gateways = append(newNdf.Gateways[:i], newNdf.Gateways[i+1:]...)
-				}
-			}
+	for i := 0; i < len(newNdf.Nodes);i++ {
+		nid, _ := id.Unmarshal(newNdf.Nodes[i].ID)
+		if _, exists := s.pruneList[*nid]; exists{
+			newNdf.Nodes = append(newNdf.Nodes[:i], newNdf.Nodes[i+1:]...)
+			newNdf.Gateways = append(newNdf.Gateways[:i], newNdf.Gateways[i+1:]...)
+			i--
 		}
 	}
+
 	s.pruneListMux.RUnlock()
 
 
@@ -256,7 +251,18 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	if err != nil {
 		return err
 	}
-	return s.partialNdf.Update(partialNdfMsg)
+
+	err = s.partialNdf.Update(partialNdfMsg)
+	if err != nil {
+		return err
+	}
+
+	err = outputToJSON(newNdf, s.ndfOutputPath)
+	if err != nil {
+		jww.ERROR.Printf("unable to output NDF JSON file: %+v", err)
+	}
+
+	return nil
 }
 
 // GetPrivateKey returns the server's private key.
@@ -379,4 +385,18 @@ func (s *NetworkState) GetDisabledNodesSet() *set.Set {
 	}
 
 	return nil
+}
+
+
+// outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
+// outputs it to the specified file path. An error is returned if the JSON
+// marshaling fails or if the JSON file cannot be created.
+func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) error {
+	// Generate JSON from structure
+	data, err := ndfData.Marshal()
+	if err != nil {
+		return err
+	}
+	// Write JSON to file
+	return utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
 }
