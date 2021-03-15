@@ -63,13 +63,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 	activity := current.Activity(msg.Activity)
 
-	// check that the activity is not error and then poll, do not count error
-	// polls so erring nodes are not issues rounds
-	if activity != current.ERROR {
-		// Increment the Node's poll count
-		n.IncrementNumPolls()
-	}
-
 	// update ip addresses if necessary
 	err := checkIPAddresses(m, n, msg, auth.Sender)
 	if err != nil {
@@ -82,6 +75,13 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		msg)
 	if err != nil {
 		return nil, err
+	}
+
+	// check that the activity is not error and then poll, do not count error
+	// polls so erring nodes are not issues rounds
+	if activity != current.ERROR {
+		// Increment the Node's poll count
+		n.IncrementNumPolls()
 	}
 
 	// Return updated NDF if provided hash does not match current NDF hash
@@ -127,6 +127,11 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	// Ensure any errors are properly formatted before sending an update
 	err = verifyError(msg, n, m)
 	if err != nil {
+		return response, err
+	}
+
+	//check if the node is pruned if it is, bail
+	if m.State.IsPruned(n.GetID()){
 		return response, err
 	}
 
@@ -330,7 +335,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		}
 
 		m.NDFLock.Lock()
-		currentNDF := m.State.GetFullNdf().Get()
+		currentNDF := m.State.GetUnprunedNdf()
 
 		if nodeUpdate {
 			nodeHost.UpdateAddress(nodeAddress)

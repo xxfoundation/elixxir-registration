@@ -22,6 +22,7 @@ import (
 	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/utils"
 	"net"
 	"os"
@@ -223,6 +224,7 @@ var rootCmd = &cobra.Command{
 			userRegLeakPeriod:     userRegLeakPeriod,
 			userRegCapacity:       userRegCapacity,
 			addressSpace:          viper.GetUint32("addressSpace"),
+			disableNDFPruning: 	   viper.GetBool("disableNDFPruning"),
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -276,7 +278,7 @@ var rootCmd = &cobra.Command{
 				select {
 				// Wait for the ticker to fire
 				case <-nodeTicker.C:
-
+					var toPrune []*id.ID
 					// Iterate over the Node States
 					nodeStates := impl.State.GetNodeMap().GetNodeStates()
 					for _, nodeState := range nodeStates {
@@ -290,12 +292,21 @@ var rootCmd = &cobra.Command{
 							NumPings:  nodeState.GetAndResetNumPolls(),
 						}
 
+						//set the node to prune if it has not contacted
+						if metric.NumPings==0{
+							toPrune = append(toPrune,nodeState.GetID())
+						}
+
 						// Store the NodeMetric
 						err := storage.PermissioningDb.InsertNodeMetric(metric)
 						if err != nil {
 							jww.FATAL.Panicf(
 								"Unable to store node metric: %+v", err)
 						}
+					}
+
+					if !RegParams.disableNDFPruning {
+						impl.State.SetPrunedNodes(toPrune)
 					}
 				}
 			}
