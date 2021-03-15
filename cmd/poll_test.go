@@ -215,6 +215,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	udbId := id.NewIdFromUInt(5, id.User, t)
 	RegParams.udbId = udbId.Marshal()
 	RegParams.minimumNodes = 3
+	RegParams.disableNDFPruning = true
 	// Start registration server
 	impl, err := StartRegistration(RegParams)
 	if err != nil {
@@ -306,7 +307,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	udbId := id.NewIdFromUInt(5, id.User, t)
 	RegParams.udbId = udbId.Marshal()
 	RegParams.minimumNodes = 3
-
+	RegParams.disableNDFPruning = true
 	// Start registration server
 	impl, err := StartRegistration(testParams)
 	if err != nil {
@@ -350,6 +351,7 @@ func TestPoll_BannedNode(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
+	testParams.disableNDFPruning = true
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
@@ -890,6 +892,7 @@ func TestVerifyError(t *testing.T) {
 		params: &Params{
 			minGatewayVersion: testVersion,
 			minServerVersion:  testVersion,
+			disableNDFPruning:true,
 		},
 		Comms: &registration.Comms{
 			ProtoComms: &connect.ProtoComms{

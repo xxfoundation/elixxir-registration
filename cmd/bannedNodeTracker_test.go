@@ -47,7 +47,7 @@ func TestBannedNodeTracker(t *testing.T) {
 	// Create an active and banned node
 	bannedNode := createNode(testState, "0", "AAA", 10, node.Banned, t)
 	activeNode := createNode(testState, "1", "BBB", 20, node.Active, t)
-	curDef := testState.GetFullNdf().Get()
+	curDef := testState.GetUnprunedNdf()
 	curDef.Nodes = append(curDef.Nodes, ndf.Node{
 		ID:             bannedNode.Marshal(),
 		Address:        "",
@@ -69,7 +69,7 @@ func TestBannedNodeTracker(t *testing.T) {
 		t.Errorf("Error with node tracker: %v", err)
 	}
 
-	updatedDef := testState.GetFullNdf().Get()
+	updatedDef := testState.GetUnprunedNdf()
 	if len(updatedDef.Nodes) != 1 {
 		t.Error("Banned node tracker did not alter ndf")
 	}

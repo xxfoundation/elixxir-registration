@@ -43,6 +43,8 @@ type Params struct {
 	// User registration can take userRegCapacity registrations in userRegLeakPeriod period of time
 	userRegCapacity   uint32
 	userRegLeakPeriod time.Duration
+
+	disableNDFPruning bool
 }
 
 // toGroup takes a group represented by a map of string to string,
