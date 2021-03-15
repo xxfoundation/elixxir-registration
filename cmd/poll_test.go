@@ -902,7 +902,7 @@ func TestVerifyError(t *testing.T) {
 		params: &Params{
 			minGatewayVersion: testVersion,
 			minServerVersion:  testVersion,
-			disableNDFPruning:true,
+			disableNDFPruning: true,
 		},
 		Comms: &registration.Comms{
 			ProtoComms: &connect.ProtoComms{

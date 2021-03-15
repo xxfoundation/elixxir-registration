@@ -224,7 +224,7 @@ var rootCmd = &cobra.Command{
 			userRegLeakPeriod:     userRegLeakPeriod,
 			userRegCapacity:       userRegCapacity,
 			addressSpace:          viper.GetUint32("addressSpace"),
-			disableNDFPruning: 	   viper.GetBool("disableNDFPruning"),
+			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -293,8 +293,8 @@ var rootCmd = &cobra.Command{
 						}
 
 						//set the node to prune if it has not contacted
-						if metric.NumPings==0{
-							toPrune = append(toPrune,nodeState.GetID())
+						if metric.NumPings == 0 {
+							toPrune = append(toPrune, nodeState.GetID())
 						}
 
 						// Store the NodeMetric
@@ -309,7 +309,7 @@ var rootCmd = &cobra.Command{
 						jww.DEBUG.Printf("Setting %d pruned nodes", len(toPrune))
 						impl.State.SetPrunedNodes(toPrune)
 						err := impl.State.UpdateNdf(impl.State.GetUnprunedNdf())
-						if err!=nil{
+						if err != nil {
 							jww.ERROR.Printf("Failed to regenerate the " +
 								"NDF after changing pruning")
 						}

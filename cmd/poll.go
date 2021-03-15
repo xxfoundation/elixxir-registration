@@ -127,7 +127,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	}
 
 	//check if the node is pruned if it is, bail
-	if m.State.IsPruned(n.GetID()){
+	if m.State.IsPruned(n.GetID()) {
 		return response, err
 	}
 

@@ -54,9 +54,9 @@ type NetworkState struct {
 	unprunedNdf *ndf.NetworkDefinition
 
 	pruneListMux sync.RWMutex
-	pruneList  map[id.ID]interface{}
-	partialNdf *dataStructures.Ndf
-	fullNdf    *dataStructures.Ndf
+	pruneList    map[id.ID]interface{}
+	partialNdf   *dataStructures.Ndf
+	fullNdf      *dataStructures.Ndf
 
 	// Address space size
 	addressSpaceSize uint32
@@ -80,13 +80,13 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string)
 		roundUpdates:     dataStructures.NewUpdates(),
 		update:           make(chan node.UpdateNotification, updateBufferLength),
 		nodes:            node.NewStateMap(),
-		unprunedNdf: 	  &ndf.NetworkDefinition{},
+		unprunedNdf:      &ndf.NetworkDefinition{},
 		fullNdf:          fullNdf,
 		partialNdf:       partialNdf,
 		privateKey:       pk,
 		addressSpaceSize: addressSpaceSize,
-		pruneList: 		  make(map[id.ID]interface{}),
-		ndfOutputPath: 	  ndfOutputPath,
+		pruneList:        make(map[id.ID]interface{}),
+		ndfOutputPath:    ndfOutputPath,
 	}
 
 	// Obtain round & update Id from Storage
@@ -136,8 +136,8 @@ func (s *NetworkState) SetPrunedNodes(ids []*id.ID) {
 
 	s.pruneList = make(map[id.ID]interface{})
 
-	for _, i := range ids{
-		s.pruneList[*i]=nil
+	for _, i := range ids {
+		s.pruneList[*i] = nil
 	}
 }
 
@@ -145,10 +145,10 @@ func (s *NetworkState) SetPrunedNode(id *id.ID) {
 	s.pruneListMux.Lock()
 	defer s.pruneListMux.Unlock()
 
-	s.pruneList[*id]=nil
+	s.pruneList[*id] = nil
 }
 
-func (s *NetworkState) IsPruned(node *id.ID)bool {
+func (s *NetworkState) IsPruned(node *id.ID) bool {
 	s.pruneListMux.RLock()
 	defer s.pruneListMux.RUnlock()
 
@@ -212,9 +212,9 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	s.pruneListMux.RLock()
 
 	//prune the NDF
-	for i := 0; i < len(newNdf.Nodes);i++ {
+	for i := 0; i < len(newNdf.Nodes); i++ {
 		nid, _ := id.Unmarshal(newNdf.Nodes[i].ID)
-		if _, exists := s.pruneList[*nid]; exists{
+		if _, exists := s.pruneList[*nid]; exists {
 			newNdf.Nodes = append(newNdf.Nodes[:i], newNdf.Nodes[i+1:]...)
 			newNdf.Gateways = append(newNdf.Gateways[:i], newNdf.Gateways[i+1:]...)
 			i--
@@ -222,7 +222,6 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	}
 
 	s.pruneListMux.RUnlock()
-
 
 	// Build NDF comms messages
 	fullNdfMsg := &pb.NDF{}
@@ -386,7 +385,6 @@ func (s *NetworkState) GetDisabledNodesSet() *set.Set {
 
 	return nil
 }
-
 
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
 // outputs it to the specified file path. An error is returned if the JSON
