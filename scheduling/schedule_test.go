@@ -2,11 +2,11 @@ package scheduling
 
 import (
 	"encoding/json"
+	"gitlab.com/elixxir/comms/testutils"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
-	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/utils"
 	"reflect"
@@ -29,13 +29,7 @@ func TestScheduler_NonRandom(t *testing.T) {
 	}
 
 	// Read in private key
-	key, err := utils.ReadFile(testkeys.GetCAKeyPath())
-	if err != nil {
-		t.Errorf("failed to read key at %+v: %+v",
-			testkeys.GetCAKeyPath(), err)
-	}
-
-	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	pk, err := testutils.LoadPrivateKeyTesting(t)
 	if err != nil {
 		t.Errorf("Failed to parse permissioning server key: %+v. "+
 			"PermissioningKey is %+v", err, pk)
