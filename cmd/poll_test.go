@@ -7,6 +7,7 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
@@ -24,6 +25,7 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/utils"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
