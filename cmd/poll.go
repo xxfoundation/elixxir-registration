@@ -21,6 +21,7 @@ import (
 	"gitlab.com/xx_network/comms/signature"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"math/rand"
 	"sync/atomic"
 )
 
@@ -71,14 +72,14 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		return response, err
 	}
 
+	// Increment the Node's poll count
+	n.IncrementNumPolls()
+
 	// Check the node's connectivity
 	continuePoll, err := m.checkConnectivity(n, activity, m.GetDisableGatewayPingFlag())
 	if err != nil || !continuePoll {
 		return response, err
 	}
-
-	// Increment the Node's poll count
-	n.IncrementNumPolls()
 
 	// Ensure the NDF is ready to be returned
 	regComplete := atomic.LoadUint32(m.NdfReady)
@@ -413,7 +414,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if n.GetNumPolls()%211 == 13 {
+		if rand.Uint64()%211==13 {
 			n.SetConnectivity(node.PortUnknown)
 		}
 		nodeAddress := "unknown"
@@ -427,7 +428,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 	case node.GatewayPortFailed:
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if n.GetNumPolls()%211 == 13 {
+		if rand.Uint64()%211==13 {
 			n.SetConnectivity(node.PortUnknown)
 		}
 		gwID := n.GetID().DeepCopy()
@@ -439,7 +440,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 	case node.PortFailed:
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if n.GetNumPolls()%211 == 13 {
+		if rand.Uint64()%211==13 {
 			n.SetConnectivity(node.PortUnknown)
 		}
 		nodeAddress := "unknown"
