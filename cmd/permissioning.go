@@ -22,7 +22,6 @@ import (
 	"gitlab.com/xx_network/crypto/xx"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
-	"gitlab.com/xx_network/primitives/utils"
 	"sync/atomic"
 )
 
@@ -248,14 +247,6 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		return err
 	}
 
-	// Output the current topology to a JSON file
-	err = outputToJSON(networkDef, m.ndfOutputPath)
-	if err != nil {
-		err := errors.Errorf("unable to output NDF JSON file: %+v", err)
-		jww.ERROR.Print(err.Error())
-		return errors.Errorf("Could not complete registration: %+v", err)
-	}
-
 	// Kick off the network if the minimum number of nodes has been met
 	if uint32(m.numRegistered) == m.params.minimumNodes {
 		atomic.CompareAndSwapUint32(m.NdfReady, 0, 1)
@@ -344,17 +335,4 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int64, error) {
 	}
 
 	return gateway, n, nodeInfo.DateRegistered.UnixNano(), nil
-}
-
-// outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
-// outputs it to the specified file path. An error is returned if the JSON
-// marshaling fails or if the JSON file cannot be created.
-func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) error {
-	// Generate JSON from structure
-	data, err := ndfData.Marshal()
-	if err != nil {
-		return err
-	}
-	// Write JSON to file
-	return utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
 }

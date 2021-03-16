@@ -21,6 +21,7 @@ import (
 	"gitlab.com/xx_network/comms/signature"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"math/rand"
 	"sync/atomic"
 )
 
@@ -34,12 +35,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	if msg == nil {
 		return nil, errors.Errorf("Message payload for unified poll " +
 			"is nil, poll cannot be processed")
-	}
-
-	// Ensure the NDF is ready to be returned
-	regComplete := atomic.LoadUint32(m.NdfReady)
-	if regComplete != 1 {
-		return response, errors.New(ndf.NO_NDF)
 	}
 
 	// Ensure client is properly authenticated
@@ -58,7 +53,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 	// Check if the node has been deemed out of network
 	if n.IsBanned() {
-		return nil, errors.Errorf("Node %s has been banned from the network", nid)
+		return response, errors.Errorf("Node %s has been banned from the network", nid)
 	}
 
 	activity := current.Activity(msg.Activity)
@@ -74,14 +69,22 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	err = checkVersion(m.params.minGatewayVersion, m.params.minServerVersion,
 		msg)
 	if err != nil {
-		return nil, err
+		return response, err
 	}
 
-	// check that the activity is not error and then poll, do not count error
-	// polls so erring nodes are not issues rounds
-	if activity != current.ERROR {
-		// Increment the Node's poll count
-		n.IncrementNumPolls()
+	// Increment the Node's poll count
+	n.IncrementNumPolls()
+
+	// Check the node's connectivity
+	continuePoll, err := m.checkConnectivity(n, activity, m.GetDisableGatewayPingFlag())
+	if err != nil || !continuePoll {
+		return response, err
+	}
+
+	// Ensure the NDF is ready to be returned
+	regComplete := atomic.LoadUint32(m.NdfReady)
+	if regComplete != 1 {
+		return response, errors.New(ndf.NO_NDF)
 	}
 
 	// Return updated NDF if provided hash does not match current NDF hash
@@ -96,12 +99,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	// Fetch latest round updates
 	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
 	if err != nil {
-		return response, err
-	}
-
-	// Check the node's connectivity
-	continuePoll, err := m.checkConnectivity(n, activity, m.GetDisableGatewayPingFlag())
-	if err != nil || !continuePoll {
 		return response, err
 	}
 
@@ -131,7 +128,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	}
 
 	//check if the node is pruned if it is, bail
-	if m.State.IsPruned(n.GetID()){
+	if m.State.IsPruned(n.GetID()) {
 		return response, err
 	}
 
@@ -359,13 +356,6 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 			return err
 		}
 		m.NDFLock.Unlock()
-
-		// Output the current topology to a JSON file
-		err = outputToJSON(currentNDF, m.ndfOutputPath)
-		if err != nil {
-			err := errors.Errorf("unable to output NDF JSON file: %+v", err)
-			jww.ERROR.Print(err.Error())
-		}
 	}
 
 	return nil
@@ -424,34 +414,44 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if n.GetNumPolls()%211 == 13 {
+		if rand.Uint64()%211==13 {
 			n.SetConnectivity(node.PortUnknown)
+		}
+		nodeAddress := "unknown"
+		if nodeHost, exists := m.Comms.GetHost(n.GetID()); exists{
+			nodeAddress = nodeHost.GetAddress()
 		}
 		// If only the Node port has been marked as failed,
 		// we send an error informing the node of such
-		return false, errors.Errorf("Node %s cannot be contacted "+
-			"by Permissioning, are ports properly forwarded?", n.GetID())
+		return false, errors.Errorf("Node %s at %s cannot be contacted "+
+			"by Permissioning, are ports properly forwarded?", n.GetID(), nodeAddress)
 	case node.GatewayPortFailed:
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if n.GetNumPolls()%211 == 13 {
+		if rand.Uint64()%211==13 {
 			n.SetConnectivity(node.PortUnknown)
 		}
+		gwID := n.GetID().DeepCopy()
+		gwID.SetType(id.Gateway)
 		// If only the Gateway port has been marked as failed,
 		// we send an error informing the node of such
-		return false, errors.Errorf("Gateway with address %s cannot be contacted "+
-			"by Permissioning, are ports properly forwarded?", n.GetGatewayAddress())
+		return false, errors.Errorf("Gateway %s with address %s cannot be contacted "+
+			"by Permissioning, are ports properly forwarded?", gwID, n.GetGatewayAddress())
 	case node.PortFailed:
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if n.GetNumPolls()%211 == 13 {
+		if rand.Uint64()%211==13 {
 			n.SetConnectivity(node.PortUnknown)
+		}
+		nodeAddress := "unknown"
+		if nodeHost, exists := m.Comms.GetHost(n.GetID()); exists{
+			nodeAddress = nodeHost.GetAddress()
 		}
 		// If the port has been marked as failed,
 		// we send an error informing the node of such
-		return false, errors.Errorf("Both Node %s and Gateway with address %s "+
+		return false, errors.Errorf("Both Node %s at %s and Gateway with address %s "+
 			"cannot be contacted by Permissioning, are ports properly forwarded?",
-			n.GetID(), n.GetGatewayAddress())
+			n.GetID(), nodeAddress, n.GetGatewayAddress())
 	}
 
 	return false, nil
