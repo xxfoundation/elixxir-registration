@@ -12,6 +12,8 @@ import (
 	"github.com/pkg/errors"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/network/dataStructures"
+	"gitlab.com/elixxir/comms/testkeys"
+	"gitlab.com/elixxir/comms/testutils"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
@@ -56,7 +58,7 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, 8)
+	state, err := NewState(privateKey, 8, "")
 	if err != nil {
 		t.Errorf("NewState() produced an unexpected error:\n%v", err)
 	}
@@ -122,7 +124,7 @@ func TestNewState_PrivateKeyError(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, 8)
+	state, err := NewState(privateKey, 8, "")
 
 	// Test NewState() output
 	if err == nil || err.Error() != expectedErr {
@@ -185,7 +187,7 @@ func TestNetworkState_GetPartialNdf(t *testing.T) {
 // Smoke test of GetUpdates() by adding rounds and then calling GetUpdates().
 func TestNetworkState_GetUpdates(t *testing.T) {
 	// Generate new NetworkState
-	state, _, err := generateTestNetworkState()
+	state, privKey, err := generateTestNetworkState()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -197,10 +199,16 @@ func TestNetworkState_GetUpdates(t *testing.T) {
 			ID:       0,
 			UpdateID: uint64(3 + i),
 		}
-
-		err = state.roundUpdates.AddRound(roundInfo)
+		err = testutils.SignRoundInfo(roundInfo, t)
+		if err != nil {
+			t.Errorf("Failed to sign round info: %v", err)
+			t.FailNow()
+		}
+		rnd := dataStructures.NewRound(roundInfo, privKey.GetPublic())
+		err = state.roundUpdates.AddRound(rnd)
 		if err != nil {
 			t.Errorf("AddRound() produced an unexpected error:\n%+v", err)
+			t.FailNow()
 		}
 
 		expectedRoundInfo = append(expectedRoundInfo, roundInfo)
@@ -499,18 +507,21 @@ func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
 // key. Errors created by generating the key or NetworkState are returned.
 func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 	// Generate new private RSA key
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	keyPath := testkeys.GetNodeKeyPath()
+	keyData := testkeys.LoadFromPath(keyPath)
+
+	privKey, err := rsa.LoadPrivateKeyFromPem(keyData)
 	if err != nil {
-		return nil, privateKey, fmt.Errorf("Failed to generate private key:\n+%v", err)
+		return nil, privKey, errors.Errorf("Could not load public key: %v", err)
 	}
 
 	// Generate new NetworkState using the private key
-	state, err := NewState(privateKey, 8)
+	state, err := NewState(privKey, 8, "")
 	if err != nil {
-		return state, privateKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
+		return state, privKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
 	}
 
-	return state, privateKey, nil
+	return state, privKey, nil
 }
 
 // Tests that IncrementRoundID() increments the ID correctly.

@@ -35,7 +35,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -89,7 +89,7 @@ func TestHandleNodeStateChance_Waiting_SetNodeToOnline(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -149,7 +149,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -225,7 +225,7 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -284,7 +284,7 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -358,7 +358,7 @@ func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -411,7 +411,7 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -471,7 +471,7 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -560,7 +560,7 @@ func TestKillRound(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -614,7 +614,7 @@ func TestHandleNodeUpdates_Precomputing_RoundError(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -662,7 +662,7 @@ func TestHandleNodeUpdates_Realtime(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -715,7 +715,7 @@ func TestHandleNodeUpdates_Realtime_RoundError(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -764,7 +764,7 @@ func TestHandleNodeUpdates_Realtime_UpdateError(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -821,7 +821,7 @@ func TestHandleNodeUpdates_RoundErrored(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -875,7 +875,7 @@ func TestHandleNodeUpdates_NOT_STARTED(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8)
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

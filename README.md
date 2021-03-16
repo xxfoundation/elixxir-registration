@@ -45,8 +45,15 @@ minGatewayVersion: "0.0.0"
 # The minimum version required of servers to connect
 minServerVersion:  "0.0.0"
 
+# The minimum version required of clients to connect
+minClientVersion: "0.0.0"
+
 # Disable pinging of Gateway public IP address.
 disableGatewayPing: false
+
+# Disable pruning of NDF for offline nodes
+# if set to false, network will sleep for five minutes on start
+disableNDFPruning: true
 
 # Database connection information
 dbUsername: "cmix"

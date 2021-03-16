@@ -22,6 +22,7 @@ import (
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/utils"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,15 +50,22 @@ type NetworkState struct {
 	disabledNodesStates *disabledNodes
 
 	// NDF state
-	partialNdf *dataStructures.Ndf
-	fullNdf    *dataStructures.Ndf
+
+	unprunedNdf *ndf.NetworkDefinition
+
+	pruneListMux sync.RWMutex
+	pruneList    map[id.ID]interface{}
+	partialNdf   *dataStructures.Ndf
+	fullNdf      *dataStructures.Ndf
 
 	// Address space size
 	addressSpaceSize uint32
+
+	ndfOutputPath string
 }
 
 // NewState returns a new NetworkState object.
-func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32) (*NetworkState, error) {
+func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string) (*NetworkState, error) {
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
 		return nil, err
@@ -72,10 +80,13 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32) (*NetworkState, error
 		roundUpdates:     dataStructures.NewUpdates(),
 		update:           make(chan node.UpdateNotification, updateBufferLength),
 		nodes:            node.NewStateMap(),
+		unprunedNdf:      &ndf.NetworkDefinition{},
 		fullNdf:          fullNdf,
 		partialNdf:       partialNdf,
 		privateKey:       pk,
 		addressSpaceSize: addressSpaceSize,
+		pruneList:        make(map[id.ID]interface{}),
+		ndfOutputPath:    ndfOutputPath,
 	}
 
 	// Obtain round & update Id from Storage
@@ -119,6 +130,36 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32) (*NetworkState, error
 	return state, nil
 }
 
+func (s *NetworkState) SetPrunedNodes(ids []*id.ID) {
+	s.pruneListMux.Lock()
+	defer s.pruneListMux.Unlock()
+
+	s.pruneList = make(map[id.ID]interface{})
+
+	for _, i := range ids {
+		s.pruneList[*i] = nil
+	}
+}
+
+func (s *NetworkState) SetPrunedNode(id *id.ID) {
+	s.pruneListMux.Lock()
+	defer s.pruneListMux.Unlock()
+
+	s.pruneList[*id] = nil
+}
+
+func (s *NetworkState) IsPruned(node *id.ID) bool {
+	s.pruneListMux.RLock()
+	defer s.pruneListMux.RUnlock()
+
+	_, exists := s.pruneList[*node]
+	return exists
+}
+
+func (s *NetworkState) GetUnprunedNdf() *ndf.NetworkDefinition {
+	return s.unprunedNdf
+}
+
 // GetFullNdf returns the full NDF.
 func (s *NetworkState) GetFullNdf() *dataStructures.Ndf {
 	return s.fullNdf
@@ -159,11 +200,30 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 
 	jww.TRACE.Printf("Round Info: %+v", roundCopy)
 
-	return s.roundUpdates.AddRound(roundCopy)
+	rnd := dataStructures.NewVerifiedRound(roundCopy, s.privateKey.GetPublic())
+	return s.roundUpdates.AddRound(rnd)
 }
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
+
+	ndfMarshabled, _ := newNdf.Marshal()
+	s.unprunedNdf, _ = ndf.Unmarshal(ndfMarshabled)
+
+	s.pruneListMux.RLock()
+
+	//prune the NDF
+	for i := 0; i < len(newNdf.Nodes); i++ {
+		nid, _ := id.Unmarshal(newNdf.Nodes[i].ID)
+		if _, exists := s.pruneList[*nid]; exists {
+			newNdf.Nodes = append(newNdf.Nodes[:i], newNdf.Nodes[i+1:]...)
+			newNdf.Gateways = append(newNdf.Gateways[:i], newNdf.Gateways[i+1:]...)
+			i--
+		}
+	}
+
+	s.pruneListMux.RUnlock()
+
 	// Build NDF comms messages
 	fullNdfMsg := &pb.NDF{}
 	fullNdfMsg.Ndf, err = newNdf.Marshal()
@@ -191,7 +251,18 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	if err != nil {
 		return err
 	}
-	return s.partialNdf.Update(partialNdfMsg)
+
+	err = s.partialNdf.Update(partialNdfMsg)
+	if err != nil {
+		return err
+	}
+
+	err = outputToJSON(newNdf, s.ndfOutputPath)
+	if err != nil {
+		jww.ERROR.Printf("unable to output NDF JSON file: %+v", err)
+	}
+
+	return nil
 }
 
 // GetPrivateKey returns the server's private key.
@@ -314,4 +385,17 @@ func (s *NetworkState) GetDisabledNodesSet() *set.Set {
 	}
 
 	return nil
+}
+
+// outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
+// outputs it to the specified file path. An error is returned if the JSON
+// marshaling fails or if the JSON file cannot be created.
+func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) error {
+	// Generate JSON from structure
+	data, err := ndfData.Marshal()
+	if err != nil {
+		return err
+	}
+	// Write JSON to file
+	return utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
 }

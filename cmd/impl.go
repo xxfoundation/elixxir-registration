@@ -76,7 +76,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// Initialize the state tracking object
-	state, err := storage.NewState(pk, params.addressSpace)
+	state, err := storage.NewState(pk, params.addressSpace, params.NdfOutputPath)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 
 	impl.NDFLock.Lock()
 	defer impl.NDFLock.Unlock()
-	def := state.GetFullNdf().Get()
+	def := state.GetUnprunedNdf()
 
 	// Parse through the returned node list
 	for _, n := range bannedNodes {

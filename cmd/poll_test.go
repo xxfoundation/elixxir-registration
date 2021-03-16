@@ -11,6 +11,7 @@ import (
 	"fmt"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
+	"gitlab.com/elixxir/comms/testutils"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/primitives/version"
@@ -118,24 +119,17 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	impl.Comms.Shutdown()
 }
 
-// Error path: Ndf not ready
+/*// Error path: Ndf not ready
 func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 
-	// Read in private key
-	key, err := utils.ReadFile(testkeys.GetCAKeyPath())
-	if err != nil {
-		t.Errorf("failed to read key at %+v: %+v",
-			testkeys.GetCAKeyPath(), err)
-	}
-
-	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	pk, err := testutils.LoadPrivateKeyTesting(t)
 	if err != nil {
 		t.Errorf("Failed to parse permissioning server key: %+v. "+
 			"PermissioningKey is %+v", err, pk)
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk, 8)
+	state, err := storage.NewState(pk, 8, "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -155,7 +149,7 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	if err == nil || err.Error() != ndf.NO_NDF {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
-}
+}*/
 
 // Error path: Failed auth
 func TestRegistrationImpl_PollFailAuth(t *testing.T) {
@@ -163,7 +157,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
-	state, err := storage.NewState(getTestKey(), 8)
+	state, err := storage.NewState(getTestKey(), 8, "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -221,6 +215,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	udbId := id.NewIdFromUInt(5, id.User, t)
 	RegParams.udbId = udbId.Marshal()
 	RegParams.minimumNodes = 3
+	RegParams.disableNDFPruning = true
 	// Start registration server
 	impl, err := StartRegistration(RegParams)
 	if err != nil {
@@ -280,7 +275,6 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 			string(observedNDFBytes))
 	}
 
-	fmt.Printf("\n\n\nndf: %v\n\n\n", observedNDF.Nodes)
 	if bytes.Compare(observedNDF.UDB.ID, udbId.Marshal()) != 0 {
 		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v, \nNdf: %+v",
 			udbId, observedNDF.UDB.ID, observedNDF)
@@ -313,7 +307,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	udbId := id.NewIdFromUInt(5, id.User, t)
 	RegParams.udbId = udbId.Marshal()
 	RegParams.minimumNodes = 3
-
+	RegParams.disableNDFPruning = true
 	// Start registration server
 	impl, err := StartRegistration(testParams)
 	if err != nil {
@@ -357,6 +351,7 @@ func TestPoll_BannedNode(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
+	testParams.disableNDFPruning = true
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
@@ -878,20 +873,14 @@ func TestVerifyError(t *testing.T) {
 	}
 
 	// Read in private key
-	key, err := utils.ReadFile(testkeys.GetCAKeyPath())
-	if err != nil {
-		t.Errorf("failed to read key at %+v: %+v",
-			testkeys.GetCAKeyPath(), err)
-	}
-
-	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	pk, err := testutils.LoadPrivateKeyTesting(t)
 	if err != nil {
 		t.Errorf("Failed to parse permissioning server key: %+v. "+
 			"PermissioningKey is %+v", err, pk)
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk, 8)
+	state, err := storage.NewState(pk, 8, "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -903,6 +892,7 @@ func TestVerifyError(t *testing.T) {
 		params: &Params{
 			minGatewayVersion: testVersion,
 			minServerVersion:  testVersion,
+			disableNDFPruning: true,
 		},
 		Comms: &registration.Comms{
 			ProtoComms: &connect.ProtoComms{
