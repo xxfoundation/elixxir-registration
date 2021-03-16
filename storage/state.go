@@ -197,7 +197,8 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 
 	jww.TRACE.Printf("Round Info: %+v", roundCopy)
 
-	return s.roundUpdates.AddRound(roundCopy)
+	rnd := dataStructures.NewVerifiedRound(roundCopy, s.privateKey.GetPublic())
+	return s.roundUpdates.AddRound(rnd)
 }
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
