@@ -47,6 +47,7 @@ type RegistrationImpl struct {
 	// may be fruitful
 	registrationLock  sync.Mutex
 	beginScheduling   chan struct{}
+	//TODO-kill this
 	registrationTimes map[id.ID]int64
 
 	NDFLock sync.Mutex

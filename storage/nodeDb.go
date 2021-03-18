@@ -13,6 +13,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
 	"time"
+	jww "github.com/spf13/jwalterweatherman"
 )
 
 // Insert Application object along with associated unregistered Node
@@ -64,6 +65,8 @@ func (d *DatabaseImpl) GetNodeById(id *id.ID) (*Node, error) {
 func (d *DatabaseImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 	var nodes []*Node
 	err := d.db.Where("status = ?", uint8(status)).Find(&nodes).Error
+	jww.INFO.Printf("GetNodesByStatus: Got %d nodes with status " +
+		"%s(%d) from the database", len(nodes), status, status)
 	return nodes, err
 }
 
