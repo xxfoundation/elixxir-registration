@@ -65,7 +65,7 @@ func (d *DatabaseImpl) GetNodeById(id *id.ID) (*Node, error) {
 func (d *DatabaseImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 	var nodes []*Node
 	err := d.db.Where("status = ?", uint8(status)).Find(&nodes).Error
-	jww.INFO.Printf("GetNodesByStatus: Got %d nodes with status " +
+	jww.INFO.Printf("GetNodesByStatus: Got %d nodes with status "+
 		"%s(%d) from the database", len(nodes), status, status)
 	return nodes, err
 }

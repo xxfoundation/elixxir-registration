@@ -45,8 +45,8 @@ type RegistrationImpl struct {
 	//FIXME: it is possible that polling lock and registration lock
 	// do the same job and could conflict. reconsiderations of this logic
 	// may be fruitful
-	registrationLock  sync.Mutex
-	beginScheduling   chan struct{}
+	registrationLock sync.Mutex
+	beginScheduling  chan struct{}
 	//TODO-kill this
 	registrationTimes map[id.ID]int64
 
@@ -241,13 +241,12 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 			update = true
 		}
 
-		if update{
+		if update {
 			err = state.UpdateNdf(def)
 			if err != nil {
 				return errors.WithMessage(err, "Failed to update NDF after bans")
 			}
 		}
-
 
 		// Get the node from the nodeMap
 		ns := state.GetNodeMap().GetNode(nodeId)
