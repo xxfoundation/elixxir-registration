@@ -10,10 +10,10 @@
 package storage
 
 import (
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
 	"time"
-	jww "github.com/spf13/jwalterweatherman"
 )
 
 // Insert Application object along with associated unregistered Node
