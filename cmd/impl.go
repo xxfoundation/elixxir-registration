@@ -198,7 +198,11 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 			return errors.Errorf("Failed to convert node %s to id.ID: %v", n.Id, err)
 		}
 
-		var newNodes []ndf.Node
+		gatewayID := nodeId.DeepCopy()
+		gatewayID.SetType(gatewayID)
+
+		var remainingNodes []ndf.Node
+		var remainingGateways []ndf.Gateway
 		// Loop through NDF nodes to remove any that are banned
 		for i, n := range def.Nodes {
 			ndfNodeID, err := id.Unmarshal(n.ID)
@@ -208,11 +212,24 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 			if ndfNodeID.Cmp(nodeId) {
 				continue
 			} else {
-				newNodes = append(newNodes, def.Nodes[i])
+				remainingNodes = append(remainingNodes, def.Nodes[i])
 			}
 		}
-		if len(newNodes) != len(def.Nodes) {
-			def.Nodes = newNodes
+
+		for i, g := range def.Gateways {
+			ndfGatewayID, err := id.Unmarshal(g.ID)
+			if err != nil {
+				return errors.WithMessage(err, "Failed to unmarshal gateway id from NDF")
+			}
+			if ndfGatewayID.Cmp(gatewayID) {
+				continue
+			} else {
+				remainingGateways = append(remainingGateways, def.Gateways[i])
+			}
+		}
+
+		if len(remainingNodes) != len(def.Nodes) {
+			def.Nodes = remainingNodes
 			err = state.UpdateNdf(def)
 			if err != nil {
 				return errors.WithMessage(err, "Failed to update NDF after bans")
