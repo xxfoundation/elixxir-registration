@@ -199,7 +199,7 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 		}
 
 		gatewayID := nodeId.DeepCopy()
-		gatewayID.SetType(gatewayID)
+		gatewayID.SetType(id.Gateway)
 
 		var remainingNodes []ndf.Node
 		var remainingGateways []ndf.Gateway
