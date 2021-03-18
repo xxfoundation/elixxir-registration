@@ -188,11 +188,6 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
 			return errors.WithMessage(err, "Could not register node with "+
 				"state tracker")
 		}
-
-		err = m.completeNodeRegistration(n.Code)
-		if err != nil {
-			return err
-		}
 	}
 
 	return nil
