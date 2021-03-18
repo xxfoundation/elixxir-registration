@@ -45,7 +45,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 
 		for _, nodeState := range nodeStates {
 
-			if nodeState.IsBanned(){
+			if nodeState.IsBanned() {
 				bStr := fmt.Sprintf("\tNode %s (AppID: %v) is banned ", nodeState.GetID(), nodeState.GetAppID())
 				banned = append(banned, bStr)
 				continue
@@ -178,9 +178,9 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 			jww.INFO.Printf("")
 		}
 
-		if len(banned)>0{
+		if len(banned) > 0 {
 			jww.INFO.Printf("Banned nodes:")
-			for _, s := range banned{
+			for _, s := range banned {
 				jww.INFO.Print(s)
 			}
 			jww.INFO.Printf("")
