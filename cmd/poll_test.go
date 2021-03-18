@@ -11,19 +11,20 @@ import (
 	"fmt"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
-	"gitlab.com/elixxir/crypto/signature"
-	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/comms/testutils"
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/primitives/states"
-	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/elixxir/registration/testkeys"
 	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/comms/signature"
+	"gitlab.com/xx_network/crypto/signature/rsa"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/utils"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -44,7 +45,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	impl, err := StartRegistration(testParams, nil)
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
@@ -103,7 +104,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	n := impl.State.GetNodeMap().GetNode(testID)
 	n.SetConnectivity(node.PortSuccessful)
 
-	response, err := impl.Poll(testMsg, testAuth, "0.0.0.0:11420")
+	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -118,24 +119,17 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	impl.Comms.Shutdown()
 }
 
-// Error path: Ndf not ready
+/*// Error path: Ndf not ready
 func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 
-	// Read in private key
-	key, err := utils.ReadFile(testkeys.GetCAKeyPath())
-	if err != nil {
-		t.Errorf("failed to read key at %+v: %+v",
-			testkeys.GetCAKeyPath(), err)
-	}
-
-	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	pk, err := testutils.LoadPrivateKeyTesting(t)
 	if err != nil {
 		t.Errorf("Failed to parse permissioning server key: %+v. "+
 			"PermissioningKey is %+v", err, pk)
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk, "", "")
+	state, err := storage.NewState(pk, 8, "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -151,11 +145,11 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 
 	dummyMessage := &pb.PermissioningPoll{}
 
-	_, err = impl.Poll(dummyMessage, nil, "")
+	_, err = impl.Poll(dummyMessage, nil)
 	if err == nil || err.Error() != ndf.NO_NDF {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
-}
+}*/
 
 // Error path: Failed auth
 func TestRegistrationImpl_PollFailAuth(t *testing.T) {
@@ -163,7 +157,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
-	state, err := storage.NewState(getTestKey(), "", "")
+	state, err := storage.NewState(getTestKey(), 8, "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -194,7 +188,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	dummyMessage := &pb.PermissioningPoll{}
 
-	_, err = impl.Poll(dummyMessage, testAuth, "0.0.0.0:11420")
+	_, err = impl.Poll(dummyMessage, testAuth)
 	if err == nil || err.Error() != connect.AuthError(testAuth.Sender.GetId()).Error() {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
@@ -218,12 +212,12 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	storage.PopulateNodeRegistrationCodes(infos)
 
 	RegParams = testParams
-	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-	RegParams.udbId = udbId
+	udbId := id.NewIdFromUInt(5, id.User, t)
+	RegParams.udbId = udbId.Marshal()
 	RegParams.minimumNodes = 3
-	fmt.Println("-A")
+	RegParams.disableNDFPruning = true
 	// Start registration server
-	impl, err := StartRegistration(RegParams, nil)
+	impl, err := StartRegistration(RegParams)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -269,20 +263,19 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	}
 
 	l.Lock()
-	observedNDFBytes, err := impl.PollNdf(nil, &connect.Auth{})
+	observedNDFBytes, err := impl.PollNdf(nil)
 	l.Unlock()
 	if err != nil {
 		t.Errorf("failed to update ndf: %v", err)
 	}
 
-	observedNDF, _, err := ndf.DecodeNDF(string(observedNDFBytes))
+	observedNDF, err := ndf.Unmarshal(observedNDFBytes)
 	if err != nil {
 		t.Errorf("Could not decode ndf: %v\nNdf output: %s", err,
 			string(observedNDFBytes))
 	}
 
-	fmt.Printf("\n\n\nndf: %v\n\n\n", observedNDF.Nodes)
-	if bytes.Compare(observedNDF.UDB.ID, udbId) != 0 {
+	if bytes.Compare(observedNDF.UDB.ID, udbId.Marshal()) != 0 {
 		t.Errorf("Failed to set udbID. Expected: %v, \nRecieved: %v, \nNdf: %+v",
 			udbId, observedNDF.UDB.ID, observedNDF)
 	}
@@ -311,12 +304,12 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 	//Setup udb configurations
-	udbId := []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4}
-	RegParams.udbId = udbId
+	udbId := id.NewIdFromUInt(5, id.User, t)
+	RegParams.udbId = udbId.Marshal()
 	RegParams.minimumNodes = 3
-
+	RegParams.disableNDFPruning = true
 	// Start registration server
-	impl, err := StartRegistration(testParams, nil)
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -335,7 +328,7 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Make a client ndf hash that is not up to date
 	clientNdfHash := []byte("test")
 
-	_, err = impl.PollNdf(clientNdfHash, &connect.Auth{})
+	_, err = impl.PollNdf(clientNdfHash)
 	if err == nil {
 		t.Error("Expected error path, should not have an ndf ready")
 	}
@@ -358,7 +351,8 @@ func TestPoll_BannedNode(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	impl, err := StartRegistration(testParams, nil)
+	testParams.disableNDFPruning = true
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
 	}
@@ -409,7 +403,7 @@ func TestPoll_BannedNode(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	_, err = impl.Poll(testMsg, testAuth, "")
+	_, err = impl.Poll(testMsg, testAuth)
 	if err != nil {
 		return
 	}
@@ -879,20 +873,14 @@ func TestVerifyError(t *testing.T) {
 	}
 
 	// Read in private key
-	key, err := utils.ReadFile(testkeys.GetCAKeyPath())
-	if err != nil {
-		t.Errorf("failed to read key at %+v: %+v",
-			testkeys.GetCAKeyPath(), err)
-	}
-
-	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	pk, err := testutils.LoadPrivateKeyTesting(t)
 	if err != nil {
 		t.Errorf("Failed to parse permissioning server key: %+v. "+
 			"PermissioningKey is %+v", err, pk)
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk, "", "")
+	state, err := storage.NewState(pk, 8, "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -904,6 +892,7 @@ func TestVerifyError(t *testing.T) {
 		params: &Params{
 			minGatewayVersion: testVersion,
 			minServerVersion:  testVersion,
+			disableNDFPruning: true,
 		},
 		Comms: &registration.Comms{
 			ProtoComms: &connect.ProtoComms{
@@ -945,50 +934,11 @@ func TestVerifyError(t *testing.T) {
 	_ = nsm.AddNode(errNodeId, "", "", "", 0)
 	n := nsm.GetNode(errNodeId)
 	rsm := round.NewStateMap()
-	s, _ := rsm.AddRound(id.Round(0), 4, 5*time.Minute, connect.NewCircuit([]*id.ID{errNodeId}))
+	s, _ := rsm.AddRound(id.Round(0), 4, 8, 5*time.Minute, connect.NewCircuit([]*id.ID{errNodeId}))
 	_ = n.SetRound(s)
 
 	err = verifyError(msg, n, impl)
 	if err != nil {
 		t.Error("Failed to verify error")
-	}
-}
-
-// Tests that updateGatewayAdvertisedAddress() returns the gatewayAddress when
-// no replacements need to be made.
-func TestUpdateGatewayAdvertisedAddress(t *testing.T) {
-	gatewayAddress := "0.0.0.0:22840"
-	nodeAddress := "192.168.1.1:11420"
-
-	testAddress, err := updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress)
-
-	if err != nil {
-		t.Errorf("updateGatewayAdvertisedAddress() produced an unexpected error."+
-			"\n\texpected: %v\n\treceived: %v", nil, err)
-	}
-
-	if testAddress != gatewayAddress {
-		t.Errorf("updateGatewayAdvertisedAddress() did not return the correct address."+
-			"\n\texpected: %v\n\treceived: %v", gatewayAddress, testAddress)
-	}
-}
-
-// Tests that updateGatewayAdvertisedAddress() returns the nodeAddress with the
-// gatewayAddress port when the gatewayReplaceIpPlaceholder is used.
-func TestUpdateGatewayAdvertisedAddress_Update(t *testing.T) {
-	gatewayAddress := gatewayReplaceIpPlaceholder + ":22840"
-	nodeAddress := "192.168.1.1:11420"
-	expectedAddress := "192.168.1.1:22840"
-
-	testAddress, err := updateGatewayAdvertisedAddress(gatewayAddress, nodeAddress)
-
-	if err != nil {
-		t.Errorf("updateGatewayAdvertisedAddress() produced an unexpected error."+
-			"\n\texpected: %v\n\treceived: %v", nil, err)
-	}
-
-	if testAddress != expectedAddress {
-		t.Errorf("updateGatewayAdvertisedAddress() did not return the correct address."+
-			"\n\texpected: %v\n\treceived: %v", expectedAddress, testAddress)
 	}
 }

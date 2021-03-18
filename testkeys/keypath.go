@@ -55,6 +55,10 @@ func GetNDFPath() string {
 	return filepath.Join(getDirForFile(), "ndf.json")
 }
 
+func GetUdbCertPath() string {
+	return filepath.Join(getDirForFile(), "udb.crt")
+}
+
 func GetClientPublicKey() string {
 	return filepath.Join(getDirForFile(), "cmix.public_key.pem")
 }

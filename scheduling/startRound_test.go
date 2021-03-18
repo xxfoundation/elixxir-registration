@@ -7,12 +7,12 @@ package scheduling
 
 import (
 	"crypto/rand"
-	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/xx_network/crypto/signature/rsa"
+	"gitlab.com/xx_network/primitives/id"
 	"testing"
 )
 
@@ -29,9 +29,15 @@ func TestStartRound(t *testing.T) {
 		NodeCleanUpInterval: 3,
 	}
 
+	var err error
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -91,9 +97,15 @@ func TestStartRound_BadState(t *testing.T) {
 		NodeCleanUpInterval: 3,
 	}
 
+	var err error
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -160,7 +172,7 @@ func TestStartRound_BadNode(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

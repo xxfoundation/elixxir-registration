@@ -4,7 +4,8 @@
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-// Handles the database ORM for clients
+// Handles the DatabaseImpl for client-related functionality
+//+build !stateless
 
 package storage
 
@@ -14,20 +15,20 @@ import (
 )
 
 // Inserts client registration code with given number of uses
-func (m *DatabaseImpl) InsertClientRegCode(code string, uses int) error {
+func (d *DatabaseImpl) InsertClientRegCode(code string, uses int) error {
 	jww.INFO.Printf("Inserting code %s, %d uses remaining", code, uses)
-	return m.db.Create(&RegistrationCode{
+	return d.db.Create(&RegistrationCode{
 		Code:          code,
 		RemainingUses: uses,
 	}).Error
 }
 
 // If client registration code is valid, decrements remaining uses
-func (m *DatabaseImpl) UseCode(code string) error {
+func (d *DatabaseImpl) UseCode(code string) error {
 	// Look up given registration code
 	regCode := RegistrationCode{}
 	jww.INFO.Printf("Attempting to use code %s...", code)
-	err := m.db.First(&regCode, "code = ?", code).Error
+	err := d.db.First(&regCode, "code = ?", code).Error
 	if err != nil {
 		// Unable to find code, return error
 		return err
@@ -40,7 +41,7 @@ func (m *DatabaseImpl) UseCode(code string) error {
 
 	// Decrement remaining uses by one
 	regCode.RemainingUses -= 1
-	err = m.db.Save(&regCode).Error
+	err = d.db.Save(&regCode).Error
 	if err != nil {
 		return err
 	}
@@ -50,17 +51,18 @@ func (m *DatabaseImpl) UseCode(code string) error {
 	return nil
 }
 
-// Gets User from the database
-func (m *DatabaseImpl) GetUser(publicKey string) (*User, error) {
+// Gets User from the Database
+func (d *DatabaseImpl) GetUser(publicKey string) (*User, error) {
 	user := &User{}
-	result := m.db.First(&user, "public_key = ?", publicKey)
+	result := d.db.First(&user, "public_key = ?", publicKey)
 	return user, result.Error
 }
 
-// Inserts User into the database
-func (m *DatabaseImpl) InsertUser(publicKey string) error {
+// Inserts User into the Database
+func (d *DatabaseImpl) InsertUser(publicKey, receptionKey string) error {
 	user := &User{
-		PublicKey: publicKey,
+		PublicKey:    publicKey,
+		ReceptionKey: receptionKey,
 	}
-	return m.db.Create(user).Error
+	return d.db.Create(user).Error
 }

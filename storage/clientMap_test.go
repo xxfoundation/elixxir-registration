@@ -101,12 +101,12 @@ func TestMapImpl_UseCode_Invalid(t *testing.T) {
 // Happy path
 func TestMapImpl_InsertUser(t *testing.T) {
 	m := &MapImpl{
-		users: make(map[string]bool),
+		users: make(map[string]string),
 	}
 
 	testKey := "TEST"
-	_ = m.InsertUser(testKey)
-	if !m.users[testKey] {
+	_ = m.InsertUser(testKey, testKey)
+	if _, ok := m.users[testKey]; !ok {
 		t.Errorf("Insert failed to add the user!")
 	}
 }
@@ -114,11 +114,11 @@ func TestMapImpl_InsertUser(t *testing.T) {
 // Happy path
 func TestMapImpl_GetUser(t *testing.T) {
 	m := &MapImpl{
-		users: make(map[string]bool),
+		users: make(map[string]string),
 	}
 
 	testKey := "TEST"
-	m.users[testKey] = true
+	m.users[testKey] = testKey
 
 	user, err := m.GetUser(testKey)
 	if err != nil || user.PublicKey != testKey {
@@ -129,7 +129,7 @@ func TestMapImpl_GetUser(t *testing.T) {
 // Get user that does not exist
 func TestMapImpl_GetUserNotExists(t *testing.T) {
 	m := &MapImpl{
-		users: make(map[string]bool),
+		users: make(map[string]string),
 	}
 
 	testKey := "TEST"

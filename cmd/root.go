@@ -16,12 +16,14 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
+	"gitlab.com/elixxir/client/interfaces/contact"
 	"gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/utils"
 	"net"
 	"os"
 	"path"
@@ -42,6 +44,10 @@ var (
 	clientVersionLock    sync.RWMutex
 	disablePermissioning bool
 	disabledNodesPath    string
+
+	// Storage of registration codes from file so it can be loaded from disableRegCodes
+	regCodeInfos    []node.Info
+	disableRegCodes bool
 
 	// Duration between polls of the disabled Node list for updates.
 	disabledNodesPollDuration time.Duration
@@ -76,22 +82,10 @@ var rootCmd = &cobra.Command{
 		ndfOutputPath := viper.GetString("ndfOutputPath")
 		setClientVersion(viper.GetString("clientVersion"))
 		ipAddr := viper.GetString("publicAddress")
-		//Get Notification Server address and cert Path
+		// Get Notification Server address and cert Path
 		nsCertPath := viper.GetString("nsCertPath")
 		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
-		roundIdPath := viper.GetString("roundIdPath")
-		updateIdPath := viper.GetString("updateIdPath")
-
-		maxRegistrationAttempts := viper.GetUint64("maxRegistrationAttempts")
-		if maxRegistrationAttempts == 0 {
-			maxRegistrationAttempts = defaultMaxRegistrationAttempts
-		}
-
-		registrationCountDuration := viper.GetDuration("registrationCountDuration")
-		if registrationCountDuration == 0 {
-			registrationCountDuration = defaultRegistrationCountDuration
-		}
 
 		// Set up database connection
 		rawAddr := viper.GetString("dbAddress")
@@ -119,7 +113,7 @@ var rootCmd = &cobra.Command{
 		// Populate Node registration codes into the database
 		RegCodesFilePath := viper.GetString("regCodesFilePath")
 		if RegCodesFilePath != "" {
-			regCodeInfos, err := node.LoadInfo(RegCodesFilePath)
+			regCodeInfos, err = node.LoadInfo(RegCodesFilePath)
 			if err != nil {
 				jww.ERROR.Printf("Failed to load registration codes from the "+
 					"file %s: %+v", RegCodesFilePath, err)
@@ -134,10 +128,14 @@ var rootCmd = &cobra.Command{
 		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
 		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
-		udbId := make([]byte, 32)
-		udbId[len(udbId)-1] = byte(viper.GetInt("udbID"))
+		// Get user discovery ID and DH public key from contact file
+		udbId, udbDhPubKey := readUdContact(viper.GetString("udContactPath"))
 
-		//load the scheduling params file as a string
+		// Get UDB cert path and address
+		udbCertPath := viper.GetString("udbCertPath")
+		udbAddress := viper.GetString("udbAddress")
+
+		// load the scheduling params file as a string
 		SchedulingConfigPath := viper.GetString("schedulingConfigPath")
 		SchedulingConfig, err := utils.ReadFile(SchedulingConfigPath)
 		if err != nil {
@@ -159,6 +157,13 @@ var rootCmd = &cobra.Command{
 				minServerVersionString, err)
 		}
 
+		minClientVersionString := viper.GetString("minClientVersion")
+		minClientVersion, err := version.ParseVersion(minClientVersionString)
+		if err != nil {
+			jww.FATAL.Panicf("Could not parse minClientVersion %#v: %+v",
+				minClientVersionString, err)
+		}
+
 		// Get the amount of time to wait for scheduling to end
 		// This should default to 10 seconds in StartRegistration if not set
 		schedulingKillTimeout, err := time.ParseDuration(
@@ -176,35 +181,56 @@ var rootCmd = &cobra.Command{
 
 		disableGatewayPing := viper.GetBool("disableGatewayPing")
 
+		userRegLeakPeriodString := viper.GetString("userRegLeakPeriod")
+		var userRegLeakPeriod time.Duration
+		if userRegLeakPeriodString != "" {
+			// specified, so try to parse
+			userRegLeakPeriod, err = time.ParseDuration(userRegLeakPeriodString)
+			if err != nil {
+				jww.FATAL.Panicf("Could not parse duration: %+v", err)
+			}
+		} else {
+			// use default
+			userRegLeakPeriod = time.Hour * 24
+		}
+		userRegCapacity := viper.GetUint32("userRegCapacity")
+		if userRegCapacity == 0 {
+			// use default
+			userRegCapacity = 1000
+		}
+
 		// Populate params
 		RegParams = Params{
-			Address:                   localAddress,
-			CertPath:                  certPath,
-			KeyPath:                   keyPath,
-			NdfOutputPath:             ndfOutputPath,
-			cmix:                      *cmix,
-			e2e:                       *e2e,
-			publicAddress:             publicAddress,
-			NsAddress:                 nsAddress,
-			NsCertPath:                nsCertPath,
-			maxRegistrationAttempts:   maxRegistrationAttempts,
-			registrationCountDuration: registrationCountDuration,
-			schedulingKillTimeout:     schedulingKillTimeout,
-			closeTimeout:              closeTimeout,
-			udbId:                     udbId,
-			minimumNodes:              viper.GetUint32("minimumNodes"),
-			minGatewayVersion:         minGatewayVersion,
-			minServerVersion:          minServerVersion,
-			roundIdPath:               roundIdPath,
-			updateIdPath:              updateIdPath,
-			disableGatewayPing:        disableGatewayPing,
+			Address:               localAddress,
+			CertPath:              certPath,
+			KeyPath:               keyPath,
+			NdfOutputPath:         ndfOutputPath,
+			cmix:                  *cmix,
+			e2e:                   *e2e,
+			publicAddress:         publicAddress,
+			NsAddress:             nsAddress,
+			NsCertPath:            nsCertPath,
+			schedulingKillTimeout: schedulingKillTimeout,
+			closeTimeout:          closeTimeout,
+			udbId:                 udbId,
+			udbDhPubKey:           udbDhPubKey,
+			udbCertPath:           udbCertPath,
+			udbAddress:            udbAddress,
+			minimumNodes:          viper.GetUint32("minimumNodes"),
+			minGatewayVersion:     minGatewayVersion,
+			minServerVersion:      minServerVersion,
+			minClientVersion:      minClientVersion,
+			disableGatewayPing:    disableGatewayPing,
+			userRegLeakPeriod:     userRegLeakPeriod,
+			userRegCapacity:       userRegCapacity,
+			addressSpace:          viper.GetUint32("addressSpace"),
+			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
 
 		// Start registration server
-		quitRegistrationCapacity := make(chan bool)
-		impl, err := StartRegistration(RegParams, quitRegistrationCapacity)
+		impl, err := StartRegistration(RegParams)
 		if err != nil {
 			jww.FATAL.Panicf(err.Error())
 		}
@@ -252,7 +278,7 @@ var rootCmd = &cobra.Command{
 				select {
 				// Wait for the ticker to fire
 				case <-nodeTicker.C:
-
+					var toPrune []*id.ID
 					// Iterate over the Node States
 					nodeStates := impl.State.GetNodeMap().GetNodeStates()
 					for _, nodeState := range nodeStates {
@@ -266,11 +292,26 @@ var rootCmd = &cobra.Command{
 							NumPings:  nodeState.GetAndResetNumPolls(),
 						}
 
+						//set the node to prune if it has not contacted
+						if metric.NumPings == 0 {
+							toPrune = append(toPrune, nodeState.GetID())
+						}
+
 						// Store the NodeMetric
 						err := storage.PermissioningDb.InsertNodeMetric(metric)
 						if err != nil {
 							jww.FATAL.Panicf(
 								"Unable to store node metric: %+v", err)
+						}
+					}
+
+					if !RegParams.disableNDFPruning {
+						jww.DEBUG.Printf("Setting %d pruned nodes", len(toPrune))
+						impl.State.SetPrunedNodes(toPrune)
+						err := impl.State.UpdateNdf(impl.State.GetUnprunedNdf())
+						if err != nil {
+							jww.ERROR.Printf("Failed to regenerate the " +
+								"NDF after changing pruning")
 						}
 					}
 				}
@@ -326,12 +367,6 @@ var rootCmd = &cobra.Command{
 				jww.INFO.Printf("stopped!\n")
 			case <-time.After(closeTimeout):
 				jww.ERROR.Print("couldn't stop round creation!")
-			}
-
-			// Try a non-blocking send for the registration capacity
-			select {
-			case quitRegistrationCapacity <- true:
-			default:
 			}
 
 			bannedNodeTrackerQuitChan <- struct{}{}
@@ -412,13 +447,16 @@ func init() {
 	rootCmd.Flags().BoolVar(&noTLS, "noTLS", false,
 		"Runs without TLS enabled")
 
+	rootCmd.Flags().BoolVar(&disableRegCodes, "disableRegCodes", false,
+		"Automatically provide registration codes to Nodes. (For testing only)")
+
 	rootCmd.Flags().StringP("close-timeout", "t", "60s",
-		("Amount of time to wait for rounds to stop running after" +
-			" receiving the SIGUSR1 and SIGTERM signals"))
+		"Amount of time to wait for rounds to stop running after"+
+			" receiving the SIGUSR1 and SIGTERM signals")
 
 	rootCmd.Flags().StringP("kill-timeout", "k", "60s",
-		("Amount of time to wait for round creation to stop after" +
-			" receiving the SIGUSR2 and SIGTERM signals"))
+		"Amount of time to wait for round creation to stop after"+
+			" receiving the SIGUSR2 and SIGTERM signals")
 
 	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
 		false, "Disables registration server checking for ndf updates")
@@ -435,11 +473,25 @@ func init() {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}
 
+	err = viper.BindPFlag("schedulingKillTimeout",
+		rootCmd.Flags().Lookup("kill-timeout"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
+
+	rootCmd.Flags().String("udContactPath", "",
+		"Location of the user discovery contact file.")
+
+	err = viper.BindPFlag("udContactPath", rootCmd.Flags().Lookup("udContactPath"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
+
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	//Use default config location if none is passed
+	// Use default config location if none is passed
 	if cfgFile == "" {
 		// Find home directory.
 		home, err := homedir.Dir()
@@ -556,11 +608,39 @@ func initLog() {
 
 		// Create log file, overwrites if existing
 		logPath := viper.GetString("logPath")
-		logFile, err := os.Create(logPath)
+		fullLogPath, _ := utils.ExpandPath(logPath)
+		logFile, err := os.OpenFile(fullLogPath,
+			os.O_CREATE|os.O_WRONLY|os.O_APPEND,
+			0644)
 		if err != nil {
 			jww.WARN.Println("Invalid or missing log path, default path used.")
 		} else {
 			jww.SetLogOutput(logFile)
 		}
 	}
+}
+
+// readUdContact reads and unmarshal the contact from file and returns the
+// marshaled ID and DH public key.
+func readUdContact(filePath string) ([]byte, []byte) {
+	if filePath == "" {
+		return nil, nil
+	}
+
+	data, err := utils.ReadFile(filePath)
+	if err != nil {
+		jww.FATAL.Panicf("Failed to read contact file: %+v", err)
+	}
+
+	c, err := contact.Unmarshal(data)
+	if err != nil {
+		jww.FATAL.Panicf("Failed to unmarshal contact: %+v", err)
+	}
+
+	dhPubKeyJson, err := c.DhPubKey.MarshalJSON()
+	if err != nil {
+		jww.FATAL.Panicf("Failed to marshal contact DH public key: %+v", err)
+	}
+
+	return c.ID.Marshal(), dhPubKeyJson
 }

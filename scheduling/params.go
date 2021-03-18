@@ -8,9 +8,9 @@ package scheduling
 // Contains the scheduling params object and the internal protoround object
 
 import (
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/primitives/id"
 	"time"
 )
 

@@ -8,11 +8,11 @@ package cmd
 import (
 	"crypto/rand"
 	"fmt"
-	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
+	"gitlab.com/xx_network/crypto/signature/rsa"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
 	"sync"
 	"testing"
 )
@@ -28,7 +28,7 @@ func TestBannedNodeTracker(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, "", "")
+	testState, err := storage.NewState(privKey, 8, "")
 	impl := &RegistrationImpl{
 		State:   testState,
 		NDFLock: sync.Mutex{},
@@ -47,7 +47,7 @@ func TestBannedNodeTracker(t *testing.T) {
 	// Create an active and banned node
 	bannedNode := createNode(testState, "0", "AAA", 10, node.Banned, t)
 	activeNode := createNode(testState, "1", "BBB", 20, node.Active, t)
-	curDef := testState.GetFullNdf().Get()
+	curDef := testState.GetUnprunedNdf()
 	curDef.Nodes = append(curDef.Nodes, ndf.Node{
 		ID:             bannedNode.Marshal(),
 		Address:        "",
@@ -64,14 +64,12 @@ func TestBannedNodeTracker(t *testing.T) {
 	}
 
 	// Clean out banned nodes
-	fmt.Println("1")
 	err = BannedNodeTracker(impl)
 	if err != nil {
 		t.Errorf("Error with node tracker: %v", err)
 	}
-	fmt.Println("2")
 
-	updatedDef := testState.GetFullNdf().Get()
+	updatedDef := testState.GetUnprunedNdf()
 	if len(updatedDef.Nodes) != 1 {
 		t.Error("Banned node tracker did not alter ndf")
 	}

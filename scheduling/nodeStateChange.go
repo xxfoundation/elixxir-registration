@@ -11,13 +11,13 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/crypto/signature"
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/xx_network/comms/signature"
+	"gitlab.com/xx_network/primitives/id"
 	"time"
 )
 
@@ -38,6 +38,9 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED && update.ToActivity != current.ERROR
 	if roundErrored {
 		return nil
+	}
+	if update.ClientErrors != nil && len(update.ClientErrors) > 0 {
+		r.AppendClientErrors(update.ClientErrors)
 	}
 	//ban the node if it is supposed to be banned
 	if update.ToStatus == node.Banned {
@@ -275,23 +278,7 @@ func killRound(state *storage.NetworkState, r *round.State,
 		jww.WARN.Printf("Could not insert round error: %+v", err)
 		err = nil
 	}
-
-	// fix a potential error case where a node crashes after the round is
-	// created but before it updates to precomputing and then gets stuck
-	topology := r.GetTopology()
-	for i := 0; i < topology.Len(); i++ {
-		nid := topology.GetNodeAtIndex(i)
-		n := state.GetNodeMap().GetNode(nid)
-		if n != nil {
-			if n.GetActivity() == current.WAITING {
-				hasRound, rNode := n.GetCurrentRound()
-				if hasRound && rNode.GetRoundID() == r.GetRoundID() {
-					n.ClearRound()
-					pool.Add(n)
-				}
-			}
-		}
-	}
+	state.GetNodeMap().GetNodeStates()
 
 	return err
 }

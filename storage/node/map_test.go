@@ -8,8 +8,8 @@ package node
 
 import (
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/xx_network/primitives/id"
 	"math/rand"
 	"strings"
 	"testing"

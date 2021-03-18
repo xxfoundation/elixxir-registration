@@ -10,9 +10,9 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/primitives/id"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/xx_network/comms/connect"
+	"gitlab.com/xx_network/primitives/id"
 	"math"
 	"sync"
 	"testing"
@@ -36,6 +36,9 @@ type State struct {
 	// List of round errors received from nodes
 	roundErrors []*pb.RoundError
 
+	// List of client errors received from nodes
+	clientErrors []*pb.ClientError
+
 	roundComplete chan struct{}
 
 	lastUpdate time.Time
@@ -44,7 +47,7 @@ type State struct {
 }
 
 //creates a round state object
-func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
+func newState(id id.Round, batchsize, addressSpaceSize uint32, resourceQueueTimeout time.Duration,
 	topology *connect.Circuit, pendingTs time.Time) *State {
 
 	strTopology := make([][]byte, topology.Len())
@@ -68,6 +71,7 @@ func newState(id id.Round, batchsize uint32, resourceQueueTimeout time.Duration,
 			Topology:                   strTopology,
 			Timestamps:                 timestamps,
 			ResourceQueueTimeoutMillis: uint32(resourceQueueTimeout),
+			AddressSpaceSize:           addressSpaceSize,
 		},
 		topology:           topology,
 		state:              states.PENDING,
@@ -147,6 +151,7 @@ func (s *State) BuildRoundInfo() *pb.RoundInfo {
 	defer s.mux.RUnlock()
 
 	s.base.Errors = s.roundErrors
+	s.base.ClientErrors = s.clientErrors
 	s.base.State = uint32(s.state)
 
 	return CopyRoundInfo(s.base)
@@ -182,6 +187,14 @@ func (s *State) AppendError(roundError *pb.RoundError) {
 	}
 
 	s.roundErrors = append(s.roundErrors, roundError)
+}
+
+// Append a round error to our list of stored rounderrors
+func (s *State) AppendClientErrors(clientErrors []*pb.ClientError) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	s.clientErrors = append(s.clientErrors, clientErrors...)
 }
 
 //returns the channel used to stop the round timeout

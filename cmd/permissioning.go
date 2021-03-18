@@ -14,16 +14,14 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/crypto/signature/rsa"
-	"gitlab.com/elixxir/crypto/tls"
-	"gitlab.com/elixxir/crypto/xx"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
-	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
-	"strconv"
+	"gitlab.com/xx_network/crypto/signature/rsa"
+	"gitlab.com/xx_network/crypto/tls"
+	"gitlab.com/xx_network/crypto/xx"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
 	"sync/atomic"
 )
 
@@ -60,9 +58,19 @@ func (m *RegistrationImpl) CheckNodeRegistration(msg *mixmessages.RegisteredNode
 
 }
 
+// An atomic counter for which regcode we're using next, when disableRegCodes is enabled
+var curNodeReg = uint32(0)
+var curNodeRegPtr = &curNodeReg
+
 // Handle registration attempt by a Node
 func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, gatewayAddr,
 	gatewayTlsCert, registrationCode string) error {
+
+	// If disableRegCodes is set, we atomically increase curNodeReg and use the previous code in the sequence
+	if disableRegCodes {
+		regNum := atomic.AddUint32(curNodeRegPtr, 1)
+		registrationCode = regCodeInfos[regNum-1].RegCode
+	}
 
 	// Check that the node hasn't already been registered
 	nodeInfo, err := storage.PermissioningDb.GetNode(registrationCode)
@@ -91,7 +99,7 @@ func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, 
 		// Ensure that generated ID matches stored ID
 		// Ensure that salt is not already stored
 		if !bytes.Equal(nodeInfo.Id, nodeId.Marshal()) {
-			return errors.Errorf("Submitted salt %+v does not match stored salt: %+v", salt, nodeInfo.Salt)
+			return errors.Errorf("Generated ID %+v does not match stored ID: %+v", nodeId.Marshal(), nodeInfo.Id)
 
 		} else if len(nodeInfo.Salt) != 0 {
 			return errors.Errorf(
@@ -204,9 +212,8 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 	// Add the new node to the topology
 	m.NDFLock.Lock()
-	networkDef := m.State.GetFullNdf().Get()
-	gateway, n, order, err := assembleNdf(regCode)
-
+	networkDef := m.State.GetUnprunedNdf()
+	gateway, n, regTime, err := assembleNdf(regCode)
 	if err != nil {
 		m.NDFLock.Unlock()
 		err := errors.Errorf("unable to assemble topology: %+v", err)
@@ -214,18 +221,23 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
-	if order != -1 {
-		// fixme: consider removing. this allows clients to remain agnostic of teaming order
-		//  by forcing team order == ndf order for simple non-random
-		if order >= len(networkDef.Nodes) {
-			appendNdf(networkDef, order)
-		}
+	nodeID, err := id.Unmarshal(n.ID)
+	if err != nil {
+		m.NDFLock.Unlock()
+		return errors.WithMessage(err, "Error parsing node ID")
+	}
 
-		networkDef.Gateways[order] = gateway
-		networkDef.Nodes[order] = n
-	} else {
-		networkDef.Gateways = append(networkDef.Gateways, gateway)
-		networkDef.Nodes = append(networkDef.Nodes, n)
+	m.registrationTimes[*nodeID] = regTime
+	err = m.insertNdf(networkDef, gateway, n, regTime)
+	if err != nil {
+		m.NDFLock.Unlock()
+		return errors.WithMessage(err, "Failed to insert nodes in definition")
+	}
+
+	//set the node as pruned if pruning is not disabled to ensure they have
+	//to be online to get scheduled
+	if !m.params.disableNDFPruning {
+		m.State.SetPrunedNode(nodeID)
 	}
 
 	// update the internal state with the newly-updated ndf
@@ -233,14 +245,6 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	m.NDFLock.Unlock()
 	if err != nil {
 		return err
-	}
-
-	// Output the current topology to a JSON file
-	err = outputToJSON(networkDef, m.ndfOutputPath)
-	if err != nil {
-		err := errors.Errorf("unable to output NDF JSON file: %+v", err)
-		jww.ERROR.Print(err.Error())
-		return errors.Errorf("Could not complete registration: %+v", err)
 	}
 
 	// Kick off the network if the minimum number of nodes has been met
@@ -273,8 +277,33 @@ func appendNdf(definition *ndf.NetworkDefinition, order int) {
 
 }
 
+// Insert a node into the NDF, preserving ordering
+func (m *RegistrationImpl) insertNdf(definition *ndf.NetworkDefinition, g ndf.Gateway,
+	n ndf.Node, regTime int64) error {
+	var i int
+	for i = 0; i < len(definition.Nodes); i++ {
+		nid, err := id.Unmarshal(definition.Nodes[i].ID)
+		if err != nil {
+			return errors.Errorf("Could not unmarshal ID from definition: %+v", err)
+		}
+		cmpTime := m.registrationTimes[*nid]
+		if regTime < cmpTime {
+			break
+		}
+	}
+
+	if i == len(definition.Nodes) {
+		definition.Nodes = append(definition.Nodes, n)
+		definition.Gateways = append(definition.Gateways, g)
+	} else {
+		definition.Nodes = append(definition.Nodes[0:i], append([]ndf.Node{n}, definition.Nodes[i:]...)...)
+		definition.Gateways = append(definition.Gateways[0:i], append([]ndf.Gateway{g}, definition.Gateways[i:]...)...)
+	}
+	return nil
+}
+
 // Assemble information for the given registration code
-func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
+func assembleNdf(code string) (ndf.Gateway, ndf.Node, int64, error) {
 
 	// Get node information for each registration code
 	nodeInfo, err := storage.PermissioningDb.GetNode(code)
@@ -305,23 +334,5 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int, error) {
 		TlsCertificate: nodeInfo.GatewayCertificate,
 	}
 
-	order, err := strconv.Atoi(nodeInfo.Sequence)
-	if err != nil {
-		return gateway, n, -1, nil
-	}
-
-	return gateway, n, order, nil
-}
-
-// outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and
-// outputs it to the specified file path. An error is returned if the JSON
-// marshaling fails or if the JSON file cannot be created.
-func outputToJSON(ndfData *ndf.NetworkDefinition, filePath string) error {
-	// Generate JSON from structure
-	data, err := ndfData.Marshal()
-	if err != nil {
-		return err
-	}
-	// Write JSON to file
-	return utils.WriteFile(filePath, data, utils.FilePerms, utils.DirPerms)
+	return gateway, n, nodeInfo.DateRegistered.UnixNano(), nil
 }

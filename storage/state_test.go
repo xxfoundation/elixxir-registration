@@ -12,14 +12,16 @@ import (
 	"github.com/pkg/errors"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/network/dataStructures"
-	"gitlab.com/elixxir/crypto/signature"
-	"gitlab.com/elixxir/crypto/signature/rsa"
+	"gitlab.com/elixxir/comms/testkeys"
+	"gitlab.com/elixxir/comms/testutils"
 	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/ndf"
-	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
+	"gitlab.com/xx_network/comms/signature"
+	"gitlab.com/xx_network/crypto/signature/rsa"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/utils"
 	mrand "math/rand"
 	"os"
 	"reflect"
@@ -44,6 +46,11 @@ func TestNewState(t *testing.T) {
 		t.Fatalf("Failed to generate new NDF:\n%v", err)
 	}
 
+	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	// Generate private RSA key
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -51,7 +58,7 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, "", "")
+	state, err := NewState(privateKey, 8, "")
 	if err != nil {
 		t.Errorf("NewState() produced an unexpected error:\n%v", err)
 	}
@@ -104,6 +111,12 @@ func TestNewState_PrivateKeyError(t *testing.T) {
 		"signature: Unable to sign message: crypto/rsa: key size too small " +
 		"for PSS signature"
 
+	var err error
+	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	// Generate private RSA key
 	privateKey, err := rsa.GenerateKey(rand.Reader, 128)
 	if err != nil {
@@ -111,12 +124,12 @@ func TestNewState_PrivateKeyError(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, "", "")
+	state, err := NewState(privateKey, 8, "")
 
 	// Test NewState() output
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("NewState() did not produce an error when expected."+
-			"\n\texpected: %s\n\treceived: %s", expectedErr, err.Error())
+			"\n\texpected: %s\n\treceived: %s", expectedErr, err)
 	}
 	if state != nil {
 		t.Errorf("NewState() unexpedly produced a non-nil NetworkState when an error was produced."+
@@ -174,7 +187,7 @@ func TestNetworkState_GetPartialNdf(t *testing.T) {
 // Smoke test of GetUpdates() by adding rounds and then calling GetUpdates().
 func TestNetworkState_GetUpdates(t *testing.T) {
 	// Generate new NetworkState
-	state, _, err := generateTestNetworkState()
+	state, privKey, err := generateTestNetworkState()
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -186,10 +199,16 @@ func TestNetworkState_GetUpdates(t *testing.T) {
 			ID:       0,
 			UpdateID: uint64(3 + i),
 		}
-
-		err = state.roundUpdates.AddRound(roundInfo)
+		err = testutils.SignRoundInfo(roundInfo, t)
+		if err != nil {
+			t.Errorf("Failed to sign round info: %v", err)
+			t.FailNow()
+		}
+		rnd := dataStructures.NewRound(roundInfo, privKey.GetPublic())
+		err = state.roundUpdates.AddRound(rnd)
 		if err != nil {
 			t.Errorf("AddRound() produced an unexpected error:\n%+v", err)
+			t.FailNow()
 		}
 
 		expectedRoundInfo = append(expectedRoundInfo, roundInfo)
@@ -224,8 +243,6 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-
-	state.roundUpdateID.id = 1
 
 	// Call AddRoundUpdate()
 	err = state.AddRoundUpdate(testRoundInfo)
@@ -274,6 +291,11 @@ func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
 	expectedErr := "Could not add round update 1 for round 0 due to failed " +
 		"signature: Unable to sign message: crypto/rsa: key size too small for " +
 		"PSS signature"
+	var err error
+	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	// Generate new NetworkState
 	state, _, err := generateTestNetworkState()
@@ -485,31 +507,43 @@ func TestNetworkState_NodeUpdateNotification_Error(t *testing.T) {
 // key. Errors created by generating the key or NetworkState are returned.
 func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 	// Generate new private RSA key
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	keyPath := testkeys.GetNodeKeyPath()
+	keyData := testkeys.LoadFromPath(keyPath)
+
+	privKey, err := rsa.LoadPrivateKeyFromPem(keyData)
 	if err != nil {
-		return nil, privateKey, fmt.Errorf("Failed to generate private key:\n+%v", err)
+		return nil, privKey, errors.Errorf("Could not load public key: %v", err)
 	}
 
 	// Generate new NetworkState using the private key
-	state, err := NewState(privateKey, "", "")
+	state, err := NewState(privKey, 8, "")
 	if err != nil {
-		return state, privateKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
+		return state, privKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
 	}
 
-	return state, privateKey, nil
+	return state, privKey, nil
 }
 
 // Tests that IncrementRoundID() increments the ID correctly.
 func TestNetworkState_IncrementRoundID(t *testing.T) {
 	testID := uint64(9843)
+	var err error
+	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+		t.FailNow()
+	}
+	err = PermissioningDb.UpsertState(&State{
+		Key:   RoundIdKey,
+		Value: fmt.Sprintf("%d", testID),
+	})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
 	testPath := "testRoundID.txt"
 	incrementAmount := uint64(10)
-	testState := NetworkState{
-		roundID: &stateID{
-			id:   testID,
-			path: testPath,
-		},
-	}
+	testState := NetworkState{}
 
 	defer func() {
 		err := os.RemoveAll(testPath)
@@ -536,14 +570,27 @@ func TestNetworkState_IncrementRoundID(t *testing.T) {
 // Tests that GetRoundID() returns the correct value.
 func TestNetworkState_GetRoundID(t *testing.T) {
 	expectedID := id.Round(9843)
-	testState := NetworkState{
-		roundID: &stateID{
-			id:   uint64(expectedID),
-			path: "testRoundID.txt",
-		},
+
+	var err error
+	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+		t.FailNow()
+	}
+	err = PermissioningDb.UpsertState(&State{
+		Key:   RoundIdKey,
+		Value: fmt.Sprintf("%d", expectedID),
+	})
+	if err != nil {
+		t.Errorf(err.Error())
 	}
 
-	testID := testState.GetRoundID()
+	testState := NetworkState{}
+
+	testID, err := testState.GetRoundID()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
 
 	if expectedID != testID {
 		t.Errorf("GetRoundID() returned an incorrect ID."+

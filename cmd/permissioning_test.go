@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"gitlab.com/elixxir/primitives/id"
-	"gitlab.com/elixxir/primitives/utils"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
+	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/utils"
 	"testing"
 	"time"
 )
@@ -34,38 +34,48 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 
 	// Create a new ID and store a new active node into the database
 	activeNodeId := id.NewIdFromUInt(0, id.Node, t)
-	err = storage.PermissioningDb.RegisterNode(activeNodeId, []byte("test"), "AAAA", "0.0.0.0", string(crt),
+	err = storage.PermissioningDb.RegisterNode(activeNodeId, []byte("test1"), "AAAA", "0.0.0.0", string(crt),
+		"0.0.0.0", string(crt))
+	if err != nil {
+		t.Error(err)
+	}
+	time.Sleep(1)
+
+	// Create a new ID and store a new *banned* node into the database
+	bannedNodeId := id.NewIdFromUInt(1, id.Node, t)
+	err = storage.PermissioningDb.RegisterNode(bannedNodeId, []byte("test2"), "BBBB", "0.0.0.0", string(crt),
+		"0.0.0.0", string(crt))
+	if err != nil {
+		t.Error(err)
+	}
+	time.Sleep(1)
+
+	// Create a new ID and store a new *banned* node into the database
+	altNodeID := id.NewIdFromString("alt", id.Node, t)
+	err = storage.PermissioningDb.RegisterNode(altNodeID, []byte("test3"), "CCCC", "0.0.0.0", string(crt),
 		"0.0.0.0", string(crt))
 	if err != nil {
 		t.Error(err)
 	}
 
-	// Create a new ID and store a new *banned* node into the database
-	bannedNodeId := id.NewIdFromUInt(1, id.Node, t)
-	err = storage.PermissioningDb.RegisterNode(bannedNodeId, []byte("test"), "BBBB", "0.0.0.0", string(crt),
-		"0.0.0.0", string(crt))
-	if err != nil {
-		t.Error(err)
-	}
-	permissioningMap := storage.PermissioningDb.NodeRegistration.(*storage.MapImpl)
+	permissioningMap := storage.PermissioningDb.GetMapImpl(t)
 	err = permissioningMap.BannedNode(bannedNodeId, t)
 	if err != nil {
 		t.Error(err)
 	}
 	//endregion
-
 	//region Test code
 	// Create params for test registration server
 	testParams := Params{
-		CertPath:                  testkeys.GetCACertPath(),
-		KeyPath:                   testkeys.GetCAKeyPath(),
-		NdfOutputPath:             testkeys.GetNDFPath(),
-		maxRegistrationAttempts:   5,
-		registrationCountDuration: time.Hour,
+		CertPath:          testkeys.GetCACertPath(),
+		KeyPath:           testkeys.GetCAKeyPath(),
+		NdfOutputPath:     testkeys.GetNDFPath(),
+		udbCertPath:       testkeys.GetUdbCertPath(),
+		disableNDFPruning: true,
 	}
-	bc := make(chan bool, 1)
+
 	// Start registration server
-	impl, err := StartRegistration(testParams, bc)
+	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Error(err)
 	}
@@ -95,34 +105,51 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	if !hmBannedNode.GetId().Cmp(bannedNodeId) {
 		t.Error("Unexpected node ID for node 0:\r\tGot: %i\r\tExpected: %i", hmBannedNode.GetId(), bannedNodeId)
 	}
-	//endregion
 
 	//region Node map checking
 	// Check that the nodes were added to the node map
+	expected_nodes := 3
 	nodeMapNodes := impl.State.GetNodeMap().GetNodeStates()
-	if len(nodeMapNodes) != 2 {
-		t.Errorf("Unexpected number of nodes found in node map:\r\tGot: %d\r"+
-			"\tExpected: %d", len(nodeMapNodes), 2)
+	if len(nodeMapNodes) != expected_nodes {
+		t.Errorf("Unexpected number of nodes found in node map:\n\tGot: %d\n"+
+			"\tExpected: %d", len(nodeMapNodes), expected_nodes)
 	}
-
-	if !nodeMapNodes[0].GetID().Cmp(activeNodeId) {
-		t.Errorf("Unexpected node ID for node 0:\r\tGot: %d\r\tExpected: %d",
+	def := impl.State.GetUnprunedNdf()
+	id0, err := id.Unmarshal(def.Nodes[0].ID)
+	if err != nil {
+		t.Error("Failed to unmarshal ID")
+	}
+	if !id0.Cmp(activeNodeId) {
+		t.Errorf("Unexpected node ID for node 0:\n\tGot: %d\n\tExpected: %d",
 			nodeMapNodes[0].GetID(), activeNodeId)
 	}
 
-	if !nodeMapNodes[1].GetID().Cmp(bannedNodeId) {
-		t.Errorf("Unexpected node ID for node 1:\r\tGot: %d\r\tExpected: %d",
+	id1, err := id.Unmarshal(def.Nodes[1].ID)
+	if err != nil {
+		t.Error("Failed to unmarshal ID")
+	}
+	if !id1.Cmp(bannedNodeId) {
+		t.Errorf("Unexpected node ID for node 1:\n\tGot: %d\n\tExpected: %d",
 			nodeMapNodes[1].GetID(), bannedNodeId)
 	}
 
-	if nodeMapNodes[0].GetStatus() != node.Active {
-		t.Errorf("Unexpected status for node 0:\r\tGot: %s\r\tExpected: %s",
-			nodeMapNodes[0].GetStatus().String(), node.Banned.String())
+	id2, err := id.Unmarshal(def.Nodes[2].ID)
+	if err != nil {
+		t.Error("Failed to unmarshal ID")
+	}
+	if !id2.Cmp(altNodeID) {
+		t.Errorf("Unexpected node ID for node 2:\n\tGot: %d\n\tExpected: %d",
+			nodeMapNodes[2].GetID(), altNodeID)
 	}
 
-	if nodeMapNodes[1].GetStatus() != node.Banned {
-		t.Errorf("Unexpected status for node 1:\r\tGot: %s\r\tExpected: %s",
-			nodeMapNodes[1].GetStatus().String(), node.Banned.String())
+	banned := 0
+	for _, n := range nodeMapNodes {
+		if n.GetStatus() == node.Banned {
+			banned++
+		}
+	}
+	if banned != 1 {
+		t.Error("Should only be one banned node")
 	}
 	//endregion
 

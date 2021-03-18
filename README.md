@@ -10,29 +10,33 @@ cMix
 # Permissioning Server Configuration
 # ==================================
 
-# Log message level
+# Log message level (0 = info, 1 = debug, >1 = trace)
 logLevel: 1
+
 # Path to log file
 logPath: "registration.log"
+
 # Path to the node topology permissioning info
 ndfOutputPath: "ndf.json"
-# Minimum number of nodes to begin running rounds. this differs from the number of members 
-# in a team because some scheduling algorithms may require multiple teams worth of nodes at minimum
+
+# Minimum number of nodes to begin running rounds. This differs from the number
+# of members in a team because some scheduling algorithms may require multiple
+# teams worth of nodes at minimum.
 minimumNodes: 3
 
-# Path to the file containing the round ID
-roundIdPath: "roundId.txt"
+# "Location of the user discovery contact file.
+udContactPath: "udContact.bin"
 
-# Path to the file containing the update ID
-updateIdPath: "updateId.txt"
+# Path to UDB cert file
+udbCertPath: "udb.crt"
 
-# UDB ID
-udbID: 1
+# Address for UDB
+udbAddress: "1.2.3.4:11420"
 
 # Public address, used in NDF it gives to client
-publicAdress: "0.0.0.0:11420"
+publicAddress: "0.0.0.0:11420"
 
-# The listening port of this  server
+# The listening port of this server
 port: 11420
 
 # The minimum version required of gateways to connect
@@ -41,8 +45,15 @@ minGatewayVersion: "0.0.0"
 # The minimum version required of servers to connect
 minServerVersion:  "0.0.0"
 
+# The minimum version required of clients to connect
+minClientVersion: "0.0.0"
+
 # Disable pinging of Gateway public IP address.
 disableGatewayPing: false
+
+# Disable pruning of NDF for offline nodes
+# if set to false, network will sleep for five minutes on start
+disableNDFPruning: true
 
 # Database connection information
 dbUsername: "cmix"
@@ -52,7 +63,7 @@ dbAddress: ""
 
 # Path to JSON file with list of Node registration codes (in order of network 
 # placement)
-RegCodesFilePath: "regCodes.json"
+regCodesFilePath: "regCodes.json"
 
 # List of client codes to be added to the database (for testing)
 clientRegCodes:
@@ -64,8 +75,7 @@ clientRegCodes:
 # Client version (will allow all versions with major version 0)
 clientVersion: "0.0.0"
 
-# The duration between polling the disabled Node list for updates. Optional.
-# Defaults to 1m.
+# The duration between polling the disabled Node list for updates (Default 1m)
 disabledNodesPollDuration: 1m
 
 # Path to the text file with a list of IDs of disabled Nodes. If no path is,
@@ -81,8 +91,7 @@ certPath: ""
 # Time interval (in seconds) between committing Node statistics to storage
 nodeMetricInterval: 180
 
-# Time interval (in minutes) in which the database is 
-# checked for banned nodes
+# Time interval (in minutes) in which the database is checked for banned nodes
 BanTrackerInterval: "3"
 
 # E2E/CMIX Primes
@@ -94,20 +103,27 @@ groups:
     prime: "${e2e_prime}"
     generator: "${e2e_generator}"
 
-# Selection of scheduling algorithm to use. Options are:
-#   simple - Schedules multiple teams to maximize performance, does not randomly re-arrange teams, if only a single
-#            only scheduling a single team, will use numerical ordering data for AlphaNet
-#   secure - Schedules new teams randomly, has appropriate buffers to ensure
-# unpredictability, designed for BetaNet
-schedulingAlgorithm: "single"
-
 # Path to file with config for scheduling algorithm within the user directory 
 schedulingConfigPath: "Scheduling_Simple_NonRandom.json"
 
-# Time that the registration server waits before timing out while killing the round scheduling thread
+# Time that the registration server waits before timing out while killing the
+# round scheduling thread
 schedulingKillTimeout: 10s
 # Time the registration waits for rounds to close out and stop (optional)
 closeTimeout: 60s
+
+# Address of the notification server
+nsAddress: ""
+# Path to certificate for the notification server
+nsCertPath: ""
+
+# Maximum number of connections per period
+userRegCapacity: 1000
+# How often the number of connections is reset
+userRegLeakPeriod: "24h"
+
+# The size of the address space used for ephemeral IDs
+addressSpace: 10
 ```
 
 ### SchedulingConfig template:
