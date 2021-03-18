@@ -228,13 +228,25 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 			}
 		}
 
+		update := false
+
 		if len(remainingNodes) != len(def.Nodes) {
 			def.Nodes = remainingNodes
+			update = true
+		}
+
+		if len(remainingGateways) != len(def.Gateways) {
+			def.Gateways = remainingGateways
+			update = true
+		}
+
+		if update{
 			err = state.UpdateNdf(def)
 			if err != nil {
 				return errors.WithMessage(err, "Failed to update NDF after bans")
 			}
 		}
+
 
 		// Get the node from the nodeMap
 		ns := state.GetNodeMap().GetNode(nodeId)
