@@ -42,11 +42,18 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		return response, connect.AuthError(auth.Sender.GetId())
 	}
 
+	// Check for correct version
+	err := checkVersion(m.params.minGatewayVersion, m.params.minServerVersion,
+		msg)
+	if err != nil {
+		return response, err
+	}
+
 	// Get the nodeState and update
 	nid := auth.Sender.GetId()
 	n := m.State.GetNodeMap().GetNode(nid)
 	if n == nil {
-		err := errors.Errorf("Node %s could not be found in internal state "+
+		err = errors.Errorf("Node %s could not be found in internal state "+
 			"tracker", nid)
 		return response, err
 	}
@@ -59,16 +66,9 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	activity := current.Activity(msg.Activity)
 
 	// update ip addresses if necessary
-	err := checkIPAddresses(m, n, msg, auth.Sender)
+	err = checkIPAddresses(m, n, msg, auth.Sender)
 	if err != nil {
 		err = errors.WithMessage(err, "Failed to update IP addresses")
-		return response, err
-	}
-
-	// Check for correct version
-	err = checkVersion(m.params.minGatewayVersion, m.params.minServerVersion,
-		msg)
-	if err != nil {
 		return response, err
 	}
 
@@ -414,11 +414,11 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if rand.Uint64()%211==13 {
+		if rand.Uint64()%211 == 13 {
 			n.SetConnectivity(node.PortUnknown)
 		}
 		nodeAddress := "unknown"
-		if nodeHost, exists := m.Comms.GetHost(n.GetID()); exists{
+		if nodeHost, exists := m.Comms.GetHost(n.GetID()); exists {
 			nodeAddress = nodeHost.GetAddress()
 		}
 		// If only the Node port has been marked as failed,
@@ -428,7 +428,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 	case node.GatewayPortFailed:
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if rand.Uint64()%211==13 {
+		if rand.Uint64()%211 == 13 {
 			n.SetConnectivity(node.PortUnknown)
 		}
 		gwID := n.GetID().DeepCopy()
@@ -440,11 +440,11 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 	case node.PortFailed:
 		// this will approximately force a recheck of the node state every 3~5
 		// minutes
-		if rand.Uint64()%211==13 {
+		if rand.Uint64()%211 == 13 {
 			n.SetConnectivity(node.PortUnknown)
 		}
 		nodeAddress := "unknown"
-		if nodeHost, exists := m.Comms.GetHost(n.GetID()); exists{
+		if nodeHost, exists := m.Comms.GetHost(n.GetID()); exists {
 			nodeAddress = nodeHost.GetAddress()
 		}
 		// If the port has been marked as failed,
