@@ -56,7 +56,7 @@ func TestCreateRound(t *testing.T) {
 		t.Errorf(err.Error())
 	}
 
-	_, err = createSecureRound(testParams, testpool, roundID, testState, nil)
+	_, err = createSecureRound(testParams, testpool, roundID, testState)
 	if err != nil {
 		t.Errorf("Error in happy path: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 
-	_, err = createSecureRound(testParams, testpool, roundID, testState, nil)
+	_, err = createSecureRound(testParams, testpool, roundID, testState)
 	if err != nil {
 		return
 	}
@@ -158,7 +158,7 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 
-	_, err = createSecureRound(testParams, testpool, roundID, testState, nil)
+	_, err = createSecureRound(testParams, testpool, roundID, testState)
 	if err != nil {
 		return
 	}
@@ -217,7 +217,7 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 	}
 
 	start := time.Now()
-	testProtoRound, err := createSecureRound(testParams, testpool, roundID, testState, nil)
+	testProtoRound, err := createSecureRound(testParams, testpool, roundID, testState)
 	if err != nil {
 		t.Errorf("Error in happy path: %v", err)
 	}
@@ -327,7 +327,7 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 
 	//  Create the protoround
 	start := time.Now()
-	testProtoRound, err := createSecureRound(testParams, testpool, roundID, testState, nil)
+	testProtoRound, err := createSecureRound(testParams, testpool, roundID, testState)
 	if err != nil {
 		t.Errorf("Error in happy path: %v", err)
 	}

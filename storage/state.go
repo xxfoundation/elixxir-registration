@@ -9,7 +9,6 @@
 package storage
 
 import (
-	"github.com/golang-collections/collections/set"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -130,6 +129,15 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string)
 	return state, nil
 }
 
+func (s *NetworkState) setPrunedNodesNoReset(ids []*id.ID) {
+	s.pruneListMux.Lock()
+	defer s.pruneListMux.Unlock()
+
+	for _, i := range ids {
+		s.pruneList[*i] = nil
+	}
+}
+
 func (s *NetworkState) SetPrunedNodes(ids []*id.ID) {
 	s.pruneListMux.Lock()
 	defer s.pruneListMux.Unlock()
@@ -137,6 +145,11 @@ func (s *NetworkState) SetPrunedNodes(ids []*id.ID) {
 	s.pruneList = make(map[id.ID]interface{})
 
 	for _, i := range ids {
+		s.pruneList[*i] = nil
+	}
+
+	disabled := s.disabledNodesStates.getDisabledNodes()
+	for _, i := range disabled {
 		s.pruneList[*i] = nil
 	}
 }
@@ -369,22 +382,13 @@ func (s *NetworkState) GetUpdateID() (uint64, error) {
 // disabled Nodes list.
 func (s *NetworkState) CreateDisabledNodes(path string, interval time.Duration) error {
 	var err error
-	s.disabledNodesStates, err = generateDisabledNodes(path, interval, s)
+	s.disabledNodesStates, err = generateDisabledNodes(path, interval, s.setPrunedNodesNoReset)
 	return err
 }
 
 // StartPollDisabledNodes starts the loop that polls for updates
 func (s *NetworkState) StartPollDisabledNodes(quitChan chan struct{}) {
-	s.disabledNodesStates.pollDisabledNodes(s, quitChan)
-}
-
-// GetDisabledNodesSet returns the set of states of disabled nodes.
-func (s *NetworkState) GetDisabledNodesSet() *set.Set {
-	if s.disabledNodesStates != nil {
-		return s.disabledNodesStates.getDisabledNodes()
-	}
-
-	return nil
+	s.disabledNodesStates.pollDisabledNodes(quitChan)
 }
 
 // outputNodeTopologyToJSON encodes the NodeTopology structure to JSON and

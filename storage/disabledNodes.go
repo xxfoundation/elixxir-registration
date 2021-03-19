@@ -11,10 +11,8 @@ package storage
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/utils"
 	"strings"
@@ -26,18 +24,20 @@ import (
 // running rounds. It is updated in its own thread from a text file. The mutex
 // prevents updating the the list while it is being read.
 type disabledNodes struct {
-	nodes    *set.Set      // List of disabled nodes
+	nodes    []*id.ID      // List of disabled nodes
 	path     string        // Path to list of disabled Nodes
 	interval time.Duration // Interval between polls to update list
 	sync.RWMutex
 }
+
+type ImmediateNodeDisabling func([]*id.ID)
 
 // generateDisabledNodes reads the file at the path and generates a new
 // disabledNodes with the contents. If the file cannot be read, than an error
 // is returned. If the file can be read but the IDs cannot be parsed, then a
 // warning is printed and the new object is returned.
 func generateDisabledNodes(path string, interval time.Duration,
-	state *NetworkState) (*disabledNodes, error) {
+	immediateDisable ImmediateNodeDisabling) (*disabledNodes, error) {
 	// Get file contents
 	fileBytes, err := utils.ReadFile(path)
 	if err != nil {
@@ -46,14 +46,16 @@ func generateDisabledNodes(path string, interval time.Duration,
 	}
 
 	// Parse the file contents into a set of node states with the disabled IDs
-	nodeSet, err := getDisabledNodesSet(string(fileBytes), state.GetNodeMap())
+	nodes, err := getDisabledNodes(string(fileBytes))
 	if err != nil {
 		jww.WARN.Printf("Error while parsing disabled Node list: %v", err)
 	}
 
+	immediateDisable(nodes)
+
 	// Create new disabledNodes object
 	dnl := &disabledNodes{
-		nodes:    nodeSet,
+		nodes:    nodes,
 		path:     path,
 		interval: interval,
 	}
@@ -64,7 +66,7 @@ func generateDisabledNodes(path string, interval time.Duration,
 // pollDisabledNodes initialises a disabled Node list from the specified file
 // and starts a thread that updates the list from the file at the specified
 // interval. The provided channel allows for external killing of the routine.
-func (dnl *disabledNodes) pollDisabledNodes(state *NetworkState, quitChan chan struct{}) {
+func (dnl *disabledNodes) pollDisabledNodes(quitChan chan struct{}) {
 	ticker := time.NewTicker(dnl.interval)
 	jww.DEBUG.Printf("Starting disabled Node list updater thread polling "+
 		"every %s", dnl.interval.String())
@@ -85,8 +87,7 @@ func (dnl *disabledNodes) pollDisabledNodes(state *NetworkState, quitChan chan s
 
 			// Parse the file contents into a set of node states with the
 			// disabled IDs
-			nodeSet, err := getDisabledNodesSet(string(fileBytes),
-				state.GetNodeMap())
+			nodeSet, err := getDisabledNodes(string(fileBytes))
 			if err != nil {
 				jww.WARN.Printf("Error while parsing disbaled Node list: "+
 					"%v", err)
@@ -100,15 +101,15 @@ func (dnl *disabledNodes) pollDisabledNodes(state *NetworkState, quitChan chan s
 
 // updateDisabledNodes copies the values from the new Node set into the
 // disabled Node list. This function is thread safe.
-func (dnl *disabledNodes) updateDisabledNodes(newSet *set.Set) {
+func (dnl *disabledNodes) updateDisabledNodes(newList []*id.ID) {
 	dnl.Lock()
-	dnl.nodes = newSet
+	dnl.nodes = newList
 	dnl.Unlock()
 }
 
 // getDisabledNodes returns a copy of the list of Node States of Node that
 // should be excluded from team forming. This function is thread safe.
-func (dnl *disabledNodes) getDisabledNodes() *set.Set {
+func (dnl *disabledNodes) getDisabledNodes() []*id.ID {
 	dnl.RLock()
 	defer dnl.RUnlock()
 	return dnl.nodes
@@ -119,17 +120,17 @@ func (dnl *disabledNodes) getDisabledNodes() *set.Set {
 // in the StateMap are skipped and an error is recorded. All errors are returned
 // at the end in a group. A text file with Node IDs in base64 string format
 // separated by new lines (\n) is expected.
-func getDisabledNodesSet(idList string, states *node.StateMap) (*set.Set, error) {
-
+func getDisabledNodes(idList string) ([]*id.ID, error) {
 	// Trim whitespace from the start and end of the file contents
 	nodeListString := strings.TrimSpace(idList)
 
 	// Convert \n separated ID strings to an array
 	nodeListArr := strings.Split(nodeListString, "\n")
 
-	stateList := set.New()
 	var errs string
 	var combinedErrors error
+
+	var nodeList []*id.ID
 
 	// Loop through each string, convert it, and store its state, if it exists
 	for i, idString := range nodeListArr {
@@ -146,21 +147,14 @@ func getDisabledNodesSet(idList string, states *node.StateMap) (*set.Set, error)
 		}
 
 		// Convert ID bytes to an ID
-		newId, err1 := id.Unmarshal(nodeID)
+		nid, err1 := id.Unmarshal(nodeID)
 		if err1 != nil {
 			errs += fmt.Sprintf("\tFailed to unmarshal ID %#v at index %d: "+
 				"%v\n", idString, i, err1)
 			continue
 		}
 
-		// Add Node state with the ID to the Set, if it exists
-		newState := states.GetNode(newId)
-		if newState != nil {
-			stateList.Insert(newState)
-		} else {
-			errs += fmt.Sprintf("\tFailed to find ID %#v in state map at index "+
-				"%d.\n", idString, i)
-		}
+		nodeList = append(nodeList, nid)
 	}
 
 	// If any error messages were recorded, convert them into an error
@@ -170,9 +164,9 @@ func getDisabledNodesSet(idList string, states *node.StateMap) (*set.Set, error)
 	}
 
 	// Return a nil Set if no states were added
-	if stateList.Len() < 1 {
-		stateList = nil
+	if len(nodeList) == 0 {
+		nodeList = nil
 	}
 
-	return stateList, combinedErrors
+	return nodeList, combinedErrors
 }

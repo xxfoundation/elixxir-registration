@@ -114,18 +114,11 @@ func (wp *waitingPool) SetNodeToOnline(ns *node.State) {
 //   those nodes.
 // If there are not enough nodes, either from the threshold or
 //   the requested nodes, this function errors
-func (wp *waitingPool) PickNRandAtThreshold(thresh, n int, disabledNodesSet *set.Set) ([]*node.State, error) {
+func (wp *waitingPool) PickNRandAtThreshold(thresh, n int) ([]*node.State, error) {
 	wp.mux.Lock()
 	defer wp.mux.Unlock()
 
-	newPool := set.New()
-
-	// Filter disabled nodes from the list
-	if disabledNodesSet != nil {
-		newPool = wp.pool.Difference(disabledNodesSet)
-	} else {
-		newPool = wp.pool
-	}
+	newPool := wp.pool
 
 	// Check that the pool meets the threshold requirement
 	if newPool.Len() < thresh {

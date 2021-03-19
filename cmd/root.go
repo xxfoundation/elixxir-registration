@@ -306,6 +306,7 @@ var rootCmd = &cobra.Command{
 					}
 
 					if !RegParams.disableNDFPruning {
+						//add disabled nodes to the prune list
 						jww.DEBUG.Printf("Setting %d pruned nodes", len(toPrune))
 						impl.State.SetPrunedNodes(toPrune)
 						err := impl.State.UpdateNdf(impl.State.GetUnprunedNdf())
