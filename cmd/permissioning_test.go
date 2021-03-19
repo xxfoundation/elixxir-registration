@@ -128,12 +128,12 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	if err != nil {
 		t.Error("Failed to unmarshal ID")
 	}
-	if !id1.Cmp(bannedNodeId) {
+	if id1.Cmp(bannedNodeId) {
 		t.Errorf("Unexpected node ID for node 1:\n\tGot: %d\n\tExpected: %d",
 			nodeMapNodes[1].GetID(), bannedNodeId)
 	}
 
-	id2, err := id.Unmarshal(def.Nodes[2].ID)
+	id2, err := id.Unmarshal(def.Nodes[1].ID)
 	if err != nil {
 		t.Error("Failed to unmarshal ID")
 	}
