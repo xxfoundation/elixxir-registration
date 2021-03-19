@@ -7,11 +7,10 @@
 package storage
 
 import (
-	"crypto/rand"
-	"github.com/golang-collections/collections/set"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/utils"
+	"math/rand"
 	"os"
 	"reflect"
 	"strings"
@@ -19,11 +18,12 @@ import (
 	"time"
 )
 
+
 // Test that generateDisabledNodes() correctly generates a disabledNodes
 // object from a file.
 func TestGenerateDisabledNodes(t *testing.T) {
 	// Get test data
-	testData, stateMap, expectedStateSet := generateIdLists(3, t)
+	testData, _, expectedStateSet := generateIdLists(3, t)
 	testData = "\n \n\n" + testData + "\n  "
 	testPath := "testDisabledNodesList.txt"
 
@@ -41,7 +41,7 @@ func TestGenerateDisabledNodes(t *testing.T) {
 		t.Fatalf("Error while creating test file: %v", err)
 	}
 
-	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, &NetworkState{nodes: stateMap})
+	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, func([]*id.ID){return})
 	if err != nil {
 		t.Errorf("generateDisabledNodes() produced an unexpected error: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestGenerateDisabledNodes_FileError(t *testing.T) {
 		"while accessing file: open " + testPath + ": The system cannot find " +
 		"the file specified."
 
-	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, nil)
+	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, func([]*id.ID){return})
 	if err == nil {
 		t.Errorf("generateDisabledNodes() did not produce an error when "+
 			"expected.\n\texpected: %v\n\treceived: %v", expectedError, err)
@@ -78,9 +78,7 @@ func TestGenerateDisabledNodes_FileError(t *testing.T) {
 // parsing errors occur.
 func TestGenerateDisabledNodes_IdWarning(t *testing.T) {
 	// Get test data
-	testData, stateMap, expectedStateSet := generateIdLists(3, t)
-	testData = "\na\nNoKjAhvURKnrwdLIvBe8AF9gTEV6qPRtgcXEKCRh620=\n" +
-		"TRlATuYybZfN2JznUcrAws5DpfesA2tzc6b/rp3jqv8A\n" + testData + "test"
+	testData, _, expectedStateSet := generateIdLists(3, t)
 	testPath := "testDisabledNodesList.txt"
 
 	// Delete the test file at the end
@@ -97,7 +95,7 @@ func TestGenerateDisabledNodes_IdWarning(t *testing.T) {
 		t.Fatalf("Error while creating test file: %v", err)
 	}
 
-	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, &NetworkState{nodes: stateMap})
+	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, func([]*id.ID){return})
 	if err != nil {
 		t.Errorf("generateDisabledNodes() produced an unexpected error: %v", err)
 	}
@@ -112,14 +110,14 @@ func TestGenerateDisabledNodes_IdWarning(t *testing.T) {
 // Tests getDisabledNodesSet() happy path.
 func TestGetDisabledNodesSet(t *testing.T) {
 	// Get test data
-	testData, testStateMap, expectedStateSet := generateIdLists(3, t)
+	testData, _, expectedStateSet := generateIdLists(3, t)
 
-	testStateSet, err := getDisabledNodesSet(testData, testStateMap)
+	testStateSet, err := getDisabledNodes(testData)
 	if err != nil {
 		t.Errorf("getDisabledNodesSet() produced an unexpected error: %v", err)
 	}
 
-	if !testStateSet.SubsetOf(expectedStateSet) {
+	if !reflect.DeepEqual(expectedStateSet, testStateSet) {
 		t.Errorf("getDisabledNodesSet() produced an incorrect set."+
 			"\n\texpected: %v\n\treceived: %v",
 			expectedStateSet, testStateSet)
@@ -135,7 +133,7 @@ func TestGetDisabledNodesSet_IdError(t *testing.T) {
 	testData := "\na\nNoKjAhvURKnrwdLIvBe8AF9gTEV6qPRtgcXEKCRh620=\n" +
 		"TRlATuYybZfN2JznUcrAws5DpfesA2tzc6b/rp3jqv8A\n"
 
-	testIdList, err := getDisabledNodesSet(testData, &node.StateMap{})
+	testIdList, err := getDisabledNodes(testData)
 	if err == nil {
 		t.Errorf("getDisabledNodesSet() did not produce an error when expected.")
 	}
@@ -150,13 +148,9 @@ func TestGetDisabledNodesSet_IdError(t *testing.T) {
 			"\n\treceived: %v", err)
 	}
 
-	if err != nil && !strings.Contains(err.Error(), "state map") {
-		t.Errorf("getDisabledNodesSet() did not produce a state map error."+
-			"\n\treceived: %v", err)
-	}
-
-	if testIdList != nil {
-		t.Errorf("getDisabledNodesSet() produced a non-nil ID list on error."+
+	if testIdList == nil {
+		t.Errorf("getDisabledNodesSet() produced anil ID list on error, " +
+			"should process what it can."+
 			"\n\texpected: %v\n\treceived: %v", nil, testIdList)
 	}
 }
@@ -258,10 +252,10 @@ func TestDisabledNodes_GetDisabledNodesList_Lock(t *testing.T) {
 // second has an extra invalid ID that is expected to be skipped.
 func TestDisabledNodes_PollDisabledNodes(t *testing.T) {
 	// Get test data
-	testData1, stateMap1, initialStateSet := generateIdLists(3, t)
+	testData1, _, initialStateSet := generateIdLists(3, t)
 	testData1 = "\n \n\n" + testData1 + "\n  "
-	testData2 := "\na\nNoKjAhvURKnrwdLIvBe8AF9gTEV6qPRtgcXEKCRh620=\n" +
-		"TRlATuYybZfN2JznUcrAws5DpfesA2tzc6b/rp3jqv8A\n" + testData1 + "test"
+	testData2 := "\na\nNoKjAhvURKnrwdLIvBe8AF9gTEV6qPRtgcXEKCRh620=\n"  +
+		testData1 + "test"
 	dnl := disabledNodes{
 		nodes:    nil,
 		path:     "testDisabledNodesList.txt",
@@ -282,7 +276,7 @@ func TestDisabledNodes_PollDisabledNodes(t *testing.T) {
 		t.Fatalf("Error while creating test file: %v", err)
 	}
 
-	go dnl.pollDisabledNodes(&NetworkState{nodes: stateMap1}, nil)
+	go dnl.pollDisabledNodes(nil)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -321,7 +315,7 @@ func TestDisabledNodes_PollDisabledNodes_FileError(t *testing.T) {
 		interval: 33 * time.Millisecond,
 	}
 
-	go dnl.pollDisabledNodes(&NetworkState{}, nil)
+	go dnl.pollDisabledNodes(nil)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -347,7 +341,7 @@ func TestDisabledNodes_PollDisabledNodes_QuitChan(t *testing.T) {
 	quit := make(chan struct{})
 
 	go func() {
-		dnl.pollDisabledNodes(&NetworkState{}, quit)
+		dnl.pollDisabledNodes(quit)
 		result <- true
 	}()
 
@@ -361,7 +355,8 @@ func TestDisabledNodes_PollDisabledNodes_QuitChan(t *testing.T) {
 	}
 }
 
-func generateIdLists(num int, x interface{}) (string, *node.StateMap, *set.Set) {
+
+func generateIdLists(num int, x interface{}) (string, *node.StateMap, []*id.ID) {
 	// Generate array of IDs
 	var idList, idListL []*id.ID
 	randID := make([]byte, 33)
@@ -386,10 +381,10 @@ func generateIdLists(num int, x interface{}) (string, *node.StateMap, *set.Set) 
 	}
 
 	// Generate test state Set
-	stateSet := set.New()
-	for _, nID := range idList {
-		stateSet.Insert(stateMap.GetNode(nID))
+	nodeList := make([]*id.ID, len(idList))
+	for i, nID := range idList {
+		nodeList[i] = nID
 	}
 
-	return fileData, stateMap, stateSet
+	return fileData, stateMap, nodeList
 }
