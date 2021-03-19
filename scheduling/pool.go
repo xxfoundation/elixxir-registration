@@ -12,7 +12,6 @@ import (
 	"gitlab.com/elixxir/crypto/shuffle"
 	"gitlab.com/elixxir/registration/storage/node"
 	"sync"
-	"time"
 )
 
 // pool.go contains logic for the secure teaming algorithm's
@@ -66,37 +65,6 @@ func (wp *waitingPool) Ban(n *node.State) {
 	wp.pool.Remove(n)
 	wp.offline.Remove(n)
 	wp.mux.Unlock()
-}
-
-// CleanOfflineNodes places all nodes with a lastPoll more than timeout
-// into the offline pool
-func (wp *waitingPool) CleanOfflineNodes(timeout time.Duration) {
-	wp.mux.Lock()
-	defer wp.mux.Unlock()
-	now := time.Now()
-
-	// Collect nodes whose lastPoll is longer than
-	// timeout's duration
-	var toRemove []*node.State
-	wp.pool.Do(func(face interface{}) {
-		ns := face.(*node.State)
-		lastPoll := ns.GetLastPoll()
-		if now.After(lastPoll) {
-			delta := now.Sub(ns.GetLastPoll())
-			if delta > timeout {
-				toRemove = append(toRemove, ns)
-			}
-		}
-
-	})
-
-	for _, ns := range toRemove {
-		jww.INFO.Printf("Node %v is offline. Removing from waiting pool", ns.GetID())
-		ns.ClearRound()
-		wp.pool.Remove(ns)
-		wp.offline.Insert(ns)
-		ns.SetInactive()
-	}
 }
 
 // SetNodeToOnline removes a node from the offline pool and

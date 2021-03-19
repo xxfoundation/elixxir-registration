@@ -177,14 +177,10 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			}
 		}
 
-		// Remove offline nodes from pool to more accurately determine if pool is eligible for round creation
-		pool.CleanOfflineNodes(params.NodeCleanUpInterval * time.Second)
-
 		for {
 			//get the pool of disabled nodes and determine how many
 			//nodes can be scheduled
-			var numNodesInPool int
-
+			numNodesInPool := pool.Len()
 
 			// Create a new round if the pool is full
 			if numNodesInPool >= int(teamFormationThreshold) && killed == nil {
