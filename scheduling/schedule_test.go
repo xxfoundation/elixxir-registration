@@ -17,6 +17,12 @@ import (
 
 // Happy path
 func TestScheduler_NonRandom(t *testing.T) {
+	var err error
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf("Failed to create new PermissioningDb: %+v", err)
+	}
+
 	configJson, err := utils.ReadFile(testkeys.GetSchedulingSimple(false))
 	if err != nil {
 		t.Errorf("Failed to open %s", testkeys.GetSchedulingSimple(false))
