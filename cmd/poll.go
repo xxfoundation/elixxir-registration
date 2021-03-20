@@ -22,7 +22,9 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"math/rand"
+	"net"
 	"sync/atomic"
+	"github.com/audiolion/ipip"
 )
 
 // Server->Permissioning unified poll function
@@ -316,9 +318,6 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
 	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
 
-	jww.TRACE.Printf("Received gateway and node update: %s, %s", nodeAddress,
-		gatewayAddress)
-
 	// If state required changes, then check the NDF
 	if nodeUpdate || gatewayUpdate {
 
@@ -372,14 +371,16 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 		// Ping the server and attempt on that port
 		go func() {
 			nodeHost, exists := m.Comms.GetHost(n.GetID())
-			nodePing := exists && nodeHost.IsOnline()
+
+			nodePing := exists && isValidAddr(nodeHost.GetAddress()) &&
+				nodeHost.IsOnline()
 
 			gwPing := true
 			if !disableGatewayPing {
 				params := connect.GetDefaultHostParams()
 				params.AuthEnabled = false
 				gwHost, err := connect.NewHost(nil, n.GetGatewayAddress(), nil, params)
-				gwPing = err == nil && gwHost.IsOnline()
+				gwPing = err == nil && isValidAddr(n.GetGatewayAddress()) && gwHost.IsOnline()
 			}
 
 			if nodePing && gwPing {
@@ -455,4 +456,13 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 	}
 
 	return false, nil
+}
+
+func isValidAddr(addr string)bool{
+	host, _, err := net.SplitHostPort(addr)
+	if err!=nil{
+		return false
+	}
+	ip := net.ParseIP(host)
+	return !ipip.IsPrivate(ip)
 }
