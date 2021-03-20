@@ -51,6 +51,8 @@ var (
 
 	// Duration between polls of the disabled Node list for updates.
 	disabledNodesPollDuration time.Duration
+
+	permissiveIPChecking bool
 )
 
 // Default duration between polls of the disabled Node list for updates.
@@ -198,6 +200,8 @@ var rootCmd = &cobra.Command{
 			// use default
 			userRegCapacity = 1000
 		}
+
+		permissiveIPChecking = viper.GetBool("permissiveIPChecking")
 
 		// Populate params
 		RegParams = Params{

@@ -459,6 +459,9 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 }
 
 func isValidAddr(addr string)bool{
+	if permissiveIPChecking{
+		return true
+	}
 	host, _, err := net.SplitHostPort(addr)
 	if err!=nil{
 		return false
