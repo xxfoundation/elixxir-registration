@@ -458,6 +458,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 	return false, nil
 }
 
+//fixme: move this to primitives and research more
 func isValidAddr(addr string)bool{
 	if permissiveIPChecking{
 		return true
@@ -467,5 +468,10 @@ func isValidAddr(addr string)bool{
 		return false
 	}
 	ip := net.ParseIP(host)
-	return !ipip.IsPrivate(ip)
+	if ip==nil{
+		return false
+	}
+
+	return !(ipip.IsPrivate(ip) || ip.IsLoopback() || ip.IsUnspecified() ||
+		ip.IsMulticast())
 }
