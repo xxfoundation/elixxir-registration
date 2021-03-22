@@ -74,14 +74,14 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		return response, err
 	}
 
-	// Increment the Node's poll count
-	n.IncrementNumPolls()
-
 	// Check the node's connectivity
 	continuePoll, err := m.checkConnectivity(n, activity, m.GetDisableGatewayPingFlag())
 	if err != nil || !continuePoll {
 		return response, err
 	}
+
+	// Increment the Node's poll count
+	n.IncrementNumPolls()
 
 	// Ensure the NDF is ready to be returned
 	regComplete := atomic.LoadUint32(m.NdfReady)
@@ -333,9 +333,10 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		m.NDFLock.Lock()
 		currentNDF := m.State.GetUnprunedNdf()
 
+		n.SetConnectivity(node.PortUnknown)
+
 		if nodeUpdate {
 			nodeHost.UpdateAddress(nodeAddress)
-			n.SetConnectivity(node.PortUnknown)
 			if err := updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
@@ -343,6 +344,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		}
 
 		if gatewayUpdate {
+
 			if err := updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
@@ -464,14 +466,19 @@ func isValidAddr(addr string)bool{
 		return true
 	}
 	host, _, err := net.SplitHostPort(addr)
-	if err!=nil{
+	if err!=nil  || host==""{
 		return false
 	}
+
 	ip := net.ParseIP(host)
 	if ip==nil{
 		return false
 	}
 
-	return !(ipip.IsPrivate(ip) || ip.IsLoopback() || ip.IsUnspecified() ||
-		ip.IsMulticast())
+	if ipip.IsPrivate(ip) || ip.IsLoopback() || ip.IsUnspecified() ||
+		ip.IsMulticast(){
+		return false
+	}
+
+	return true
 }
