@@ -45,6 +45,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
+	permissiveIPChecking = true
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
@@ -83,7 +84,7 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		Error:          nil,
 		GatewayVersion: "1.1.0",
 		ServerVersion:  "1.1.0",
-		GatewayAddress: "0.0.0.0:22840",
+		GatewayAddress: "",
 	}
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
@@ -104,13 +105,17 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 	n := impl.State.GetNodeMap().GetNode(testID)
 	n.SetConnectivity(node.PortSuccessful)
 
+	impl.disableGatewayPing = true
+
 	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
+	time.Sleep(100*time.Millisecond)
 	if len(response.GetUpdates()) != 1 {
 		t.Errorf("Expected round updates to return!")
 	}
+	fmt.Println(response.GetUpdates()[0])
 	if response.GetUpdates()[0].State != uint32(states.PRECOMPUTING) {
 		t.Errorf("Expected round to update to PRECOMP! Got %+v", response.GetUpdates())
 	}
