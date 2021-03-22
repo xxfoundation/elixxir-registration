@@ -147,11 +147,13 @@ func (s *NetworkState) SetPrunedNodes(ids []*id.ID) {
 	for _, i := range ids {
 		s.pruneList[*i] = nil
 	}
-
-	disabled := s.disabledNodesStates.getDisabledNodes()
-	for _, i := range disabled {
-		s.pruneList[*i] = nil
+	if s.disabledNodesStates!=nil{
+		 disabled := s.disabledNodesStates.getDisabledNodes()
+		 for _, i := range disabled {
+			 s.pruneList[*i] = nil
+		 }
 	}
+
 }
 
 func (s *NetworkState) SetPrunedNode(id *id.ID) {
