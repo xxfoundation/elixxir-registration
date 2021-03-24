@@ -6,12 +6,6 @@ cache:
   paths:
     - vendor/
 
-variables:
-  REPO_DIR: gitlab.com/elixxir
-  REPO_NAME: registration
-  DOCKER_IMAGE: elixxirlabs/cuda-go:go1.13-cuda11.1-mc
-  MIN_CODE_COVERAGE: "0.0"
-
 before_script:
   - go version || echo "Go executable not found."
   - echo $CI_BUILD_REF
@@ -27,15 +21,13 @@ before_script:
   - export GOPRIVATE=gitlab.com/elixxir/*,gitlab.com/xx_network/*
 
 stages:
-  - setup
-  - test
   - build
   - tag
   - trigger_integration
 
-setup:
-  stage: setup
-  image: $DOCKER_IMAGE
+build:
+  stage: build
+  image: elixxirlabs/cuda-go:go1.13-cuda11.1-mc
   except:
     - tags
   script:
@@ -43,16 +35,7 @@ setup:
     - go mod vendor -v
     - go build ./...
     - go mod tidy
-  artifacts:
-    paths:
-     - vendor/
 
-test:
-  stage: test
-  image: $DOCKER_IMAGE
-  except:
-    - tags
-  script:
     - mkdir -p testdata
     # Test coverage
     - go-acc --covermode atomic --output testdata/coverage.out ./... -- -v
@@ -66,16 +49,7 @@ test:
     - go tool cover -func=testdata/coverage.out | grep "total:" | awk '{print $3}' | sed 's/\%//g' > testdata/coverage-percentage.txt
     - export CODE_CHECK=$(echo "$(cat testdata/coverage-percentage.txt) >= $MIN_CODE_COVERAGE" | bc -l)
     - (if [ "$CODE_CHECK" == "1" ]; then echo "Minimum coverage of $MIN_CODE_COVERAGE succeeded"; else echo "Minimum coverage of $MIN_CODE_COVERAGE failed"; exit 1; fi);
-  artifacts:
-    paths:
-      - testdata/
 
-build:
-  stage: build
-  image: $DOCKER_IMAGE
-  except:
-    - tags
-  script:
     - mkdir -p release
     - rm -rf upload || true
     - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' ./...
@@ -92,26 +66,26 @@ build:
     - /upload-artifacts.sh upload/
   artifacts:
     paths:
-     - release/
+      - vendor/
+      - testdata/
+      - release/
 
 tag:
     stage: tag
     only:
         - master
-    image: $DOCKER_IMAGE
+    image: elixxirlabs/cuda-go:go1.13-cuda11.1-mc
     script:
         - git remote add origin_tags git@gitlab.com:elixxir/registration.git || true
         - git remote set-url origin_tags git@gitlab.com:elixxir/registration.git || true
         - git tag $(./release/registration.linux64 version | grep "xx network Permissioning Server v"| cut -d ' ' -f5) -f
         - git push origin_tags -f --tags
 
-
 trigger_integration:
   stage: trigger_integration
-  script:
-    # Server
-    - "curl -X POST -F token=2a4419808282d0a47c55eee8b9904e -F ref=master https://gitlab.com/api/v4/projects/5014439/trigger/pipeline"
-    # Client
-    - "curl -X POST -F token=602ad7669e7d6daa61b210a0c4312b -F ref=master https://gitlab.com/api/v4/projects/5454785/trigger/pipeline"
+  trigger:
+    project: elixxir/integration
+    branch: $CI_COMMIT_REF_NAME
   only:
+    - release
     - master
