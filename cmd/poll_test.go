@@ -40,7 +40,7 @@ func getTestKey() *rsa.PrivateKey {
 }
 
 // Happy path
-func TestRegistrationImpl_Poll(t *testing.T) {
+func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 	testID := id.NewIdFromUInt(0, id.Node, t)
 	testString := "test"
 	// Start registration server
@@ -112,6 +112,89 @@ func TestRegistrationImpl_Poll(t *testing.T) {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
 	time.Sleep(100*time.Millisecond)
+
+	if response.FullNDF==nil{
+		t.Errorf("No NDF provided")
+	}
+
+	// Shutdown registration
+	impl.Comms.Shutdown()
+}
+
+func TestRegistrationImpl_Poll_Round(t *testing.T) {
+	testID := id.NewIdFromUInt(0, id.Node, t)
+	testString := "test"
+	// Start registration server
+	testParams.KeyPath = testkeys.GetCAKeyPath()
+	permissiveIPChecking = true
+	impl, err := StartRegistration(testParams)
+	if err != nil {
+		t.Errorf("Unable to start registration: %+v", err)
+	}
+	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
+
+	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+		Registration: ndf.Registration{
+			Address:        "420",
+			TlsCertificate: "",
+		},
+		Gateways: []ndf.Gateway{
+			{ID: id.NewIdFromUInt(0, id.Gateway, t).Bytes()},
+		},
+		Nodes: []ndf.Node{
+			{ID: id.NewIdFromUInt(0, id.Node, t).Bytes()},
+		},
+	})
+
+	// Make a simple auth object that will pass the checks
+	testHost, _ := impl.Comms.AddHost(testID, testString,
+		make([]byte, 0), connect.GetDefaultHostParams())
+
+	testAuth := &connect.Auth{
+		IsAuthenticated: true,
+		Sender:          testHost,
+	}
+	testMsg := &pb.PermissioningPoll{
+		Full: &pb.NDFHash{
+			Hash: impl.State.GetFullNdf().GetHash(),
+		},
+		Partial: &pb.NDFHash{
+			Hash: []byte(testString),
+		},
+		LastUpdate:     0,
+		Activity:       uint32(current.WAITING),
+		Error:          nil,
+		GatewayVersion: "1.1.0",
+		ServerVersion:  "1.1.0",
+		GatewayAddress: "",
+	}
+	err = impl.State.AddRoundUpdate(
+		&pb.RoundInfo{
+			ID:    1,
+			State: uint32(states.PRECOMPUTING),
+		})
+
+	if err != nil {
+		t.Errorf("Could not add round update: %s", err)
+	}
+
+	err = impl.State.GetNodeMap().AddNode(testID, "", "", "", 0)
+
+	if err != nil {
+		t.Errorf("Could nto add node: %s", err)
+	}
+
+	n := impl.State.GetNodeMap().GetNode(testID)
+	n.SetConnectivity(node.PortSuccessful)
+
+	impl.disableGatewayPing = true
+
+	response, err := impl.Poll(testMsg, testAuth)
+	if err != nil {
+		t.Errorf("Unexpected error polling: %+v", err)
+	}
+	time.Sleep(100*time.Millisecond)
+
 	if len(response.GetUpdates()) != 1 {
 		t.Errorf("Expected round updates to return!")
 	}
