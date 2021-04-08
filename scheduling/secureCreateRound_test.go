@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	"crypto/rand"
+	"github.com/katzenpost/core/crypto/eddsa"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/crypto/signature/rsa"
@@ -28,7 +29,12 @@ func TestCreateRound(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, 8, "")
+	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
+	}
+
+	testState, err := storage.NewState(privKey, ecPrivKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -76,7 +82,12 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, 8, "")
+	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
+	}
+
+	testState, err := storage.NewState(privKey, ecPrivKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -129,7 +140,12 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, 8, "")
+	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
+	}
+
+	testState, err := storage.NewState(privKey, ecPrivKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -184,7 +200,12 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, 8, "")
+	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
+	}
+
+	testState, err := storage.NewState(privKey, ecPrivKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -283,7 +304,12 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, 8, "")
+	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
+	}
+
+	testState, err := storage.NewState(privKey, ecPrivKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

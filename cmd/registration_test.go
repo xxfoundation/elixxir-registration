@@ -66,6 +66,8 @@ func TestMain(m *testing.M) {
 		CertPath:          testkeys.GetCACertPath(),
 		KeyPath:           testkeys.GetCAKeyPath(),
 		NdfOutputPath:     testkeys.GetNDFPath(),
+		EcPrivKeyPath:     testkeys.GetEllipticPrivateKey(),
+		EcPubKeyPath:     testkeys.GetEllipticPublicKey(),
 		publicAddress:     permAddr,
 		udbCertPath:       testkeys.GetUdbCertPath(),
 		userRegCapacity:   5,
@@ -92,6 +94,7 @@ func TestEmptyDataBase(t *testing.T) {
 		CertPath:          testkeys.GetCACertPath(),
 		KeyPath:           testkeys.GetCAKeyPath(),
 		udbCertPath:       testkeys.GetUdbCertPath(),
+		EcPrivKeyPath: testkeys.GetEllipticPublicKey(),
 		userRegLeakPeriod: time.Hour,
 		userRegCapacity:   5,
 	}
@@ -576,6 +579,7 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 		NdfOutputPath:     testkeys.GetNDFPath(),
 		udbCertPath:       testkeys.GetUdbCertPath(),
 		publicAddress:     "0.0.0.0:5905",
+		EcPrivKeyPath: testkeys.GetEllipticPublicKey(),
 		userRegCapacity:   4,
 		userRegLeakPeriod: 3 * time.Second,
 	}
@@ -583,7 +587,7 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	// Start registration server
 	impl, err := StartRegistration(testParams2)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatal(err.Error())
 	}
 	dblck.Lock()
 	defer dblck.Unlock()

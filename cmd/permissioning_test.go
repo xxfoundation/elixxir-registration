@@ -71,13 +71,14 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		KeyPath:           testkeys.GetCAKeyPath(),
 		NdfOutputPath:     testkeys.GetNDFPath(),
 		udbCertPath:       testkeys.GetUdbCertPath(),
+		EcPrivKeyPath: testkeys.GetEllipticPrivateKey(),
 		disableNDFPruning: true,
 	}
 
 	// Start registration server
 	impl, err := StartRegistration(testParams)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 
 	// Call to load all registered nodes from DB

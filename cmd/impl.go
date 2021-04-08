@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"crypto/x509"
+	"github.com/katzenpost/core/crypto/eddsa"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -76,8 +77,14 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			"PermissioningKey is %+v", err, pk)
 	}
 
+	ecPrivKey, err := eddsa.Load(params.EcPrivKeyPath, params.EcPubKeyPath, nil)
+	if err != nil {
+		return nil, errors.Errorf("Failed to parse permissioning elliptic key: %+v. "+
+			"Elliptic key is %+v", err, params.EcPrivKeyPath)
+	}
+
 	// Initialize the state tracking object
-	state, err := storage.NewState(pk, params.addressSpace, params.NdfOutputPath)
+	state, err := storage.NewState(pk, ecPrivKey, params.addressSpace, params.NdfOutputPath)
 	if err != nil {
 		return nil, err
 	}

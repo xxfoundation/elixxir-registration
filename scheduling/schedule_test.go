@@ -1,7 +1,9 @@
 package scheduling
 
 import (
+	"crypto/rand"
 	"encoding/json"
+	"github.com/katzenpost/core/crypto/eddsa"
 	"gitlab.com/elixxir/comms/testutils"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/registration/storage"
@@ -41,7 +43,12 @@ func TestScheduler_NonRandom(t *testing.T) {
 			"PermissioningKey is %+v", err, pk)
 	}
 	// Start registration server
-	state, err := storage.NewState(pk, 8, "")
+	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
+	}
+
+	state, err := storage.NewState(pk, ecPrivKey, 8, "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}

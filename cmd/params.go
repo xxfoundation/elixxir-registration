@@ -22,6 +22,11 @@ type Params struct {
 	Address               string
 	CertPath              string
 	KeyPath               string
+	// Path to which public key will be written to
+	// from the eddsa.Load call
+	EcPubKeyPath           string
+	// Path which private key is read from
+	EcPrivKeyPath          string
 	NdfOutputPath         string
 	NsCertPath            string
 	NsAddress             string

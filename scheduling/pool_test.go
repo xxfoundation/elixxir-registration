@@ -8,6 +8,7 @@ package scheduling
 import (
 	"crypto/rand"
 	"github.com/golang-collections/collections/set"
+	"github.com/katzenpost/core/crypto/eddsa"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/crypto/signature/rsa"
@@ -198,7 +199,12 @@ func setupNode(t *testing.T, testState *storage.NetworkState, newId uint64) *nod
 func setupNodeMap(t *testing.T) *storage.NetworkState {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, 8, "")
+	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
+	}
+
+	testState, err := storage.NewState(privKey, ecPrivKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

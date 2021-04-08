@@ -9,6 +9,7 @@ package storage
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/katzenpost/core/crypto/eddsa"
 	"github.com/pkg/errors"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/network/dataStructures"
@@ -57,8 +58,12 @@ func TestNewState(t *testing.T) {
 		t.Fatalf("Failed to generate private key:\n%v", err)
 	}
 
+	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
+	}
 	// Generate new NetworkState
-	state, err := NewState(privateKey, 8, "")
+	state, err := NewState(privateKey, ecPrivKey, 8, "")
 	if err != nil {
 		t.Errorf("NewState() produced an unexpected error:\n%v", err)
 	}
@@ -123,8 +128,13 @@ func TestNewState_PrivateKeyError(t *testing.T) {
 		t.Fatalf("Failed to generate private key:\n%v", err)
 	}
 
+	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+	if err != nil {
+		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
+	}
+
 	// Generate new NetworkState
-	state, err := NewState(privateKey, 8, "")
+	state, err := NewState(privateKey, ecPrivKey, 8, "")
 
 	// Test NewState() output
 	if err == nil || err.Error() != expectedErr {
@@ -515,8 +525,13 @@ func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 		return nil, privKey, errors.Errorf("Could not load public key: %v", err)
 	}
 
+	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+	if err != nil {
+		return nil, nil, errors.Errorf("Failed to generate elliptic private key:\n%v", err)
+	}
+
 	// Generate new NetworkState using the private key
-	state, err := NewState(privKey, 8, "")
+	state, err := NewState(privKey, ecPrivKey, 8, "")
 	if err != nil {
 		return state, privKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
 	}

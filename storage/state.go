@@ -10,6 +10,7 @@ package storage
 
 import (
 	"github.com/jinzhu/gorm"
+	"github.com/katzenpost/core/crypto/eddsa"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -34,6 +35,7 @@ const updateBufferLength = 10000
 type NetworkState struct {
 	// NetworkState parameters
 	privateKey *rsa.PrivateKey
+	ecPrivateKey *eddsa.PrivateKey
 
 	// Round state
 	rounds       *round.StateMap
@@ -64,7 +66,7 @@ type NetworkState struct {
 }
 
 // NewState returns a new NetworkState object.
-func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string) (*NetworkState, error) {
+func NewState(pk *rsa.PrivateKey, ecPrivKey *eddsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string) (*NetworkState, error) {
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
 		return nil, err
@@ -86,6 +88,7 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string)
 		addressSpaceSize: addressSpaceSize,
 		pruneList:        make(map[id.ID]interface{}),
 		ndfOutputPath:    ndfOutputPath,
+		ecPrivateKey: ecPrivKey,
 	}
 
 	// Obtain round & update Id from Storage
@@ -208,6 +211,12 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 	if err != nil {
 		return errors.WithMessagef(err, "Could not add round update %v "+
 			"for round %v due to failed signature", roundCopy.UpdateID, roundCopy.ID)
+	}
+
+	err = signature.SignEddsa(roundCopy, s.ecPrivateKey)
+	if err != nil {
+		return errors.WithMessagef(err, "Could not add round update %v "+
+			"for round %v due to failed elliptic curve signature", roundCopy.UpdateID, roundCopy.ID)
 	}
 
 	jww.INFO.Printf("Round %v state updated to %s", r.ID,
