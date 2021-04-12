@@ -93,6 +93,9 @@ keyPath: ""
 # Path to the permissioning server certificate file
 certPath: ""
 
+# Path to elliptic private key
+ellipticPrivateKey: ""
+
 # Time interval (in seconds) between committing Node statistics to storage
 nodeMetricInterval: 180
 

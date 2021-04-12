@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"crypto/rand"
 	"crypto/x509"
 	"github.com/katzenpost/core/crypto/eddsa"
 	"github.com/pkg/errors"
@@ -24,6 +25,7 @@ import (
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/rateLimiting"
 	"gitlab.com/xx_network/primitives/utils"
+	"os"
 	"sync"
 	"time"
 )
@@ -51,7 +53,7 @@ type RegistrationImpl struct {
 	//TODO-kill this
 	registrationTimes map[id.ID]int64
 
-	NDFLock sync.Mutex
+	NDFLock      sync.Mutex
 }
 
 //function used to schedule nodes
@@ -65,26 +67,35 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	roundCreationStopped := uint32(0)
 
 	// Read in private key
-	key, err := utils.ReadFile(params.KeyPath)
+	rsaKeyPem, err := utils.ReadFile(params.KeyPath)
 	if err != nil {
 		return nil, errors.Errorf("failed to read key at %+v: %+v",
 			params.KeyPath, err)
 	}
 
-	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	rsaPrivateKey, err := rsa.LoadPrivateKeyFromPem(rsaKeyPem)
 	if err != nil {
 		return nil, errors.Errorf("Failed to parse permissioning server key: %+v. "+
-			"PermissioningKey is %+v", err, pk)
+			"PermissioningKey is %+v", err, rsaPrivateKey)
 	}
 
-	ecPrivKey, err := eddsa.Load(params.EcPrivKeyPath, params.EcPubKeyPath, nil)
+	ellipticPrivateKey, err := eddsa.Load(params.EllipticKeyPath, "", nil)
 	if err != nil {
-		return nil, errors.Errorf("Failed to parse permissioning elliptic key: %+v. "+
-			"Elliptic key is %+v", err, params.EcPrivKeyPath)
+		if !os.IsNotExist(err) {
+			return nil, errors.Errorf("Failed to parse permissioning elliptic key: %+v. "+
+				"Elliptic key path is %+v", err, params.EllipticKeyPath)
+		}
+
+		ellipticPrivateKey, err = eddsa.NewKeypair(rand.Reader)
+		if err != nil {
+			return nil, errors.Errorf("Failed to generate elliptic key: %v", err)
+		}
+
+
 	}
 
 	// Initialize the state tracking object
-	state, err := storage.NewState(pk, ecPrivKey, params.addressSpace, params.NdfOutputPath)
+	state, err := storage.NewState(rsaPrivateKey, ellipticPrivateKey, params.addressSpace, params.NdfOutputPath)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +131,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 				"Permissioning cert is %+v", err, regImpl.permissioningCert)
 		}
 
+
 	}
 
 	// Load the UDB cert from file
@@ -133,6 +145,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		Registration: ndf.Registration{
 			Address:        RegParams.publicAddress,
 			TlsCertificate: regImpl.certFromFile,
+			EllipticCert:   state.GetEllipticPublicKey().String(),
 		},
 
 		Timestamp: time.Now(),
@@ -175,7 +188,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Start the communication server
 	regImpl.Comms = registration.StartRegistrationServer(&id.Permissioning,
 		params.Address, NewImplementation(regImpl),
-		[]byte(regImpl.certFromFile), key)
+		[]byte(regImpl.certFromFile), rsaKeyPem)
 
 	// In the noTLS pathway, disable authentication
 	if noTLS {

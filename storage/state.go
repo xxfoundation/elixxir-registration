@@ -34,8 +34,8 @@ const updateBufferLength = 10000
 // NetworkState structure used for keeping track of NDF and Round state.
 type NetworkState struct {
 	// NetworkState parameters
-	privateKey *rsa.PrivateKey
-	ecPrivateKey *eddsa.PrivateKey
+	rsaPrivateKey      *rsa.PrivateKey
+	ellipticPrivateKey *eddsa.PrivateKey
 
 	// Round state
 	rounds       *round.StateMap
@@ -66,7 +66,9 @@ type NetworkState struct {
 }
 
 // NewState returns a new NetworkState object.
-func NewState(pk *rsa.PrivateKey, ecPrivKey *eddsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string) (*NetworkState, error) {
+func NewState(rsaPrivKey *rsa.PrivateKey, ellipticPrivKey *eddsa.PrivateKey,
+	addressSpaceSize uint32, ndfOutputPath string) (*NetworkState, error) {
+
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
 		return nil, err
@@ -77,18 +79,18 @@ func NewState(pk *rsa.PrivateKey, ecPrivKey *eddsa.PrivateKey, addressSpaceSize 
 	}
 
 	state := &NetworkState{
-		rounds:           round.NewStateMap(),
-		roundUpdates:     dataStructures.NewUpdates(),
-		update:           make(chan node.UpdateNotification, updateBufferLength),
-		nodes:            node.NewStateMap(),
-		unprunedNdf:      &ndf.NetworkDefinition{},
-		fullNdf:          fullNdf,
-		partialNdf:       partialNdf,
-		privateKey:       pk,
-		addressSpaceSize: addressSpaceSize,
-		pruneList:        make(map[id.ID]interface{}),
-		ndfOutputPath:    ndfOutputPath,
-		ecPrivateKey: ecPrivKey,
+		rounds:             round.NewStateMap(),
+		roundUpdates:       dataStructures.NewUpdates(),
+		update:             make(chan node.UpdateNotification, updateBufferLength),
+		nodes:              node.NewStateMap(),
+		unprunedNdf:        &ndf.NetworkDefinition{},
+		fullNdf:            fullNdf,
+		partialNdf:         partialNdf,
+		rsaPrivateKey:      rsaPrivKey,
+		ellipticPrivateKey: ellipticPrivKey,
+		addressSpaceSize:   addressSpaceSize,
+		pruneList:          make(map[id.ID]interface{}),
+		ndfOutputPath:      ndfOutputPath,
 	}
 
 	// Obtain round & update Id from Storage
@@ -207,13 +209,13 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 
 	roundCopy.UpdateID = updateID
 
-	err = signature.Sign(roundCopy, s.privateKey)
+	err = signature.Sign(roundCopy, s.rsaPrivateKey)
 	if err != nil {
 		return errors.WithMessagef(err, "Could not add round update %v "+
 			"for round %v due to failed signature", roundCopy.UpdateID, roundCopy.ID)
 	}
 
-	err = signature.SignEddsa(roundCopy, s.ecPrivateKey)
+	err = signature.SignEddsa(roundCopy, s.GetEllipticPrivateKey())
 	if err != nil {
 		return errors.WithMessagef(err, "Could not add round update %v "+
 			"for round %v due to failed elliptic curve signature", roundCopy.UpdateID, roundCopy.ID)
@@ -224,7 +226,7 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 
 	jww.TRACE.Printf("Round Info: %+v", roundCopy)
 
-	rnd := dataStructures.NewVerifiedRound(roundCopy, s.privateKey.GetPublic())
+	rnd := dataStructures.NewVerifiedRound(roundCopy, s.rsaPrivateKey.GetPublic())
 	return s.roundUpdates.AddRound(rnd)
 }
 
@@ -261,11 +263,11 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	}
 
 	// Sign NDF comms messages
-	err = signature.Sign(fullNdfMsg, s.privateKey)
+	err = signature.Sign(fullNdfMsg, s.rsaPrivateKey)
 	if err != nil {
 		return
 	}
-	err = signature.Sign(partialNdfMsg, s.privateKey)
+	err = signature.Sign(partialNdfMsg, s.rsaPrivateKey)
 	if err != nil {
 		return
 	}
@@ -291,8 +293,19 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 
 // GetPrivateKey returns the server's private key.
 func (s *NetworkState) GetPrivateKey() *rsa.PrivateKey {
-	return s.privateKey
+	return s.rsaPrivateKey
 }
+
+// Get the elliptic curve private key
+func (s *NetworkState) GetEllipticPrivateKey() *eddsa.PrivateKey {
+	return s.ellipticPrivateKey
+}
+
+// Get the elliptic curve public key
+func (s *NetworkState) GetEllipticPublicKey() *eddsa.PublicKey {
+	return s.ellipticPrivateKey.PublicKey()
+}
+
 
 // GetRoundMap returns the map of rounds.
 func (s *NetworkState) GetRoundMap() *round.StateMap {

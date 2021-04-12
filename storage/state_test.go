@@ -69,9 +69,9 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Test fields of NetworkState
-	if !reflect.DeepEqual(state.privateKey, privateKey) {
+	if !reflect.DeepEqual(state.rsaPrivateKey, privateKey) {
 		t.Errorf("NewState() produced a NetworkState with the wrong privateKey."+
-			"\n\texpected: %v\n\treceived: %v", privateKey, &state.privateKey)
+			"\n\texpected: %v\n\treceived: %v", privateKey, &state.rsaPrivateKey)
 	}
 
 	if !reflect.DeepEqual(state.rounds, expectedRounds) {
@@ -318,7 +318,7 @@ func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate private key:\n%v", err)
 	}
-	state.privateKey = brokenPrivateKey
+	state.rsaPrivateKey = brokenPrivateKey
 
 	// Call AddRoundUpdate()
 	err = state.AddRoundUpdate(testRoundInfo)
@@ -376,7 +376,7 @@ func TestNetworkState_UpdateNdf_SignError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate private key:\n%v", err)
 	}
-	state.privateKey = brokenPrivateKey
+	state.rsaPrivateKey = brokenPrivateKey
 
 	// Update NDF
 	err = state.UpdateNdf(testNDF)

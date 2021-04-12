@@ -412,6 +412,7 @@ gitlab.com/elixxir/primitives v0.0.3-0.20210405224302-03092a268566/go.mod h1:MkG
 gitlab.com/elixxir/primitives v0.0.3-0.20210406002149-ae7bd4896baf h1:1SPT7Z/9IwDQ+CkdpLPP9QyIX7KFtvgVw7/gxLbWzak=
 gitlab.com/elixxir/primitives v0.0.3-0.20210406002149-ae7bd4896baf/go.mod h1:MkG5S32UvI6/ZcTLQxFpvEAnCshR6MNG8d8gUrvKC7g=
 gitlab.com/xx_network/comms v0.0.0-20200805174823-841427dd5023/go.mod h1:owEcxTRl7gsoM8c3RQ5KAm5GstxrJp5tn+6JfQ4z5Hw=
+gitlab.com/xx_network/comms v0.0.3/go.mod h1:YViGbRj7FjJYoaO4NpALGEd9dK/l8uUT000FEBbUTL8=
 gitlab.com/xx_network/comms v0.0.4-0.20210216174438-0790d1f1f225 h1:ZVxPD76xDLdTSGY2w/aGRMiiry7SauD8sq4c+see6aM=
 gitlab.com/xx_network/comms v0.0.4-0.20210216174438-0790d1f1f225/go.mod h1:e7dy2wznC4U4bG/U3xFGYYsnnd8zHOhoSxzFkGPQYX4=
 gitlab.com/xx_network/comms v0.0.4-0.20210305221336-a7e28febdbf6/go.mod h1:bs4GLnnL1UqInyjT4MbHamgTpiTLNtdC5e61CCnVapo=
@@ -474,6 +475,10 @@ gitlab.com/xx_network/primitives v0.0.4-0.20210402222416-37c1c4d3fac4 h1:YPYTKF0
 gitlab.com/xx_network/primitives v0.0.4-0.20210402222416-37c1c4d3fac4/go.mod h1:9imZHvYwNFobxueSvVtHneZLk9wTK7HQTzxPm+zhFhE=
 gitlab.com/xx_network/primitives v0.0.4-0.20210406200245-e5a84aeae64d h1:1PeOyzqYMN+iqV9rftyE4L9PG3NG9mvICYtP+NkMM7s=
 gitlab.com/xx_network/primitives v0.0.4-0.20210406200245-e5a84aeae64d/go.mod h1:9imZHvYwNFobxueSvVtHneZLk9wTK7HQTzxPm+zhFhE=
+gitlab.com/xx_network/primitives v0.0.4-0.20210409183347-247b886a73ff h1:5xREhZYr5tm1F3qwolgxuMhPpek0gMB50nPUCtzndfM=
+gitlab.com/xx_network/primitives v0.0.4-0.20210409183347-247b886a73ff/go.mod h1:9imZHvYwNFobxueSvVtHneZLk9wTK7HQTzxPm+zhFhE=
+gitlab.com/xx_network/primitives v0.0.4-0.20210412170941-7ef69bce5a5c h1:WpAkvPhg5NYkLkJ8M0/jD4VMuNpqQTahlwkVbbV8SHk=
+gitlab.com/xx_network/primitives v0.0.4-0.20210412170941-7ef69bce5a5c/go.mod h1:9imZHvYwNFobxueSvVtHneZLk9wTK7HQTzxPm+zhFhE=
 gitlab.com/xx_network/ring v0.0.2 h1:TlPjlbFdhtJrwvRgIg4ScdngMTaynx/ByHBRZiXCoL0=
 gitlab.com/xx_network/ring v0.0.2/go.mod h1:aLzpP2TiZTQut/PVHR40EJAomzugDdHXetbieRClXIM=
 go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=

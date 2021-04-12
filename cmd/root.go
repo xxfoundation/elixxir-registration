@@ -80,8 +80,7 @@ var rootCmd = &cobra.Command{
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
-		ecPubKeyPath := viper.GetString("ecPubKey")
-		ecPrivKeyPath := viper.GetString("ecPrivKey")
+		ecPrivKeyPath := viper.GetString("ellipticPrivateKey")
 
 		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 		ndfOutputPath := viper.GetString("ndfOutputPath")
@@ -211,8 +210,7 @@ var rootCmd = &cobra.Command{
 			Address:               localAddress,
 			CertPath:              certPath,
 			KeyPath:               keyPath,
-			EcPrivKeyPath: ecPrivKeyPath,
-			EcPubKeyPath: ecPubKeyPath,
+			EllipticKeyPath:       ecPrivKeyPath,
 			NdfOutputPath:         ndfOutputPath,
 			cmix:                  *cmix,
 			e2e:                   *e2e,
