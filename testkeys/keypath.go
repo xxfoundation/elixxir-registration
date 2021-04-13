@@ -2,7 +2,6 @@ package testkeys
 
 import (
 	"crypto/rand"
-	"fmt"
 	"github.com/katzenpost/core/crypto/eddsa"
 	"path/filepath"
 	"runtime"
@@ -88,6 +87,8 @@ func GetSchedulingSecure() string {
 }
 
 func WriteEcPublicKey() {
-	ecPrivLey, _ := eddsa.Load("privKey", "publicKeyEc.pem", rand.Reader)
-	fmt.Printf("\n\n\n\nstring: %v\n\n\n", ecPrivLey.PublicKey().String())
+	privKeyPath := filepath.Join(getDirForFile(), "ecPrivKey.pem")
+	pubKeyPath := filepath.Join(getDirForFile(), "ecPubKey.pem")
+
+	eddsa.Load(privKeyPath, pubKeyPath, rand.Reader)
 }

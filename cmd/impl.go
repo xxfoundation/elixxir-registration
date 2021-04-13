@@ -83,7 +83,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, errors.Errorf("Failed to parse permissioning elliptic key: %+v. "+
-				"Elliptic key path is %+v", err, params.EllipticKeyPath)
+				"Specified elliptic key path is %+v", err, params.EllipticKeyPath)
 		}
 
 		ellipticPrivateKey, err = eddsa.NewKeypair(rand.Reader)
