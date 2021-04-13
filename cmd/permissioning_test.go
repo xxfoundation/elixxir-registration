@@ -81,6 +81,8 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	testkeys.WriteEcPublicKey()
+
 	// Call to load all registered nodes from DB
 	err = impl.LoadAllRegisteredNodes()
 	if err != nil {

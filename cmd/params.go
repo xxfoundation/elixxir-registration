@@ -19,9 +19,9 @@ import (
 
 // Params object for reading in configuration data
 type Params struct {
-	Address               string
-	CertPath              string
-	KeyPath               string
+	Address  string
+	CertPath string
+	KeyPath  string
 	// Path which private key is read from
 	EllipticKeyPath       string
 	NdfOutputPath         string

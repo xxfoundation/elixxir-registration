@@ -53,7 +53,7 @@ type RegistrationImpl struct {
 	//TODO-kill this
 	registrationTimes map[id.ID]int64
 
-	NDFLock      sync.Mutex
+	NDFLock sync.Mutex
 }
 
 //function used to schedule nodes
@@ -90,7 +90,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		if err != nil {
 			return nil, errors.Errorf("Failed to generate elliptic key: %v", err)
 		}
-
 
 	}
 
@@ -131,7 +130,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 				"Permissioning cert is %+v", err, regImpl.permissioningCert)
 		}
 
-
 	}
 
 	// Load the UDB cert from file
@@ -145,7 +143,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		Registration: ndf.Registration{
 			Address:        RegParams.publicAddress,
 			TlsCertificate: regImpl.certFromFile,
-			EllipticCert:   state.GetEllipticPublicKey().String(),
+			EllipticPubKey: state.GetEllipticPublicKey().String(),
 		},
 
 		Timestamp: time.Now(),

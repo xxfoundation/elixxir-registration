@@ -1,6 +1,9 @@
 package testkeys
 
 import (
+	"crypto/rand"
+	"fmt"
+	"github.com/katzenpost/core/crypto/eddsa"
 	"path/filepath"
 	"runtime"
 )
@@ -59,7 +62,7 @@ func GetUdbCertPath() string {
 	return filepath.Join(getDirForFile(), "udb.crt")
 }
 
-func GetEllipticPrivateKey() string  {
+func GetEllipticPrivateKey() string {
 	return filepath.Join(getDirForFile(), "cmix.rip.ec.key")
 }
 
@@ -82,4 +85,9 @@ func GetSchedulingSimple(isRandom bool) string {
 func GetSchedulingSecure() string {
 
 	return filepath.Join(getDirForFile(), "Scheduling_Simple_NonRandom.json")
+}
+
+func WriteEcPublicKey() {
+	ecPrivLey, _ := eddsa.Load("privKey", "publicKeyEc.pem", rand.Reader)
+	fmt.Printf("\n\n\n\nstring: %v\n\n\n", ecPrivLey.PublicKey().String())
 }

@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"bytes"
+	"github.com/audiolion/ipip"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -24,7 +25,6 @@ import (
 	"math/rand"
 	"net"
 	"sync/atomic"
-	"github.com/audiolion/ipip"
 )
 
 // Server->Permissioning unified poll function
@@ -96,7 +96,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		// Return the updated NDFs
 		response.FullNDF = m.State.GetFullNdf().GetPb()
 		response.PartialNDF = m.State.GetPartialNdf().GetPb()
-	}else{
+	} else {
 		// Fetch latest round updates
 		response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
 		if err != nil {
@@ -463,22 +463,22 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 }
 
 //fixme: move this to primitives and research more
-func isValidAddr(addr string)bool{
-	if permissiveIPChecking{
+func isValidAddr(addr string) bool {
+	if permissiveIPChecking {
 		return true
 	}
 	host, _, err := net.SplitHostPort(addr)
-	if err!=nil  || host==""{
+	if err != nil || host == "" {
 		return false
 	}
 
 	ip := net.ParseIP(host)
-	if ip==nil{
+	if ip == nil {
 		return false
 	}
 
 	if ipip.IsPrivate(ip) || ip.IsLoopback() || ip.IsUnspecified() ||
-		ip.IsMulticast(){
+		ip.IsMulticast() {
 		return false
 	}
 
