@@ -9,9 +9,7 @@
 package cmd
 
 import (
-	"crypto/rand"
 	"crypto/x509"
-	"github.com/katzenpost/core/crypto/eddsa"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -25,7 +23,6 @@ import (
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/rateLimiting"
 	"gitlab.com/xx_network/primitives/utils"
-	"os"
 	"sync"
 	"time"
 )
@@ -79,22 +76,8 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			"PermissioningKey is %+v", err, rsaPrivateKey)
 	}
 
-	ellipticPrivateKey, err := eddsa.Load(params.EllipticKeyPath, "", nil)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return nil, errors.Errorf("Failed to parse permissioning elliptic key: %+v. "+
-				"Specified elliptic key path is %+v", err, params.EllipticKeyPath)
-		}
-
-		ellipticPrivateKey, err = eddsa.NewKeypair(rand.Reader)
-		if err != nil {
-			return nil, errors.Errorf("Failed to generate elliptic key: %v", err)
-		}
-
-	}
-
 	// Initialize the state tracking object
-	state, err := storage.NewState(rsaPrivateKey, ellipticPrivateKey, params.addressSpace, params.NdfOutputPath)
+	state, err := storage.NewState(rsaPrivateKey, params.addressSpace, params.NdfOutputPath)
 	if err != nil {
 		return nil, err
 	}

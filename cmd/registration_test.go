@@ -66,7 +66,6 @@ func TestMain(m *testing.M) {
 		CertPath:          testkeys.GetCACertPath(),
 		KeyPath:           testkeys.GetCAKeyPath(),
 		NdfOutputPath:     testkeys.GetNDFPath(),
-		EllipticKeyPath:   testkeys.GetEllipticPrivateKey(),
 		publicAddress:     permAddr,
 		udbCertPath:       testkeys.GetUdbCertPath(),
 		userRegCapacity:   5,

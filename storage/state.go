@@ -9,6 +9,8 @@
 package storage
 
 import (
+	"crypto/rand"
+	"fmt"
 	"github.com/jinzhu/gorm"
 	"github.com/katzenpost/core/crypto/eddsa"
 	"github.com/pkg/errors"
@@ -19,6 +21,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/xx_network/comms/signature"
+	"gitlab.com/xx_network/crypto/signature/ec"
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
@@ -66,8 +69,7 @@ type NetworkState struct {
 }
 
 // NewState returns a new NetworkState object.
-func NewState(rsaPrivKey *rsa.PrivateKey, ellipticPrivKey *eddsa.PrivateKey,
-	addressSpaceSize uint32, ndfOutputPath string) (*NetworkState, error) {
+func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string) (*NetworkState, error) {
 
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
@@ -87,7 +89,6 @@ func NewState(rsaPrivKey *rsa.PrivateKey, ellipticPrivKey *eddsa.PrivateKey,
 		fullNdf:            fullNdf,
 		partialNdf:         partialNdf,
 		rsaPrivateKey:      rsaPrivKey,
-		ellipticPrivateKey: ellipticPrivKey,
 		addressSpaceSize:   addressSpaceSize,
 		pruneList:          make(map[id.ID]interface{}),
 		ndfOutputPath:      ndfOutputPath,
@@ -106,6 +107,35 @@ func NewState(rsaPrivKey *rsa.PrivateKey, ellipticPrivKey *eddsa.PrivateKey,
 		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
 		!strings.Contains(err.Error(), "Unable to locate state for key") {
 		return nil, err
+	}
+
+	ellipticKey, err := state.getElliptic()
+	if err != nil &&
+		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
+		!strings.Contains(err.Error(), "Unable to locate state for key") {
+		return nil, err
+	}
+
+	// Handle elliptic key storage, either creating a key if one
+	// does not already exist or loading it into the object if it does
+	if ellipticKey == "" {
+		// Create a key if one doesn't exist
+		ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+		if err != nil {
+			return nil, err
+		}
+		err = state.setElliptic(ecPrivKey.Bytes())
+		if err != nil {
+			return nil, err
+		}
+
+		state.ellipticPrivateKey = ecPrivKey
+
+	} else {
+		state.ellipticPrivateKey, err = ec.LoadPrivateKeyFromByes([]byte(ellipticKey))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Updates are handled in the uint space, as a result, the designator for
@@ -130,6 +160,9 @@ func NewState(rsaPrivKey *rsa.PrivateKey, ellipticPrivKey *eddsa.PrivateKey,
 			return nil, err
 		}
 	}
+
+	fmt.Printf("state ec key: %v\n", state.ellipticPrivateKey)
+
 
 	return state, nil
 }
@@ -377,6 +410,28 @@ func (s *NetworkState) get(key string) (uint64, error) {
 		return 0, errors.Errorf("Unable to parse current %s: %+v", key, err)
 	}
 	return roundId, nil
+}
+
+// Helper to return the RoundId or UpdateId depending on the given key
+func (s *NetworkState) getElliptic() (string, error) {
+	ellipticKey, err := PermissioningDb.GetStateValue(EllipticKey)
+	if err != nil {
+		return "", errors.Errorf("Unable to obtain current %s: %+v", EllipticKey, err)
+	}
+
+	return ellipticKey, nil
+}
+
+// Helper to set the elliptic key into the state table
+func (s *NetworkState) setElliptic(newVal []byte) error {
+	err := PermissioningDb.UpsertState(&State{
+		Key:   EllipticKey,
+		Value: string(newVal),
+	})
+	if err != nil {
+		return errors.Errorf("Unable to update current round ID: %+v", err)
+	}
+	return nil
 }
 
 // IncrementRoundID increments the round ID

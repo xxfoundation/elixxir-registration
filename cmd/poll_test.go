@@ -8,9 +8,7 @@ package cmd
 
 import (
 	"bytes"
-	"crypto/rand"
 	"fmt"
-	"github.com/katzenpost/core/crypto/eddsa"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/testutils"
@@ -247,12 +245,8 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
-	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
-	if err != nil {
-		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
-	}
 
-	state, err := storage.NewState(getTestKey(), ecPrivKey, 8, "")
+	state, err := storage.NewState(getTestKey(), 8, "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -975,12 +969,8 @@ func TestVerifyError(t *testing.T) {
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
-	if err != nil {
-		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
-	}
 
-	state, err := storage.NewState(pk, ecPrivKey, 8, "")
+	state, err := storage.NewState(pk, 8, "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}

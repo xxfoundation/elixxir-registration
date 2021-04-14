@@ -7,7 +7,6 @@ package scheduling
 
 import (
 	"crypto/rand"
-	"github.com/katzenpost/core/crypto/eddsa"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -38,12 +37,8 @@ func TestStartRound(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
-	if err != nil {
-		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
-	}
 
-	testState, err := storage.NewState(privKey, ecPrivKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -111,12 +106,8 @@ func TestStartRound_BadState(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
-	if err != nil {
-		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
-	}
 
-	testState, err := storage.NewState(privKey, ecPrivKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -183,12 +174,8 @@ func TestStartRound_BadNode(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
-	if err != nil {
-		t.Fatalf("Failed to generate elliptic private key:\n%v", err)
-	}
 
-	testState, err := storage.NewState(privKey, ecPrivKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

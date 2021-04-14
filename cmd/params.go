@@ -22,8 +22,6 @@ type Params struct {
 	Address  string
 	CertPath string
 	KeyPath  string
-	// Path which private key is read from
-	EllipticKeyPath       string
 	NdfOutputPath         string
 	NsCertPath            string
 	NsAddress             string
