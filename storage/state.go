@@ -10,7 +10,6 @@ package storage
 
 import (
 	"crypto/rand"
-	"fmt"
 	"github.com/jinzhu/gorm"
 	"github.com/katzenpost/core/crypto/eddsa"
 	"github.com/pkg/errors"
@@ -81,17 +80,17 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 	}
 
 	state := &NetworkState{
-		rounds:             round.NewStateMap(),
-		roundUpdates:       dataStructures.NewUpdates(),
-		update:             make(chan node.UpdateNotification, updateBufferLength),
-		nodes:              node.NewStateMap(),
-		unprunedNdf:        &ndf.NetworkDefinition{},
-		fullNdf:            fullNdf,
-		partialNdf:         partialNdf,
-		rsaPrivateKey:      rsaPrivKey,
-		addressSpaceSize:   addressSpaceSize,
-		pruneList:          make(map[id.ID]interface{}),
-		ndfOutputPath:      ndfOutputPath,
+		rounds:           round.NewStateMap(),
+		roundUpdates:     dataStructures.NewUpdates(),
+		update:           make(chan node.UpdateNotification, updateBufferLength),
+		nodes:            node.NewStateMap(),
+		unprunedNdf:      &ndf.NetworkDefinition{},
+		fullNdf:          fullNdf,
+		partialNdf:       partialNdf,
+		rsaPrivateKey:    rsaPrivKey,
+		addressSpaceSize: addressSpaceSize,
+		pruneList:        make(map[id.ID]interface{}),
+		ndfOutputPath:    ndfOutputPath,
 	}
 
 	// Obtain round & update Id from Storage
@@ -160,9 +159,6 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 			return nil, err
 		}
 	}
-
-	fmt.Printf("state ec key: %v\n", state.ellipticPrivateKey)
-
 
 	return state, nil
 }
@@ -242,7 +238,7 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 
 	roundCopy.UpdateID = updateID
 
-	err = signature.Sign(roundCopy, s.rsaPrivateKey)
+	err = signature.SignRsa(roundCopy, s.rsaPrivateKey)
 	if err != nil {
 		return errors.WithMessagef(err, "Could not add round update %v "+
 			"for round %v due to failed signature", roundCopy.UpdateID, roundCopy.ID)
@@ -296,11 +292,11 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	}
 
 	// Sign NDF comms messages
-	err = signature.Sign(fullNdfMsg, s.rsaPrivateKey)
+	err = signature.SignRsa(fullNdfMsg, s.rsaPrivateKey)
 	if err != nil {
 		return
 	}
-	err = signature.Sign(partialNdfMsg, s.rsaPrivateKey)
+	err = signature.SignRsa(partialNdfMsg, s.rsaPrivateKey)
 	if err != nil {
 		return
 	}

@@ -7,7 +7,6 @@ package cmd
 
 import (
 	"crypto/rand"
-	"fmt"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/crypto/signature/rsa"
@@ -105,7 +104,6 @@ func createNode(testState *storage.NetworkState, order, regCode string, appId in
 	if err != nil {
 		t.Fatalf("Failed to generate random bytes: %v", err)
 	}
-	fmt.Printf("banned: %v\n", idBytes)
 
 	// Create a node with a banned status
 	applicationId := uint64(appId)

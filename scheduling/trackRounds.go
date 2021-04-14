@@ -116,7 +116,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 
 		for _, rid := range rounds {
 			r := state.GetRoundMap().GetRound(rid)
-			if r == nil{
+			if r == nil {
 				continue
 			}
 			switch r.GetRoundState() {

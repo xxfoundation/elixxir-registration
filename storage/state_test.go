@@ -275,7 +275,7 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 	}
 
 	// Verify signature
-	err = signature.Verify(roundInfo, privateKey.GetPublic())
+	err = signature.VerifyRsa(roundInfo, privateKey.GetPublic())
 	if err != nil {
 		t.Fatalf("Failed to verify RoundInfo signature:\n%+v", err)
 	}
