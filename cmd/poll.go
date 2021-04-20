@@ -135,7 +135,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	}
 
 	newActivity := current.Activity(msg.Activity)
-	//if the node is in standby, do not do an update
+	// if the node is in NOT_STARTED, do not do an update in order to avoid
+	// deadlocks if it is recovering from a failed round.
 	if newActivity==current.NOT_STARTED{
 		return response, nil
 	}
