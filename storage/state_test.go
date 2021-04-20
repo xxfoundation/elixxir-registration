@@ -603,7 +603,7 @@ func TestNetworkState_GetRoundID(t *testing.T) {
 func TestNetworkState_CreateDisabledNodes(t *testing.T) {
 	// Get test data
 	testData, stateMap, expectedStateSet := generateIdLists(3, t)
-	state := &NetworkState{nodes: stateMap}
+	state := &NetworkState{nodes: stateMap, pruneList:make(map[id.ID]interface{})}
 	testData = "\n \n\n" + testData + "\n  "
 	testPath := "testDisabledNodesList.txt"
 
@@ -627,7 +627,7 @@ func TestNetworkState_CreateDisabledNodes(t *testing.T) {
 			"\n\texpected: %v\n\treceived: %v", nil, err)
 	}
 
-	if state.disabledNodesStates.nodes.Difference(expectedStateSet).Len() != 0 {
+	if !reflect.DeepEqual(state.disabledNodesStates.nodes,expectedStateSet) {
 		t.Errorf("CreateDisabledNodes() did not return the correct Set."+
 			"\n\texpected: %v\n\treceived: %v",
 			expectedStateSet, state.disabledNodesStates.nodes)
@@ -683,21 +683,5 @@ func TestNetworkState_StartPollDisabledNodes(t *testing.T) {
 		return
 	case <-time.After(500 * time.Millisecond):
 		t.Errorf("StartPollDisabledNodes() did not correctly stop when kill command sent.")
-	}
-}
-
-// Tests that GetDisabledNodesSet() return nil when the underlying set is nil.
-func TestNetworkState_GetDisabledNodesSet(t *testing.T) {
-	// Get test data
-	state := &NetworkState{disabledNodesStates: &disabledNodes{
-		nodes:    nil,
-		path:     "testDisabledNodesList.txt",
-		interval: 33 * time.Millisecond,
-	}}
-
-	nodeSet := state.GetDisabledNodesSet()
-	if nodeSet != nil {
-		t.Errorf("GetDisabledNodesSet() did not return a nil set when "+
-			"expected.\n\texpected: %v\n\treceived: %v", nil, nodeSet)
 	}
 }

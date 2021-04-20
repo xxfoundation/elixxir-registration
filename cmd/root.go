@@ -16,8 +16,8 @@ import (
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
-	"gitlab.com/elixxir/client/interfaces/contact"
 	"gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/contact"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
@@ -51,6 +51,8 @@ var (
 
 	// Duration between polls of the disabled Node list for updates.
 	disabledNodesPollDuration time.Duration
+
+	permissiveIPChecking bool
 )
 
 // Default duration between polls of the disabled Node list for updates.
@@ -199,6 +201,8 @@ var rootCmd = &cobra.Command{
 			userRegCapacity = 1000
 		}
 
+		permissiveIPChecking = viper.GetBool("permissiveIPChecking")
+
 		// Populate params
 		RegParams = Params{
 			Address:               localAddress,
@@ -306,6 +310,7 @@ var rootCmd = &cobra.Command{
 					}
 
 					if !RegParams.disableNDFPruning {
+						//add disabled nodes to the prune list
 						jww.DEBUG.Printf("Setting %d pruned nodes", len(toPrune))
 						impl.State.SetPrunedNodes(toPrune)
 						err := impl.State.UpdateNdf(impl.State.GetUnprunedNdf())

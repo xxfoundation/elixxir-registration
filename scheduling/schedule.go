@@ -8,7 +8,6 @@ package scheduling
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -28,7 +27,7 @@ import (
 const newRoundChanLen = 100
 
 type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
-	state *storage.NetworkState, disabledNodes *set.Set) (protoRound, error)
+	state *storage.NetworkState) (protoRound, error)
 
 // Scheduler constructs the teaming parameters and sets up the scheduling
 func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan chan struct{}) error {
@@ -178,19 +177,10 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			}
 		}
 
-		// Remove offline nodes from pool to more accurately determine if pool is eligible for round creation
-		pool.CleanOfflineNodes(params.NodeCleanUpInterval * time.Second)
-
 		for {
 			//get the pool of disabled nodes and determine how many
 			//nodes can be scheduled
-			var numNodesInPool int
-			disabledNodes := state.GetDisabledNodesSet()
-			if disabledNodes == nil {
-				numNodesInPool = pool.pool.Len()
-			} else {
-				numNodesInPool = pool.pool.Difference(disabledNodes).Len()
-			}
+			numNodesInPool := pool.Len()
 
 			// Create a new round if the pool is full
 			if numNodesInPool >= int(teamFormationThreshold) && killed == nil {
@@ -202,7 +192,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 					return err
 				}
 
-				newRound, err := createRound(params, pool, currentID, state, disabledNodes)
+				newRound, err := createRound(params, pool, currentID, state)
 				if err != nil {
 					return err
 				}

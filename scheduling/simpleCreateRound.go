@@ -6,7 +6,6 @@
 package scheduling
 
 import (
-	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/crypto/shuffle"
 	"gitlab.com/elixxir/registration/storage"
@@ -22,9 +21,9 @@ import (
 // createSimpleRound.go builds a team for a round out of a pool and round id and places
 // this round into the network state
 func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
-	state *storage.NetworkState, disabledNodes *set.Set) (protoRound, error) {
+	state *storage.NetworkState) (protoRound, error) {
 
-	nodes, err := pool.PickNRandAtThreshold(int(params.TeamSize), int(params.TeamSize), disabledNodes)
+	nodes, err := pool.PickNRandAtThreshold(int(params.TeamSize), int(params.TeamSize))
 
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)

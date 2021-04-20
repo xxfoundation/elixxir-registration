@@ -55,6 +55,11 @@ disableGatewayPing: false
 # if set to false, network will sleep for five minutes on start
 disableNDFPruning: true
 
+# disables the rejection of nodes and gateways with internal 
+# or reserved IPs. For use within local environment or integration testing. 
+permissiveIPChecking: false
+
+
 # Database connection information
 dbUsername: "cmix"
 dbPassword: ""

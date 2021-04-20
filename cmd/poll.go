@@ -22,7 +22,9 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"math/rand"
+	"net"
 	"sync/atomic"
+	"github.com/audiolion/ipip"
 )
 
 // Server->Permissioning unified poll function
@@ -72,14 +74,14 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		return response, err
 	}
 
-	// Increment the Node's poll count
-	n.IncrementNumPolls()
-
 	// Check the node's connectivity
 	continuePoll, err := m.checkConnectivity(n, activity, m.GetDisableGatewayPingFlag())
 	if err != nil || !continuePoll {
 		return response, err
 	}
+
+	// Increment the Node's poll count
+	n.IncrementNumPolls()
 
 	// Ensure the NDF is ready to be returned
 	regComplete := atomic.LoadUint32(m.NdfReady)
@@ -94,12 +96,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		// Return the updated NDFs
 		response.FullNDF = m.State.GetFullNdf().GetPb()
 		response.PartialNDF = m.State.GetPartialNdf().GetPb()
-	}
-
-	// Fetch latest round updates
-	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
-	if err != nil {
-		return response, err
+	}else{
+		// Fetch latest round updates
+		response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
+		if err != nil {
+			return response, err
+		}
 	}
 
 	// Commit updates reported by the node if node involved in the current round
@@ -316,9 +318,6 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
 	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
 
-	jww.TRACE.Printf("Received gateway and node update: %s, %s", nodeAddress,
-		gatewayAddress)
-
 	// If state required changes, then check the NDF
 	if nodeUpdate || gatewayUpdate {
 
@@ -334,9 +333,10 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		m.NDFLock.Lock()
 		currentNDF := m.State.GetUnprunedNdf()
 
+		n.SetConnectivity(node.PortUnknown)
+
 		if nodeUpdate {
 			nodeHost.UpdateAddress(nodeAddress)
-			n.SetConnectivity(node.PortUnknown)
 			if err := updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
@@ -344,6 +344,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		}
 
 		if gatewayUpdate {
+
 			if err := updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
@@ -372,14 +373,18 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 		// Ping the server and attempt on that port
 		go func() {
 			nodeHost, exists := m.Comms.GetHost(n.GetID())
-			nodePing := exists && nodeHost.IsOnline()
+
+			nodePing := exists && isValidAddr(nodeHost.GetAddress()) &&
+				nodeHost.IsOnline()
 
 			gwPing := true
 			if !disableGatewayPing {
+				gwID := nodeHost.GetId().DeepCopy()
+				gwID.SetType(id.Gateway)
 				params := connect.GetDefaultHostParams()
 				params.AuthEnabled = false
-				gwHost, err := connect.NewHost(nil, n.GetGatewayAddress(), nil, params)
-				gwPing = err == nil && gwHost.IsOnline()
+				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), nil, params)
+				gwPing = err == nil && isValidAddr(n.GetGatewayAddress()) && gwHost.IsOnline()
 			}
 
 			if nodePing && gwPing {
@@ -455,4 +460,27 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 	}
 
 	return false, nil
+}
+
+//fixme: move this to primitives and research more
+func isValidAddr(addr string)bool{
+	if permissiveIPChecking{
+		return true
+	}
+	host, _, err := net.SplitHostPort(addr)
+	if err!=nil  || host==""{
+		return false
+	}
+
+	ip := net.ParseIP(host)
+	if ip==nil{
+		return false
+	}
+
+	if ipip.IsPrivate(ip) || ip.IsLoopback() || ip.IsUnspecified() ||
+		ip.IsMulticast(){
+		return false
+	}
+
+	return true
 }

@@ -1,7 +1,6 @@
 package scheduling
 
 import (
-	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage"
@@ -29,10 +28,10 @@ import (
 //  manner, as delineated here:
 //  https://docs.google.com/document/d/1oyjIDlqC54u_eoFzQP9SVNU2IqjnQOjpUYd9aqbg5X0/edit#
 func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
-	state *storage.NetworkState, disabledNodes *set.Set) (protoRound, error) {
+	state *storage.NetworkState) (protoRound, error) {
 
 	// Pick nodes from the pool
-	nodes, err := pool.PickNRandAtThreshold(int(params.Threshold), int(params.TeamSize), disabledNodes)
+	nodes, err := pool.PickNRandAtThreshold(int(params.Threshold), int(params.TeamSize))
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)
 	}

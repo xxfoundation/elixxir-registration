@@ -297,6 +297,14 @@ func (n *State) UpdateNodeAddresses(node string) bool {
 	return false
 }
 
+// GetNodeAddresses return the current node address.
+func (n *State) GetNodeAddresses() string {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+
+	return n.nodeAddress
+}
+
 // UpdateGatewayAddresses updates the address if it is warranted
 func (n *State) UpdateGatewayAddresses(gateway string) bool {
 	n.mux.Lock()
