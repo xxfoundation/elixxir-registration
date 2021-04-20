@@ -134,6 +134,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		return response, err
 	}
 
+	newActivity := current.Activity(msg.Activity)
+	//if the node is in standby, do not do an update
+	if newActivity==current.STANDBY{
+		return response, nil
+	}
+
 	// when a node poll is received, the nodes polling lock is taken here. If
 	// there is no update, it is released in this endpoint, otherwise it is
 	// released in the scheduling algorithm which blocks all future polls until
@@ -145,7 +151,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	// any associated round allows for that change. If the change was not
 	// acceptable, it is not recorded and an error is returned, which is
 	// propagated to the node
-	isUpdate, updateNotification, err := n.Update(current.Activity(msg.Activity))
+	isUpdate, updateNotification, err := n.Update(newActivity)
 	if !isUpdate || err != nil {
 		n.GetPollingLock().Unlock()
 		return response, err
