@@ -172,7 +172,7 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) (*pb.NDF, error) {
 
 	// Do not return NDF if backend hash matches
 	if isSame := m.State.GetPartialNdf().CompareHash(theirNdfHash); isSame {
-		return nil, nil
+		return &pb.NDF{}, nil
 	}
 
 	//Send the json of the ndf
