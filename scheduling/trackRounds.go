@@ -97,7 +97,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 
 			//tracks if the node cannot be contacted by permissioning
 			if nodeState.GetRawConnectivity() == node.PortFailed {
-				s := fmt.Sprintf("\tNode %s with address %s (AppID: %v, Activity: %s) and Gateway with address %s cannot be contacted", nodeState.GetID(), nodeState.GetNodeAddresses(), nodeState.GetAppID(),  nodeState.GetActivity(), nodeState.GetGatewayAddress())
+				s := fmt.Sprintf("\tNode %s with address %s (AppID: %v, Activity: %s) and Gateway with address %s cannot be contacted", nodeState.GetID(), nodeState.GetNodeAddresses(), nodeState.GetAppID(), nodeState.GetActivity(), nodeState.GetGatewayAddress())
 				noContact = append(noContact, s)
 			}
 			if nodeState.GetRawConnectivity() == node.NodePortFailed {
@@ -116,6 +116,9 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 
 		for _, rid := range rounds {
 			r := state.GetRoundMap().GetRound(rid)
+			if r == nil {
+				continue
+			}
 			switch r.GetRoundState() {
 			case states.PRECOMPUTING:
 				precompRounds = append(precompRounds, r)
@@ -146,7 +149,7 @@ func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
 		jww.INFO.Printf("Total Nodes: %v", len(nodeStates))
 		jww.INFO.Printf("Nodes without recent poll: %v", len(noPoll))
 		jww.INFO.Printf("Nodes without recent update: %v", len(notUpdating))
-		jww.INFO.Printf("Normally operating nodes: %v", len(nodeStates)-len(noPoll)-len(notUpdating))
+		jww.INFO.Printf("Normally operating nodes: %v", len(nodeStates)-len(noPoll)-len(notUpdating)-len(banned))
 		jww.INFO.Printf("Banned nodes: %v", len(banned))
 		jww.INFO.Printf("")
 
