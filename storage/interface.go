@@ -187,7 +187,7 @@ type RoundMetric struct {
 
 	// Round timestamp information
 	PrecompStart  time.Time `gorm:"NOT NULL"`
-	PrecompEnd    time.Time `gorm:"NOT NULL"`
+	PrecompEnd    time.Time `gorm:"NOT NULL;INDEX;"`
 	RealtimeStart time.Time `gorm:"NOT NULL"`
 	RealtimeEnd   time.Time `gorm:"NOT NULL;INDEX;"` // Index for TPS calc
 	BatchSize     uint32    `gorm:"NOT NULL"`
