@@ -22,11 +22,11 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/spf13/viper v1.7.1
 	gitlab.com/elixxir/client v1.5.1-0.20210327003633-81858c729609 // indirect
-	gitlab.com/elixxir/comms v0.0.4-0.20210414200820-10e888270d4d
-	gitlab.com/elixxir/crypto v0.0.7-0.20210412231025-6f75c577f803
-	gitlab.com/elixxir/primitives v0.0.3-0.20210409190923-7bf3cd8d97e7
-	gitlab.com/xx_network/comms v0.0.4-0.20210414191603-0904bc6eeda2
-	gitlab.com/xx_network/crypto v0.0.5-0.20210413200952-56bd15ec9d99
+	gitlab.com/elixxir/comms v0.0.4-0.20210430033534-b978056834d9
+	gitlab.com/elixxir/crypto v0.0.7-0.20210429182057-898c75770293
+	gitlab.com/elixxir/primitives v0.0.3-0.20210429180244-cdbb97da0c16
+	gitlab.com/xx_network/comms v0.0.4-0.20210430033032-d30d75c1530f
+	gitlab.com/xx_network/crypto v0.0.5-0.20210430032852-de40a2ed3ac9
 	gitlab.com/xx_network/primitives v0.0.4-0.20210412170941-7ef69bce5a5c
 	golang.org/x/crypto v0.0.0-20210314154223-e6e6c4f2bb5b // indirect
 	golang.org/x/net v0.0.0-20210315170653-34ac3e1c2000 // indirect

@@ -11,7 +11,6 @@ package storage
 import (
 	"crypto/rand"
 	"github.com/jinzhu/gorm"
-	"github.com/katzenpost/core/crypto/eddsa"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -37,7 +36,7 @@ const updateBufferLength = 10000
 type NetworkState struct {
 	// NetworkState parameters
 	rsaPrivateKey      *rsa.PrivateKey
-	ellipticPrivateKey *eddsa.PrivateKey
+	ellipticPrivateKey *ec.PrivateKey
 
 	// Round state
 	rounds       *round.StateMap
@@ -108,7 +107,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		return nil, err
 	}
 
-	ellipticKey, err := state.getElliptic()
+	ellipticKey, err := state.getEcKey()
 	if err != nil &&
 		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
 		!strings.Contains(err.Error(), "Unable to locate state for key") {
@@ -119,11 +118,11 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 	// does not already exist or loading it into the object if it does
 	if ellipticKey == "" {
 		// Create a key if one doesn't exist
-		ecPrivKey, err := eddsa.NewKeypair(rand.Reader)
+		ecPrivKey, err := ec.NewKeyPair(rand.Reader)
 		if err != nil {
 			return nil, err
 		}
-		err = state.setElliptic(ecPrivKey.Bytes())
+		err = state.storeEcKey(ecPrivKey.MarshalText())
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +130,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		state.ellipticPrivateKey = ecPrivKey
 
 	} else {
-		state.ellipticPrivateKey, err = ec.LoadPrivateKeyFromByes([]byte(ellipticKey))
+		state.ellipticPrivateKey, err = ec.LoadPrivateKey(ellipticKey)
 		if err != nil {
 			return nil, err
 		}
@@ -326,13 +325,13 @@ func (s *NetworkState) GetPrivateKey() *rsa.PrivateKey {
 }
 
 // Get the elliptic curve private key
-func (s *NetworkState) GetEllipticPrivateKey() *eddsa.PrivateKey {
+func (s *NetworkState) GetEllipticPrivateKey() *ec.PrivateKey {
 	return s.ellipticPrivateKey
 }
 
 // Get the elliptic curve public key
-func (s *NetworkState) GetEllipticPublicKey() *eddsa.PublicKey {
-	return s.ellipticPrivateKey.PublicKey()
+func (s *NetworkState) GetEllipticPublicKey() *ec.PublicKey {
+	return s.ellipticPrivateKey.GetPublic()
 }
 
 // GetRoundMap returns the map of rounds.
@@ -409,7 +408,7 @@ func (s *NetworkState) get(key string) (uint64, error) {
 }
 
 // Helper to return the RoundId or UpdateId depending on the given key
-func (s *NetworkState) getElliptic() (string, error) {
+func (s *NetworkState) getEcKey() (string, error) {
 	ellipticKey, err := PermissioningDb.GetStateValue(EllipticKey)
 	if err != nil {
 		return "", errors.Errorf("Unable to obtain current %s: %+v", EllipticKey, err)
@@ -419,10 +418,10 @@ func (s *NetworkState) getElliptic() (string, error) {
 }
 
 // Helper to set the elliptic key into the state table
-func (s *NetworkState) setElliptic(newVal []byte) error {
+func (s *NetworkState) storeEcKey(newVal string) error {
 	err := PermissioningDb.UpsertState(&State{
 		Key:   EllipticKey,
-		Value: string(newVal),
+		Value: newVal,
 	})
 	if err != nil {
 		return errors.Errorf("Unable to update current round ID: %+v", err)

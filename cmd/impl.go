@@ -126,7 +126,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		Registration: ndf.Registration{
 			Address:        RegParams.publicAddress,
 			TlsCertificate: regImpl.certFromFile,
-			EllipticPubKey: state.GetEllipticPublicKey().String(),
+			EllipticPubKey: state.GetEllipticPublicKey().MarshalText(),
 		},
 
 		Timestamp: time.Now(),
