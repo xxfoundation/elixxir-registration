@@ -68,6 +68,7 @@ func TestMain(m *testing.M) {
 		NdfOutputPath:     testkeys.GetNDFPath(),
 		publicAddress:     permAddr,
 		udbCertPath:       testkeys.GetUdbCertPath(),
+		NsCertPath:        testkeys.GetUdbCertPath(),
 		userRegCapacity:   5,
 		userRegLeakPeriod: time.Hour,
 		minimumNodes:      3,
@@ -92,6 +93,7 @@ func TestEmptyDataBase(t *testing.T) {
 		CertPath:          testkeys.GetCACertPath(),
 		KeyPath:           testkeys.GetCAKeyPath(),
 		udbCertPath:       testkeys.GetUdbCertPath(),
+		NsCertPath:        testkeys.GetUdbCertPath(),
 		userRegLeakPeriod: time.Hour,
 		userRegCapacity:   5,
 	}
@@ -575,6 +577,7 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 		KeyPath:           testkeys.GetCAKeyPath(),
 		NdfOutputPath:     testkeys.GetNDFPath(),
 		udbCertPath:       testkeys.GetUdbCertPath(),
+		NsCertPath:        testkeys.GetUdbCertPath(),
 		publicAddress:     "0.0.0.0:5905",
 		userRegCapacity:   4,
 		userRegLeakPeriod: 3 * time.Second,

@@ -121,13 +121,21 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		return nil, errors.Errorf("failed to read UDB cert: %+v", err)
 	}
 
+	notifCert, err := utils.ReadFile(params.NsCertPath)
+	if err != nil {
+		return nil, errors.Errorf("failed to read Notifications cert: %+v", err)
+	}
+
 	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        RegParams.publicAddress,
 			TlsCertificate: regImpl.certFromFile,
 		},
-
+		Notification: ndf.Notification{
+			Address:        RegParams.NsAddress,
+			TlsCertificate: string(notifCert),
+		},
 		Timestamp: time.Now(),
 		UDB: ndf.UDB{
 			ID:       RegParams.udbId,
@@ -296,7 +304,7 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 
 		return err
 	}
-	impl.Functions.PollNdf = func(theirNdfHash []byte) ([]byte, error) {
+	impl.Functions.PollNdf = func(theirNdfHash []byte) (*pb.NDF, error) {
 
 		response, err := instance.PollNdf(theirNdfHash)
 		if err != nil && err.Error() != ndf.NO_NDF {
