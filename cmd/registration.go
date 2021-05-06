@@ -47,14 +47,14 @@ func (m *RegistrationImpl) RegisterUser(msg *pb.UserRegistration) (*pb.UserRegis
 
 	// Sign the user's transmission and reception key with the time the user's registration was received
 	now := time.Now()
-	transmissionSig, err := registration.SignWithTimestamp(rand.Reader, m.State.GetPrivateKey(), now, pubKey)
+	transmissionSig, err := registration.SignWithTimestamp(rand.Reader, m.State.GetPrivateKey(), now.UnixNano(), pubKey)
 	if err != nil {
 		jww.WARN.Printf("RegisterUser error: can't sign pubkey")
 		return &pb.UserRegistrationConfirmation{}, errors.Errorf(
 			"Unable to sign client public key: %+v", err)
 	}
 
-	receptionSig, err := registration.SignWithTimestamp(rand.Reader, m.State.GetPrivateKey(), now, receptionKey)
+	receptionSig, err := registration.SignWithTimestamp(rand.Reader, m.State.GetPrivateKey(), now.UnixNano(), receptionKey)
 	if err != nil {
 		jww.WARN.Printf("RegisterUser error: can't sign receptionKey")
 		return &pb.UserRegistrationConfirmation{}, errors.Errorf(
