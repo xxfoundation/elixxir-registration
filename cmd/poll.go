@@ -162,7 +162,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 }
 
 // PollNdf handles the client polling for an updated NDF
-func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) ([]byte, error) {
+func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) (*pb.NDF, error) {
 
 	// Ensure the NDF is ready to be returned
 	regComplete := atomic.LoadUint32(m.NdfReady)
@@ -172,12 +172,12 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) ([]byte, error) {
 
 	// Do not return NDF if backend hash matches
 	if isSame := m.State.GetPartialNdf().CompareHash(theirNdfHash); isSame {
-		return nil, nil
+		return &pb.NDF{}, nil
 	}
 
 	//Send the json of the ndf
 	jww.TRACE.Printf("Returning a new NDF to a back-end server!")
-	return m.State.GetPartialNdf().Get().Marshal()
+	return m.State.GetPartialNdf().GetPb(), nil
 }
 
 // checkVersion checks if the PermissioningPoll message server and gateway

@@ -71,6 +71,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		KeyPath:           testkeys.GetCAKeyPath(),
 		NdfOutputPath:     testkeys.GetNDFPath(),
 		udbCertPath:       testkeys.GetUdbCertPath(),
+		NsCertPath:        testkeys.GetUdbCertPath(),
 		disableNDFPruning: true,
 	}
 
