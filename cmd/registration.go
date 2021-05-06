@@ -12,16 +12,23 @@ import (
 	"crypto/rand"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/crypto/hash"
+	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/registration"
 	"gitlab.com/elixxir/registration/storage"
-	"gitlab.com/xx_network/crypto/signature/rsa"
+	"gitlab.com/xx_network/comms/messages"
+	"time"
 )
 
 var rateLimitErr = errors.New("Too many client registrations. Try again later")
 
 // Handle registration attempt by a Client
 // Returns rsa signature and error
-func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string, receptionKey string) ([]byte, []byte, error) {
+func (m *RegistrationImpl) RegisterUser(msg *pb.UserRegistration) (*pb.UserRegistrationConfirmation, error) {
+	// Obtain the signed key by passing to registration server
+	pubKey := msg.GetClientRSAPubKey()
+	receptionKey := msg.GetClientReceptionRSAPubKey()
+	regCode := msg.GetRegistrationCode()
+
 	// Check for pre-existing registration for this public key first
 	if user, err := storage.PermissioningDb.GetUser(pubKey); err == nil && user != nil {
 		jww.WARN.Printf("Previous registration found for %s", pubKey)
@@ -30,28 +37,30 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string, reception
 		err = storage.PermissioningDb.UseCode(regCode)
 		if err != nil {
 			jww.WARN.Printf("RegisterUser error: %+v", err)
-			return nil, nil, err
+			return &pb.UserRegistrationConfirmation{}, err
 		}
 	} else if regCode == "" && !m.registrationLimiting.Add(1) {
 		// Rate limited, fail early
 		jww.WARN.Printf("RegisterUser error: %+v", rateLimitErr)
-		return nil, nil, rateLimitErr
+		return &pb.UserRegistrationConfirmation{}, rateLimitErr
 	}
 
-	// Use hardcoded keypair to sign Client-provided public key
-	//Create a hash, hash the pubKey and then truncate it
-	h, _ := hash.NewCMixHash()
-	h.Write([]byte(pubKey))
-	transmissionSig, err := rsa.Sign(rand.Reader, m.State.GetPrivateKey(), hash.CMixHash, h.Sum(nil), nil)
+	// Sign the user's transmission and reception key with the time the user's registration was received
+	now := time.Now()
+	transmissionSig, err := registration.SignWithTimestamp(rand.Reader, m.State.GetPrivateKey(), now, pubKey)
 	if err != nil {
 		jww.WARN.Printf("RegisterUser error: can't sign pubkey")
-		return make([]byte, 0), make([]byte, 0), errors.Errorf(
+		return &pb.UserRegistrationConfirmation{}, errors.Errorf(
 			"Unable to sign client public key: %+v", err)
 	}
 
-	h.Reset()
-	h.Write([]byte(receptionKey))
-	receptionSig, err := rsa.Sign(rand.Reader, m.State.GetPrivateKey(), hash.CMixHash, h.Sum(nil), nil)
+	receptionSig, err := registration.SignWithTimestamp(rand.Reader, m.State.GetPrivateKey(), now, receptionKey)
+	if err != nil {
+		jww.WARN.Printf("RegisterUser error: can't sign receptionKey")
+		return &pb.UserRegistrationConfirmation{}, errors.Errorf(
+			"Unable to sign client reception key: %+v", err)
+	}
+
 	// Record the user public key for duplicate registration support
 	err = storage.PermissioningDb.InsertUser(pubKey, receptionKey)
 	if err != nil {
@@ -61,5 +70,13 @@ func (m *RegistrationImpl) RegisterUser(regCode string, pubKey string, reception
 
 	// Return signed public key to Client
 	jww.DEBUG.Printf("RegisterUser for code [%s] complete!", regCode)
-	return transmissionSig, receptionSig, nil
+
+	return &pb.UserRegistrationConfirmation{
+		ClientSignedByServer: &messages.RSASignature{
+			Signature: transmissionSig,
+		},
+		ClientReceptionSignedByServer: &messages.RSASignature{
+			Signature: receptionSig,
+		},
+	}, err
 }
