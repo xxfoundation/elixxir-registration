@@ -72,6 +72,7 @@ func TestReceiveSIGUSR2Signal(t *testing.T) {
 	}
 }
 
+/*
 func TestReceiveExitSignal(t *testing.T) {
 	called := make(chan bool, 1)
 	testfn := func() int {
@@ -98,4 +99,4 @@ func TestReceiveExitSignal(t *testing.T) {
 	if res != true {
 		t.Errorf("Signal INT was not handled!")
 	}
-}
+}*/
