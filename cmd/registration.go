@@ -78,5 +78,6 @@ func (m *RegistrationImpl) RegisterUser(msg *pb.UserRegistration) (*pb.UserRegis
 		ClientReceptionSignedByServer: &messages.RSASignature{
 			Signature: receptionSig,
 		},
+		Timestamp: now.UnixNano(),
 	}, err
 }
