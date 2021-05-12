@@ -6,7 +6,10 @@
 
 package storage
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 // Happy path
 func TestMapImpl_InsertClientRegCode(t *testing.T) {
@@ -101,11 +104,11 @@ func TestMapImpl_UseCode_Invalid(t *testing.T) {
 // Happy path
 func TestMapImpl_InsertUser(t *testing.T) {
 	m := &MapImpl{
-		users: make(map[string]string),
+		users: make(map[string]*User),
 	}
 
 	testKey := "TEST"
-	_ = m.InsertUser(testKey, testKey)
+	_ = m.InsertUser(testKey, testKey, time.Now())
 	if _, ok := m.users[testKey]; !ok {
 		t.Errorf("Insert failed to add the user!")
 	}
@@ -114,11 +117,13 @@ func TestMapImpl_InsertUser(t *testing.T) {
 // Happy path
 func TestMapImpl_GetUser(t *testing.T) {
 	m := &MapImpl{
-		users: make(map[string]string),
+		users: make(map[string]*User),
 	}
 
 	testKey := "TEST"
-	m.users[testKey] = testKey
+	m.users[testKey] = &User{
+		PublicKey:             testKey,
+	}
 
 	user, err := m.GetUser(testKey)
 	if err != nil || user.PublicKey != testKey {
@@ -129,7 +134,7 @@ func TestMapImpl_GetUser(t *testing.T) {
 // Get user that does not exist
 func TestMapImpl_GetUserNotExists(t *testing.T) {
 	m := &MapImpl{
-		users: make(map[string]string),
+		users: make(map[string]*User),
 	}
 
 	testKey := "TEST"

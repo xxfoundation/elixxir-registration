@@ -12,6 +12,7 @@ package storage
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"time"
 )
 
 // Inserts client registration code with given number of uses
@@ -59,7 +60,7 @@ func (d *DatabaseImpl) GetUser(publicKey string) (*User, error) {
 }
 
 // Inserts User into the Database
-func (d *DatabaseImpl) InsertUser(publicKey, receptionKey string) error {
+func (d *DatabaseImpl) InsertUser(publicKey, receptionKey string, registrationTimestamp time.Time) error {
 	user := &User{
 		PublicKey:    publicKey,
 		ReceptionKey: receptionKey,

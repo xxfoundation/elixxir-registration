@@ -42,14 +42,14 @@ type database interface {
 	InsertClientRegCode(code string, uses int) error
 	UseCode(code string) error
 	GetUser(publicKey string) (*User, error)
-	InsertUser(publicKey, receptionKey string) error
+	InsertUser(publicKey, receptionKey string, registrationTimestamp time.Time) error
 }
 
 // Struct implementing the Database Interface with an underlying Map
 type MapImpl struct {
 	clients           map[string]*RegistrationCode
 	nodes             map[string]*Node
-	users             map[string]string
+	users             map[string]*User
 	applications      map[uint64]*Application
 	nodeMetrics       map[uint64]*NodeMetric
 	nodeMetricCounter uint64
@@ -85,6 +85,8 @@ type User struct {
 	PublicKey string `gorm:"primary_key"`
 	// User reception key in PEM string format
 	ReceptionKey string `gorm:"NOT NULL;UNIQUE"`
+	// Timestamp in which user registered with permissioning
+	RegistrationTimestamp time.Time `gorm:"NOT NULL;UNIQUE"`
 }
 
 // Struct representing the Node's Application table in the Database
@@ -226,7 +228,7 @@ func NewMap() Storage {
 			nodeMetrics:      make(map[uint64]*NodeMetric),
 			roundMetrics:     make(map[uint64]*RoundMetric),
 			clients:          make(map[string]*RegistrationCode),
-			users:            make(map[string]string),
+			users:            make(map[string]*User),
 			states:           make(map[string]string),
 			ephemeralLengths: make(map[uint8]*EphemeralLength),
 		}}

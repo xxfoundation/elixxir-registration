@@ -11,6 +11,7 @@ package storage
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
+	"time"
 )
 
 // Inserts Client registration code with given number of uses
@@ -58,17 +59,22 @@ func (m *MapImpl) UseCode(code string) error {
 
 // Gets User from the map
 func (m *MapImpl) GetUser(publicKey string) (*User, error) {
-	if rk, ok := m.users[publicKey]; ok {
+	if usr, ok := m.users[publicKey]; ok {
 		return &User{
 			PublicKey:    publicKey,
-			ReceptionKey: rk,
+			ReceptionKey: usr.ReceptionKey,
+			RegistrationTimestamp: usr.RegistrationTimestamp,
 		}, nil
 	}
 	return nil, errors.New("user does not exist")
 }
 
 // Inserts User into the map
-func (m *MapImpl) InsertUser(publicKey, receptionKey string) error {
-	m.users[publicKey] = receptionKey
+func (m *MapImpl) InsertUser(publicKey, receptionKey string, registrationTimestamp time.Time) error {
+	m.users[publicKey] = &User{
+		PublicKey:             publicKey,
+		ReceptionKey:          receptionKey,
+		RegistrationTimestamp: registrationTimestamp,
+	}
 	return nil
 }
