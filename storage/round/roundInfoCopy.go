@@ -40,14 +40,25 @@ func CopyRoundInfo(ri *pb.RoundInfo) *pb.RoundInfo {
 		}
 	}
 
+	clientErrors := make([]*pb.ClientError, len(ri.ClientErrors))
+	for i, err := range ri.ClientErrors {
+		clientErrors[i] = &pb.ClientError{
+			ClientId: make([]byte, len(err.ClientId)),
+			Error:    err.Error,
+			Source:   make([]byte, len(err.Source)),
+		}
+		copy(clientErrors[i].ClientId, err.ClientId)
+		copy(clientErrors[i].Source, err.Source)
+	}
 	return &pb.RoundInfo{
 		ID:                         ri.GetID(),
 		State:                      ri.State,
 		BatchSize:                  ri.GetBatchSize(),
 		Topology:                   topologyCopy,
 		Timestamps:                 timestampsCopy,
-		ResourceQueueTimeoutMillis: ri.GetResourceQueueTimeoutMillis(),
 		Errors:                     errorsCopy,
+		ClientErrors:               clientErrors,
+		ResourceQueueTimeoutMillis: ri.GetResourceQueueTimeoutMillis(),
 		AddressSpaceSize:           ri.GetAddressSpaceSize(),
 	}
 }
