@@ -6,59 +6,68 @@
 
 package round
 
-import pb "gitlab.com/elixxir/comms/mixmessages"
+import (
+	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/xx_network/comms/messages"
+)
 
-//provides a utility function for making deep copies of roundInfo objects
+// TODO: add test
+// CopyRoundInfo returns a deep copy of mixmessages.RoundInfo.
 func CopyRoundInfo(ri *pb.RoundInfo) *pb.RoundInfo {
-	//copy the topology
-	topology := ri.GetTopology()
-
-	topologyCopy := make([][]byte, len(topology))
-	for i, nid := range topology {
+	// Copy the topology
+	topologyCopy := make([][]byte, len(ri.GetTopology()))
+	for i, nid := range ri.GetTopology() {
 		topologyCopy[i] = make([]byte, len(nid))
 		copy(topologyCopy[i], nid)
 	}
-
-	//copy the timestamps
-	timestamps := ri.GetTimestamps()
-	timestampsCopy := make([]uint64, len(timestamps))
-	for i, stamp := range timestamps {
+	// Copy the timestamps
+	timestampsCopy := make([]uint64, len(ri.GetTimestamps()))
+	for i, stamp := range ri.GetTimestamps() {
 		timestampsCopy[i] = stamp
 	}
-
-	//copy the errors
-	var errorsCopy []*pb.RoundError
-	if len(ri.Errors) > 0 {
-		errorsCopy = make([]*pb.RoundError, len(ri.Errors))
-		for i, e := range ri.Errors {
-			eCopy := *e
-			if e.Signature != nil {
-				sig := *(e.Signature)
-				eCopy.Signature = &sig
-			}
-			errorsCopy[i] = &eCopy
+	// Copy the errors
+	errorsCopy := make([]*pb.RoundError, len(ri.GetErrors()))
+	for i, err := range ri.GetErrors() {
+		errorsCopy[i] = &pb.RoundError{
+			Id:     err.GetId(),
+			NodeId: make([]byte, len(err.GetNodeId())),
+			Error:  err.GetError(),
+			Signature: &messages.RSASignature{
+				Nonce:     make([]byte, len(err.GetSignature().GetNonce())),
+				Signature: make([]byte, len(err.GetSignature().GetSignature())),
+			},
 		}
+		copy(errorsCopy[i].NodeId, err.GetNodeId())
+		copy(errorsCopy[i].Signature.Nonce, err.GetSignature().GetNonce())
+		copy(errorsCopy[i].Signature.Signature, err.GetSignature().GetSignature())
 	}
-
 	clientErrors := make([]*pb.ClientError, len(ri.ClientErrors))
-	for i, err := range ri.ClientErrors {
+	for i, err := range ri.GetClientErrors() {
 		clientErrors[i] = &pb.ClientError{
-			ClientId: make([]byte, len(err.ClientId)),
-			Error:    err.Error,
-			Source:   make([]byte, len(err.Source)),
+			ClientId: make([]byte, len(err.GetClientId())),
+			Error:    err.GetError(),
+			Source:   make([]byte, len(err.GetSource())),
 		}
-		copy(clientErrors[i].ClientId, err.ClientId)
-		copy(clientErrors[i].Source, err.Source)
+		copy(clientErrors[i].ClientId, err.GetClientId())
+		copy(clientErrors[i].Source, err.GetSource())
 	}
+	signatureCopy := &messages.RSASignature{
+		Nonce:     make([]byte, len(ri.GetSignature().GetNonce())),
+		Signature: make([]byte, len(ri.GetSignature().GetSignature())),
+	}
+	copy(signatureCopy.Nonce, ri.GetSignature().GetNonce())
+	copy(signatureCopy.Signature, ri.GetSignature().GetSignature())
 	return &pb.RoundInfo{
 		ID:                         ri.GetID(),
-		State:                      ri.State,
+		UpdateID:                   ri.GetUpdateID(),
+		State:                      ri.GetState(),
 		BatchSize:                  ri.GetBatchSize(),
 		Topology:                   topologyCopy,
 		Timestamps:                 timestampsCopy,
 		Errors:                     errorsCopy,
 		ClientErrors:               clientErrors,
 		ResourceQueueTimeoutMillis: ri.GetResourceQueueTimeoutMillis(),
+		Signature:                  signatureCopy,
 		AddressSpaceSize:           ri.GetAddressSpaceSize(),
 	}
 }
