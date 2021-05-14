@@ -4,7 +4,6 @@ go 1.13
 
 require (
 	github.com/audiolion/ipip v1.0.0
-	github.com/aws/aws-lambda-go v1.8.1 // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20200428022330-06a60b6afbbc // indirect
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
@@ -15,13 +14,12 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
-	github.com/nyaruka/phonenumbers v1.0.67 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/smartystreets/assertions v1.1.0 // indirect
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/spf13/viper v1.7.1
-	gitlab.com/elixxir/comms v0.0.4-0.20210514185242-906eca3fda69
+	gitlab.com/elixxir/comms v0.0.4-0.20210514193223-7efa4c966f23
 	gitlab.com/elixxir/crypto v0.0.7-0.20210514185043-7398614e9e43
 	gitlab.com/elixxir/primitives v0.0.3-0.20210514174939-fbba435364ed
 	gitlab.com/xx_network/comms v0.0.4-0.20210507215532-38ed97bd9365
