@@ -64,20 +64,20 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	roundCreationStopped := uint32(0)
 
 	// Read in private key
-	key, err := utils.ReadFile(params.KeyPath)
+	rsaKeyPem, err := utils.ReadFile(params.KeyPath)
 	if err != nil {
 		return nil, errors.Errorf("failed to read key at %+v: %+v",
 			params.KeyPath, err)
 	}
 
-	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	rsaPrivateKey, err := rsa.LoadPrivateKeyFromPem(rsaKeyPem)
 	if err != nil {
 		return nil, errors.Errorf("Failed to parse permissioning server key: %+v. "+
-			"PermissioningKey is %+v", err, pk)
+			"PermissioningKey is %+v", err, rsaPrivateKey)
 	}
 
 	// Initialize the state tracking object
-	state, err := storage.NewState(pk, params.addressSpace, params.NdfOutputPath)
+	state, err := storage.NewState(rsaPrivateKey, params.addressSpace, params.NdfOutputPath)
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +126,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		Registration: ndf.Registration{
 			Address:        RegParams.publicAddress,
 			TlsCertificate: regImpl.certFromFile,
+			EllipticPubKey: state.GetEllipticPublicKey().MarshalText(),
 		},
 		Timestamp: time.Now(),
 		UDB: ndf.UDB{
@@ -167,7 +168,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Start the communication server
 	regImpl.Comms = registration.StartRegistrationServer(&id.Permissioning,
 		params.Address, NewImplementation(regImpl),
-		[]byte(regImpl.certFromFile), key)
+		[]byte(regImpl.certFromFile), rsaKeyPem)
 
 	// In the noTLS pathway, disable authentication
 	if noTLS {
