@@ -592,7 +592,7 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 	// Start registration server
 	impl, err := StartRegistration(testParams2)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatal(err.Error())
 	}
 	dblck.Lock()
 	defer dblck.Unlock()

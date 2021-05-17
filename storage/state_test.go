@@ -64,9 +64,9 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Test fields of NetworkState
-	if !reflect.DeepEqual(state.privateKey, privateKey) {
+	if !reflect.DeepEqual(state.rsaPrivateKey, privateKey) {
 		t.Errorf("NewState() produced a NetworkState with the wrong privateKey."+
-			"\n\texpected: %v\n\treceived: %v", privateKey, &state.privateKey)
+			"\n\texpected: %v\n\treceived: %v", privateKey, &state.rsaPrivateKey)
 	}
 
 	if !reflect.DeepEqual(state.rounds, expectedRounds) {
@@ -199,12 +199,12 @@ func TestNetworkState_GetUpdates(t *testing.T) {
 			ID:       0,
 			UpdateID: uint64(3 + i),
 		}
-		err = testutils.SignRoundInfo(roundInfo, t)
+		err = testutils.SignRoundInfoRsa(roundInfo, t)
 		if err != nil {
 			t.Errorf("Failed to sign round info: %v", err)
 			t.FailNow()
 		}
-		rnd := dataStructures.NewRound(roundInfo, privKey.GetPublic())
+		rnd := dataStructures.NewVerifiedRound(roundInfo, privKey.GetPublic())
 		err = state.roundUpdates.AddRound(rnd)
 		if err != nil {
 			t.Errorf("AddRound() produced an unexpected error:\n%+v", err)
@@ -275,7 +275,7 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 	}
 
 	// Verify signature
-	err = signature.Verify(roundInfo, privateKey.GetPublic())
+	err = signature.VerifyRsa(roundInfo, privateKey.GetPublic())
 	if err != nil {
 		t.Fatalf("Failed to verify RoundInfo signature:\n%+v", err)
 	}
@@ -308,7 +308,7 @@ func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate private key:\n%v", err)
 	}
-	state.privateKey = brokenPrivateKey
+	state.rsaPrivateKey = brokenPrivateKey
 
 	// Call AddRoundUpdate()
 	err = state.AddRoundUpdate(testRoundInfo)
@@ -366,7 +366,7 @@ func TestNetworkState_UpdateNdf_SignError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate private key:\n%v", err)
 	}
-	state.privateKey = brokenPrivateKey
+	state.rsaPrivateKey = brokenPrivateKey
 
 	// Update NDF
 	err = state.UpdateNdf(testNDF)
@@ -603,7 +603,7 @@ func TestNetworkState_GetRoundID(t *testing.T) {
 func TestNetworkState_CreateDisabledNodes(t *testing.T) {
 	// Get test data
 	testData, stateMap, expectedStateSet := generateIdLists(3, t)
-	state := &NetworkState{nodes: stateMap, pruneList:make(map[id.ID]interface{})}
+	state := &NetworkState{nodes: stateMap, pruneList: make(map[id.ID]interface{})}
 	testData = "\n \n\n" + testData + "\n  "
 	testPath := "testDisabledNodesList.txt"
 
@@ -627,7 +627,7 @@ func TestNetworkState_CreateDisabledNodes(t *testing.T) {
 			"\n\texpected: %v\n\treceived: %v", nil, err)
 	}
 
-	if !reflect.DeepEqual(state.disabledNodesStates.nodes,expectedStateSet) {
+	if !reflect.DeepEqual(state.disabledNodesStates.nodes, expectedStateSet) {
 		t.Errorf("CreateDisabledNodes() did not return the correct Set."+
 			"\n\texpected: %v\n\treceived: %v",
 			expectedStateSet, state.disabledNodesStates.nodes)

@@ -245,6 +245,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 
 	// Start registration server
 	ndfReady := uint32(1)
+
 	state, err := storage.NewState(getTestKey(), 8, "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
@@ -952,12 +953,12 @@ func TestUpdateNdfGatewayAddr_Error(t *testing.T) {
 func TestVerifyError(t *testing.T) {
 	nodeCert, err := utils.ReadFile(testkeys.GetNodeCertPath())
 	if err != nil {
-		fmt.Printf("Could not get node cert: %+v\n", err)
+		t.Errorf("Could not get node cert: %+v\n", err)
 	}
 
 	nodeKey, err = utils.ReadFile(testkeys.GetNodeKeyPath())
 	if err != nil {
-		fmt.Printf("Could not get node key: %+v\n", err)
+		t.Errorf("Could not get node key: %+v\n", err)
 	}
 
 	// Read in private key
@@ -968,6 +969,7 @@ func TestVerifyError(t *testing.T) {
 	}
 	// Start registration server
 	ndfReady := uint32(0)
+
 	state, err := storage.NewState(pk, 8, "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
@@ -1009,7 +1011,7 @@ func TestVerifyError(t *testing.T) {
 		t.Error("Failed to load pk")
 	}
 
-	err = signature.Sign(errMsg, loadedKey)
+	err = signature.SignRsa(errMsg, loadedKey)
 	if err != nil {
 		t.Error("Failed to sign message")
 	}

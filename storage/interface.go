@@ -69,6 +69,7 @@ type State struct {
 const (
 	UpdateIdKey = "UpdateId"
 	RoundIdKey  = "RoundId"
+	EllipticKey = "EllipticKey"
 )
 
 // Struct representing a RegistrationCode table in the Database
