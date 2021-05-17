@@ -72,7 +72,6 @@ var rootCmd = &cobra.Command{
 				jww.FATAL.Panicf("%+v", err)
 			}
 			pprof.StartCPUProfile(f)
-			defer pprof.StopCPUProfile()
 		}
 
 		cmixMap := viper.GetStringMapString("groups.cmix")
@@ -411,6 +410,9 @@ var rootCmd = &cobra.Command{
 			}
 		}
 		stopEverything := func() {
+			if viper.GetBool("profile-cpu") {
+				pprof.StopCPUProfile()
+			}
 			stopOnce.Do(stopRounds)
 			stopForKillOnce.Do(stopForKill)
 		}
