@@ -66,8 +66,9 @@ var rootCmd = &cobra.Command{
 	Long:  `This server provides registration functions on cMix`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		if viper.GetBool("profile-cpu") {
-			f, err := os.Create("perm.cpuprofile")
+		profileOut := viper.GetString("profile-cpu")
+		if profileOut != "" {
+			f, err := os.Create(profileOut)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
@@ -410,7 +411,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 		stopEverything := func() {
-			if viper.GetBool("profile-cpu") {
+			if profileOut != "" {
 				pprof.StopCPUProfile()
 			}
 			stopOnce.Do(stopRounds)
@@ -507,7 +508,8 @@ func init() {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}
 
-	rootCmd.Flags().Bool("profile-cpu", false, "Enable cpu profiling")
+	rootCmd.Flags().String("profile-cpu", "",
+		"Enable cpu profiling to this file")
 	viper.BindPFlag("profile-cpu", rootCmd.Flags().Lookup("profile-cpu"))
 
 }
