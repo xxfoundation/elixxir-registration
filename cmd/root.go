@@ -27,6 +27,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"sync"
@@ -65,6 +66,15 @@ var rootCmd = &cobra.Command{
 	Long:  `This server provides registration functions on cMix`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
+		if viper.GetBool("profile-cpu") {
+			f, err := os.Create("perm.cpuprofile")
+			if err != nil {
+				jww.FATAL.Panicf("%+v", err)
+			}
+			pprof.StartCPUProfile(f)
+			defer pprof.StopCPUProfile()
+		}
+
 		cmixMap := viper.GetStringMapString("groups.cmix")
 		e2eMap := viper.GetStringMapString("groups.e2e")
 
@@ -407,17 +417,20 @@ var rootCmd = &cobra.Command{
 		ReceiveUSR2Signal(stopEverything)
 
 		// Block forever on Signal Handler for safe program exit
-		ReceiveExitSignal(func() int {
-			stopEverything()
-			if atomic.LoadUint32(impl.Stopped) == 1 {
-				return 0
-			} else {
-				return -1
-			}
-		})
+		stopCh := ReceiveExitSignal()
 
 		// Block forever to prevent the program ending
-		select {}
+		// Block until a signal is received, then call the function
+		// provided
+		select {
+		case <-stopCh:
+			jww.INFO.Printf(
+				"Received Exit (SIGTERM or SIGINT) signal...\n")
+			stopEverything()
+			if atomic.LoadUint32(impl.Stopped) != 1 {
+				os.Exit(-1)
+			}
+		}
 	},
 }
 
@@ -491,6 +504,9 @@ func init() {
 	if err != nil {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}
+
+	rootCmd.Flags().Bool("profile-cpu", false, "Enable cpu profiling")
+	viper.BindPFlag("profile-cpu", rootCmd.Flags().Lookup("profile-cpu"))
 
 }
 
