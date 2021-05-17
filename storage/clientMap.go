@@ -11,7 +11,6 @@ package storage
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"time"
 )
 
 // Inserts Client registration code with given number of uses
@@ -61,8 +60,8 @@ func (m *MapImpl) UseCode(code string) error {
 func (m *MapImpl) GetUser(publicKey string) (*User, error) {
 	if usr, ok := m.users[publicKey]; ok {
 		return &User{
-			PublicKey:    publicKey,
-			ReceptionKey: usr.ReceptionKey,
+			PublicKey:             publicKey,
+			ReceptionKey:          usr.ReceptionKey,
 			RegistrationTimestamp: usr.RegistrationTimestamp,
 		}, nil
 	}
@@ -70,11 +69,7 @@ func (m *MapImpl) GetUser(publicKey string) (*User, error) {
 }
 
 // Inserts User into the map
-func (m *MapImpl) InsertUser(publicKey, receptionKey string, registrationTimestamp time.Time) error {
-	m.users[publicKey] = &User{
-		PublicKey:             publicKey,
-		ReceptionKey:          receptionKey,
-		RegistrationTimestamp: registrationTimestamp,
-	}
+func (m *MapImpl) InsertUser(user *User) error {
+	m.users[user.PublicKey] = user
 	return nil
 }

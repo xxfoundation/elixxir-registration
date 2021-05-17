@@ -42,7 +42,7 @@ type database interface {
 	InsertClientRegCode(code string, uses int) error
 	UseCode(code string) error
 	GetUser(publicKey string) (*User, error)
-	InsertUser(publicKey, receptionKey string, registrationTimestamp time.Time) error
+	InsertUser(user *User) error
 }
 
 // Struct implementing the Database Interface with an underlying Map
@@ -86,7 +86,7 @@ type User struct {
 	// User reception key in PEM string format
 	ReceptionKey string `gorm:"NOT NULL;UNIQUE"`
 	// Timestamp in which user registered with permissioning
-	RegistrationTimestamp time.Time `gorm:"NOT NULL;UNIQUE"`
+	RegistrationTimestamp time.Time `gorm:"NOT NULL"`
 }
 
 // Struct representing the Node's Application table in the Database

@@ -108,7 +108,11 @@ func TestMapImpl_InsertUser(t *testing.T) {
 	}
 
 	testKey := "TEST"
-	_ = m.InsertUser(testKey, testKey, time.Now())
+	_ = m.InsertUser(&User{
+		PublicKey:             testKey,
+		ReceptionKey:          testKey,
+		RegistrationTimestamp: time.Now(),
+	})
 	if _, ok := m.users[testKey]; !ok {
 		t.Errorf("Insert failed to add the user!")
 	}
@@ -122,7 +126,7 @@ func TestMapImpl_GetUser(t *testing.T) {
 
 	testKey := "TEST"
 	m.users[testKey] = &User{
-		PublicKey:             testKey,
+		PublicKey: testKey,
 	}
 
 	user, err := m.GetUser(testKey)
