@@ -127,7 +127,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			Address:        RegParams.publicAddress,
 			TlsCertificate: regImpl.certFromFile,
 		},
-
 		Timestamp: time.Now(),
 		UDB: ndf.UDB{
 			ID:       RegParams.udbId,
@@ -296,7 +295,7 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 
 		return err
 	}
-	impl.Functions.PollNdf = func(theirNdfHash []byte) ([]byte, error) {
+	impl.Functions.PollNdf = func(theirNdfHash []byte) (*pb.NDF, error) {
 
 		response, err := instance.PollNdf(theirNdfHash)
 		if err != nil && err.Error() != ndf.NO_NDF {

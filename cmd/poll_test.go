@@ -111,9 +111,9 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
-	time.Sleep(100*time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
-	if response.FullNDF==nil{
+	if response.FullNDF == nil {
 		t.Errorf("No NDF provided")
 	}
 
@@ -193,7 +193,7 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
-	time.Sleep(100*time.Millisecond)
+	time.Sleep(100 * time.Millisecond)
 
 	if len(response.GetUpdates()) != 1 {
 		t.Errorf("Expected round updates to return!")
@@ -357,10 +357,10 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("failed to update ndf: %v", err)
 	}
 
-	observedNDF, err := ndf.Unmarshal(observedNDFBytes)
+	observedNDF, err := ndf.Unmarshal(observedNDFBytes.Ndf)
 	if err != nil {
 		t.Errorf("Could not decode ndf: %v\nNdf output: %s", err,
-			string(observedNDFBytes))
+			string(observedNDFBytes.Ndf))
 	}
 
 	if bytes.Compare(observedNDF.UDB.ID, udbId.Marshal()) != 0 {
