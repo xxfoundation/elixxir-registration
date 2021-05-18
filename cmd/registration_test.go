@@ -17,6 +17,7 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/utils"
 	"os"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -186,15 +187,20 @@ func TestRegCodeExists_RegUser(t *testing.T) {
 	}
 
 	// Attempt to register a user
-	sig, receptionSig, err := impl.RegisterUser("AAAA", string(nodeKey), string(nodeKey))
+	msg := &pb.UserRegistration{
+		RegistrationCode:         "AAAA",
+		ClientRSAPubKey:          string(nodeKey),
+		ClientReceptionRSAPubKey: string(nodeKey),
+	}
+	response, err := impl.RegisterUser(msg)
 
 	if err != nil {
 		t.Errorf("Failed to register a node when it should have worked: %+v", err)
 	}
 
-	if sig == nil || receptionSig == nil {
+	if response.ClientReceptionSignedByServer == nil || response.ClientSignedByServer == nil {
 		t.Errorf("Failed to sign public key, recieved %+v as a signature & %+v as a receptionSignature",
-			sig, receptionSig)
+			response.ClientSignedByServer, response.ClientReceptionSignedByServer)
 	}
 	impl.Comms.Shutdown()
 }
@@ -598,39 +604,35 @@ func TestRegCodeExists_RegUser_Timer(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "B", "C")
-	if err != nil {
-		t.Errorf("Failed to register a user when it should have worked: %+v", err)
+	for i := (0); i < int(testParams2.userRegCapacity); i++ {
+		// Attempt to register a user
+		msg := &pb.UserRegistration{
+			RegistrationCode:         "",
+			ClientRSAPubKey:          strconv.Itoa(i),
+			ClientReceptionRSAPubKey: strconv.Itoa(i),
+		}
+		_, err = impl.RegisterUser(msg)
+		if err != nil {
+			t.Errorf("Failed to register a user when it should have worked: %+v", err)
+		}
+
 	}
 
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "C", "D")
-	if err != nil {
-		t.Errorf("Failed to register a user when it should have worked: %+v", err)
+	msg := &pb.UserRegistration{
+		RegistrationCode:         "",
+		ClientRSAPubKey:          strconv.Itoa(int(testParams2.userRegCapacity)),
+		ClientReceptionRSAPubKey: strconv.Itoa(int(testParams2.userRegCapacity)),
 	}
 
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "D", "E")
-	if err != nil {
-		t.Errorf("Failed to register a user when it should have worked: %+v", err)
-	}
-
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "E", "F")
-	if err != nil {
-		t.Errorf("Failed to register a user when it should have worked: %+v", err)
-	}
-
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "F", "G")
+	// Attempt to register a user once capacity has been reached
+	_, err = impl.RegisterUser(msg)
 	if err == nil {
 		t.Errorf("Did not fail to register a user when it should not have worked: %+v", err)
 	}
 
+	// Attempt to register a user after waiting for capacity to be reset
 	time.Sleep(testParams2.userRegLeakPeriod)
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "G", "H")
+	_, err = impl.RegisterUser(msg)
 	if err != nil {
 		t.Errorf("Failed to register a user when it should have worked: %+v", err)
 	}
