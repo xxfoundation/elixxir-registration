@@ -31,8 +31,10 @@ type Params struct {
 	RealtimeDelay time.Duration
 	// Time in seconds between cleaning up offline nodes
 	NodeCleanUpInterval time.Duration
-	// Time in second until round times out
-	RoundTimeout time.Duration
+	// Time in seconds until round precomputation times out
+	PrecomputationTimeout time.Duration
+	// Time in second until round realtime times out
+	RealtimeTimeout time.Duration
 	//Debug flag used to cause regular prints about the state of the network
 	DebugTrackRounds bool
 

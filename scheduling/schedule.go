@@ -14,7 +14,6 @@ import (
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/xx_network/comms/signature"
 	"gitlab.com/xx_network/primitives/id"
 	"sync/atomic"
@@ -42,8 +41,12 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 		params.ResourceQueueTimeout = 180000 // 180000 ms = 3 minutes
 	}
 	// If roundTimeout hasn't set, set to a default of one minute
-	if params.RoundTimeout == 0 {
-		params.RoundTimeout = 60
+	if params.PrecomputationTimeout == 0 {
+		params.PrecomputationTimeout = 60
+	}
+
+	if params.RealtimeTimeout ==0 {
+		params.RealtimeTimeout = 15
 	}
 
 	return scheduler(params, state, killchan)
@@ -100,23 +103,9 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				break
 			}
 
-			go func(roundID id.Round, localRound *round.State) {
-				// Allow for round the to be added to the map
-				roundTimer := time.NewTimer(params.RoundTimeout * time.Second)
-				select {
-				// Wait for the timer to go off
-				case <-roundTimer.C:
-
-					// Send the timed out round id to the timeout handler
-					jww.INFO.Printf("Round %v has timed out, signaling exit", roundID)
-					roundTimeoutTracker <- roundID
-				// Signals the round has been completed.
-				// In this case, we can exit the go-routine
-				case <-localRound.GetRoundCompletedChan():
-					state.GetRoundMap().DeleteRound(roundID)
-					return
-				}
-			}(newRound.ID, ourRound)
+			go waitForRoundTimeout(roundTimeoutTracker, state, ourRound,
+				params.PrecomputationTimeout*time.Second,
+				"precomputation")
 		}
 
 		jww.ERROR.Printf("Round creation thread should never exit: %s", err)
@@ -126,7 +115,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	unstickerQuitChan := make(chan struct{})
 	// begin the thread that takes nodes stuck in waiting out of waiting
 	go func() {
-		UnstickNodes(state, pool, params.RoundTimeout*time.Second, unstickerQuitChan)
+		UnstickNodes(state, pool, params.PrecomputationTimeout*time.Second, unstickerQuitChan)
 	}()
 
 	var killed chan struct{}
@@ -171,7 +160,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 			// Handle the node's state change
 			err = HandleNodeUpdates(update, pool, state,
-				rtDelay, roundTracker)
+				rtDelay, roundTracker, roundTimeoutTracker,
+				params.RealtimeTimeout*time.Second)
 			if err != nil {
 				return err
 			}

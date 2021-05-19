@@ -27,7 +27,8 @@ import (
 //  A node in completed waits for all other nodes in the team to transition
 //   before the round is updated.
 func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state *storage.NetworkState,
-	realtimeDelay time.Duration, roundTracker *RoundTracker) error {
+	realtimeDelay time.Duration, roundTracker *RoundTracker, roundTimeoutChan chan id.Round,
+	realtimeTimeout time.Duration) error {
 	// Check the round's error state
 	n := state.GetNodeMap().GetNode(update.Node)
 	// when a node poll is received, the nodes polling lock is taken.  If there
@@ -111,6 +112,11 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 					"Could not move round %v from %s to %s",
 					r.GetRoundID(), states.PRECOMPUTING, states.STANDBY)
 			}
+
+			// kill the precomp timeout and start a realtime timeout
+			r.DenoteRoundCompleted()
+			go waitForRoundTimeout(roundTimeoutChan, state, r,
+				realtimeTimeout, "realtime")
 
 			// Update the round for realtime transition
 			err = r.Update(states.QUEUED, time.Now().Add(realtimeDelay))
