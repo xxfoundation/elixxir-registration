@@ -263,7 +263,7 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 			states.Round(roundCopy.State))
 
 		rnd := dataStructures.NewVerifiedRound(roundCopy,
-			s.privateKey.GetPublic())
+			s.rsaPrivateKey.GetPublic())
 		s.roundUpdatesToAddCh <- rnd
 	}()
 	return nil
