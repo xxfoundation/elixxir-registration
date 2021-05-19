@@ -251,8 +251,8 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 
 		err = signature.SignEddsa(roundCopy, s.GetEllipticPrivateKey())
 		if err != nil {
-			jww.FATAL.Panicf("Could not add round update %v " +
-				"for round %v due to failed elliptic curve " +
+			jww.FATAL.Panicf("Could not add round update %v "+
+				"for round %v due to failed elliptic curve "+
 				"signature: %+v", roundCopy.UpdateID,
 				roundCopy.ID, err)
 		}

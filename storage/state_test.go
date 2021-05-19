@@ -464,7 +464,7 @@ func TestNetworkState_NodeUpdateNotification(t *testing.T) {
 				"NodeUpdateNotification.\n\texpected: %v\n\t received: %v",
 				testNun, testUpdate)
 		}
-	case <-time.After(50*time.Millisecond):
+	case <-time.After(50 * time.Millisecond):
 		t.Error("Failed to receive node update.")
 	}
 }
