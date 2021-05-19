@@ -28,6 +28,24 @@ import (
 //	if err != nil {
 //		t.Errorf(err.Error())
 //	}
+//
+//	err = db.InsertUser(&User{
+//		PublicKey:             "test",
+//		ReceptionKey:          "test",
+//		RegistrationTimestamp: time.Now(),
+//	})
+//	if err != nil {
+//		t.Errorf(err.Error())
+//	}
+//	err = db.InsertUser(&User{
+//		PublicKey:             "test",
+//		ReceptionKey:          "test",
+//		RegistrationTimestamp: time.Now(),
+//	})
+//	if err == nil {
+//		t.Errorf("Expected duplicate key constraint")
+//	}
+//
 //	jww.INFO.Printf("%+v", result)
 //	result2, err := db.GetEphemeralLengths()
 //	if err != nil {
