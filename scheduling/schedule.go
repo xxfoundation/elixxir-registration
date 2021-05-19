@@ -82,6 +82,9 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 	roundTracker := NewRoundTracker()
 
+	//begin the thread that reads and adds round updates
+	go state.RoundAdderRoutine()
+
 	//begin the thread that starts rounds
 	go func() {
 		lastRound := time.Now()

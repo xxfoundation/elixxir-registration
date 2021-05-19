@@ -61,6 +61,9 @@ type NetworkState struct {
 	addressSpaceSize uint32
 
 	ndfOutputPath string
+
+	// round adder buffer channel
+	roundUpdatesToAddCh chan *dataStructures.Round
 }
 
 // NewState returns a new NetworkState object.
@@ -75,17 +78,18 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string)
 	}
 
 	state := &NetworkState{
-		rounds:           round.NewStateMap(),
-		roundUpdates:     dataStructures.NewUpdates(),
-		update:           make(chan node.UpdateNotification, updateBufferLength),
-		nodes:            node.NewStateMap(),
-		unprunedNdf:      &ndf.NetworkDefinition{},
-		fullNdf:          fullNdf,
-		partialNdf:       partialNdf,
-		privateKey:       pk,
-		addressSpaceSize: addressSpaceSize,
-		pruneList:        make(map[id.ID]interface{}),
-		ndfOutputPath:    ndfOutputPath,
+		rounds:              round.NewStateMap(),
+		roundUpdates:        dataStructures.NewUpdates(),
+		update:              make(chan node.UpdateNotification, updateBufferLength),
+		nodes:               node.NewStateMap(),
+		unprunedNdf:         &ndf.NetworkDefinition{},
+		fullNdf:             fullNdf,
+		partialNdf:          partialNdf,
+		privateKey:          pk,
+		addressSpaceSize:    addressSpaceSize,
+		pruneList:           make(map[id.ID]interface{}),
+		ndfOutputPath:       ndfOutputPath,
+		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
 	}
 
 	// Obtain round & update Id from Storage
@@ -147,11 +151,11 @@ func (s *NetworkState) SetPrunedNodes(ids []*id.ID) {
 	for _, i := range ids {
 		s.pruneList[*i] = nil
 	}
-	if s.disabledNodesStates!=nil{
-		 disabled := s.disabledNodesStates.getDisabledNodes()
-		 for _, i := range disabled {
-			 s.pruneList[*i] = nil
-		 }
+	if s.disabledNodesStates != nil {
+		disabled := s.disabledNodesStates.getDisabledNodes()
+		for _, i := range disabled {
+			s.pruneList[*i] = nil
+		}
 	}
 
 }
@@ -204,19 +208,49 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 
 	roundCopy.UpdateID = updateID
 
-	err = signature.Sign(roundCopy, s.privateKey)
-	if err != nil {
-		return errors.WithMessagef(err, "Could not add round update %v "+
-			"for round %v due to failed signature", roundCopy.UpdateID, roundCopy.ID)
+	go func() {
+		err = signature.Sign(roundCopy, s.privateKey)
+		if err != nil {
+			jww.FATAL.Panicf("Could not add round update %v "+
+				"for round %v due to failed signature: %+v",
+				roundCopy.UpdateID, roundCopy.ID, err)
+		}
+
+		jww.INFO.Printf("Round %v state updated to %s", r.ID,
+			states.Round(roundCopy.State))
+
+		jww.TRACE.Printf("Round Info: %+v", roundCopy)
+
+		rnd := dataStructures.NewVerifiedRound(roundCopy,
+			s.privateKey.GetPublic())
+		s.roundUpdatesToAddCh <- rnd
+	}()
+
+	return nil
+}
+
+// RoundAdderRoutine monitors a channel and keeps track of pending round updates,
+// adding them in order
+func (s *NetworkState) RoundAdderRoutine() {
+	rnds := make(map[uint64]*dataStructures.Round)
+	nextID := uint64(s.roundUpdates.GetLastUpdateID()) + 1
+	for {
+		// Add the next round update from the channel
+		select {
+		case rnd := <-s.roundUpdatesToAddCh:
+			rnds[rnd.Get().UpdateID] = rnd
+		}
+
+		// Call add round until we run out of IDs.
+		for r, ok := rnds[nextID]; ok; r, ok = rnds[nextID] {
+			err := s.roundUpdates.AddRound(r)
+			if err != nil {
+				jww.FATAL.Panicf("%+v", err)
+			}
+			delete(rnds, nextID)
+			nextID++
+		}
 	}
-
-	jww.INFO.Printf("Round %v state updated to %s", r.ID,
-		states.Round(roundCopy.State))
-
-	jww.TRACE.Printf("Round Info: %+v", roundCopy)
-
-	rnd := dataStructures.NewVerifiedRound(roundCopy, s.privateKey.GetPublic())
-	return s.roundUpdates.AddRound(rnd)
 }
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
