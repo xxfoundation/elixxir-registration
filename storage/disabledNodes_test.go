@@ -18,7 +18,6 @@ import (
 	"time"
 )
 
-
 // Test that generateDisabledNodes() correctly generates a disabledNodes
 // object from a file.
 func TestGenerateDisabledNodes(t *testing.T) {
@@ -41,7 +40,7 @@ func TestGenerateDisabledNodes(t *testing.T) {
 		t.Fatalf("Error while creating test file: %v", err)
 	}
 
-	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, func([]*id.ID){return})
+	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, func([]*id.ID) { return })
 	if err != nil {
 		t.Errorf("generateDisabledNodes() produced an unexpected error: %v", err)
 	}
@@ -61,7 +60,7 @@ func TestGenerateDisabledNodes_FileError(t *testing.T) {
 		"while accessing file: open " + testPath + ": The system cannot find " +
 		"the file specified."
 
-	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, func([]*id.ID){return})
+	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, func([]*id.ID) { return })
 	if err == nil {
 		t.Errorf("generateDisabledNodes() did not produce an error when "+
 			"expected.\n\texpected: %v\n\treceived: %v", expectedError, err)
@@ -95,7 +94,7 @@ func TestGenerateDisabledNodes_IdWarning(t *testing.T) {
 		t.Fatalf("Error while creating test file: %v", err)
 	}
 
-	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, func([]*id.ID){return})
+	dnl, err := generateDisabledNodes(testPath, 33*time.Millisecond, func([]*id.ID) { return })
 	if err != nil {
 		t.Errorf("generateDisabledNodes() produced an unexpected error: %v", err)
 	}
@@ -149,7 +148,7 @@ func TestGetDisabledNodesSet_IdError(t *testing.T) {
 	}
 
 	if testIdList == nil {
-		t.Errorf("getDisabledNodesSet() produced anil ID list on error, " +
+		t.Errorf("getDisabledNodesSet() produced anil ID list on error, "+
 			"should process what it can."+
 			"\n\texpected: %v\n\treceived: %v", nil, testIdList)
 	}
@@ -254,7 +253,7 @@ func TestDisabledNodes_PollDisabledNodes(t *testing.T) {
 	// Get test data
 	testData1, _, initialStateSet := generateIdLists(3, t)
 	testData1 = "\n \n\n" + testData1 + "\n  "
-	testData2 := "\na\nNoKjAhvURKnrwdLIvBe8AF9gTEV6qPRtgcXEKCRh620=\n"  +
+	testData2 := "\na\nNoKjAhvURKnrwdLIvBe8AF9gTEV6qPRtgcXEKCRh620=\n" +
 		testData1 + "test"
 	dnl := disabledNodes{
 		nodes:    nil,
@@ -354,7 +353,6 @@ func TestDisabledNodes_PollDisabledNodes_QuitChan(t *testing.T) {
 		t.Errorf("pollDisabledNodes() did not correctly stop when kill command sent.")
 	}
 }
-
 
 func generateIdLists(num int, x interface{}) (string, *node.StateMap, []*id.ID) {
 	// Generate array of IDs

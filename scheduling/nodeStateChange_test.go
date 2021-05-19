@@ -155,6 +155,7 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+
 	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)

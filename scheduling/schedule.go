@@ -227,7 +227,7 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 		}
 
 		// Sign the error message with our private key
-		err := signature.Sign(timeoutError, state.GetPrivateKey())
+		err := signature.SignRsa(timeoutError, state.GetPrivateKey())
 		if err != nil {
 			jww.FATAL.Panicf("Failed to sign error message for "+
 				"timed out round %d: %+v", ourRound.GetRoundID(), err)

@@ -58,17 +58,18 @@ func (m *MapImpl) UseCode(code string) error {
 
 // Gets User from the map
 func (m *MapImpl) GetUser(publicKey string) (*User, error) {
-	if rk, ok := m.users[publicKey]; ok {
+	if usr, ok := m.users[publicKey]; ok {
 		return &User{
-			PublicKey:    publicKey,
-			ReceptionKey: rk,
+			PublicKey:             publicKey,
+			ReceptionKey:          usr.ReceptionKey,
+			RegistrationTimestamp: usr.RegistrationTimestamp,
 		}, nil
 	}
 	return nil, errors.New("user does not exist")
 }
 
 // Inserts User into the map
-func (m *MapImpl) InsertUser(publicKey, receptionKey string) error {
-	m.users[publicKey] = receptionKey
+func (m *MapImpl) InsertUser(user *User) error {
+	m.users[user.PublicKey] = user
 	return nil
 }

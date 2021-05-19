@@ -300,7 +300,7 @@ func verifyError(msg *pb.PermissioningPoll, n *node.State, m *RegistrationImpl) 
 			return errors.Errorf("Host %+v was not found in host map", errorNodeId)
 		}
 		nodePK := h.GetPubKey()
-		err = signature.Verify(msg.Error, nodePK)
+		err = signature.VerifyRsa(msg.Error, nodePK)
 		if err != nil {
 			return errors.WithMessage(err, "Failed to verify error signature")
 		}

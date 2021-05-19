@@ -51,7 +51,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 				NodeId: id.Permissioning.Marshal(),
 				Error:  fmt.Sprintf("Round killed due to particiption of banned node %s", update.Node),
 			}
-			err := signature.Sign(banError, state.GetPrivateKey())
+			err := signature.SignRsa(banError, state.GetPrivateKey())
 			if err != nil {
 				jww.FATAL.Panicf("Failed to sign error message for banned node %s: %+v", update.Node, err)
 			}
