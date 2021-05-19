@@ -273,11 +273,21 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 // adding them in order
 func (s *NetworkState) RoundAdderRoutine() {
 	rnds := make(map[uint64]*dataStructures.Round)
-	nextID := uint64(s.roundUpdates.GetLastUpdateID()) + 1
+	nextID := uint64(0)
 	for {
 		// Add the next round update from the channel
-		select {
-		case rnd := <-s.roundUpdatesToAddCh:
+		rnd := <-s.roundUpdatesToAddCh
+		rndID := rnd.Get().UpdateID
+
+		// If updateID is less than or equal to nextID OR nextID has
+		// not been set, add the round immediately
+		if rndID <= nextID || nextID == 0 {
+			err := s.roundUpdates.AddRound(rnd)
+			if err != nil {
+				jww.FATAL.Panicf("%+v", err)
+			}
+			nextID = rndID + 1
+		} else {
 			rnds[rnd.Get().UpdateID] = rnd
 		}
 
