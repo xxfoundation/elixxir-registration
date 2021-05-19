@@ -286,7 +286,7 @@ func (s *NetworkState) RoundAdderRoutine() {
 		rndID := rnd.Get().UpdateID
 
 		// process any rounds before the expected id immediately
-		if rndID <= nextID {
+		if rndID < nextID {
 			err := s.roundUpdates.AddRound(rnd)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
