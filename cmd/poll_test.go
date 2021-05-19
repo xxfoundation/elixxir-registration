@@ -173,6 +173,7 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 			ID:    1,
 			State: uint32(states.PRECOMPUTING),
 		})
+	time.Sleep(100 * time.Millisecond)
 
 	if err != nil {
 		t.Errorf("Could not add round update: %s", err)
@@ -250,6 +251,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
+
 	testVersion, _ := version.ParseVersion("0.0.0")
 	impl := RegistrationImpl{
 		State:    state,
@@ -974,6 +976,7 @@ func TestVerifyError(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
+
 	testVersion, _ := version.ParseVersion("0.0.0")
 	testManager := connect.NewManagerTesting(t)
 	impl := &RegistrationImpl{

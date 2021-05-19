@@ -103,40 +103,6 @@ func TestNewState(t *testing.T) {
 	}
 }
 
-// Tests that NewState() produces an error when the private key size is too
-// small.
-func TestNewState_PrivateKeyError(t *testing.T) {
-	// Set up expected values
-	expectedErr := "Could not add round update 0 for round 0 due to failed " +
-		"signature: Unable to sign message: crypto/rsa: key size too small " +
-		"for PSS signature"
-
-	var err error
-	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	// Generate private RSA key
-	privateKey, err := rsa.GenerateKey(rand.Reader, 128)
-	if err != nil {
-		t.Fatalf("Failed to generate private key:\n%v", err)
-	}
-
-	// Generate new NetworkState
-	state, err := NewState(privateKey, 8, "")
-
-	// Test NewState() output
-	if err == nil || err.Error() != expectedErr {
-		t.Errorf("NewState() did not produce an error when expected."+
-			"\n\texpected: %s\n\treceived: %s", expectedErr, err)
-	}
-	if state != nil {
-		t.Errorf("NewState() unexpedly produced a non-nil NetworkState when an error was produced."+
-			"\n\texpected: %+v\n\treceived: %+v", nil, state)
-	}
-}
-
 // Tests that GetFullNdf() returns the correct NDF for a newly created
 // NetworkState.
 func TestNetworkState_GetFullNdf(t *testing.T) {
@@ -250,6 +216,7 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 		t.Errorf("AddRoundUpdate() unexpectedly produced an error:\n%+v",
 			err)
 	}
+	time.Sleep(100 * time.Millisecond)
 
 	// Test if the round was added
 	roundInfoArr, err := state.GetUpdates(0)
@@ -278,44 +245,6 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 	err = signature.VerifyRsa(roundInfo, privateKey.GetPublic())
 	if err != nil {
 		t.Fatalf("Failed to verify RoundInfo signature:\n%+v", err)
-	}
-}
-
-// Tests that AddRoundUpdate() returns an error.
-func TestNetworkState_AddRoundUpdate_Error(t *testing.T) {
-	// Expected Values
-	testRoundInfo := &pb.RoundInfo{
-		ID:       0,
-		UpdateID: 5,
-	}
-	expectedErr := "Could not add round update 1 for round 0 due to failed " +
-		"signature: Unable to sign message: crypto/rsa: key size too small for " +
-		"PSS signature"
-	var err error
-	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-
-	// Generate new NetworkState
-	state, _, err := generateTestNetworkState()
-	if err != nil {
-		t.Fatalf("%+v", err)
-	}
-
-	// Generate new invalid private key and insert into NetworkState
-	brokenPrivateKey, err := rsa.GenerateKey(rand.Reader, 128)
-	if err != nil {
-		t.Fatalf("Failed to generate private key:\n%v", err)
-	}
-	state.rsaPrivateKey = brokenPrivateKey
-
-	// Call AddRoundUpdate()
-	err = state.AddRoundUpdate(testRoundInfo)
-
-	if err == nil || err.Error() != expectedErr {
-		t.Errorf("AddRoundUpdate() did not produce an error when expected."+
-			"\n\texpected: %s\n\treceived: %s", expectedErr, err.Error())
 	}
 }
 

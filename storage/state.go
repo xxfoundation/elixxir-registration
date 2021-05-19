@@ -96,6 +96,9 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
 	}
 
+	//begin the thread that reads and adds round updates
+	go state.RoundAdderRoutine()
+
 	// Obtain round & update Id from Storage
 	// Ignore not found in Storage errors, zero-value will be handled below
 	updateId, err := state.GetUpdateID()
@@ -153,6 +156,9 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		err = state.AddRoundUpdate(&pb.RoundInfo{})
 		if err != nil {
 			return nil, err
+		}
+		// Wait for the above state to update (it is multithreaded)
+		for state.roundUpdates.GetLastUpdateID() != 0 {
 		}
 	}
 	if roundId == 0 {
@@ -279,16 +285,19 @@ func (s *NetworkState) RoundAdderRoutine() {
 		rnd := <-s.roundUpdatesToAddCh
 		rndID := rnd.Get().UpdateID
 
-		// If updateID is less than or equal to nextID OR nextID has
-		// not been set, add the round immediately
-		if rndID <= nextID || nextID == 0 {
+		// process any rounds before the expected id immediately
+		if rndID <= nextID {
 			err := s.roundUpdates.AddRound(rnd)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
-			nextID = rndID + 1
-		} else {
-			rnds[rnd.Get().UpdateID] = rnd
+			continue
+		}
+
+		rnds[rndID] = rnd
+		// if the next ID has not been set, then set it to this one
+		if nextID == 0 {
+			nextID = rndID
 		}
 
 		// Call add round until we run out of IDs.
