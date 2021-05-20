@@ -21,7 +21,6 @@ func waitForRoundTimeout(tracker chan id.Round, state *storage.NetworkState,
 		jww.INFO.Printf("Round %v has %s timed out after %s, " +
 			"signaling exit", roundID, timoutType, timeout)
 		tracker <- roundID
-		state.GetRoundMap().DeleteRound(roundID)
 	// Signals the round has been completed.
 	// In this case, we can exit the go-routine
 	case <-localRound.GetRoundCompletedChan():
