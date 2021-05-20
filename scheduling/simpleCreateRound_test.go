@@ -32,6 +32,7 @@ func TestCreateRound_NonRandom(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+
 	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
@@ -105,6 +106,7 @@ func TestCreateRound_Random(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+
 	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
@@ -167,6 +169,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+
 	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
@@ -218,6 +221,7 @@ func TestCreateRound_RandomOrdering(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+
 	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
@@ -292,6 +296,7 @@ func TestCreateSimpleRound_SemiOptimal(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+
 	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
@@ -401,6 +406,7 @@ func TestCreateSimpleRound_SemiOptimal_BadRegion(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+
 	testState, err := storage.NewState(privKey, 8, "")
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)

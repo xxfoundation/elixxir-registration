@@ -229,18 +229,27 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 
 	// If the round is neither in completed or failed
 	if roundState != states.COMPLETED && roundState != states.FAILED {
+
+		timeoutType := "precomputation"
+
+		if roundState > states.PRECOMPUTING{
+			timeoutType = "realtime"
+		}
+
 		// Build the round error message
 		timeoutError := &pb.RoundError{
 			Id:     uint64(ourRound.GetRoundID()),
 			NodeId: id.Permissioning.Marshal(),
-			Error:  fmt.Sprintf("Round %d killed due to a round time out", ourRound.GetRoundID()),
+			Error:  fmt.Sprintf("Round %d killed due to a %s " +
+				"round time out", ourRound.GetRoundID(), timeoutType),
 		}
 
 		// Sign the error message with our private key
-		err := signature.Sign(timeoutError, state.GetPrivateKey())
+		err := signature.SignRsa(timeoutError, state.GetPrivateKey())
 		if err != nil {
 			jww.FATAL.Panicf("Failed to sign error message for "+
-				"timed out round %d: %+v", ourRound.GetRoundID(), err)
+				"%s timed out round %d: %+v", timeoutType,
+				ourRound.GetRoundID(), err)
 		}
 
 		err = killRound(state, ourRound, timeoutError, roundTracker, pool)

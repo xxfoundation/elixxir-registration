@@ -9,6 +9,7 @@
 package storage
 
 import (
+	"crypto/rand"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -18,6 +19,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/xx_network/comms/signature"
+	"gitlab.com/xx_network/crypto/signature/ec"
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
@@ -33,7 +35,8 @@ const updateBufferLength = 10000
 // NetworkState structure used for keeping track of NDF and Round state.
 type NetworkState struct {
 	// NetworkState parameters
-	privateKey *rsa.PrivateKey
+	rsaPrivateKey      *rsa.PrivateKey
+	ellipticPrivateKey *ec.PrivateKey
 
 	// Round state
 	rounds       *round.StateMap
@@ -61,10 +64,14 @@ type NetworkState struct {
 	addressSpaceSize uint32
 
 	ndfOutputPath string
+
+	// round adder buffer channel
+	roundUpdatesToAddCh chan *dataStructures.Round
 }
 
 // NewState returns a new NetworkState object.
-func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string) (*NetworkState, error) {
+func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string) (*NetworkState, error) {
+
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
 		return nil, err
@@ -75,18 +82,22 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string)
 	}
 
 	state := &NetworkState{
-		rounds:           round.NewStateMap(),
-		roundUpdates:     dataStructures.NewUpdates(),
-		update:           make(chan node.UpdateNotification, updateBufferLength),
-		nodes:            node.NewStateMap(),
-		unprunedNdf:      &ndf.NetworkDefinition{},
-		fullNdf:          fullNdf,
-		partialNdf:       partialNdf,
-		privateKey:       pk,
-		addressSpaceSize: addressSpaceSize,
-		pruneList:        make(map[id.ID]interface{}),
-		ndfOutputPath:    ndfOutputPath,
+		rounds:              round.NewStateMap(),
+		roundUpdates:        dataStructures.NewUpdates(),
+		update:              make(chan node.UpdateNotification, updateBufferLength),
+		nodes:               node.NewStateMap(),
+		unprunedNdf:         &ndf.NetworkDefinition{},
+		fullNdf:             fullNdf,
+		partialNdf:          partialNdf,
+		rsaPrivateKey:       rsaPrivKey,
+		addressSpaceSize:    addressSpaceSize,
+		pruneList:           make(map[id.ID]interface{}),
+		ndfOutputPath:       ndfOutputPath,
+		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
 	}
+
+	//begin the thread that reads and adds round updates
+	go state.RoundAdderRoutine()
 
 	// Obtain round & update Id from Storage
 	// Ignore not found in Storage errors, zero-value will be handled below
@@ -103,6 +114,35 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string)
 		return nil, err
 	}
 
+	ellipticKey, err := state.getEcKey()
+	if err != nil &&
+		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
+		!strings.Contains(err.Error(), "Unable to locate state for key") {
+		return nil, err
+	}
+
+	// Handle elliptic key storage, either creating a key if one
+	// does not already exist or loading it into the object if it does
+	if ellipticKey == "" {
+		// Create a key if one doesn't exist
+		ecPrivKey, err := ec.NewKeyPair(rand.Reader)
+		if err != nil {
+			return nil, err
+		}
+		err = state.storeEcKey(ecPrivKey.MarshalText())
+		if err != nil {
+			return nil, err
+		}
+
+		state.ellipticPrivateKey = ecPrivKey
+
+	} else {
+		state.ellipticPrivateKey, err = ec.LoadPrivateKey(ellipticKey)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// Updates are handled in the uint space, as a result, the designator for
 	// update 0 also designates that no updates are known by the server. To
 	// avoid this collision, permissioning will skip this update as well.
@@ -116,6 +156,9 @@ func NewState(pk *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string)
 		err = state.AddRoundUpdate(&pb.RoundInfo{})
 		if err != nil {
 			return nil, err
+		}
+		// Wait for the above state to update (it is multithreaded)
+		for state.roundUpdates.GetLastUpdateID() != 0 {
 		}
 	}
 	if roundId == 0 {
@@ -147,11 +190,11 @@ func (s *NetworkState) SetPrunedNodes(ids []*id.ID) {
 	for _, i := range ids {
 		s.pruneList[*i] = nil
 	}
-	if s.disabledNodesStates!=nil{
-		 disabled := s.disabledNodesStates.getDisabledNodes()
-		 for _, i := range disabled {
-			 s.pruneList[*i] = nil
-		 }
+	if s.disabledNodesStates != nil {
+		disabled := s.disabledNodesStates.getDisabledNodes()
+		for _, i := range disabled {
+			s.pruneList[*i] = nil
+		}
 	}
 
 }
@@ -204,19 +247,69 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 
 	roundCopy.UpdateID = updateID
 
-	err = signature.Sign(roundCopy, s.privateKey)
-	if err != nil {
-		return errors.WithMessagef(err, "Could not add round update %v "+
-			"for round %v due to failed signature", roundCopy.UpdateID, roundCopy.ID)
+	go func() {
+		err = signature.SignRsa(roundCopy, s.rsaPrivateKey)
+		if err != nil {
+			jww.FATAL.Panicf("Could not add round update %v "+
+				"for round %v due to failed signature: %+v",
+				roundCopy.UpdateID, roundCopy.ID, err)
+		}
+
+		err = signature.SignEddsa(roundCopy, s.GetEllipticPrivateKey())
+		if err != nil {
+			jww.FATAL.Panicf("Could not add round update %v "+
+				"for round %v due to failed elliptic curve "+
+				"signature: %+v", roundCopy.UpdateID,
+				roundCopy.ID, err)
+		}
+
+		jww.TRACE.Printf("Round Info: %+v", roundCopy)
+
+		jww.INFO.Printf("Round %v state updated to %s", r.ID,
+			states.Round(roundCopy.State))
+
+		rnd := dataStructures.NewVerifiedRound(roundCopy,
+			s.rsaPrivateKey.GetPublic())
+		s.roundUpdatesToAddCh <- rnd
+	}()
+	return nil
+}
+
+// RoundAdderRoutine monitors a channel and keeps track of pending round updates,
+// adding them in order
+func (s *NetworkState) RoundAdderRoutine() {
+	rnds := make(map[uint64]*dataStructures.Round)
+	nextID := uint64(0)
+	for {
+		// Add the next round update from the channel
+		rnd := <-s.roundUpdatesToAddCh
+		rndID := rnd.Get().UpdateID
+
+		// process any rounds before the expected id immediately
+		if rndID < nextID {
+			err := s.roundUpdates.AddRound(rnd)
+			if err != nil {
+				jww.FATAL.Panicf("%+v", err)
+			}
+			continue
+		}
+
+		rnds[rndID] = rnd
+		// if the next ID has not been set, then set it to this one
+		if nextID == 0 {
+			nextID = rndID
+		}
+
+		// Call add round until we run out of IDs.
+		for r, ok := rnds[nextID]; ok; r, ok = rnds[nextID] {
+			err := s.roundUpdates.AddRound(r)
+			if err != nil {
+				jww.FATAL.Panicf("%+v", err)
+			}
+			delete(rnds, nextID)
+			nextID++
+		}
 	}
-
-	jww.INFO.Printf("Round %v state updated to %s", r.ID,
-		states.Round(roundCopy.State))
-
-	jww.TRACE.Printf("Round Info: %+v", roundCopy)
-
-	rnd := dataStructures.NewVerifiedRound(roundCopy, s.privateKey.GetPublic())
-	return s.roundUpdates.AddRound(rnd)
 }
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
@@ -252,11 +345,11 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	}
 
 	// Sign NDF comms messages
-	err = signature.Sign(fullNdfMsg, s.privateKey)
+	err = signature.SignRsa(fullNdfMsg, s.rsaPrivateKey)
 	if err != nil {
 		return
 	}
-	err = signature.Sign(partialNdfMsg, s.privateKey)
+	err = signature.SignRsa(partialNdfMsg, s.rsaPrivateKey)
 	if err != nil {
 		return
 	}
@@ -282,7 +375,17 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 
 // GetPrivateKey returns the server's private key.
 func (s *NetworkState) GetPrivateKey() *rsa.PrivateKey {
-	return s.privateKey
+	return s.rsaPrivateKey
+}
+
+// Get the elliptic curve private key
+func (s *NetworkState) GetEllipticPrivateKey() *ec.PrivateKey {
+	return s.ellipticPrivateKey
+}
+
+// Get the elliptic curve public key
+func (s *NetworkState) GetEllipticPublicKey() *ec.PublicKey {
+	return s.ellipticPrivateKey.GetPublic()
 }
 
 // GetRoundMap returns the map of rounds.
@@ -356,6 +459,28 @@ func (s *NetworkState) get(key string) (uint64, error) {
 		return 0, errors.Errorf("Unable to parse current %s: %+v", key, err)
 	}
 	return roundId, nil
+}
+
+// Helper to return the RoundId or UpdateId depending on the given key
+func (s *NetworkState) getEcKey() (string, error) {
+	ellipticKey, err := PermissioningDb.GetStateValue(EllipticKey)
+	if err != nil {
+		return "", errors.Errorf("Unable to obtain current %s: %+v", EllipticKey, err)
+	}
+
+	return ellipticKey, nil
+}
+
+// Helper to set the elliptic key into the state table
+func (s *NetworkState) storeEcKey(newVal string) error {
+	err := PermissioningDb.UpsertState(&State{
+		Key:   EllipticKey,
+		Value: newVal,
+	})
+	if err != nil {
+		return errors.Errorf("Unable to update current round ID: %+v", err)
+	}
+	return nil
 }
 
 // IncrementRoundID increments the round ID
