@@ -83,4 +83,3 @@ func GetSchedulingSecure() string {
 
 	return filepath.Join(getDirForFile(), "Scheduling_Simple_NonRandom.json")
 }
-

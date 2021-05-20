@@ -64,6 +64,9 @@ type NetworkState struct {
 	addressSpaceSize uint32
 
 	ndfOutputPath string
+
+	// round adder buffer channel
+	roundUpdatesToAddCh chan *dataStructures.Round
 }
 
 // NewState returns a new NetworkState object.
@@ -79,18 +82,22 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 	}
 
 	state := &NetworkState{
-		rounds:           round.NewStateMap(),
-		roundUpdates:     dataStructures.NewUpdates(),
-		update:           make(chan node.UpdateNotification, updateBufferLength),
-		nodes:            node.NewStateMap(),
-		unprunedNdf:      &ndf.NetworkDefinition{},
-		fullNdf:          fullNdf,
-		partialNdf:       partialNdf,
-		rsaPrivateKey:    rsaPrivKey,
-		addressSpaceSize: addressSpaceSize,
-		pruneList:        make(map[id.ID]interface{}),
-		ndfOutputPath:    ndfOutputPath,
+		rounds:              round.NewStateMap(),
+		roundUpdates:        dataStructures.NewUpdates(),
+		update:              make(chan node.UpdateNotification, updateBufferLength),
+		nodes:               node.NewStateMap(),
+		unprunedNdf:         &ndf.NetworkDefinition{},
+		fullNdf:             fullNdf,
+		partialNdf:          partialNdf,
+		rsaPrivateKey:       rsaPrivKey,
+		addressSpaceSize:    addressSpaceSize,
+		pruneList:           make(map[id.ID]interface{}),
+		ndfOutputPath:       ndfOutputPath,
+		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
 	}
+
+	//begin the thread that reads and adds round updates
+	go state.RoundAdderRoutine()
 
 	// Obtain round & update Id from Storage
 	// Ignore not found in Storage errors, zero-value will be handled below
@@ -149,6 +156,9 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		err = state.AddRoundUpdate(&pb.RoundInfo{})
 		if err != nil {
 			return nil, err
+		}
+		// Wait for the above state to update (it is multithreaded)
+		for state.roundUpdates.GetLastUpdateID() != 0 {
 		}
 	}
 	if roundId == 0 {
@@ -237,25 +247,69 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 
 	roundCopy.UpdateID = updateID
 
-	err = signature.SignRsa(roundCopy, s.rsaPrivateKey)
-	if err != nil {
-		return errors.WithMessagef(err, "Could not add round update %v "+
-			"for round %v due to failed signature", roundCopy.UpdateID, roundCopy.ID)
+	go func() {
+		err = signature.SignRsa(roundCopy, s.rsaPrivateKey)
+		if err != nil {
+			jww.FATAL.Panicf("Could not add round update %v "+
+				"for round %v due to failed signature: %+v",
+				roundCopy.UpdateID, roundCopy.ID, err)
+		}
+
+		err = signature.SignEddsa(roundCopy, s.GetEllipticPrivateKey())
+		if err != nil {
+			jww.FATAL.Panicf("Could not add round update %v "+
+				"for round %v due to failed elliptic curve "+
+				"signature: %+v", roundCopy.UpdateID,
+				roundCopy.ID, err)
+		}
+
+		jww.TRACE.Printf("Round Info: %+v", roundCopy)
+
+		jww.INFO.Printf("Round %v state updated to %s", r.ID,
+			states.Round(roundCopy.State))
+
+		rnd := dataStructures.NewVerifiedRound(roundCopy,
+			s.rsaPrivateKey.GetPublic())
+		s.roundUpdatesToAddCh <- rnd
+	}()
+	return nil
+}
+
+// RoundAdderRoutine monitors a channel and keeps track of pending round updates,
+// adding them in order
+func (s *NetworkState) RoundAdderRoutine() {
+	rnds := make(map[uint64]*dataStructures.Round)
+	nextID := uint64(0)
+	for {
+		// Add the next round update from the channel
+		rnd := <-s.roundUpdatesToAddCh
+		rndID := rnd.Get().UpdateID
+
+		// process any rounds before the expected id immediately
+		if rndID < nextID {
+			err := s.roundUpdates.AddRound(rnd)
+			if err != nil {
+				jww.FATAL.Panicf("%+v", err)
+			}
+			continue
+		}
+
+		rnds[rndID] = rnd
+		// if the next ID has not been set, then set it to this one
+		if nextID == 0 {
+			nextID = rndID
+		}
+
+		// Call add round until we run out of IDs.
+		for r, ok := rnds[nextID]; ok; r, ok = rnds[nextID] {
+			err := s.roundUpdates.AddRound(r)
+			if err != nil {
+				jww.FATAL.Panicf("%+v", err)
+			}
+			delete(rnds, nextID)
+			nextID++
+		}
 	}
-
-	err = signature.SignEddsa(roundCopy, s.GetEllipticPrivateKey())
-	if err != nil {
-		return errors.WithMessagef(err, "Could not add round update %v "+
-			"for round %v due to failed elliptic curve signature", roundCopy.UpdateID, roundCopy.ID)
-	}
-
-	jww.INFO.Printf("Round %v state updated to %s", r.ID,
-		states.Round(roundCopy.State))
-
-	jww.TRACE.Printf("Round Info: %+v", roundCopy)
-
-	rnd := dataStructures.NewVerifiedRound(roundCopy, s.rsaPrivateKey.GetPublic())
-	return s.roundUpdates.AddRound(rnd)
 }
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
