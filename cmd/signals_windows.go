@@ -43,17 +43,11 @@ func ReceiveUSR2Signal(usr1Fn func()) {
 // ReceiveExitSignal calls the provided exit function and exits
 // with the provided exit status when the program receives
 // SIGTERM or SIGINT
-func ReceiveExitSignal(exitFn func() int) {
+func ReceiveExitSignal() chan os.Signal {
 	// Set up channel on which to send signal notifications.
 	// We must use a buffered channel or risk missing the signal
 	// if we're not ready to receive when the signal is sent.
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-
-	// Block until a signal is received, then call the function
-	// provided
-	<-c
-	jww.INFO.Printf("Received Exit (SIGTERM or SIGINT) signal...")
-	ret := exitFn()
-	os.Exit(ret)
+	return c
 }
