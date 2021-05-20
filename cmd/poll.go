@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/audiolion/ipip"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -22,6 +23,7 @@ import (
 	"gitlab.com/xx_network/comms/signature"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"math"
 	"math/rand"
 	"net"
 	"sync/atomic"
@@ -32,6 +34,46 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 	// Initialize the response
 	response := &pb.PermissionPollResponse{}
+
+	defer func(){
+		if response.XXX_Size()<4194304{
+			return
+		}
+
+		sizePrint := ""
+		if response.FullNDF!=nil{
+			sizePrint += fmt.Sprintf("full ndf size: %d\n", response.FullNDF.XXX_Size())
+		}
+		if response.PartialNDF !=nil{
+			sizePrint += fmt.Sprintf("partial ndf size: %d\n", response.PartialNDF.XXX_Size())
+		}
+
+		if response.Updates !=nil && len(response.Updates)>0{
+			sum := 0
+			min := math.MaxInt64
+			max := 0
+			var largestUpdate *pb.RoundInfo
+
+			for _, update := range response.Updates{
+				updateSize := update.XXX_Size()
+				sum +=updateSize
+				if updateSize<min{
+					min =updateSize
+				}
+				if updateSize>max{
+					max = updateSize
+					largestUpdate = update
+				}
+			}
+
+			sizePrint += fmt.Sprintf("Updates [%d] averaged: %d, max: %d, min: %d",
+			len(response.Updates), sum/len(response.Updates), max, min)
+			sizePrint += fmt.Sprintf("largest update: %#v", *largestUpdate)
+		}
+
+		sizePrint += fmt.Sprintf("poll responce total size: %d", response.XXX_Size())
+		jww.INFO.Printf(sizePrint)
+	}()
 
 	//do edge check to ensure the message is not nil
 	if msg == nil {
