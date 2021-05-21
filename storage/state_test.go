@@ -462,17 +462,11 @@ func TestNetworkState_IncrementRoundID(t *testing.T) {
 		t.Errorf(err.Error())
 		t.FailNow()
 	}
-	err = PermissioningDb.UpsertState(&State{
-		Key:   RoundIdKey,
-		Value: fmt.Sprintf("%d", testID),
-	})
-	if err != nil {
-		t.Errorf(err.Error())
-	}
 
 	testPath := "testRoundID.txt"
 	incrementAmount := uint64(10)
 	testState := NetworkState{}
+	testState.roundID = id.Round(testID)
 
 	defer func() {
 		err := os.RemoveAll(testPath)
