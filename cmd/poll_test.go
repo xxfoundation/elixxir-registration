@@ -295,6 +295,12 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
+
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"},
@@ -387,6 +393,12 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
+
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"},
@@ -436,6 +448,12 @@ func TestPoll_BannedNode(t *testing.T) {
 		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
+	}
+
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
 	}
 
 	testID := id.NewIdFromUInt(0, id.Node, t)

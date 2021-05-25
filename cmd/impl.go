@@ -21,6 +21,7 @@ import (
 	"gitlab.com/xx_network/crypto/tls"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/netTime"
 	"gitlab.com/xx_network/primitives/rateLimiting"
 	"gitlab.com/xx_network/primitives/utils"
 	"sync"
@@ -40,20 +41,20 @@ type RegistrationImpl struct {
 	registrationLimiting *rateLimiting.Bucket
 	disableGatewayPing   bool
 
-	//registration status trackers
+	// registration status trackers
 	numRegistered int
-	//FIXME: it is possible that polling lock and registration lock
+	// FIXME: it is possible that polling lock and registration lock
 	// do the same job and could conflict. reconsiderations of this logic
 	// may be fruitful
 	registrationLock sync.Mutex
 	beginScheduling  chan struct{}
-	//TODO-kill this
+	// TODO-kill this
 	registrationTimes map[id.ID]int64
 
 	NDFLock sync.Mutex
 }
 
-//function used to schedule nodes
+// function used to schedule nodes
 type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 
 // Configure and start the Permissioning Server
@@ -76,8 +77,35 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			"PermissioningKey is %+v", err, rsaPrivateKey)
 	}
 
+	// Check if any address space sizes are saved to the database and if not,
+	// use the size from the config file
+	if _, err := storage.PermissioningDb.GetLatestEphemeralLength(); err != nil {
+		jww.WARN.Printf("Using address space size of %d from config due to "+
+			"error receiving address space size from storage: %s",
+			params.addressSpaceSize, err)
+
+		err := storage.PermissioningDb.InsertEphemeralLength(
+			&storage.EphemeralLength{
+				Length:    params.addressSpaceSize,
+				Timestamp: netTime.Now(),
+			})
+		if err != nil {
+			return nil, errors.Errorf("Failed to save initial address space "+
+				"size %d to database: %+v", params.addressSpaceSize, err)
+		}
+	}
+
+	// Get list of addresses spaces from database
+	addressSpaces, newestAddressSpace, err := GetAddressSpaceSizesFromStorage(
+		storage.PermissioningDb)
+	if err != nil {
+		return nil, errors.Errorf("Failed to get ephemeral ID lengths from "+
+			"database: %v.", err)
+	}
+
 	// Initialize the state tracking object
-	state, err := storage.NewState(rsaPrivateKey, params.addressSpace, params.NdfOutputPath)
+	state, err := storage.NewState(
+		rsaPrivateKey, uint32(newestAddressSpace.Size), params.NdfOutputPath)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +123,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		registrationTimes:  make(map[id.ID]int64),
 	}
 
-	//regImpl.registrationLimiting = rateLimiting.Create(params.userRegCapacity, params.userRegLeakRate)
+	// regImpl.registrationLimiting = rateLimiting.Create(params.userRegCapacity, params.userRegLeakRate)
 	regImpl.registrationLimiting = rateLimiting.CreateBucket(params.userRegCapacity, params.userRegCapacity, params.userRegLeakPeriod, func(u uint32, i int64) {})
 
 	if !noTLS {
@@ -139,10 +167,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		CMIX: RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
-		Nodes:            make([]ndf.Node, 0),
-		Gateways:         make([]ndf.Gateway, 0),
-		AddressSpaceSize: params.addressSpace,
-		ClientVersion:    RegParams.minClientVersion.String(),
+		Nodes:         make([]ndf.Node, 0),
+		Gateways:      make([]ndf.Gateway, 0),
+		AddressSpace:  addressSpaces,
+		ClientVersion: RegParams.minClientVersion.String(),
 	}
 
 	// Assemble notification server information if configured
@@ -262,7 +290,7 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 			return errors.WithMessage(err, "Could not ban node")
 		}
 
-		//take the polling lock
+		// take the polling lock
 		ns.GetPollingLock().Lock()
 
 		/// Send the node's update notification to the scheduler
@@ -307,14 +335,14 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	}
 
 	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
-		//ensure a bad poll can not take down the permisisoning server
+		// ensure a bad poll can not take down the permisisoning server
 		response, err := instance.Poll(msg, auth)
 
 		return response, err
 	}
 
 	// This comm is not authenticated as servers call this early in their
-	//lifecycle to check if they've already registered
+	// lifecycle to check if they've already registered
 	impl.Functions.CheckRegistration = func(msg *pb.RegisteredNodeCheck) (confirmation *pb.RegisteredNodeConfirmation, e error) {
 
 		response, e := instance.CheckNodeRegistration(msg)

@@ -20,6 +20,12 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		t.Error(err)
 	}
 
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
+
 	//Create reg codes and populate the database
 	infos := make([]node.Info, 0)
 	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
