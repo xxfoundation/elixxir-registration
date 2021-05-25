@@ -38,7 +38,7 @@ type Params struct {
 	minGatewayVersion     version.Version
 	minServerVersion      version.Version
 	minClientVersion      version.Version
-	addressSpace          uint32
+	addressSpaceSize      uint8
 	disableGatewayPing    bool
 	// User registration can take userRegCapacity registrations in userRegLeakPeriod period of time
 	userRegCapacity   uint32

@@ -214,6 +214,8 @@ var rootCmd = &cobra.Command{
 
 		permissiveIPChecking = viper.GetBool("permissiveIPChecking")
 
+		viper.SetDefault("addressSpace", 5)
+
 		// Populate params
 		RegParams = Params{
 			Address:               localAddress,
@@ -238,7 +240,7 @@ var rootCmd = &cobra.Command{
 			disableGatewayPing:    disableGatewayPing,
 			userRegLeakPeriod:     userRegLeakPeriod,
 			userRegCapacity:       userRegCapacity,
-			addressSpace:          viper.GetUint32("addressSpace"),
+			addressSpaceSize:      uint8(viper.GetUint("addressSpace")),
 			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
 		}
 
@@ -334,6 +336,13 @@ var rootCmd = &cobra.Command{
 			}
 		}(metricTrackerQuitChan)
 
+		// Run address space updater until stopped
+		viper.SetDefault("addressSpaceSizeUpdateInterval", 5*time.Minute)
+		addressSpaceSizeUpdateInterval := viper.GetDuration("addressSpaceSizeUpdateInterval")
+		addressSpaceTrackerQuitChan := make(chan struct{})
+		go impl.TrackAddressSpaceSizeUpdates(addressSpaceSizeUpdateInterval,
+			storage.PermissioningDb, addressSpaceTrackerQuitChan)
+
 		// Determine how long between polling for banned nodes
 		interval := viper.GetInt("BanTrackerInterval")
 		ticker := time.NewTicker(time.Duration(interval) * time.Minute)
@@ -404,6 +413,9 @@ var rootCmd = &cobra.Command{
 
 			// Stop polling for disabled Nodes
 			disabledNodePollQuitChan <- struct{}{}
+
+			// Stop address space tracker
+			addressSpaceTrackerQuitChan <- struct{}{}
 
 			// Close connection to the database
 			err = closeFunc()

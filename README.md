@@ -127,8 +127,12 @@ userRegCapacity: 1000
 # How often the number of connections is reset
 userRegLeakPeriod: "24h"
 
-# The size of the address space used for ephemeral IDs
-addressSpace: 10
+# The initial size of the address space used for ephemeral IDs (Default: 5)
+addressSpace: 32
+
+# The interval between checks of storage for address space size updates.
+# (Default 5m)
+addressSpaceSizeUpdateInterval: 5m
 ```
 
 ### SchedulingConfig template:

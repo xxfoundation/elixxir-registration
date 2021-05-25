@@ -45,7 +45,7 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 		params.PrecomputationTimeout = 60
 	}
 
-	if params.RealtimeTimeout ==0 {
+	if params.RealtimeTimeout == 0 {
 		params.RealtimeTimeout = 15
 	}
 
@@ -100,6 +100,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 			ourRound, err := startRound(newRound, state, roundTracker)
 			if err != nil {
+				jww.ERROR.Printf("Failed to start round: %+v", err)
 				break
 			}
 
@@ -108,7 +109,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				"precomputation")
 		}
 
-		jww.ERROR.Printf("Round creation thread should never exit: %s", err)
+		jww.ERROR.Printf("Round creation thread should never exit: %v", err)
 
 	}()
 
@@ -222,7 +223,7 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 
 		timeoutType := "precomputation"
 
-		if roundState > states.PRECOMPUTING{
+		if roundState > states.PRECOMPUTING {
 			timeoutType = "realtime"
 		}
 
@@ -230,7 +231,7 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 		timeoutError := &pb.RoundError{
 			Id:     uint64(ourRound.GetRoundID()),
 			NodeId: id.Permissioning.Marshal(),
-			Error:  fmt.Sprintf("Round %d killed due to a %s " +
+			Error: fmt.Sprintf("Round %d killed due to a %s "+
 				"round time out", ourRound.GetRoundID(), timeoutType),
 		}
 

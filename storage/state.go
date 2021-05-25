@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -61,7 +62,7 @@ type NetworkState struct {
 	fullNdf      *dataStructures.Ndf
 
 	// Address space size
-	addressSpaceSize uint32
+	addressSpaceSize *uint32
 
 	ndfOutputPath string
 
@@ -90,7 +91,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		fullNdf:             fullNdf,
 		partialNdf:          partialNdf,
 		rsaPrivateKey:       rsaPrivKey,
-		addressSpaceSize:    addressSpaceSize,
+		addressSpaceSize:    &addressSpaceSize,
 		pruneList:           make(map[id.ID]interface{}),
 		ndfOutputPath:       ndfOutputPath,
 		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
@@ -400,7 +401,12 @@ func (s *NetworkState) GetNodeMap() *node.StateMap {
 
 // GetAddressSpaceSize returns the address space size
 func (s *NetworkState) GetAddressSpaceSize() uint32 {
-	return s.addressSpaceSize
+	return atomic.LoadUint32(s.addressSpaceSize)
+}
+
+// SetAddressSpaceSize sets the address space size.
+func (s *NetworkState) SetAddressSpaceSize(size uint32) {
+	atomic.StoreUint32(s.addressSpaceSize, size)
 }
 
 // NodeUpdateNotification sends a notification to the control thread of an
