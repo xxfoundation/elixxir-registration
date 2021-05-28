@@ -27,6 +27,7 @@ require (
 	gitlab.com/xx_network/primitives v0.0.4-0.20210525232109-3f99a04adcfd
 	gitlab.com/xx_network/ring v0.0.3-0.20210527191221-ce3f170aabd5 // indirect
 	google.golang.org/genproto v0.0.0-20210315173758-2651cd453018 // indirect
+	google.golang.org/grpc v1.38.0 // indirect
 )
 
 replace google.golang.org/grpc => github.com/grpc/grpc-go v1.27.1
