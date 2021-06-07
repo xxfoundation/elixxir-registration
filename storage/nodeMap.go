@@ -56,6 +56,37 @@ func (m *MapImpl) UpdateSalt(id *id.ID, salt []byte) error {
 	return nil
 }
 
+// Update the address fields for the Node with the given id
+func (m *MapImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	for _, v := range m.nodes {
+		if bytes.Compare(v.Id, id.Marshal()) == 0 {
+			v.GatewayAddress = gwAddr
+			v.ServerAddress = nodeAddr
+			return nil
+		}
+	}
+
+	return errors.Errorf("unable to update addresses for %s", id.String())
+}
+
+// Update the sequence field for the Node with the given id
+func (m *MapImpl) UpdateNodeSequence(id *id.ID, sequence string) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	for _, v := range m.nodes {
+		if bytes.Compare(v.Id, id.Marshal()) == 0 {
+			v.Sequence = sequence
+			return nil
+		}
+	}
+
+	return errors.Errorf("unable to update sequence for %s", id.String())
+}
+
 // If Node registration code is valid, add Node information
 func (m *MapImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddress, serverCert,
 	gatewayAddress, gatewayCert string) error {
@@ -103,7 +134,7 @@ func (m *MapImpl) GetNodeById(id *id.ID) (*Node, error) {
 	return nil, errors.Errorf("unable to get node %s", id.String())
 }
 
-// Return all nodes in storage with the given Status
+// Return all nodes in Storage with the given Status
 func (m *MapImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
@@ -139,18 +170,14 @@ func (m *MapImpl) BannedNode(id *id.ID, t interface{}) error {
 	return errors.New("Node could not be found in map")
 }
 
-// Update the address fields for the Node with the given id
-func (m *MapImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
+// Return all ActiveNodes in Storage
+func (m *MapImpl) GetActiveNodes() ([]*ActiveNode, error) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
-	for _, v := range m.nodes {
-		if bytes.Compare(v.Id, id.Marshal()) == 0 {
-			v.GatewayAddress = gwAddr
-			v.ServerAddress = nodeAddr
-			return nil
-		}
+	activeNodes := make([]*ActiveNode, 0)
+	for _, v := range m.activeNodes {
+		activeNodes = append(activeNodes, v)
 	}
-
-	return errors.Errorf("unable to update addresses for %s", id.String())
+	return activeNodes, nil
 }
