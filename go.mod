@@ -14,6 +14,7 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible // indirect
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
+	github.com/oschwald/geoip2-golang v1.5.0
 	github.com/pkg/errors v0.9.1
 	github.com/smartystreets/assertions v1.1.0 // indirect
 	github.com/spf13/cobra v1.1.3

@@ -54,6 +54,7 @@ var (
 	disabledNodesPollDuration time.Duration
 
 	permissiveIPChecking bool
+	geoIPDBFile          string
 )
 
 // Default duration between polls of the disabled Node list for updates.
@@ -213,6 +214,8 @@ var rootCmd = &cobra.Command{
 		}
 
 		permissiveIPChecking = viper.GetBool("permissiveIPChecking")
+
+		geoIPDBFile = viper.GetString("geoIPDBFile")
 
 		viper.SetDefault("addressSpace", 5)
 

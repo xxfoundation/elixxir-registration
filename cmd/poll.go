@@ -24,6 +24,7 @@ import (
 	"gitlab.com/xx_network/primitives/ndf"
 	"math/rand"
 	"net"
+	"strings"
 	"sync/atomic"
 )
 
@@ -323,6 +324,19 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 
 		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", msg.ServerAddress,
 			gatewayAddress)
+
+		if m.GeoIPDB != nil {
+			nodeIP := strings.Split(n.GetNodeAddresses(), ":")[0]
+			ipParsed := net.ParseIP(nodeIP)
+			if ipParsed == nil {
+				return errors.Errorf("checkIPAddresses: Could not parse node IP %v", nodeIP)
+			}
+			nodeCountry, err := m.GeoIPDB.Country(ipParsed)
+			if err != nil {
+				return err
+			}
+			jww.FATAL.Printf(nodeCountry.Country.IsoCode)
+		}
 
 		// Update address information in Storage
 		err := storage.PermissioningDb.UpdateNodeAddresses(nodeHost.GetId(), nodeAddress, gatewayAddress)
