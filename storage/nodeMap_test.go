@@ -296,3 +296,31 @@ func TestMapImpl_UpdateNodeAddresses(t *testing.T) {
 			result.ServerAddress, result.GatewayAddress)
 	}
 }
+
+// Happy path
+func TestMapImpl_UpdateSequence(t *testing.T) {
+	m := &MapImpl{
+		nodes: make(map[string]*Node),
+	}
+
+	testString := "test"
+	testId := id.NewIdFromString(testString, id.Node, t)
+	testResult := "newAddr"
+	m.nodes[testString] = &Node{
+		Code:           testString,
+		Id:             testId.Marshal(),
+		Sequence:       testString,
+		ServerAddress:  testString,
+		GatewayAddress: testString,
+	}
+
+	err := m.UpdateNodeSequence(testId, testResult)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	if result := m.nodes[testString]; result.Sequence != testResult {
+		t.Errorf("Sequence values did not update correctly, got %s expected %s",
+			result.Sequence, testResult)
+	}
+}
