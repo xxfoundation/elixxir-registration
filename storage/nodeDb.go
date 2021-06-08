@@ -82,7 +82,7 @@ func (d *DatabaseImpl) GetNodeById(id *id.ID) (*Node, error) {
 	return newNode, err
 }
 
-// Return all nodes in Dtorage with the given Status
+// Return all nodes in Storage with the given Status
 func (d *DatabaseImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 	var nodes []*Node
 	err := d.db.Where("status = ?", uint8(status)).Find(&nodes).Error
