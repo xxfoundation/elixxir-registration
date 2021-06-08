@@ -133,6 +133,9 @@ addressSpace: 32
 # The interval between checks of storage for address space size updates.
 # (Default 5m)
 addressSpaceSizeUpdateInterval: 5m
+
+# Toggles use of only active nodes in node metric tracker
+onlyScheduleActive: false
 ```
 
 ### SchedulingConfig template:
