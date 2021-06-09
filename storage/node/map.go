@@ -37,16 +37,13 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string, appID ui
 	}
 	pfState := PortUnknown
 
-	var order Ordering
-	order.str = ordering
-
 	numPolls := uint64(0)
 	nsm.nodeStates[*id] =
 		&State{
 			activity:       current.NOT_STARTED,
 			currentRound:   nil,
 			lastPoll:       time.Unix(0, 0),
-			ordering:       order,
+			ordering:       ordering,
 			id:             id,
 			nodeAddress:    nAddr,
 			gatewayAddress: gwAddr,
@@ -65,9 +62,6 @@ func (nsm *StateMap) AddBannedNode(id *id.ID, ordering, nAddr, gwAddr string) er
 	nsm.mux.Lock()
 	defer nsm.mux.Unlock()
 
-	var order Ordering
-	order.str = ordering
-
 	if _, ok := nsm.nodeStates[*id]; ok {
 		return errors.New("cannot add a Node which already exists")
 	}
@@ -78,7 +72,7 @@ func (nsm *StateMap) AddBannedNode(id *id.ID, ordering, nAddr, gwAddr string) er
 			activity:       current.NOT_STARTED,
 			currentRound:   nil,
 			lastPoll:       time.Now(),
-			ordering:       order,
+			ordering:       ordering,
 			id:             id,
 			nodeAddress:    nAddr,
 			gatewayAddress: gwAddr,

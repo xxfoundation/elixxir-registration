@@ -349,7 +349,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 			// See if the country has a defined geobin
 			if val, ok := geobins.Geobins[nodeCountry.Country.IsoCode]; ok {
 				// Assign the node the geobin for the country it is in
-				jww.FATAL.Printf("checkIPAddresses: IP is in %v geobin", val)
+				jww.DEBUG.Printf("checkIPAddresses: IP is in %v geobin", val)
 				err = storage.PermissioningDb.UpdateNodeSequence(nodeHost.GetId(), val)
 				if err != nil {
 					return err
@@ -360,21 +360,15 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		} else {
 			// Assign a random bin
 			jww.INFO.Printf("checkIPAddresses: No GeoIP database was provided, so we will select a random geobin")
-			// TODO: Select a random geobin
-			var geobinlist = map[int]string{
-				0: "Americas",
-				1: "WesternEurope",
-				2: "CentralEurope",
-				3: "EasternEurope",
-				4: "MiddleEast",
-				5: "Africa",
-				6: "Russia",
-				7: "Asia",
+			// Create a list of countries, select a random one out of it, and then get the geobin for it
+			mapKeys := make([]string, 0, len(geobins.Geobins))
+			for key := range geobins.Geobins {
+				mapKeys = append(mapKeys, key)
 			}
-			geobin := rand.Intn(7)
-			jww.INFO.Printf("Came up with geobin ID %v", geobinlist[geobin])
+			geobin := geobins.Geobins[mapKeys[rand.Intn(len(mapKeys))]]
+			jww.DEBUG.Printf("Came up with geobin ID %v", geobin)
 
-			err := storage.PermissioningDb.UpdateNodeSequence(nodeHost.GetId(), geobinlist[geobin])
+			err := storage.PermissioningDb.UpdateNodeSequence(nodeHost.GetId(), geobin)
 			if err != nil {
 				return err
 			}
