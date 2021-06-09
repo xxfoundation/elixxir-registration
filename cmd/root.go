@@ -22,7 +22,6 @@ import (
 	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/utils"
 	"net"
 	"os"
@@ -285,59 +284,11 @@ var rootCmd = &cobra.Command{
 		// Determine how long between storing Node metrics
 		nodeMetricInterval := time.Duration(
 			viper.GetInt64("nodeMetricInterval")) * time.Second
-		nodeTicker := time.NewTicker(nodeMetricInterval)
 
 		// Run the Node metric tracker forever in another thread
+		onlyScheduleActive := viper.GetBool("OnlyScheduleActive")
 		metricTrackerQuitChan := make(chan struct{})
-		go func(quitChan chan struct{}) {
-			jww.DEBUG.Printf("Beginning storage of node metrics every %+v...",
-				nodeMetricInterval)
-			for {
-				// Store the metric start time
-				startTime := time.Now()
-				select {
-				// Wait for the ticker to fire
-				case <-nodeTicker.C:
-					var toPrune []*id.ID
-					// Iterate over the Node States
-					nodeStates := impl.State.GetNodeMap().GetNodeStates()
-					for _, nodeState := range nodeStates {
-
-						// Build the NodeMetric
-						currentTime := time.Now()
-						metric := &storage.NodeMetric{
-							NodeId:    nodeState.GetID().Bytes(),
-							StartTime: startTime,
-							EndTime:   currentTime,
-							NumPings:  nodeState.GetAndResetNumPolls(),
-						}
-
-						//set the node to prune if it has not contacted
-						if metric.NumPings == 0 {
-							toPrune = append(toPrune, nodeState.GetID())
-						}
-
-						// Store the NodeMetric
-						err := storage.PermissioningDb.InsertNodeMetric(metric)
-						if err != nil {
-							jww.FATAL.Panicf(
-								"Unable to store node metric: %+v", err)
-						}
-					}
-
-					if !RegParams.disableNDFPruning {
-						//add disabled nodes to the prune list
-						jww.DEBUG.Printf("Setting %d pruned nodes", len(toPrune))
-						impl.State.SetPrunedNodes(toPrune)
-						err := impl.State.UpdateNdf(impl.State.GetUnprunedNdf())
-						if err != nil {
-							jww.ERROR.Printf("Failed to regenerate the " +
-								"NDF after changing pruning")
-						}
-					}
-				}
-			}
-		}(metricTrackerQuitChan)
+		go TrackNodeMetrics(impl, metricTrackerQuitChan, nodeMetricInterval, onlyScheduleActive)
 
 		// Run address space updater until stopped
 		viper.SetDefault("addressSpaceSizeUpdateInterval", 5*time.Minute)

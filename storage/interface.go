@@ -33,10 +33,12 @@ type database interface {
 	RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
 	UpdateSalt(id *id.ID, salt []byte) error
+	UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error
+	UpdateNodeSequence(id *id.ID, sequence string) error
 	GetNode(code string) (*Node, error)
 	GetNodeById(id *id.ID) (*Node, error)
 	GetNodesByStatus(status node.Status) ([]*Node, error)
-	UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error
+	GetActiveNodes() ([]*ActiveNode, error)
 
 	// Client methods
 	InsertClientRegCode(code string, uses int) error
@@ -56,6 +58,7 @@ type MapImpl struct {
 	roundMetrics      map[uint64]*RoundMetric
 	states            map[string]string
 	ephemeralLengths  map[uint8]*EphemeralLength
+	activeNodes       map[id.ID]*ActiveNode
 	mut               sync.Mutex
 }
 
@@ -121,6 +124,11 @@ type Application struct {
 	Discord   string
 	Instagram string
 	Medium    string
+}
+
+// Struct representing the ActiveNode table in the Database
+type ActiveNode struct {
+	Id []byte `gorm:"primary_key"`
 }
 
 // Struct representing the Node table in the Database
@@ -232,6 +240,7 @@ func NewMap() Storage {
 			users:            make(map[string]*User),
 			states:           make(map[string]string),
 			ephemeralLengths: make(map[uint8]*EphemeralLength),
+			activeNodes:      make(map[id.ID]*ActiveNode),
 		}}
 }
 
