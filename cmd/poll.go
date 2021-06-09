@@ -326,40 +326,56 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", msg.ServerAddress,
 			gatewayAddress)
 
+		// If we have a defined MaxMind GeoIP database reader to assign the right geobin, otherwise assign a random
+		// geobin
 		if m.GeoIPDB != nil {
+			// Get just the IP of the address
 			nodeIP := strings.Split(n.GetNodeAddresses(), ":")[0]
 
+			// Parse it into an IP
 			ipParsed := net.ParseIP(nodeIP)
 			if ipParsed == nil {
 				return errors.Errorf("checkIPAddresses: Could not parse node IP %v", nodeIP)
 			}
 
+			// Lookup the country
 			nodeCountry, err := m.GeoIPDB.Country(ipParsed)
 			if err != nil {
 				return err
 			}
-			jww.FATAL.Printf(nodeCountry.Country.IsoCode)
 
+			// See if the country has a defined geobin
 			if val, ok := geobins.Geobins[nodeCountry.Country.IsoCode]; ok {
+				// Assign the node the geobin for the country it is in
 				jww.FATAL.Printf("checkIPAddresses: IP is in %v geobin", val)
-				binstr, err := geobins.GetRegionFromString(val)
+				err = storage.PermissioningDb.UpdateNodeSequence(nodeHost.GetId(), val)
 				if err != nil {
 					return err
 				}
-				n.SetOrdering(binstr)
 			} else {
 				return errors.Errorf("checkIPAddresses: could not get geobin for country code %v", nodeCountry.Country.IsoCode)
 			}
 		} else {
+			// Assign a random bin
 			jww.INFO.Printf("checkIPAddresses: No GeoIP database was provided, so we will select a random geobin")
 			// TODO: Select a random geobin
+			var geobinlist = map[int]string{
+				0: "Americas",
+				1: "WesternEurope",
+				2: "CentralEurope",
+				3: "EasternEurope",
+				4: "MiddleEast",
+				5: "Africa",
+				6: "Russia",
+				7: "Asia",
+			}
 			geobin := rand.Intn(7)
-			jww.INFO.Printf("Came up with geobin ID %v", geobin)
-			binstr, err := geobins.GetRegionFromString(geobin)
+			jww.INFO.Printf("Came up with geobin ID %v", geobinlist[geobin])
+
+			err := storage.PermissioningDb.UpdateNodeSequence(nodeHost.GetId(), geobinlist[geobin])
 			if err != nil {
 				return err
 			}
-			n.SetOrdering(binstr)
 		}
 
 		// Update address information in Storage
