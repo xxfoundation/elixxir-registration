@@ -328,23 +328,38 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 
 		if m.GeoIPDB != nil {
 			nodeIP := strings.Split(n.GetNodeAddresses(), ":")[0]
+
 			ipParsed := net.ParseIP(nodeIP)
 			if ipParsed == nil {
 				return errors.Errorf("checkIPAddresses: Could not parse node IP %v", nodeIP)
 			}
+
 			nodeCountry, err := m.GeoIPDB.Country(ipParsed)
 			if err != nil {
 				return err
 			}
 			jww.FATAL.Printf(nodeCountry.Country.IsoCode)
+
 			if val, ok := geobins.Geobins[nodeCountry.Country.IsoCode]; ok {
 				jww.FATAL.Printf("checkIPAddresses: IP is in %v geobin", val)
+				binstr, err := geobins.GetRegionFromString(val)
+				if err != nil {
+					return err
+				}
+				n.SetOrdering(binstr)
 			} else {
 				return errors.Errorf("checkIPAddresses: could not get geobin for country code %v", nodeCountry.Country.IsoCode)
 			}
 		} else {
 			jww.INFO.Printf("checkIPAddresses: No GeoIP database was provided, so we will select a random geobin")
 			// TODO: Select a random geobin
+			geobin := rand.Intn(7)
+			jww.INFO.Printf("Came up with geobin ID %v", geobin)
+			binstr, err := geobins.GetRegionFromString(geobin)
+			if err != nil {
+				return err
+			}
+			n.SetOrdering(binstr)
 		}
 
 		// Update address information in Storage
