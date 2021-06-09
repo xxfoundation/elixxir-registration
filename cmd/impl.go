@@ -208,7 +208,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	if geoIPDBFile != "" {
-		regImpl.GeoIPDB, err = geoip2.Open("GeoLite2-Country.mmdb")
+		regImpl.GeoIPDB, err = geoip2.Open(geoIPDBFile)
 		if err != nil {
 			return nil, err
 		}
