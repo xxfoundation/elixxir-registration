@@ -5,6 +5,7 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/crypto/signature/rsa"
+	"gitlab.com/xx_network/primitives/geobins"
 	"gitlab.com/xx_network/primitives/id"
 	mathRand "math/rand"
 
@@ -240,7 +241,7 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 	var regionOrder []int
 	var regionOrderStr []string
 	for _, n := range testProtoRound.NodeStateList {
-		order, _ := getRegion(n.GetOrdering())
+		order, _ := geobins.GetRegion(n.GetOrdering())
 		region := n.GetOrdering()
 		regionOrder = append(regionOrder, order)
 		regionOrderStr = append(regionOrderStr, region)
@@ -353,7 +354,7 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	var regionOrder []int
 	var regionOrderStr []string
 	for _, n := range testProtoRound.NodeStateList {
-		order, _ := getRegion(n.GetOrdering())
+		order, _ := geobins.GetRegion(n.GetOrdering())
 		region := n.GetOrdering()
 		regionOrder = append(regionOrder, order)
 		regionOrderStr = append(regionOrderStr, region)
@@ -410,14 +411,14 @@ func newRegionTransitionValidation(from ...int) regionTransitionValidation {
 // in a undirected graph of what are good internet connections
 func newTransitions() regionTransition {
 	t := regionTransition{}
-	t[Americas] = newRegionTransitionValidation(Americas, Asia, WesternEurope)
-	t[WesternEurope] = newRegionTransitionValidation(WesternEurope, Americas, Africa, CentralEurope)
-	t[CentralEurope] = newRegionTransitionValidation(CentralEurope, Africa, MiddleEast, EasternEurope, WesternEurope)
-	t[EasternEurope] = newRegionTransitionValidation(EasternEurope, MiddleEast, Russia, CentralEurope)
-	t[MiddleEast] = newRegionTransitionValidation(MiddleEast, EasternEurope, Asia, CentralEurope)
-	t[Africa] = newRegionTransitionValidation(Africa, WesternEurope, CentralEurope)
-	t[Russia] = newRegionTransitionValidation(Russia, Asia, EasternEurope)
-	t[Asia] = newRegionTransitionValidation(Asia, Americas, MiddleEast, Russia)
+	t[geobins.Americas] = newRegionTransitionValidation(geobins.Americas, geobins.Asia, geobins.WesternEurope)
+	t[geobins.WesternEurope] = newRegionTransitionValidation(geobins.WesternEurope, geobins.Americas, geobins.Africa, geobins.CentralEurope)
+	t[geobins.CentralEurope] = newRegionTransitionValidation(geobins.CentralEurope, geobins.Africa, geobins.MiddleEast, geobins.EasternEurope, geobins.WesternEurope)
+	t[geobins.EasternEurope] = newRegionTransitionValidation(geobins.EasternEurope, geobins.MiddleEast, geobins.Russia, geobins.CentralEurope)
+	t[geobins.MiddleEast] = newRegionTransitionValidation(geobins.MiddleEast, geobins.EasternEurope, geobins.Asia, geobins.CentralEurope)
+	t[geobins.Africa] = newRegionTransitionValidation(geobins.Africa, geobins.WesternEurope, geobins.CentralEurope)
+	t[geobins.Russia] = newRegionTransitionValidation(geobins.Russia, geobins.Asia, geobins.EasternEurope)
+	t[geobins.Asia] = newRegionTransitionValidation(geobins.Asia, geobins.Americas, geobins.MiddleEast, geobins.Russia)
 
 	return t
 }

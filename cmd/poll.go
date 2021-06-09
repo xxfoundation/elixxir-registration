@@ -325,60 +325,6 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", msg.ServerAddress,
 			gatewayAddress)
 
-		// If we have a defined MaxMind GeoIP database reader to assign the right geobin, otherwise assign a random
-		// geobin
-		if m.GeoIPDB != nil {
-			// Get just the IP of the address
-			nodeIP, _, err := net.SplitHostPort(n.GetNodeAddresses())
-			if err != nil {
-				return err
-			}
-
-			// Parse it into an IP
-			ipParsed := net.ParseIP(nodeIP)
-			if ipParsed == nil {
-				return errors.Errorf("checkIPAddresses: Could not parse node IP %v", nodeIP)
-			}
-
-			// Lookup the country
-			nodeCountry, err := m.GeoIPDB.Country(ipParsed)
-			if err != nil {
-				return err
-			}
-
-			// See if the country has a defined geobin
-			if val, ok := geobins.Geobins[nodeCountry.Country.IsoCode]; ok {
-				// Assign the node the geobin for the country it is in
-				jww.DEBUG.Printf("checkIPAddresses: IP is in %v geobin", val)
-				err = storage.PermissioningDb.UpdateNodeSequence(nodeHost.GetId(), val)
-				if err != nil {
-					return err
-				}
-			} else {
-				return errors.Errorf("checkIPAddresses: could not get geobin for country code %v", nodeCountry.Country.IsoCode)
-			}
-		} else {
-			// Safety check, in case the one in impl.go is tampered with
-			if !randomGeoBinning {
-				jww.FATAL.Panicf("Somehow we got here, but neither a GeoLite2 DB was passed nor the flag to randomly" +
-					"geobin nodes. Will not proceed!")
-			}
-			// Assign a random bin
-			jww.INFO.Printf("checkIPAddresses: No GeoIP database was provided, so we will select a random geobin")
-			// Create a list of countries, select a random one out of it, and then get the geobin for it
-			mapKeys := make([]string, 0, len(geobins.Geobins))
-			for key := range geobins.Geobins {
-				mapKeys = append(mapKeys, key)
-			}
-			geobin := geobins.Geobins[mapKeys[rand.Intn(len(mapKeys))]]
-			jww.DEBUG.Printf("Came up with geobin ID %v", geobin)
-
-			err := storage.PermissioningDb.UpdateNodeSequence(nodeHost.GetId(), geobin)
-			if err != nil {
-				return err
-			}
-		}
-
 		// Update address information in Storage
 		err := storage.PermissioningDb.UpdateNodeAddresses(nodeHost.GetId(), nodeAddress, gatewayAddress)
 		if err != nil {
@@ -424,6 +370,63 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
+		// GeoIP check here
+		// fail return false, err
+		// If we have a defined MaxMind GeoIP database reader to assign the right geobin, otherwise assign a random
+		// geobin
+		if m.GeoIPDB != nil {
+			// Get just the IP of the address
+			nodeIP, _, err := net.SplitHostPort(n.GetNodeAddresses())
+			if err != nil {
+				return false, err
+			}
+
+			// Parse it into an IP
+			ipParsed := net.ParseIP(nodeIP)
+			if ipParsed == nil {
+				return false, errors.Errorf("checkIPAddresses: Could not parse node IP %v", nodeIP)
+			}
+
+			// Lookup the country
+			nodeCountry, err := m.GeoIPDB.Country(ipParsed)
+			if err != nil {
+				return false, err
+			}
+			jww.DEBUG.Printf("checkIPAddresses: IP is in %v country", nodeCountry.Country.IsoCode)
+
+			// See if the country has a defined geobin
+			if val, ok := geobins.Geobins[nodeCountry.Country.IsoCode]; ok {
+				// Assign the node the geobin for the country it is in
+				jww.DEBUG.Printf("checkIPAddresses: IP is in %v geobin", val)
+				err = storage.PermissioningDb.UpdateNodeSequence(n.GetID(), val)
+				if err != nil {
+					return false, err
+				}
+			} else {
+				return false, errors.Errorf("checkIPAddresses: could not get geobin for country code %v", nodeCountry.Country.IsoCode)
+			}
+		} else {
+			// Safety check, in case the one in impl.go is tampered with
+			if !randomGeoBinning {
+				jww.FATAL.Panicf("Somehow we got here, but neither a GeoLite2 DB was passed nor the flag to randomly" +
+					"geobin nodes. Will not proceed!")
+			}
+			// Assign a random bin
+			jww.INFO.Printf("checkIPAddresses: No GeoIP database was provided, so we will select a random geobin")
+			// Create a list of countries, select a random one out of it, and then get the geobin for it
+			mapKeys := make([]string, 0, len(geobins.Geobins))
+			for key := range geobins.Geobins {
+				mapKeys = append(mapKeys, key)
+			}
+			geobin := geobins.Geobins[mapKeys[rand.Intn(len(mapKeys))]]
+			jww.DEBUG.Printf("Came up with geobin ID %v", geobin)
+
+			err := storage.PermissioningDb.UpdateNodeSequence(n.GetID(), geobin)
+			if err != nil {
+				return false, err
+			}
+		}
+
 		// If we are not sure on whether the port has been forwarded
 		// Ping the server and attempt on that port
 		go func() {
