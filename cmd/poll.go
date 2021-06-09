@@ -25,7 +25,6 @@ import (
 	"gitlab.com/xx_network/primitives/ndf"
 	"math/rand"
 	"net"
-	"strings"
 	"sync/atomic"
 )
 
@@ -330,7 +329,10 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		// geobin
 		if m.GeoIPDB != nil {
 			// Get just the IP of the address
-			nodeIP := strings.Split(n.GetNodeAddresses(), ":")[0]
+			nodeIP, _, err := net.SplitHostPort(n.GetNodeAddresses())
+			if err != nil {
+				return err
+			}
 
 			// Parse it into an IP
 			ipParsed := net.ParseIP(nodeIP)
