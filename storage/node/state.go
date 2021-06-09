@@ -328,13 +328,6 @@ func (n *State) GetOrdering() string {
 	return n.ordering.str
 }
 
-// SetOrdering sets the ordering string for use in term formation
-func (n *State) SetOrdering(order string) {
-	n.ordering.Lock()
-	defer n.ordering.Unlock()
-	n.ordering.str = order
-}
-
 // gets the ID of the Node
 func (n *State) GetID() *id.ID {
 	return n.id
@@ -404,14 +397,12 @@ func (n *State) SetLastPoll(lastPoll time.Time, t *testing.T) {
 	n.lastPoll = lastPoll
 }
 
-/*
 func (n *State) SetOrdering(ordering string, t *testing.T) {
 	if t == nil {
 		panic("Cannot directly set node.State's ordering outside of testing")
 	}
-	n.ordering = ordering
+	n.ordering.str = ordering
 }
-*/
 
 func (n *State) GetGatewayAddress() string {
 	return n.gatewayAddress
