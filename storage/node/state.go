@@ -52,7 +52,7 @@ type State struct {
 	numPolls *uint64
 
 	// Order string to be used in team configuration
-	ordering string
+	ordering Ordering
 
 	//holds valid state transitions
 	stateMap *[][]bool
@@ -82,6 +82,11 @@ type State struct {
 	// Status of node's connectivity, i.e. whether the node
 	// has port forwarding
 	connectivity *uint32
+}
+
+type Ordering struct {
+	str string
+	sync.Mutex
 }
 
 // Increment function for numPolls
@@ -320,7 +325,14 @@ func (n *State) UpdateGatewayAddresses(gateway string) bool {
 
 // gets the ordering string for use in team formation
 func (n *State) GetOrdering() string {
-	return n.ordering
+	return n.ordering.str
+}
+
+// SetOrdering sets the ordering string for use in term formation
+func (n *State) SetOrdering(order string) {
+	n.ordering.Lock()
+	defer n.ordering.Unlock()
+	n.ordering.str = order
 }
 
 // gets the ID of the Node
@@ -392,12 +404,14 @@ func (n *State) SetLastPoll(lastPoll time.Time, t *testing.T) {
 	n.lastPoll = lastPoll
 }
 
+/*
 func (n *State) SetOrdering(ordering string, t *testing.T) {
 	if t == nil {
 		panic("Cannot directly set node.State's ordering outside of testing")
 	}
 	n.ordering = ordering
 }
+*/
 
 func (n *State) GetGatewayAddress() string {
 	return n.gatewayAddress

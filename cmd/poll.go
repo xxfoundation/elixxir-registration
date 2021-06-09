@@ -20,6 +20,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/comms/signature"
+	"gitlab.com/xx_network/primitives/geobins"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"math/rand"
@@ -336,6 +337,14 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 				return err
 			}
 			jww.FATAL.Printf(nodeCountry.Country.IsoCode)
+			if val, ok := geobins.Geobins[nodeCountry.Country.IsoCode]; ok {
+				jww.FATAL.Printf("checkIPAddresses: IP is in %v geobin", val)
+			} else {
+				return errors.Errorf("checkIPAddresses: could not get geobin for country code %v", nodeCountry.Country.IsoCode)
+			}
+		} else {
+			jww.INFO.Printf("checkIPAddresses: No GeoIP database was provided, so we will select a random geobin")
+			// TODO: Select a random geobin
 		}
 
 		// Update address information in Storage
