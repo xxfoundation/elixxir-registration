@@ -358,6 +358,11 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 				return errors.Errorf("checkIPAddresses: could not get geobin for country code %v", nodeCountry.Country.IsoCode)
 			}
 		} else {
+			// Safety check, in case the one in impl.go is tampered with
+			if !randomGeoBinning {
+				jww.FATAL.Panicf("Somehow we got here, but neither a GeoLite2 DB was passed nor the flag to randomly" +
+					"geobin nodes. Will not proceed!")
+			}
 			// Assign a random bin
 			jww.INFO.Printf("checkIPAddresses: No GeoIP database was provided, so we will select a random geobin")
 			// Create a list of countries, select a random one out of it, and then get the geobin for it

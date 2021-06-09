@@ -54,6 +54,7 @@ var (
 
 	permissiveIPChecking bool
 	geoIPDBFile          string
+	randomGeoBinning     bool
 )
 
 // Default duration between polls of the disabled Node list for updates.
@@ -448,6 +449,9 @@ func init() {
 
 	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
 		false, "Disables registration server checking for ndf updates")
+
+	rootCmd.Flags().BoolVarP(&randomGeoBinning, "randomGeoBinning", "", false,
+		"Uses random geobinning info rather than the MaxMind GeoLite2 DB")
 
 	err := viper.BindPFlag("closeTimeout",
 		rootCmd.Flags().Lookup("close-timeout"))

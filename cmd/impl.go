@@ -212,6 +212,9 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		if err != nil {
 			return nil, err
 		}
+	} else if !randomGeoBinning {
+		jww.FATAL.Panicf("A MaxMind GeoLite2 compatible database was not passed in and randomGeoBinning flag" +
+			"not set. Don't know how to bin nodes, will not proceed!")
 	}
 
 	return regImpl, nil
