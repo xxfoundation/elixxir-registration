@@ -216,6 +216,7 @@ var rootCmd = &cobra.Command{
 		permissiveIPChecking = viper.GetBool("permissiveIPChecking")
 
 		geoIPDBFile = viper.GetString("geoIPDBFile")
+		randomGeoBinning = viper.GetBool("randomGeoBinning")
 
 		viper.SetDefault("addressSpace", 5)
 
@@ -449,9 +450,6 @@ func init() {
 
 	rootCmd.Flags().BoolVarP(&disablePermissioning, "disablePermissioning", "",
 		false, "Disables registration server checking for ndf updates")
-
-	rootCmd.Flags().BoolVarP(&randomGeoBinning, "randomGeoBinning", "", false,
-		"Uses random geobinning info rather than the MaxMind GeoLite2 DB")
 
 	err := viper.BindPFlag("closeTimeout",
 		rootCmd.Flags().Lookup("close-timeout"))

@@ -139,6 +139,9 @@ onlyScheduleActive: false
 
 # A MaxMind GeoLite2 database file to lookup IPs against for geobinning
 geoIPDBFile: "/GeoLite2-City.mmdb"
+# In place of a GeoLite2 DB we can randomly assign nodes a country to be 
+# geobinned into
+randomGeoBinning: false
 ```
 
 ### SchedulingConfig template:
