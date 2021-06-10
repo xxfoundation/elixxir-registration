@@ -52,7 +52,7 @@ type RegistrationImpl struct {
 	// TODO-kill this
 	registrationTimes map[id.ID]int64
 
-	// This holds a MaxMind GeoLite2 database reader instance for cmd/poll.go
+	// MaxMind GeoLite2 database reader instance for cmd/poll.go
 	GeoIPDB *geoip2.Reader
 
 	NDFLock sync.Mutex
@@ -213,8 +213,9 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			return nil, err
 		}
 	} else if !randomGeoBinning {
-		jww.FATAL.Panicf("A MaxMind GeoLite2 compatible database was not passed in and randomGeoBinning flag" +
-			"not set. Don't know how to bin nodes, will not proceed!")
+		jww.FATAL.Panic("A MaxMind GeoLite2 compatible database was not " +
+			"passed in and randomGeoBinning flag not set. Don't know how to " +
+			"bin nodes, will not proceed!")
 	}
 
 	return regImpl, nil

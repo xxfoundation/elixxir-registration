@@ -3,7 +3,7 @@ package scheduling
 import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/primitives/geobins"
+	"gitlab.com/xx_network/primitives/region"
 	"math"
 )
 
@@ -24,14 +24,14 @@ func generateSemiOptimalOrdering(nodes []*node.State) ([]*node.State, error) {
 		totalLatency := 0
 		for i := 0; i < len(nodes); i++ {
 			// Get the ordering for the current node
-			thisRegion, err := geobins.GetRegion(nodes[i].GetOrdering())
+			thisRegion, err := region.GetRegion(nodes[i].GetOrdering())
 			if err != nil {
 				return nil, err
 			}
 
 			// Get the ordering of the next node, circling back if at the last node
 			nextNode := nodes[(i+1)%len(nodes)]
-			nextRegion, err := geobins.GetRegion(nextNode.GetOrdering())
+			nextRegion, err := region.GetRegion(nextNode.GetOrdering())
 			if err != nil {
 				return nil, err
 
@@ -65,85 +65,85 @@ func generateSemiOptimalOrdering(nodes []*node.State) ([]*node.State, error) {
 //  this table can be updated for better accuracy and selection
 func createLatencyTable() (distanceLatency [8][8]int) {
 
-	// Latency from geobins.Americas to other regions
-	distanceLatency[geobins.Americas][geobins.Americas] = 1
-	distanceLatency[geobins.Americas][geobins.WesternEurope] = 2
-	distanceLatency[geobins.Americas][geobins.CentralEurope] = 4
-	distanceLatency[geobins.Americas][geobins.EasternEurope] = 6
-	distanceLatency[geobins.Americas][geobins.MiddleEast] = 13
-	distanceLatency[geobins.Americas][geobins.Africa] = 6
-	distanceLatency[geobins.Americas][geobins.Russia] = 4
-	distanceLatency[geobins.Americas][geobins.Asia] = 2 // america -> central euro -> rus. (13) or america -> geobins.Asia geobins.Russia (4)
+	// Latency from region.Americas to other regions
+	distanceLatency[region.Americas][region.Americas] = 1
+	distanceLatency[region.Americas][region.WesternEurope] = 2
+	distanceLatency[region.Americas][region.CentralEurope] = 4
+	distanceLatency[region.Americas][region.EasternEurope] = 6
+	distanceLatency[region.Americas][region.MiddleEast] = 13
+	distanceLatency[region.Americas][region.Africa] = 6
+	distanceLatency[region.Americas][region.Russia] = 4
+	distanceLatency[region.Americas][region.Asia] = 2 // america -> central euro -> rus. (13) or america -> region.Asia region.Russia (4)
 
 	// Latency from Western Europe to other regions
-	distanceLatency[geobins.WesternEurope][geobins.Americas] = 2
-	distanceLatency[geobins.WesternEurope][geobins.WesternEurope] = 1
-	distanceLatency[geobins.WesternEurope][geobins.CentralEurope] = 2
-	distanceLatency[geobins.WesternEurope][geobins.EasternEurope] = 4
-	distanceLatency[geobins.WesternEurope][geobins.MiddleEast] = 6
-	distanceLatency[geobins.WesternEurope][geobins.Africa] = 2
-	distanceLatency[geobins.WesternEurope][geobins.Russia] = 6 // w euro -> e. euro -> rus.
-	distanceLatency[geobins.WesternEurope][geobins.Asia] = 13  // w. euro -> c. euro -> mid east -> geobins.Asia (13)
+	distanceLatency[region.WesternEurope][region.Americas] = 2
+	distanceLatency[region.WesternEurope][region.WesternEurope] = 1
+	distanceLatency[region.WesternEurope][region.CentralEurope] = 2
+	distanceLatency[region.WesternEurope][region.EasternEurope] = 4
+	distanceLatency[region.WesternEurope][region.MiddleEast] = 6
+	distanceLatency[region.WesternEurope][region.Africa] = 2
+	distanceLatency[region.WesternEurope][region.Russia] = 6 // w euro -> e. euro -> rus.
+	distanceLatency[region.WesternEurope][region.Asia] = 13  // w. euro -> c. euro -> mid east -> region.Asia (13)
 
 	// Latency from Central Europe to other regions
-	distanceLatency[geobins.CentralEurope][geobins.Americas] = 4
-	distanceLatency[geobins.CentralEurope][geobins.WesternEurope] = 2
-	distanceLatency[geobins.CentralEurope][geobins.CentralEurope] = 1
-	distanceLatency[geobins.CentralEurope][geobins.EasternEurope] = 2
-	distanceLatency[geobins.CentralEurope][geobins.MiddleEast] = 2
-	distanceLatency[geobins.CentralEurope][geobins.Africa] = 2
-	distanceLatency[geobins.CentralEurope][geobins.Russia] = 4
-	distanceLatency[geobins.CentralEurope][geobins.Asia] = 6 //
+	distanceLatency[region.CentralEurope][region.Americas] = 4
+	distanceLatency[region.CentralEurope][region.WesternEurope] = 2
+	distanceLatency[region.CentralEurope][region.CentralEurope] = 1
+	distanceLatency[region.CentralEurope][region.EasternEurope] = 2
+	distanceLatency[region.CentralEurope][region.MiddleEast] = 2
+	distanceLatency[region.CentralEurope][region.Africa] = 2
+	distanceLatency[region.CentralEurope][region.Russia] = 4
+	distanceLatency[region.CentralEurope][region.Asia] = 6 //
 
 	// Latency from Eastern Europe to other regions
-	distanceLatency[geobins.EasternEurope][geobins.Americas] = 6
-	distanceLatency[geobins.EasternEurope][geobins.WesternEurope] = 4
-	distanceLatency[geobins.EasternEurope][geobins.CentralEurope] = 2
-	distanceLatency[geobins.EasternEurope][geobins.EasternEurope] = 1
-	distanceLatency[geobins.EasternEurope][geobins.MiddleEast] = 2
-	distanceLatency[geobins.EasternEurope][geobins.Africa] = 4
-	distanceLatency[geobins.EasternEurope][geobins.Russia] = 2
-	distanceLatency[geobins.EasternEurope][geobins.Asia] = 4
+	distanceLatency[region.EasternEurope][region.Americas] = 6
+	distanceLatency[region.EasternEurope][region.WesternEurope] = 4
+	distanceLatency[region.EasternEurope][region.CentralEurope] = 2
+	distanceLatency[region.EasternEurope][region.EasternEurope] = 1
+	distanceLatency[region.EasternEurope][region.MiddleEast] = 2
+	distanceLatency[region.EasternEurope][region.Africa] = 4
+	distanceLatency[region.EasternEurope][region.Russia] = 2
+	distanceLatency[region.EasternEurope][region.Asia] = 4
 
 	// Latency from Middle_East to other regions
-	distanceLatency[geobins.MiddleEast][geobins.Americas] = 13
-	distanceLatency[geobins.MiddleEast][geobins.WesternEurope] = 4
-	distanceLatency[geobins.MiddleEast][geobins.CentralEurope] = 2
-	distanceLatency[geobins.MiddleEast][geobins.EasternEurope] = 2
-	distanceLatency[geobins.MiddleEast][geobins.MiddleEast] = 1
-	distanceLatency[geobins.MiddleEast][geobins.Africa] = 4 // c. euro to africe (4) or e. euro to c. euro to geobins.Africa (6)?
-	distanceLatency[geobins.MiddleEast][geobins.Russia] = 4
-	distanceLatency[geobins.MiddleEast][geobins.Asia] = 2
+	distanceLatency[region.MiddleEast][region.Americas] = 13
+	distanceLatency[region.MiddleEast][region.WesternEurope] = 4
+	distanceLatency[region.MiddleEast][region.CentralEurope] = 2
+	distanceLatency[region.MiddleEast][region.EasternEurope] = 2
+	distanceLatency[region.MiddleEast][region.MiddleEast] = 1
+	distanceLatency[region.MiddleEast][region.Africa] = 4 // c. euro to africe (4) or e. euro to c. euro to region.Africa (6)?
+	distanceLatency[region.MiddleEast][region.Russia] = 4
+	distanceLatency[region.MiddleEast][region.Asia] = 2
 
-	// Latency from geobins.Africa to other regions
-	distanceLatency[geobins.Africa][geobins.Americas] = 6
-	distanceLatency[geobins.Africa][geobins.WesternEurope] = 2
-	distanceLatency[geobins.Africa][geobins.CentralEurope] = 2
-	distanceLatency[geobins.Africa][geobins.EasternEurope] = 4
-	distanceLatency[geobins.Africa][geobins.MiddleEast] = 4
-	distanceLatency[geobins.Africa][geobins.Africa] = 1
-	distanceLatency[geobins.Africa][geobins.Russia] = 6
-	distanceLatency[geobins.Africa][geobins.Asia] = 6 // c. euro to mid east to geobins.Asia
+	// Latency from region.Africa to other regions
+	distanceLatency[region.Africa][region.Americas] = 6
+	distanceLatency[region.Africa][region.WesternEurope] = 2
+	distanceLatency[region.Africa][region.CentralEurope] = 2
+	distanceLatency[region.Africa][region.EasternEurope] = 4
+	distanceLatency[region.Africa][region.MiddleEast] = 4
+	distanceLatency[region.Africa][region.Africa] = 1
+	distanceLatency[region.Africa][region.Russia] = 6
+	distanceLatency[region.Africa][region.Asia] = 6 // c. euro to mid east to region.Asia
 
-	// Latency from geobins.Russia to other regions
-	distanceLatency[geobins.Russia][geobins.Americas] = 4
-	distanceLatency[geobins.Russia][geobins.WesternEurope] = 13
-	distanceLatency[geobins.Russia][geobins.CentralEurope] = 6
-	distanceLatency[geobins.Russia][geobins.EasternEurope] = 4
-	distanceLatency[geobins.Russia][geobins.MiddleEast] = 4
-	distanceLatency[geobins.Russia][geobins.Africa] = 6
-	distanceLatency[geobins.Russia][geobins.Russia] = 1
-	distanceLatency[geobins.Russia][geobins.Asia] = 2
+	// Latency from region.Russia to other regions
+	distanceLatency[region.Russia][region.Americas] = 4
+	distanceLatency[region.Russia][region.WesternEurope] = 13
+	distanceLatency[region.Russia][region.CentralEurope] = 6
+	distanceLatency[region.Russia][region.EasternEurope] = 4
+	distanceLatency[region.Russia][region.MiddleEast] = 4
+	distanceLatency[region.Russia][region.Africa] = 6
+	distanceLatency[region.Russia][region.Russia] = 1
+	distanceLatency[region.Russia][region.Asia] = 2
 
-	// Latency from geobins.Asia to other regions
-	distanceLatency[geobins.Asia][geobins.Americas] = 3
-	distanceLatency[geobins.Asia][geobins.WesternEurope] = 6
-	distanceLatency[geobins.Asia][geobins.CentralEurope] = 6
-	distanceLatency[geobins.Asia][geobins.EasternEurope] = 4
-	distanceLatency[geobins.Asia][geobins.MiddleEast] = 2
-	distanceLatency[geobins.Asia][geobins.Africa] = 6
-	distanceLatency[geobins.Asia][geobins.Russia] = 2
-	distanceLatency[geobins.Asia][geobins.Asia] = 1
+	// Latency from region.Asia to other regions
+	distanceLatency[region.Asia][region.Americas] = 3
+	distanceLatency[region.Asia][region.WesternEurope] = 6
+	distanceLatency[region.Asia][region.CentralEurope] = 6
+	distanceLatency[region.Asia][region.EasternEurope] = 4
+	distanceLatency[region.Asia][region.MiddleEast] = 2
+	distanceLatency[region.Asia][region.Africa] = 6
+	distanceLatency[region.Asia][region.Russia] = 2
+	distanceLatency[region.Asia][region.Asia] = 1
 
 	return
 }

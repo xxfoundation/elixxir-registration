@@ -11,8 +11,8 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/crypto/signature/rsa"
-	"gitlab.com/xx_network/primitives/geobins"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/region"
 	mathRand "math/rand"
 	"reflect"
 	"strconv"
@@ -356,10 +356,10 @@ func TestCreateSimpleRound_SemiOptimal(t *testing.T) {
 
 	// Parse the order of the regions
 	// one for testing and one for logging
-	var regionOrder []int
+	var regionOrder []region.GeoBin
 	var regionOrderStr []string
 	for _, n := range testProtoRound.NodeStateList {
-		order, _ := geobins.GetRegion(n.GetOrdering())
+		order, _ := region.GetRegion(n.GetOrdering())
 		region := n.GetOrdering()
 		regionOrder = append(regionOrder, order)
 		regionOrderStr = append(regionOrderStr, region)
