@@ -6,6 +6,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/region"
 	mathRand "math/rand"
 
 	"strconv"
@@ -237,10 +238,10 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 			"\n\tReceived: %v ms", expectedDuration, duration)
 	}
 
-	var regionOrder []int
+	var regionOrder []region.GeoBin
 	var regionOrderStr []string
 	for _, n := range testProtoRound.NodeStateList {
-		order, _ := getRegion(n.GetOrdering())
+		order, _ := region.GetRegion(n.GetOrdering())
 		region := n.GetOrdering()
 		regionOrder = append(regionOrder, order)
 		regionOrderStr = append(regionOrderStr, region)
@@ -350,10 +351,10 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 
 	// Parse the order of the regions
 	// one for testing and one for logging
-	var regionOrder []int
+	var regionOrder []region.GeoBin
 	var regionOrderStr []string
 	for _, n := range testProtoRound.NodeStateList {
-		order, _ := getRegion(n.GetOrdering())
+		order, _ := region.GetRegion(n.GetOrdering())
 		region := n.GetOrdering()
 		regionOrder = append(regionOrder, order)
 		regionOrderStr = append(regionOrderStr, region)
@@ -395,7 +396,7 @@ type regionTransitionValidation struct {
 }
 
 // Create the valid jumps for each region
-func newRegionTransitionValidation(from ...int) regionTransitionValidation {
+func newRegionTransitionValidation(from ...region.GeoBin) regionTransitionValidation {
 	tv := regionTransitionValidation{}
 
 	for _, f := range from {
@@ -410,20 +411,20 @@ func newRegionTransitionValidation(from ...int) regionTransitionValidation {
 // in a undirected graph of what are good internet connections
 func newTransitions() regionTransition {
 	t := regionTransition{}
-	t[Americas] = newRegionTransitionValidation(Americas, Asia, WesternEurope)
-	t[WesternEurope] = newRegionTransitionValidation(WesternEurope, Americas, Africa, CentralEurope)
-	t[CentralEurope] = newRegionTransitionValidation(CentralEurope, Africa, MiddleEast, EasternEurope, WesternEurope)
-	t[EasternEurope] = newRegionTransitionValidation(EasternEurope, MiddleEast, Russia, CentralEurope)
-	t[MiddleEast] = newRegionTransitionValidation(MiddleEast, EasternEurope, Asia, CentralEurope)
-	t[Africa] = newRegionTransitionValidation(Africa, WesternEurope, CentralEurope)
-	t[Russia] = newRegionTransitionValidation(Russia, Asia, EasternEurope)
-	t[Asia] = newRegionTransitionValidation(Asia, Americas, MiddleEast, Russia)
+	t[region.Americas] = newRegionTransitionValidation(region.Americas, region.Asia, region.WesternEurope)
+	t[region.WesternEurope] = newRegionTransitionValidation(region.WesternEurope, region.Americas, region.Africa, region.CentralEurope)
+	t[region.CentralEurope] = newRegionTransitionValidation(region.CentralEurope, region.Africa, region.MiddleEast, region.EasternEurope, region.WesternEurope)
+	t[region.EasternEurope] = newRegionTransitionValidation(region.EasternEurope, region.MiddleEast, region.Russia, region.CentralEurope)
+	t[region.MiddleEast] = newRegionTransitionValidation(region.MiddleEast, region.EasternEurope, region.Asia, region.CentralEurope)
+	t[region.Africa] = newRegionTransitionValidation(region.Africa, region.WesternEurope, region.CentralEurope)
+	t[region.Russia] = newRegionTransitionValidation(region.Russia, region.Asia, region.EasternEurope)
+	t[region.Asia] = newRegionTransitionValidation(region.Asia, region.Americas, region.MiddleEast, region.Russia)
 
 	return t
 }
 
 // IsValidTransition checks the transitionValidation to see if
 //  the attempted transition is valid
-func (r regionTransition) isValidTransition(from, to int) bool {
+func (r regionTransition) isValidTransition(from, to region.GeoBin) bool {
 	return r[to].from[from]
 }

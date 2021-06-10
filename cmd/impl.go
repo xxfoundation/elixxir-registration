@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"crypto/x509"
+	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -50,6 +51,9 @@ type RegistrationImpl struct {
 	beginScheduling  chan struct{}
 	// TODO-kill this
 	registrationTimes map[id.ID]int64
+
+	// MaxMind GeoLite2 database reader instance for cmd/poll.go
+	GeoIPDB *geoip2.Reader
 
 	NDFLock sync.Mutex
 }
@@ -201,6 +205,17 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// In the noTLS pathway, disable authentication
 	if noTLS {
 		regImpl.Comms.DisableAuth()
+	}
+
+	if geoIPDBFile != "" {
+		regImpl.GeoIPDB, err = geoip2.Open(geoIPDBFile)
+		if err != nil {
+			return nil, err
+		}
+	} else if !randomGeoBinning {
+		jww.FATAL.Panic("A MaxMind GeoLite2 compatible database was not " +
+			"passed in and randomGeoBinning flag not set. Don't know how to " +
+			"bin nodes, will not proceed!")
 	}
 
 	return regImpl, nil

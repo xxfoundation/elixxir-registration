@@ -9,6 +9,7 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"github.com/oschwald/geoip2-golang"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
 	"gitlab.com/elixxir/comms/testutils"
@@ -1052,4 +1053,141 @@ func TestVerifyError(t *testing.T) {
 	if err != nil {
 		t.Error("Failed to verify error")
 	}
+}
+
+// Test happy path of random geobin
+func TestAssignRandomGeoBin(t *testing.T) {
+	// Set random GeoBinning to true
+	randomGeoBinning = true
+
+	// Create a map database
+	var err error
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add an application to it
+	testID := id.NewIdFromUInt(0, id.Node, t)
+	err = storage.PermissioningDb.InsertApplication(
+		&storage.Application{},
+		&storage.Node{
+			Code: "AAAA",
+		},
+	)
+	if err != nil {
+		return
+	}
+
+	// Register a node
+	err = storage.PermissioningDb.RegisterNode(testID, []byte("testtesttesttesttesttesttesttest"), "AAAA",
+		"", "", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Make a new state map and add the node to it
+	StateMap := node.NewStateMap()
+	err = StateMap.AddNode(testID, "", "", "", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gotTestNode, err := storage.PermissioningDb.GetNodeById(testID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldgeobin := gotTestNode.Sequence
+
+	// Create a Registration impl. and call GeoIP on it
+	impl := &RegistrationImpl{}
+	_, err = impl.geoIP(StateMap.GetNode(testID))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gotTestNode, err = storage.PermissioningDb.GetNodeById(testID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newgeobin := gotTestNode.Sequence
+
+	if newgeobin == oldgeobin {
+		t.Errorf("Old and new geobin match")
+	}
+}
+
+// Test happy path of MaxMind geobin
+func TestAssignMaxMindGeoBin(t *testing.T) {
+	var err error
+
+	// Create registration impl
+	impl := &RegistrationImpl{}
+
+	// Setup a reader with the testing database
+	impl.GeoIPDB, err = geoip2.Open("../testkeys/GeoIP2-City-Test.mmdb")
+
+	// Create a map database
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add an application to it
+	testID := id.NewIdFromUInt(0, id.Node, t)
+	err = storage.PermissioningDb.InsertApplication(
+		&storage.Application{},
+		&storage.Node{
+			Code: "AAAA",
+		},
+	)
+	if err != nil {
+		return
+	}
+
+	// Register a node
+	err = storage.PermissioningDb.RegisterNode(testID, []byte("testtesttesttesttesttesttesttest"), "AAAA",
+		"202.196.224.6:2400", "", "202.196.224.5:4800", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Make a new state map and add the node to it
+	StateMap := node.NewStateMap()
+	err = StateMap.AddNode(testID, "", "202.196.224.6:2400", "202.196.224.5:4800", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Call geoIP
+	_, err = impl.geoIP(StateMap.GetNode(testID))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	gotTestNode, err := storage.PermissioningDb.GetNodeById(testID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	geobin := gotTestNode.Sequence
+	if geobin != "Asia" {
+		t.Errorf("Got geobin %v expected Asia", geobin)
+	}
+}
+
+// Test neither GeoIP flags being set
+func TestNoFlagGeoBin(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+
+		}
+	}()
+
+	impl := &RegistrationImpl{}
+	_, err := impl.geoIP(&node.State{})
+	if err != nil {
+		return
+	}
+
+	t.Error("geoIP function did not pass an error with no GeoIP flags given")
 }

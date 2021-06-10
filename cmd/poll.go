@@ -22,6 +22,7 @@ import (
 	"gitlab.com/xx_network/comms/signature"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/region"
 	"math/rand"
 	"net"
 	"sync/atomic"
@@ -362,6 +363,65 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 	return nil
 }
 
+func (m *RegistrationImpl) geoIP(n *node.State) (bool, error) {
+	// GeoIP check here
+	// fail return false, err
+	// If we have a defined MaxMind GeoIP database reader to assign the right geobin, otherwise assign a random
+	// geobin
+	if m.GeoIPDB != nil {
+		// Get just the IP of the address
+		nodeIP, _, err := net.SplitHostPort(n.GetNodeAddresses())
+		if err != nil {
+			return false, err
+		}
+
+		// Parse it into an IP
+		ipParsed := net.ParseIP(nodeIP)
+		if ipParsed == nil {
+			return false, errors.Errorf("checkIPAddresses: Could not parse node IP %v", nodeIP)
+		}
+
+		// Lookup the country
+		nodeCountry, err := m.GeoIPDB.Country(ipParsed)
+		if err != nil {
+			return false, err
+		}
+		jww.DEBUG.Printf("checkIPAddresses: IP is in %v country", nodeCountry.Country.IsoCode)
+
+		// See if the country has a defined geobin
+		val, ok := region.GetCountryBin(nodeCountry.Country.IsoCode)
+		if !ok {
+			return false, errors.Errorf("checkIPAddresses: could not get geobin for country code %v", nodeCountry.Country.IsoCode)
+		}
+
+		jww.DEBUG.Printf("checkIPAddresses: IP is in %s geobin", val)
+		err = storage.PermissioningDb.UpdateNodeSequence(n.GetID(), val.String())
+		if err != nil {
+			return false, err
+		}
+	} else {
+		// Safety check, in case the one in impl.go is tampered with
+		if !randomGeoBinning {
+			jww.FATAL.Panicf("Somehow we got here, but neither a GeoLite2 DB was passed nor the flag to randomly" +
+				"geobin nodes. Will not proceed!")
+		}
+		// Assign a random bin
+		mapKeys := region.GetCountryList()
+		geobin, ok := region.GetCountryBin(mapKeys[rand.Intn(len(mapKeys))])
+		if !ok {
+			return false, errors.New("Somehow we didn't get a country from GetCountryBin in random geobinning")
+		}
+		jww.DEBUG.Printf("Came up with geobin ID %v for node %v", geobin.String(), n.GetID().String())
+
+		err := storage.PermissioningDb.UpdateNodeSequence(n.GetID(), geobin.String())
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return true, nil
+}
+
 // Handles the responses to the different connectivity states of a node
 // if boolean is true the poll should continue
 func (m *RegistrationImpl) checkConnectivity(n *node.State,
@@ -369,6 +429,10 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
+		_, err := m.geoIP(n)
+		if err != nil {
+			return false, err
+		}
 		// If we are not sure on whether the port has been forwarded
 		// Ping the server and attempt on that port
 		go func() {

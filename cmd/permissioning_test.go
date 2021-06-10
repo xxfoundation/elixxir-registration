@@ -12,6 +12,9 @@ import (
 
 //Happy path: tests that the function loads active and banned nodes into the maps
 func TestLoadAllRegisteredNodes(t *testing.T) {
+	// Enable random geobinning
+	randomGeoBinning = true
+
 	//region Database setup
 	// Create a database to store some nodes into
 	var err error
