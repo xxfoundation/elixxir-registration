@@ -1093,11 +1093,27 @@ func TestAssignRandomGeoBin(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	gotTestNode, err := storage.PermissioningDb.GetNodeById(testID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldgeobin := gotTestNode.Sequence
+
 	// Create a Registration impl. and call GeoIP on it
 	impl := &RegistrationImpl{}
 	_, err = impl.geoIP(StateMap.GetNode(testID))
 	if err != nil {
 		t.Fatal(err)
+	}
+
+	gotTestNode, err = storage.PermissioningDb.GetNodeById(testID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newgeobin := gotTestNode.Sequence
+
+	if newgeobin == oldgeobin {
+		t.Errorf("Old and new geobin match")
 	}
 }
 
