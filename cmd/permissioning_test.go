@@ -5,17 +5,15 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"testing"
 	"time"
 )
 
-//Happy path: tests that the function loads active and banned nodes into the maps
+// Happy path: tests that the function loads active and banned nodes into the maps
 func TestLoadAllRegisteredNodes(t *testing.T) {
-	// Enable random geobinning
-	randomGeoBinning = true
-
-	//region Database setup
+	// region Database setup
 	// Create a database to store some nodes into
 	var err error
 	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
@@ -29,22 +27,24 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
 	}
 
-	//Create reg codes and populate the database
-	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
-		node.Info{RegCode: "BBBB", Order: "1"},
-		node.Info{RegCode: "CCCC", Order: "2"})
+	// Create reg codes and populate the database
+	infos := []node.Info{
+		{RegCode: "AAAA", Order: region.Americas.String()},
+		{RegCode: "BBBB", Order: region.WesternEurope.String()},
+		{RegCode: "CCCC", Order: region.CentralEurope.String()},
+	}
 	storage.PopulateNodeRegistrationCodes(infos)
-	//endregion
 
-	//region Mock node setup
+	// endregion
+
+	// region Mock node setup
 	// Get TLS cert
 	crt, err := utils.ReadFile(testkeys.GetCACertPath())
 
 	// Create a new ID and store a new active node into the database
 	activeNodeId := id.NewIdFromUInt(0, id.Node, t)
-	err = storage.PermissioningDb.RegisterNode(activeNodeId, []byte("test1"), "AAAA", "0.0.0.0", string(crt),
-		"0.0.0.0", string(crt))
+	err = storage.PermissioningDb.RegisterNode(activeNodeId, []byte("test1"),
+		"AAAA", "0.0.0.0", string(crt), "0.0.0.0", string(crt))
 	if err != nil {
 		t.Error(err)
 	}
@@ -52,8 +52,8 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 
 	// Create a new ID and store a new *banned* node into the database
 	bannedNodeId := id.NewIdFromUInt(1, id.Node, t)
-	err = storage.PermissioningDb.RegisterNode(bannedNodeId, []byte("test2"), "BBBB", "0.0.0.0", string(crt),
-		"0.0.0.0", string(crt))
+	err = storage.PermissioningDb.RegisterNode(bannedNodeId, []byte("test2"),
+		"BBBB", "0.0.0.0", string(crt), "0.0.0.0", string(crt))
 	if err != nil {
 		t.Error(err)
 	}
@@ -61,8 +61,8 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 
 	// Create a new ID and store a new *banned* node into the database
 	altNodeID := id.NewIdFromString("alt", id.Node, t)
-	err = storage.PermissioningDb.RegisterNode(altNodeID, []byte("test3"), "CCCC", "0.0.0.0", string(crt),
-		"0.0.0.0", string(crt))
+	err = storage.PermissioningDb.RegisterNode(altNodeID, []byte("test3"),
+		"CCCC", "0.0.0.0", string(crt), "0.0.0.0", string(crt))
 	if err != nil {
 		t.Error(err)
 	}
@@ -72,8 +72,8 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	//endregion
-	//region Test code
+	// endregion
+	// region Test code
 	// Create params for test registration server
 	testParams := Params{
 		CertPath:          testkeys.GetCACertPath(),
@@ -82,6 +82,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		udbCertPath:       testkeys.GetUdbCertPath(),
 		NsCertPath:        testkeys.GetUdbCertPath(),
 		disableNDFPruning: true,
+		randomGeoBinning:  true,
 	}
 
 	// Start registration server
@@ -95,9 +96,9 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	if err != nil {
 		t.Error("LoadAllRegisteredNodes returned an error: ", err)
 	}
-	//endregion
+	// endregion
 
-	//region Host map checking
+	// region Host map checking
 	// TODO: there doesn't seem to be a way to get the number of nodes in the host map that's obvious to me
 	// Check that the active node stuff is alright
 	hmActiveNode, hmActiveNodeOk := impl.Comms.GetHost(activeNodeId)
@@ -116,7 +117,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		t.Error("Unexpected node ID for node 0:\r\tGot: %i\r\tExpected: %i", hmBannedNode.GetId(), bannedNodeId)
 	}
 
-	//region Node map checking
+	// region Node map checking
 	// Check that the nodes were added to the node map
 	expected_nodes := 3
 	nodeMapNodes := impl.State.GetNodeMap().GetNodeStates()
@@ -161,16 +162,16 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	if banned != 1 {
 		t.Error("Should only be one banned node")
 	}
-	//endregion
+	// endregion
 
 	// TODO: check servers get a valid NDF
 	// Why? When I first made this code, it failed to add the nodes from the database into the NDF. Ideally this
 	// would've been caught in testing, but I hadn't thought about that. It does seem like something pertinent to test
 	// but at the time of me writing this code, we don't have the time to really do that.
 
-	//region Cleanup
+	// region Cleanup
 	// Shutdown registration
-	//impl.Comms.Shutdown()
-	//time.Sleep(10*time.Second)
-	//endregion
+	// impl.Comms.Shutdown()
+	// time.Sleep(10*time.Second)
+	// endregion
 }

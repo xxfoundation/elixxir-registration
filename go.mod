@@ -25,6 +25,6 @@ require (
 	gitlab.com/elixxir/primitives v0.0.3-0.20210607210820-afd1b028b558
 	gitlab.com/xx_network/comms v0.0.4-0.20210603164237-d0c36076d7f0
 	gitlab.com/xx_network/crypto v0.0.5-0.20210603164136-743cb9b0a967
-	gitlab.com/xx_network/primitives v0.0.4-0.20210610162610-1318b85698f5
+	gitlab.com/xx_network/primitives v0.0.4-0.20210610175923-037ef866b894
 	google.golang.org/genproto v0.0.0-20210315173758-2651cd453018 // indirect
 )
