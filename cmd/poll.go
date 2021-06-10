@@ -407,18 +407,11 @@ func (m *RegistrationImpl) geoIP(n *node.State) (bool, error) {
 		}
 		// Assign a random bin
 		jww.INFO.Printf("checkIPAddresses: No GeoIP database was provided, so we will select a random geobin")
-		// Create a list of countries, select a random one out of it, and then get the geobin for it
-		mapKeys := make([]string, 0, region.CountryLen())
-		for _, val := range region.GetCountryList() {
-			mapKeys = append(mapKeys, val)
-		}
-		geobin, ok := region.GetCountryBin(mapKeys[rand.Intn(len(mapKeys))])
-		if !ok {
-			return false, errors.New("Somehow we didn't get a country from GetCountryBin in random geobinning")
-		}
+		// Chooses a random country from the country list
+		geobin := region.GetCountryList()[rand.Intn(region.CountryLen())]
 		jww.DEBUG.Printf("Came up with geobin ID %s", geobin)
 
-		err := storage.PermissioningDb.UpdateNodeSequence(n.GetID(), geobin.String())
+		err := storage.PermissioningDb.UpdateNodeSequence(n.GetID(), geobin)
 		if err != nil {
 			return false, err
 		}
