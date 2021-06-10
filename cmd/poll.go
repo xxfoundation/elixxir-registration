@@ -411,7 +411,7 @@ func (m *RegistrationImpl) geoIP(n *node.State) (bool, error) {
 		if !ok {
 			return false, errors.New("Somehow we didn't get a country from GetCountryBin in random geobinning")
 		}
-		jww.DEBUG.Printf("Came up with geobin ID %v", geobin.String())
+		jww.DEBUG.Printf("Came up with geobin ID %v for node %v", geobin.String(), n.GetID().String())
 
 		err := storage.PermissioningDb.UpdateNodeSequence(n.GetID(), geobin.String())
 		if err != nil {
