@@ -52,8 +52,11 @@ type RegistrationImpl struct {
 	// TODO-kill this
 	registrationTimes map[id.ID]int64
 
-	// MaxMind GeoLite2 database reader instance for cmd/poll.go
-	GeoIPDB *geoip2.Reader
+	// GeoLite2 database reader instance for getting info about an IP address
+	geoIPDB *geoip2.Reader
+
+	// Status of the geoip2.Reader; signals if the reader is running or stopped
+	geoIPDBStatus geoipStatus
 
 	NDFLock sync.Mutex
 }
@@ -207,15 +210,20 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		regImpl.Comms.DisableAuth()
 	}
 
-	if geoIPDBFile != "" {
-		regImpl.GeoIPDB, err = geoip2.Open(geoIPDBFile)
+	// If the the GeoIP2 database file is supplied, then use it to open the
+	// GeoIP2 reader; otherwise, error if randomGeoBinning is not set
+	if params.geoIPDBFile != "" {
+		regImpl.geoIPDB, err = geoip2.Open(params.geoIPDBFile)
 		if err != nil {
-			return nil, err
+			return nil,
+				errors.Errorf("failed to load GeoIP2 database file: %+v", err)
 		}
-	} else if !randomGeoBinning {
-		jww.FATAL.Panic("A MaxMind GeoLite2 compatible database was not " +
-			"passed in and randomGeoBinning flag not set. Don't know how to " +
-			"bin nodes, will not proceed!")
+
+		// Set the GeoIP2 reader to running
+		regImpl.geoIPDBStatus.ToRunning()
+	} else if !params.randomGeoBinning {
+		jww.FATAL.Panic("Must provide either a MaxMind GeoLite2 compatible " +
+			"database file or set the 'randomGeoBinning' flag.")
 	}
 
 	return regImpl, nil

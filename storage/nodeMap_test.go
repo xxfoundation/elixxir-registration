@@ -11,6 +11,7 @@ import (
 	"crypto/rand"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/region"
 	"testing"
 )
 
@@ -25,7 +26,7 @@ func TestMapImpl_InsertApplication(t *testing.T) {
 	applicationId := uint64(10)
 	newNode := &Node{
 		Code:          "TEST",
-		Sequence:      "BLARG",
+		Sequence:      region.Americas.String(),
 		ApplicationId: applicationId,
 	}
 	newApplication := &Application{Id: applicationId}
@@ -53,7 +54,7 @@ func TestMapImpl_InsertApplication_Duplicate(t *testing.T) {
 	applicationId := uint64(10)
 	newNode := &Node{
 		Code:          "TEST",
-		Sequence:      "BLARG",
+		Sequence:      region.MiddleEast.String(),
 		ApplicationId: applicationId,
 	}
 	newApplication := &Application{Id: applicationId}
@@ -303,7 +304,7 @@ func TestMapImpl_UpdateSequence(t *testing.T) {
 		nodes: make(map[string]*Node),
 	}
 
-	testString := "test"
+	testString := region.Americas.String()
 	testId := id.NewIdFromString(testString, id.Node, t)
 	testResult := "newAddr"
 	m.nodes[testString] = &Node{

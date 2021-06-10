@@ -318,9 +318,19 @@ func (n *State) UpdateGatewayAddresses(gateway string) bool {
 	return false
 }
 
-// gets the ordering string for use in team formation
+// GetOrdering return the ordering string for use in team formation.
 func (n *State) GetOrdering() string {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+
 	return n.ordering
+}
+
+// SetOrdering sets the State ordering string.
+func (n *State) SetOrdering(ordering string) {
+	n.mux.Lock()
+	n.ordering = ordering
+	n.mux.Unlock()
 }
 
 // gets the ID of the Node
@@ -390,13 +400,6 @@ func (n *State) SetLastPoll(lastPoll time.Time, t *testing.T) {
 		panic("Cannot directly set node.State's last poll outside of testing")
 	}
 	n.lastPoll = lastPoll
-}
-
-func (n *State) SetOrdering(ordering string, t *testing.T) {
-	if t == nil {
-		panic("Cannot directly set node.State's ordering outside of testing")
-	}
-	n.ordering = ordering
 }
 
 func (n *State) GetGatewayAddress() string {

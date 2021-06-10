@@ -53,8 +53,6 @@ var (
 	disabledNodesPollDuration time.Duration
 
 	permissiveIPChecking bool
-	geoIPDBFile          string
-	randomGeoBinning     bool
 )
 
 // Default duration between polls of the disabled Node list for updates.
@@ -215,9 +213,6 @@ var rootCmd = &cobra.Command{
 
 		permissiveIPChecking = viper.GetBool("permissiveIPChecking")
 
-		geoIPDBFile = viper.GetString("geoIPDBFile")
-		randomGeoBinning = viper.GetBool("randomGeoBinning")
-
 		viper.SetDefault("addressSpace", 5)
 
 		// Populate params
@@ -226,26 +221,28 @@ var rootCmd = &cobra.Command{
 			CertPath:              certPath,
 			KeyPath:               keyPath,
 			NdfOutputPath:         ndfOutputPath,
+			NsCertPath:            nsCertPath,
+			NsAddress:             nsAddress,
 			cmix:                  *cmix,
 			e2e:                   *e2e,
 			publicAddress:         publicAddress,
-			NsAddress:             nsAddress,
-			NsCertPath:            nsCertPath,
 			schedulingKillTimeout: schedulingKillTimeout,
 			closeTimeout:          closeTimeout,
+			minimumNodes:          viper.GetUint32("minimumNodes"),
 			udbId:                 udbId,
 			udbDhPubKey:           udbDhPubKey,
 			udbCertPath:           udbCertPath,
 			udbAddress:            udbAddress,
-			minimumNodes:          viper.GetUint32("minimumNodes"),
 			minGatewayVersion:     minGatewayVersion,
 			minServerVersion:      minServerVersion,
 			minClientVersion:      minClientVersion,
-			disableGatewayPing:    disableGatewayPing,
-			userRegLeakPeriod:     userRegLeakPeriod,
-			userRegCapacity:       userRegCapacity,
 			addressSpaceSize:      uint8(viper.GetUint("addressSpace")),
+			disableGatewayPing:    disableGatewayPing,
+			userRegCapacity:       userRegCapacity,
+			userRegLeakPeriod:     userRegLeakPeriod,
 			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
+			geoIPDBFile:           viper.GetString("geoIPDBFile"),
+			randomGeoBinning:      viper.GetBool("randomGeoBinning"),
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -372,6 +369,13 @@ var rootCmd = &cobra.Command{
 
 			// Stop address space tracker
 			addressSpaceTrackerQuitChan <- struct{}{}
+
+			// Close GeoIP2 reader
+			impl.geoIPDBStatus.ToStopped()
+			err := impl.geoIPDB.Close()
+			if err != nil {
+				jww.ERROR.Printf("Error closing GeoIP2 database reader: %+v", err)
+			}
 
 			// Close connection to the database
 			err = closeFunc()

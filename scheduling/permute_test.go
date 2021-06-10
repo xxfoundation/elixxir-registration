@@ -27,7 +27,7 @@ func TestPermute(t *testing.T) {
 
 		// set the order of the
 		newOrder := strconv.Itoa(i)
-		newNode.SetOrdering(newOrder, t)
+		newNode.SetOrdering(newOrder)
 
 		// Place new node in list
 		nodeList[i] = newNode
