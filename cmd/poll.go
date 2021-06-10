@@ -394,7 +394,7 @@ func (m *RegistrationImpl) geoIP(n *node.State) (bool, error) {
 			return false, errors.Errorf("checkIPAddresses: could not get geobin for country code %v", nodeCountry.Country.IsoCode)
 		}
 
-		jww.DEBUG.Printf("checkIPAddresses: IP is in %v geobin", val.String())
+		jww.DEBUG.Printf("checkIPAddresses: IP is in %s geobin", val)
 		err = storage.PermissioningDb.UpdateNodeSequence(n.GetID(), val.String())
 		if err != nil {
 			return false, err
@@ -416,7 +416,7 @@ func (m *RegistrationImpl) geoIP(n *node.State) (bool, error) {
 		if !ok {
 			return false, errors.New("Somehow we didn't get a country from GetCountryBin in random geobinning")
 		}
-		jww.DEBUG.Printf("Came up with geobin ID %v", geobin.String())
+		jww.DEBUG.Printf("Came up with geobin ID %s", geobin)
 
 		err := storage.PermissioningDb.UpdateNodeSequence(n.GetID(), geobin.String())
 		if err != nil {
