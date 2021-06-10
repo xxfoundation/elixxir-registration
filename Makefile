@@ -19,7 +19,7 @@ build:
 	go mod tidy
 
 update_release:
-	GOFLAGS="" go get gitlab.com/xx_network/primitives@release
+	GOFLAGS="" go get gitlab.com/xx_network/primitives@"XX-3338/GeoIPBins"
 	GOFLAGS="" go get gitlab.com/elixxir/primitives@release
 	GOFLAGS="" go get gitlab.com/xx_network/crypto@release
 	GOFLAGS="" go get gitlab.com/elixxir/crypto@release

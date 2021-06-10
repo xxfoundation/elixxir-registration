@@ -20,9 +20,9 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/comms/signature"
-	"gitlab.com/xx_network/primitives/geobins"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/region"
 	"math/rand"
 	"net"
 	"sync/atomic"
@@ -389,15 +389,15 @@ func (m *RegistrationImpl) geoIP(n *node.State) (bool, error) {
 		jww.DEBUG.Printf("checkIPAddresses: IP is in %v country", nodeCountry.Country.IsoCode)
 
 		// See if the country has a defined geobin
-		if val, ok := geobins.Geobins[nodeCountry.Country.IsoCode]; ok {
-			// Assign the node the geobin for the country it is in
-			jww.DEBUG.Printf("checkIPAddresses: IP is in %v geobin", val)
-			err = storage.PermissioningDb.UpdateNodeSequence(n.GetID(), val)
-			if err != nil {
-				return false, err
-			}
-		} else {
+		val, ok := region.GetCountryBin(nodeCountry.Country.IsoCode)
+		if !ok {
 			return false, errors.Errorf("checkIPAddresses: could not get geobin for country code %v", nodeCountry.Country.IsoCode)
+		}
+
+		jww.DEBUG.Printf("checkIPAddresses: IP is in %v geobin", val.String())
+		err = storage.PermissioningDb.UpdateNodeSequence(n.GetID(), val.String())
+		if err != nil {
+			return false, err
 		}
 	} else {
 		// Safety check, in case the one in impl.go is tampered with
@@ -408,14 +408,17 @@ func (m *RegistrationImpl) geoIP(n *node.State) (bool, error) {
 		// Assign a random bin
 		jww.INFO.Printf("checkIPAddresses: No GeoIP database was provided, so we will select a random geobin")
 		// Create a list of countries, select a random one out of it, and then get the geobin for it
-		mapKeys := make([]string, 0, len(geobins.Geobins))
-		for key := range geobins.Geobins {
-			mapKeys = append(mapKeys, key)
+		mapKeys := make([]string, 0, region.CountryLen())
+		for _, val := range region.GetCountryList() {
+			mapKeys = append(mapKeys, val)
 		}
-		geobin := geobins.Geobins[mapKeys[rand.Intn(len(mapKeys))]]
-		jww.DEBUG.Printf("Came up with geobin ID %v", geobin)
+		geobin, ok := region.GetCountryBin(mapKeys[rand.Intn(len(mapKeys))])
+		if !ok {
+			return false, errors.New("Somehow we didn't get a country from GetCountryBin in random geobinning")
+		}
+		jww.DEBUG.Printf("Came up with geobin ID %v", geobin.String())
 
-		err := storage.PermissioningDb.UpdateNodeSequence(n.GetID(), geobin)
+		err := storage.PermissioningDb.UpdateNodeSequence(n.GetID(), geobin.String())
 		if err != nil {
 			return false, err
 		}
