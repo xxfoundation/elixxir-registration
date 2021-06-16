@@ -18,7 +18,7 @@ import (
 //	jww.SetLogThreshold(jww.LevelTrace)
 //	jww.SetStdoutThreshold(jww.LevelTrace)
 //
-//	db, _, err := NewDatabase("jonahhusson", "", "cmix_server", "0.0.0.0", "5432")
+//	db, _, err := NewDatabase("cmix", "", "cmix_server", "0.0.0.0", "5432")
 //	if err != nil {
 //		t.Errorf(err.Error())
 //		return
