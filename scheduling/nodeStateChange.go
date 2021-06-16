@@ -36,7 +36,8 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	// here which blocks all future polls until processing completes
 	defer n.GetPollingLock().Unlock()
 	hasRound, r := n.GetCurrentRound()
-	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED && update.ToActivity != current.ERROR
+	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED &&
+		(update.ToActivity != current.ERROR && update.ToActivity != current.CRASH)
 	if roundErrored {
 		return nil
 	}
@@ -193,9 +194,8 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			// Commit metrics about the round to storage
 			return StoreRoundMetric(roundInfo)
 		}
-	case current.ERROR:
-
-		// If in an error state, kill the round if the node has one
+	case current.ERROR, current.CRASH:
+		// If in an error or crash state, kill the round if the node has one
 		var err error
 		if hasRound {
 			//send the signal that the round is complete

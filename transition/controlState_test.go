@@ -19,13 +19,13 @@ func TestTransitions_IsValidTransition(t *testing.T) {
 	var expectedTransition = make([][]bool, current.NUM_STATES, current.NUM_STATES)
 
 	expectedTransition[current.NOT_STARTED] = []bool{false, false, false, false, false, false, false, false}
-	expectedTransition[current.WAITING] = []bool{true, false, false, false, false, true, true, false}
+	expectedTransition[current.WAITING] = []bool{true, false, false, false, false, true, true, true}
 	expectedTransition[current.PRECOMPUTING] = []bool{false, true, false, false, false, false, false, false}
 	expectedTransition[current.STANDBY] = []bool{false, true, true, false, false, false, false, false}
 	expectedTransition[current.REALTIME] = []bool{false, false, false, true, false, false, false, false}
 	expectedTransition[current.COMPLETED] = []bool{false, false, false, false, true, false, false, false}
 	expectedTransition[current.ERROR] = []bool{true, true, true, true, true, true, false, false}
-	expectedTransition[current.CRASH] = make([]bool, current.NUM_STATES)
+	expectedTransition[current.CRASH] = []bool{true, true, true, true, true, true, true, false}
 
 	for i := uint32(0); i < uint32(current.NUM_STATES); i++ {
 		receivedTransitions := make([]bool, len(expectedTransition))

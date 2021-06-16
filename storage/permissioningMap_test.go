@@ -7,6 +7,7 @@
 package storage
 
 import (
+	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/xx_network/primitives/id"
 	"strings"
 	"testing"
@@ -14,110 +15,110 @@ import (
 )
 
 // Hidden function for one-time unit testing Database implementation
-//func TestDatabaseImpl(t *testing.T) {
-//	jww.SetLogThreshold(jww.LevelTrace)
-//	jww.SetStdoutThreshold(jww.LevelTrace)
-//
-//	db, _, err := NewDatabase("cmix", "", "cmix_server", "0.0.0.0", "5432")
-//	if err != nil {
-//		t.Errorf(err.Error())
-//		return
-//	}
-//
-//	result, err := db.GetLatestEphemeralLength()
-//	if err != nil {
-//		t.Errorf(err.Error())
-//	}
-//
-//	err = db.InsertUser(&User{
-//		PublicKey:             "test",
-//		ReceptionKey:          "test",
-//		RegistrationTimestamp: time.Now(),
-//	})
-//	if err != nil {
-//		t.Errorf(err.Error())
-//	}
-//	err = db.InsertUser(&User{
-//		PublicKey:             "test",
-//		ReceptionKey:          "test",
-//		RegistrationTimestamp: time.Now(),
-//	})
-//	if err == nil {
-//		t.Errorf("Expected duplicate key constraint")
-//	}
-//
-//	jww.INFO.Printf("%+v", result)
-//	result2, err := db.GetEphemeralLengths()
-//	if err != nil {
-//		t.Errorf(err.Error())
-//	}
-//	jww.INFO.Printf("%#v", result2)
-//
-//	err = db.UpsertState(&State{
-//		Key:   RoundIdKey,
-//		Value: "10",
-//	})
-//	if err != nil {
-//		t.Errorf(err.Error())
-//	}
-//
-//	val, err := db.GetStateValue(RoundIdKey)
-//	if err != nil {
-//		t.Errorf(err.Error())
-//	}
-//	jww.FATAL.Printf(val)
-//
-//	err = db.UpsertState(&State{
-//		Key:   RoundIdKey,
-//		Value: "20",
-//	})
-//	if err != nil {
-//		t.Errorf(err.Error())
-//	}
-//
-//	val, err = db.GetStateValue(RoundIdKey)
-//	if err != nil {
-//		t.Errorf(err.Error())
-//	}
-//	jww.FATAL.Printf(val)
-//
-//	testCode := "test"
-//	testId := id.NewIdFromString(testCode, id.Node, t)
-//	testAppId := uint64(10010)
-//	newApp := &Application{
-//		Id:          testAppId,
-//		Node:        Node{},
-//		Name:        testCode,
-//	}
-//	newNode := &Node{
-//		Code:               testCode,
-//		Sequence:           testCode,
-//		Status:             0,
-//		ApplicationId:      testAppId,
-//	}
-//
-//	err = db.InsertApplication(newApp, newNode)
-//	if err != nil {
-//		t.Errorf(err.Error())
-//		return
-//	}
-//	err = db.RegisterNode(testId, nil,
-//		testCode, "5.5.5.5", "test", "5.6.7.7", "test")
-//	if err != nil {
-//		t.Errorf(err.Error())
-//		return
-//	}
-//	err = db.UpdateNodeAddresses(testId, "6.6.6.6", "6.6.7.7")
-//	if err != nil {
-//		t.Errorf(err.Error())
-//		return
-//	}
-//	err = db.UpdateSalt(testId, []byte("test123"))
-//	if err != nil {
-//		t.Errorf(err.Error())
-//		return
-//	}
-//}
+func TestDatabaseImpl(t *testing.T) {
+	jww.SetLogThreshold(jww.LevelTrace)
+	jww.SetStdoutThreshold(jww.LevelTrace)
+
+	db, _, err := NewDatabase("jonahhusson", "", "cmix_server", "0.0.0.0", "5432")
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
+	result, err := db.GetLatestEphemeralLength()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	err = db.InsertUser(&User{
+		PublicKey:             "test",
+		ReceptionKey:          "test",
+		RegistrationTimestamp: time.Now(),
+	})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	err = db.InsertUser(&User{
+		PublicKey:             "test",
+		ReceptionKey:          "test",
+		RegistrationTimestamp: time.Now(),
+	})
+	if err == nil {
+		t.Errorf("Expected duplicate key constraint")
+	}
+
+	jww.INFO.Printf("%+v", result)
+	result2, err := db.GetEphemeralLengths()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	jww.INFO.Printf("%#v", result2)
+
+	err = db.UpsertState(&State{
+		Key:   RoundIdKey,
+		Value: "10",
+	})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	val, err := db.GetStateValue(RoundIdKey)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	jww.FATAL.Printf(val)
+
+	err = db.UpsertState(&State{
+		Key:   RoundIdKey,
+		Value: "20",
+	})
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	val, err = db.GetStateValue(RoundIdKey)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	jww.FATAL.Printf(val)
+
+	testCode := "test"
+	testId := id.NewIdFromString(testCode, id.Node, t)
+	testAppId := uint64(10010)
+	newApp := &Application{
+		Id:   testAppId,
+		Node: Node{},
+		Name: testCode,
+	}
+	newNode := &Node{
+		Code:          testCode,
+		Sequence:      testCode,
+		Status:        0,
+		ApplicationId: testAppId,
+	}
+
+	err = db.InsertApplication(newApp, newNode)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	err = db.RegisterNode(testId, nil,
+		testCode, "5.5.5.5", "test", "5.6.7.7", "test")
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	err = db.UpdateNodeAddresses(testId, "6.6.6.6", "6.6.7.7")
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	err = db.UpdateSalt(testId, []byte("test123"))
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+}
 
 // Happy path
 func TestMapImpl_InsertNodeMetric(t *testing.T) {

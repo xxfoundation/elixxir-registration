@@ -109,7 +109,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		auth.Sender.GetId(), msg)
 
 	//catch edge case with malformed error and return it to the node
-	if current.Activity(msg.Activity) == current.ERROR && msg.Error == nil {
+	if (current.Activity(msg.Activity) == current.ERROR || current.Activity(msg.Activity) == current.CRASH) && msg.Error == nil {
 		err = errors.Errorf("A malformed error was received from %s "+
 			"with a nil error payload", nid)
 		jww.WARN.Println(err)
@@ -152,7 +152,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	}
 
 	// If updating to an error state, attach the error the the update
-	if updateNotification.ToActivity == current.ERROR {
+	if updateNotification.ToActivity == current.ERROR || updateNotification.ToActivity == current.CRASH {
 		updateNotification.Error = msg.Error
 	}
 	updateNotification.ClientErrors = msg.ClientErrors
@@ -402,13 +402,13 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 			}
 		}()
 		// Check that the node hasn't errored out
-		if activity == current.ERROR {
+		if activity == current.ERROR || activity == current.CRASH {
 			return true, nil
 		}
 
 	case node.PortVerifying:
 		// If we are still verifying, then
-		if activity == current.ERROR {
+		if activity == current.ERROR || activity == current.CRASH {
 			return true, nil
 		}
 	case node.PortSuccessful:
