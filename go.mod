@@ -20,11 +20,11 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/spf13/viper v1.7.1
-	gitlab.com/elixxir/comms v0.0.4-0.20210607222512-0f2e89b475b4
-	gitlab.com/elixxir/crypto v0.0.7-0.20210607221512-0a9bff216f7c
-	gitlab.com/elixxir/primitives v0.0.3-0.20210607210820-afd1b028b558
-	gitlab.com/xx_network/comms v0.0.4-0.20210603164237-d0c36076d7f0
-	gitlab.com/xx_network/crypto v0.0.5-0.20210603164136-743cb9b0a967
-	gitlab.com/xx_network/primitives v0.0.4-0.20210610175923-037ef866b894
+	gitlab.com/elixxir/comms v0.0.4-0.20210623165525-33c8222c2ce3
+	gitlab.com/elixxir/crypto v0.0.7-0.20210623165245-2bd12c6f4e39
+	gitlab.com/elixxir/primitives v0.0.3-0.20210623165125-c395ff3484cc
+	gitlab.com/xx_network/comms v0.0.4-0.20210623165053-57910d8f01ee
+	gitlab.com/xx_network/crypto v0.0.5-0.20210623164949-495cf892172d
+	gitlab.com/xx_network/primitives v0.0.4-0.20210617180018-6472489fd418
 	google.golang.org/genproto v0.0.0-20210315173758-2651cd453018 // indirect
 )
