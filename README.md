@@ -133,6 +133,15 @@ addressSpace: 32
 # The interval between checks of storage for address space size updates.
 # (Default 5m)
 addressSpaceSizeUpdateInterval: 5m
+
+# Toggles use of only active nodes in node metric tracker
+onlyScheduleActive: false
+
+# A MaxMind GeoLite2 database file to lookup IPs against for geobinning
+geoIPDBFile: "/GeoLite2-City.mmdb"
+# In place of a GeoLite2 DB we can randomly assign nodes a country to be 
+# geobinned into
+randomGeoBinning: false
 ```
 
 ### SchedulingConfig template:

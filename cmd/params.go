@@ -45,6 +45,9 @@ type Params struct {
 	userRegLeakPeriod time.Duration
 
 	disableNDFPruning bool
+
+	geoIPDBFile      string
+	randomGeoBinning bool
 }
 
 // toGroup takes a group represented by a map of string to string,

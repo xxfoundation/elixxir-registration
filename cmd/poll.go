@@ -369,6 +369,10 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
+		err := m.setNodeBin(n)
+		if err != nil {
+			return false, err
+		}
 		// If we are not sure on whether the port has been forwarded
 		// Ping the server and attempt on that port
 		go func() {

@@ -24,6 +24,7 @@ import (
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"sync"
 	"sync/atomic"
@@ -41,6 +42,14 @@ func getTestKey() *rsa.PrivateKey {
 
 // Happy path
 func TestRegistrationImpl_Poll_NDF(t *testing.T) {
+
+	// Create a database
+	var err error
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Fatalf("Failed to create new database: %+v", err)
+	}
+
 	testID := id.NewIdFromUInt(0, id.Node, t)
 	testString := "test"
 	// Start registration server
@@ -302,10 +311,11 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	}
 
 	//Create reg codes and populate the database
-	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"},
-		node.Info{RegCode: "CCCC", Order: "1"},
-		node.Info{RegCode: "DDDD", Order: "2"})
+	infos := []node.Info{
+		{RegCode: "BBBB", Order: region.Americas.String()},
+		{RegCode: "CCCC", Order: region.WesternEurope.String()},
+		{RegCode: "DDDD", Order: region.CentralEurope.String()},
+	}
 	storage.PopulateNodeRegistrationCodes(infos)
 
 	RegParams = testParams
@@ -400,10 +410,11 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	}
 
 	//Create reg codes and populate the database
-	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"},
-		node.Info{RegCode: "CCCC", Order: "1"},
-		node.Info{RegCode: "DDDD", Order: "2"})
+	infos := []node.Info{
+		{RegCode: "BBBB", Order: region.Americas.String()},
+		{RegCode: "CCCC", Order: region.WesternEurope.String()},
+		{RegCode: "DDDD", Order: region.CentralEurope.String()},
+	}
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 	//Setup udb configurations

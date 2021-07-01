@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"crypto/x509"
+	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -50,6 +51,12 @@ type RegistrationImpl struct {
 	beginScheduling  chan struct{}
 	// TODO-kill this
 	registrationTimes map[id.ID]int64
+
+	// GeoLite2 database reader instance for getting info about an IP address
+	geoIPDB *geoip2.Reader
+
+	// Status of the geoip2.Reader; signals if the reader is running or stopped
+	geoIPDBStatus geoipStatus
 
 	NDFLock sync.Mutex
 }
@@ -201,6 +208,22 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// In the noTLS pathway, disable authentication
 	if noTLS {
 		regImpl.Comms.DisableAuth()
+	}
+
+	// If the the GeoIP2 database file is supplied, then use it to open the
+	// GeoIP2 reader; otherwise, error if randomGeoBinning is not set
+	if params.geoIPDBFile != "" {
+		regImpl.geoIPDB, err = geoip2.Open(params.geoIPDBFile)
+		if err != nil {
+			return nil,
+				errors.Errorf("failed to load GeoIP2 database file: %+v", err)
+		}
+
+		// Set the GeoIP2 reader to running
+		regImpl.geoIPDBStatus.ToRunning()
+	} else if !params.randomGeoBinning {
+		jww.FATAL.Panic("Must provide either a MaxMind GeoLite2 compatible " +
+			"database file or set the 'randomGeoBinning' flag.")
 	}
 
 	return regImpl, nil
