@@ -541,6 +541,9 @@ func initConfig() {
 
 func updateClientVersion(in fsnotify.Event) {
 	newVersion := viper.GetString("clientVersion")
+	jww.INFO.Printf("newVersion: %v", newVersion)
+	jww.INFO.Printf("viper allKeys: %v", viper.GetViper().AllSettings())
+	jww.INFO.Printf("viperObj: %v", viper.GetViper())
 	err := validateVersion(newVersion)
 	if err != nil {
 		panic(err)
