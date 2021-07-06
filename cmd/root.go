@@ -536,16 +536,18 @@ func initConfig() {
 
 func (m *RegistrationImpl) updateClientVersion(in fsnotify.Event) {
 	newVersion := viper.GetString("minClientVersion")
-	jww.INFO.Printf("newVersion: %v", newVersion)
-	jww.INFO.Printf("viper allKeys: %v", viper.GetViper().AllSettings())
-	jww.INFO.Printf("viperObj: %v", viper.GetViper())
+	_, err := version.ParseVersion(newVersion)
+	if err != nil {
+		jww.FATAL.Panicf("Attempted client version update is invalid: %v", err)
+	}
 
 	m.NDFLock.Lock()
 	updateNDF := m.State.GetUnprunedNdf()
+	jww.DEBUG.Printf("Updating client version from %s to %s", updateNDF.ClientVersion, newVersion)
 	updateNDF.ClientVersion = newVersion
-	err := m.State.UpdateNdf(updateNDF)
+	err = m.State.UpdateNdf(updateNDF)
 	if err != nil {
-		jww.FATAL.Panicf("Failed to update client version: %v", err)
+		jww.FATAL.Panicf("Failed to update client version in NDF: %v", err)
 	}
 	m.NDFLock.Unlock()
 }
