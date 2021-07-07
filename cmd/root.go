@@ -237,6 +237,7 @@ var rootCmd = &cobra.Command{
 			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
 			geoIPDBFile:           viper.GetString("geoIPDBFile"),
 			randomGeoBinning:      viper.GetBool("randomGeoBinning"),
+			versionLock:           sync.RWMutex{},
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -247,7 +248,7 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
-		viper.OnConfigChange(impl.updateClientVersion)
+		viper.OnConfigChange(impl.updateVersions)
 		viper.WatchConfig()
 
 		err = impl.LoadAllRegisteredNodes()
@@ -534,22 +535,44 @@ func initConfig() {
 	}
 }
 
-func (m *RegistrationImpl) updateClientVersion(in fsnotify.Event) {
-	newVersion := viper.GetString("minClientVersion")
-	_, err := version.ParseVersion(newVersion)
+func (m *RegistrationImpl) updateVersions(in fsnotify.Event) {
+	// Parse version strings
+	clientVersion := viper.GetString("minClientVersion")
+	_, err := version.ParseVersion(clientVersion)
 	if err != nil {
 		jww.FATAL.Panicf("Attempted client version update is invalid: %v", err)
 	}
 
+	minGatewayVersionString := viper.GetString("minGatewayVersion")
+	minGatewayVersion, err := version.ParseVersion(minGatewayVersionString)
+	if err != nil {
+		jww.FATAL.Panicf("Could not parse minGatewayVersion %#v: %+v",
+			minGatewayVersionString, err)
+	}
+
+	minServerVersionString := viper.GetString("minServerVersion")
+	minServerVersion, err := version.ParseVersion(minServerVersionString)
+	if err != nil {
+		jww.FATAL.Panicf("Could not parse minServerVersion %#v: %+v",
+			minServerVersionString, err)
+	}
+
+	// Modify the client version
 	m.NDFLock.Lock()
 	updateNDF := m.State.GetUnprunedNdf()
-	jww.DEBUG.Printf("Updating client version from %s to %s", updateNDF.ClientVersion, newVersion)
-	updateNDF.ClientVersion = newVersion
+	jww.DEBUG.Printf("Updating client version from %s to %s", updateNDF.ClientVersion, clientVersion)
+	updateNDF.ClientVersion = clientVersion
 	err = m.State.UpdateNdf(updateNDF)
 	if err != nil {
 		jww.FATAL.Panicf("Failed to update client version in NDF: %v", err)
 	}
 	m.NDFLock.Unlock()
+
+	// Modify server and gateway versions
+	m.params.versionLock.Lock()
+	m.params.minGatewayVersion = minGatewayVersion
+	m.params.minServerVersion = minServerVersion
+	m.params.versionLock.Unlock()
 }
 
 // initLog initializes logging thresholds and the log path.
