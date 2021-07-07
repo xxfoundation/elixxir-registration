@@ -181,12 +181,14 @@ func (m *RegistrationImpl) PollNdf(theirNdfHash []byte) (*pb.NDF, error) {
 
 // checkVersion checks if the PermissioningPoll message server and gateway
 // versions are compatible with the required version.
-func checkVersion(p *Params,
-	msg *pb.PermissioningPoll) error {
+func checkVersion(p *Params, msg *pb.PermissioningPoll) error {
+
+	// Pull the versions
 	p.versionLock.RLock()
-	defer p.versionLock.RUnlock()
 	requiredGateway := p.minGatewayVersion
 	requiredServer := p.minServerVersion
+	p.versionLock.RUnlock()
+
 	// Skip checking gateway if the server is polled before gateway resulting in
 	// a blank gateway version
 	if msg.GetGatewayVersion() != "" {
