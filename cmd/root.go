@@ -39,7 +39,6 @@ var (
 	logLevel             uint // 0 = info, 1 = debug, >1 = trace
 	noTLS                bool
 	RegParams            Params
-	ClientRegCodes       []string
 	clientVersion        string
 	clientVersionLock    sync.RWMutex
 	disablePermissioning bool
@@ -136,9 +135,6 @@ var rootCmd = &cobra.Command{
 			jww.WARN.Printf("No registration code file found. This may be" +
 				"normal in live deployments")
 		}
-
-		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
-		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
 		// Get user discovery ID and DH public key from contact file
 		udbId, udbDhPubKey := readUdContact(viper.GetString("udContactPath"))
