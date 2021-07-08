@@ -608,38 +608,6 @@ func TestCheckRegistration_InvalidID(t *testing.T) {
 	}
 }
 
-// Test a case that should pass validation
-func TestValidateClientVersion_Success(t *testing.T) {
-	err := validateVersion("0.0.0a")
-	if err != nil {
-		t.Errorf("Unexpected error from validateVersion: %+v", err.Error())
-	}
-}
-
-// Test some cases that shouldn't pass validation
-func TestValidateClientVersion_Failure(t *testing.T) {
-	err := validateVersion("")
-	if err == nil {
-		t.Error("Expected error for empty version string")
-	}
-	err = validateVersion("0")
-	if err == nil {
-		t.Error("Expected error for version string with one number")
-	}
-	err = validateVersion("0.0")
-	if err == nil {
-		t.Error("Expected error for version string with two numbers")
-	}
-	err = validateVersion("a.4.0")
-	if err == nil {
-		t.Error("Expected error for version string with non-numeric major version")
-	}
-	err = validateVersion("4.a.0")
-	if err == nil {
-		t.Error("Expected error for version string with non-numeric minor version")
-	}
-}
-
 // Happy Path: Inserts users until the max is reached, waits until the timer has
 // cleared the number of allowed registrations and inserts another user.
 func TestRegCodeExists_RegUser_Timer(t *testing.T) {

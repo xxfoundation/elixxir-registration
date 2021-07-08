@@ -620,8 +620,12 @@ func TestCheckVersion(t *testing.T) {
 
 	requiredServer, _ := version.ParseVersion("1.3.2")
 	requiredGateway, _ := version.ParseVersion("1.3.2")
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	err := checkVersion(p, testMsg)
 	if err != nil {
 		t.Errorf("checkVersion() unexpectedly errored: %+v", err)
 	}
@@ -638,7 +642,12 @@ func TestCheckVersion_EmptyVersions(t *testing.T) {
 	requiredServer, _ := version.ParseVersion("1.3.2")
 	requiredGateway, _ := version.ParseVersion("1.3.2")
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err != nil {
 		t.Errorf("checkVersion() unexpectedly errored on empty version "+
 			"strings: %+v", err)
@@ -655,8 +664,12 @@ func TestCheckVersion_Edge(t *testing.T) {
 
 	requiredServer, _ := version.ParseVersion("1.3.2")
 	requiredGateway, _ := version.ParseVersion("1.3.2")
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	err := checkVersion(p, testMsg)
 	if err != nil {
 		t.Errorf("checkVersion() unexpectedly errored: %+v", err)
 	}
@@ -673,7 +686,12 @@ func TestCheckVersion_ParseErrorGateway(t *testing.T) {
 	requiredServer, _ := version.ParseVersion("1.3.2")
 	requiredGateway, _ := version.ParseVersion("1.3.2")
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err == nil {
 		t.Errorf("checkVersion() did not error on invalid gateway version.")
 	}
@@ -690,7 +708,12 @@ func TestCheckVersion_ParseErrorServer(t *testing.T) {
 	requiredServer, _ := version.ParseVersion("1.3.2")
 	requiredGateway, _ := version.ParseVersion("1.3.2")
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err == nil {
 		t.Errorf("checkVersion() did not error on invalid server version.")
 	}
@@ -711,7 +734,12 @@ func TestCheckVersion_InvalidVersionGateway(t *testing.T) {
 		"\" is incompatible with the required version \"" +
 		requiredGateway.String() + "\"."
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err != nil && err.Error() != expectedError {
 		t.Errorf("checkVersion() did not produce the correct error on "+
 			"incompatible gateway version.\n\texpected: %+v\n\treceived: %+v",
@@ -737,7 +765,12 @@ func TestCheckVersion_InvalidVersionServer(t *testing.T) {
 		"\" is incompatible with the required version \"" +
 		requiredServer.String() + "\"."
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err != nil && err.Error() != expectedError {
 		t.Errorf("checkVersion() did not produce the correct error on "+
 			"incompatible server version.\n\texpected: %+v\n\treceived: %+v",
@@ -763,7 +796,12 @@ func TestCheckVersion_InvalidVersionGatewayAndServer(t *testing.T) {
 		"\" is incompatible with the required version \"" +
 		requiredGateway.String() + "\"."
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err != nil && err.Error() != expectedError {
 		t.Errorf("checkVersion() did not produce the correct error on "+
 			"incompatible gateway version.\n\texpected: %+v\n\treceived: %+v",
