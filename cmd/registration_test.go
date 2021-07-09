@@ -70,8 +70,6 @@ func TestMain(m *testing.M) {
 		publicAddress:     permAddr,
 		udbCertPath:       testkeys.GetUdbCertPath(),
 		NsCertPath:        testkeys.GetUdbCertPath(),
-		userRegCapacity:   5,
-		userRegLeakPeriod: time.Hour,
 		minimumNodes:      3,
 		minGatewayVersion: minGatewayVersion,
 		minServerVersion:  minServerVersion,
@@ -108,13 +106,11 @@ func TestEmptyDataBase(t *testing.T) {
 
 	// Start the registration server
 	testParams := Params{
-		CertPath:          testkeys.GetCACertPath(),
-		KeyPath:           testkeys.GetCAKeyPath(),
-		udbCertPath:       testkeys.GetUdbCertPath(),
-		NsCertPath:        testkeys.GetUdbCertPath(),
-		userRegLeakPeriod: time.Hour,
-		userRegCapacity:   5,
-		randomGeoBinning:  true,
+		CertPath:         testkeys.GetCACertPath(),
+		KeyPath:          testkeys.GetCAKeyPath(),
+		udbCertPath:      testkeys.GetUdbCertPath(),
+		NsCertPath:       testkeys.GetUdbCertPath(),
+		randomGeoBinning: true,
 	}
 	// Start registration server
 	impl, err := StartRegistration(testParams)
