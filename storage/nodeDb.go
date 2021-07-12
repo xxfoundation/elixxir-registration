@@ -22,14 +22,6 @@ func (d *DatabaseImpl) InsertApplication(application *Application, unregisteredN
 	return d.db.Create(application).Error
 }
 
-// Update the Salt for a given Node ID
-func (d *DatabaseImpl) UpdateSalt(id *id.ID, salt []byte) error {
-	newNode := Node{
-		Salt: salt,
-	}
-	return d.db.Take(&newNode, "id = ?", id.Marshal()).Update("salt", salt).Error
-}
-
 // Update the address fields for the Node with the given id
 func (d *DatabaseImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
 	newNode := &Node{

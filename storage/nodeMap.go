@@ -42,20 +42,6 @@ func (m *MapImpl) InsertApplication(application *Application, unregisteredNode *
 	return nil
 }
 
-// Update the Salt for a given Node ID
-func (m *MapImpl) UpdateSalt(id *id.ID, salt []byte) error {
-	n, err := m.GetNodeById(id)
-	if err != nil {
-		return err
-	}
-
-	m.mut.Lock()
-	defer m.mut.Unlock()
-	n.Salt = salt
-
-	return nil
-}
-
 // Update the address fields for the Node with the given id
 func (m *MapImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
 	m.mut.Lock()
