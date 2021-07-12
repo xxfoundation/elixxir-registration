@@ -105,9 +105,6 @@ func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, 
 			return errors.Errorf(
 				"Node with registration code %s has already been registered", registrationCode)
 		}
-
-		// Store the newly-provided salt
-		return storage.PermissioningDb.UpdateSalt(nodeId, salt)
 	}
 
 	// Attempt to insert Node into the database
