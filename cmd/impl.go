@@ -163,6 +163,15 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			TlsCertificate: regImpl.certFromFile,
 			EllipticPubKey: state.GetEllipticPublicKey().MarshalText(),
 		},
+		ClientRegistration: ndf.ClientRegistration{
+			Address:        RegParams.clientRegistrationAddress,
+			TlsCertificate: regImpl.certFromFile,
+		},
+		// todo: Fill out in other ticket
+		Authorizer: ndf.Authorizer{
+			Address:        "",
+			TlsCertificate: "",
+		},
 		Timestamp: time.Now(),
 		UDB: ndf.UDB{
 			ID:       RegParams.udbId,

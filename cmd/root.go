@@ -92,7 +92,7 @@ var rootCmd = &cobra.Command{
 		nsCertPath := viper.GetString("nsCertPath")
 		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
-
+		clientRegistration := viper.GetString("clientRegistration")
 		// Set up database connection
 		rawAddr := viper.GetString("dbAddress")
 
@@ -211,33 +211,34 @@ var rootCmd = &cobra.Command{
 
 		// Populate params
 		RegParams = Params{
-			Address:               localAddress,
-			CertPath:              certPath,
-			KeyPath:               keyPath,
-			NdfOutputPath:         ndfOutputPath,
-			NsCertPath:            nsCertPath,
-			NsAddress:             nsAddress,
-			cmix:                  *cmix,
-			e2e:                   *e2e,
-			publicAddress:         publicAddress,
-			schedulingKillTimeout: schedulingKillTimeout,
-			closeTimeout:          closeTimeout,
-			minimumNodes:          viper.GetUint32("minimumNodes"),
-			udbId:                 udbId,
-			udbDhPubKey:           udbDhPubKey,
-			udbCertPath:           udbCertPath,
-			udbAddress:            udbAddress,
-			minGatewayVersion:     minGatewayVersion,
-			minServerVersion:      minServerVersion,
-			minClientVersion:      minClientVersion,
-			addressSpaceSize:      uint8(viper.GetUint("addressSpace")),
-			disableGatewayPing:    disableGatewayPing,
-			userRegCapacity:       userRegCapacity,
-			userRegLeakPeriod:     userRegLeakPeriod,
-			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
-			geoIPDBFile:           viper.GetString("geoIPDBFile"),
-			randomGeoBinning:      viper.GetBool("randomGeoBinning"),
-			versionLock:           sync.RWMutex{},
+			Address:                   localAddress,
+			CertPath:                  certPath,
+			KeyPath:                   keyPath,
+			NdfOutputPath:             ndfOutputPath,
+			NsCertPath:                nsCertPath,
+			NsAddress:                 nsAddress,
+			cmix:                      *cmix,
+			e2e:                       *e2e,
+			publicAddress:             publicAddress,
+			clientRegistrationAddress: clientRegistration,
+			schedulingKillTimeout:     schedulingKillTimeout,
+			closeTimeout:              closeTimeout,
+			minimumNodes:              viper.GetUint32("minimumNodes"),
+			udbId:                     udbId,
+			udbDhPubKey:               udbDhPubKey,
+			udbCertPath:               udbCertPath,
+			udbAddress:                udbAddress,
+			minGatewayVersion:         minGatewayVersion,
+			minServerVersion:          minServerVersion,
+			minClientVersion:          minClientVersion,
+			addressSpaceSize:          uint8(viper.GetUint("addressSpace")),
+			disableGatewayPing:        disableGatewayPing,
+			userRegCapacity:           userRegCapacity,
+			userRegLeakPeriod:         userRegLeakPeriod,
+			disableNDFPruning:         viper.GetBool("disableNDFPruning"),
+			geoIPDBFile:               viper.GetString("geoIPDBFile"),
+			randomGeoBinning:          viper.GetBool("randomGeoBinning"),
+			versionLock:               sync.RWMutex{},
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")

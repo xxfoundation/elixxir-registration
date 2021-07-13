@@ -70,7 +70,7 @@ type NetworkState struct {
 	roundUpdatesToAddCh chan *dataStructures.Round
 
 	// round states
-	roundID id.Round
+	roundID  id.Round
 	updateID uint64
 }
 
@@ -167,7 +167,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		}
 	}
 	if state.roundID == 0 {
-		state.roundID=1
+		state.roundID = 1
 		// Set round Id to start at 1
 		err = state.setId(RoundIdKey, 1)
 		if err != nil {
