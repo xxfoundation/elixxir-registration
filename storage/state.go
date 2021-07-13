@@ -68,6 +68,10 @@ type NetworkState struct {
 
 	// round adder buffer channel
 	roundUpdatesToAddCh chan *dataStructures.Round
+
+	// round states
+	roundID id.Round
+	updateID uint64
 }
 
 // NewState returns a new NetworkState object.
@@ -102,13 +106,13 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 
 	// Obtain round & update Id from Storage
 	// Ignore not found in Storage errors, zero-value will be handled below
-	updateId, err := state.GetUpdateID()
+	state.updateID, err = state.GetUpdateID()
 	if err != nil &&
 		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
 		!strings.Contains(err.Error(), "Unable to locate state for key") {
 		return nil, err
 	}
-	roundId, err := state.GetRoundID()
+	state.roundID, err = state.GetRoundID()
 	if err != nil &&
 		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
 		!strings.Contains(err.Error(), "Unable to locate state for key") {
@@ -147,7 +151,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 	// Updates are handled in the uint space, as a result, the designator for
 	// update 0 also designates that no updates are known by the server. To
 	// avoid this collision, permissioning will skip this update as well.
-	if updateId == 0 {
+	if state.updateID == 0 {
 		// Set update Id to start at 0
 		err = state.setId(UpdateIdKey, 0)
 		if err != nil {
@@ -162,7 +166,8 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		for state.roundUpdates.GetLastUpdateID() != 0 {
 		}
 	}
-	if roundId == 0 {
+	if state.roundID == 0 {
+		state.roundID=1
 		// Set round Id to start at 1
 		err = state.setId(RoundIdKey, 1)
 		if err != nil {
@@ -197,7 +202,6 @@ func (s *NetworkState) SetPrunedNodes(ids []*id.ID) {
 			s.pruneList[*i] = nil
 		}
 	}
-
 }
 
 func (s *NetworkState) SetPrunedNode(id *id.ID) {
@@ -425,22 +429,6 @@ func (s *NetworkState) GetNodeUpdateChannel() <-chan node.UpdateNotification {
 	return s.update
 }
 
-// Helper to increment the RoundId or UpdateId depending on the given key
-// FIXME: Get and set should be coupled to avoid race conditions
-func (s *NetworkState) increment(key string) (uint64, error) {
-	oldIdStr, err := PermissioningDb.GetStateValue(key)
-	if err != nil {
-		return 0, errors.Errorf("Unable to obtain current %s: %+v", key, err)
-	}
-
-	oldId, err := strconv.ParseUint(oldIdStr, 10, 64)
-	if err != nil {
-		return 0, errors.Errorf("Unable to parse current %s: %+v", key, err)
-	}
-
-	return oldId, s.setId(key, oldId+1)
-}
-
 // Helper to set the roundId or updateId value
 func (s *NetworkState) setId(key string, newVal uint64) error {
 	err := PermissioningDb.UpsertState(&State{
@@ -490,23 +478,34 @@ func (s *NetworkState) storeEcKey(newVal string) error {
 }
 
 // IncrementRoundID increments the round ID
+// THIS IS NOT THREAD SAFE. IT IS INTENDED TO ONLY BE CALLED BY THE SERIAL
+// SCHEDULING THREAD
 func (s *NetworkState) IncrementRoundID() (id.Round, error) {
-	roundId, err := s.increment(RoundIdKey)
-	return id.Round(roundId), err
+	oldRoundID := s.roundID
+	s.roundID = s.roundID + 1
+	return oldRoundID, s.setId(RoundIdKey, uint64(s.roundID))
 }
 
 // IncrementUpdateID increments the update ID
+// THIS IS NOT THREAD SAFE. IT IS INTENDED TO ONLY BE CALLED BY THE SERIAL
+// SCHEDULING THREAD
 func (s *NetworkState) IncrementUpdateID() (uint64, error) {
-	return s.increment(UpdateIdKey)
+	oldUpdateID := s.updateID
+	s.updateID = s.updateID + 1
+	return oldUpdateID, s.setId(UpdateIdKey, s.updateID)
 }
 
 // GetRoundID returns the round ID
+// THIS IS NOT THREAD SAFE. IT IS INTENDED TO ONLY BE CALLED BY THE SERIAL
+// SCHEDULING THREAD
 func (s *NetworkState) GetRoundID() (id.Round, error) {
 	roundId, err := s.get(RoundIdKey)
 	return id.Round(roundId), err
 }
 
 // GetRoundID returns the update ID
+// THIS IS NOT THREAD SAFE. IT IS INTENDED TO ONLY BE CALLED BY THE SERIAL
+// SCHEDULING THREAD
 func (s *NetworkState) GetUpdateID() (uint64, error) {
 	return s.get(UpdateIdKey)
 }
