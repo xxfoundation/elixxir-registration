@@ -33,11 +33,14 @@ udbCertPath: "udb.crt"
 # Address for UDB
 udbAddress: "1.2.3.4:11420"
 
-# Public address, used in NDF it gives to client
+# Public address, used in NDF it gives to nodes
 publicAddress: "0.0.0.0:11420"
 
 # The listening port of this server
 port: 11420
+
+# Public address used in NDF to give to client
+clientRegistrationAddress: "5.6.7.8:11420"
 
 # The minimum version required of gateways to connect
 minGatewayVersion: "0.0.0"
@@ -69,13 +72,6 @@ dbAddress: ""
 # Path to JSON file with list of Node registration codes (in order of network 
 # placement)
 regCodesFilePath: "regCodes.json"
-
-# List of client codes to be added to the database (for testing)
-clientRegCodes:
-  - "AAAA"
-  - "BBBB"
-  - "CCCC"
-    
 
 # The duration between polling the disabled Node list for updates (Default 1m)
 disabledNodesPollDuration: 1m
@@ -118,11 +114,6 @@ closeTimeout: 60s
 nsAddress: ""
 # Path to certificate for the notification server
 nsCertPath: ""
-
-# Maximum number of connections per period
-userRegCapacity: 1000
-# How often the number of connections is reset
-userRegLeakPeriod: "24h"
 
 # The initial size of the address space used for ephemeral IDs (Default: 5)
 addressSpace: 32
