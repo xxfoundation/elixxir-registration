@@ -73,13 +73,6 @@ dbAddress: ""
 # placement)
 regCodesFilePath: "regCodes.json"
 
-# List of client codes to be added to the database (for testing)
-clientRegCodes:
-  - "AAAA"
-  - "BBBB"
-  - "CCCC"
-    
-
 # The duration between polling the disabled Node list for updates (Default 1m)
 disabledNodesPollDuration: 1m
 
@@ -121,11 +114,6 @@ closeTimeout: 60s
 nsAddress: ""
 # Path to certificate for the notification server
 nsCertPath: ""
-
-# Maximum number of connections per period
-userRegCapacity: 1000
-# How often the number of connections is reset
-userRegLeakPeriod: "24h"
 
 # The initial size of the address space used for ephemeral IDs (Default: 5)
 addressSpace: 32

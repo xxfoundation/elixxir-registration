@@ -36,7 +36,6 @@ var (
 	logLevel             uint // 0 = info, 1 = debug, >1 = trace
 	noTLS                bool
 	RegParams            Params
-	ClientRegCodes       []string
 	disablePermissioning bool
 	disabledNodesPath    string
 
@@ -131,9 +130,6 @@ var rootCmd = &cobra.Command{
 				"normal in live deployments")
 		}
 
-		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
-		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
-
 		// Get user discovery ID and DH public key from contact file
 		udbId, udbDhPubKey := readUdContact(viper.GetString("udContactPath"))
 
@@ -187,24 +183,6 @@ var rootCmd = &cobra.Command{
 
 		disableGatewayPing := viper.GetBool("disableGatewayPing")
 
-		userRegLeakPeriodString := viper.GetString("userRegLeakPeriod")
-		var userRegLeakPeriod time.Duration
-		if userRegLeakPeriodString != "" {
-			// specified, so try to parse
-			userRegLeakPeriod, err = time.ParseDuration(userRegLeakPeriodString)
-			if err != nil {
-				jww.FATAL.Panicf("Could not parse duration: %+v", err)
-			}
-		} else {
-			// use default
-			userRegLeakPeriod = time.Hour * 24
-		}
-		userRegCapacity := viper.GetUint32("userRegCapacity")
-		if userRegCapacity == 0 {
-			// use default
-			userRegCapacity = 1000
-		}
-
 		permissiveIPChecking = viper.GetBool("permissiveIPChecking")
 
 		viper.SetDefault("addressSpace", 5)
@@ -233,8 +211,7 @@ var rootCmd = &cobra.Command{
 			minClientVersion:          minClientVersion,
 			addressSpaceSize:          uint8(viper.GetUint("addressSpace")),
 			disableGatewayPing:        disableGatewayPing,
-			userRegCapacity:           userRegCapacity,
-			userRegLeakPeriod:         userRegLeakPeriod,
+
 			disableNDFPruning:         viper.GetBool("disableNDFPruning"),
 			geoIPDBFile:               viper.GetString("geoIPDBFile"),
 			randomGeoBinning:          viper.GetBool("randomGeoBinning"),
