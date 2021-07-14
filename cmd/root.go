@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/go-homedir"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
@@ -27,8 +26,6 @@ import (
 	"os"
 	"path"
 	"runtime/pprof"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -39,8 +36,6 @@ var (
 	logLevel             uint // 0 = info, 1 = debug, >1 = trace
 	noTLS                bool
 	RegParams            Params
-	clientVersion        string
-	clientVersionLock    sync.RWMutex
 	disablePermissioning bool
 	disabledNodesPath    string
 
@@ -91,7 +86,6 @@ var rootCmd = &cobra.Command{
 
 		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 		ndfOutputPath := viper.GetString("ndfOutputPath")
-		setClientVersion(viper.GetString("clientVersion"))
 		ipAddr := viper.GetString("publicAddress")
 		// Get Notification Server address and cert Path
 		nsCertPath := viper.GetString("nsCertPath")
@@ -219,6 +213,7 @@ var rootCmd = &cobra.Command{
 			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
 			geoIPDBFile:           viper.GetString("geoIPDBFile"),
 			randomGeoBinning:      viper.GetBool("randomGeoBinning"),
+			versionLock:           sync.RWMutex{},
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -228,6 +223,9 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			jww.FATAL.Panicf(err.Error())
 		}
+
+		viper.OnConfigChange(impl.updateVersions)
+		viper.WatchConfig()
 
 		err = impl.LoadAllRegisteredNodes()
 		if err != nil {
@@ -510,42 +508,47 @@ func initConfig() {
 			jww.ERROR.Printf("Unable to parse config file (%s): %+v", cfgFile, err)
 			validConfig = false
 		}
-		viper.OnConfigChange(updateClientVersion)
-		viper.WatchConfig()
 	}
 }
 
-func updateClientVersion(in fsnotify.Event) {
-	newVersion := viper.GetString("clientVersion")
-	err := validateVersion(newVersion)
+func (m *RegistrationImpl) updateVersions(in fsnotify.Event) {
+	// Parse version strings
+	clientVersion := viper.GetString("minClientVersion")
+	_, err := version.ParseVersion(clientVersion)
 	if err != nil {
-		panic(err)
+		jww.FATAL.Panicf("Attempted client version update is invalid: %v", err)
 	}
-	setClientVersion(newVersion)
-}
 
-func setClientVersion(version string) {
-	clientVersionLock.Lock()
-	clientVersion = version
-	clientVersionLock.Unlock()
-}
+	minGatewayVersionString := viper.GetString("minGatewayVersion")
+	minGatewayVersion, err := version.ParseVersion(minGatewayVersionString)
+	if err != nil {
+		jww.FATAL.Panicf("Could not parse minGatewayVersion %#v: %+v",
+			minGatewayVersionString, err)
+	}
 
-func validateVersion(versionString string) error {
-	// If a version string has more than 2 dots in it, anything after the first
-	// 2 dots is considered to be part of the patch version
-	versions := strings.SplitN(versionString, ".", 3)
-	if len(versions) != 3 {
-		return errors.New("Client version string must contain a major, minor, and patch version separated by \".\"")
-	}
-	_, err := strconv.Atoi(versions[0])
+	minServerVersionString := viper.GetString("minServerVersion")
+	minServerVersion, err := version.ParseVersion(minServerVersionString)
 	if err != nil {
-		return errors.New("Major client version couldn't be parsed as integer")
+		jww.FATAL.Panicf("Could not parse minServerVersion %#v: %+v",
+			minServerVersionString, err)
 	}
-	_, err = strconv.Atoi(versions[1])
+
+	// Modify the client version
+	m.NDFLock.Lock()
+	updateNDF := m.State.GetUnprunedNdf()
+	jww.DEBUG.Printf("Updating client version from %s to %s", updateNDF.ClientVersion, clientVersion)
+	updateNDF.ClientVersion = clientVersion
+	err = m.State.UpdateNdf(updateNDF)
 	if err != nil {
-		return errors.New("Minor client version couldn't be parsed as integer")
+		jww.FATAL.Panicf("Failed to update client version in NDF: %v", err)
 	}
-	return nil
+	m.NDFLock.Unlock()
+
+	// Modify server and gateway versions
+	m.params.versionLock.Lock()
+	m.params.minGatewayVersion = minGatewayVersion
+	m.params.minServerVersion = minServerVersion
+	m.params.versionLock.Unlock()
 }
 
 // initLog initializes logging thresholds and the log path.

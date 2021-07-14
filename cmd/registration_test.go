@@ -555,35 +555,3 @@ func TestCheckRegistration_InvalidID(t *testing.T) {
 		t.Errorf("Expected error path. Should not be able to marshall an invalid ID")
 	}
 }
-
-// Test a case that should pass validation
-func TestValidateClientVersion_Success(t *testing.T) {
-	err := validateVersion("0.0.0a")
-	if err != nil {
-		t.Errorf("Unexpected error from validateVersion: %+v", err.Error())
-	}
-}
-
-// Test some cases that shouldn't pass validation
-func TestValidateClientVersion_Failure(t *testing.T) {
-	err := validateVersion("")
-	if err == nil {
-		t.Error("Expected error for empty version string")
-	}
-	err = validateVersion("0")
-	if err == nil {
-		t.Error("Expected error for version string with one number")
-	}
-	err = validateVersion("0.0")
-	if err == nil {
-		t.Error("Expected error for version string with two numbers")
-	}
-	err = validateVersion("a.4.0")
-	if err == nil {
-		t.Error("Expected error for version string with non-numeric major version")
-	}
-	err = validateVersion("4.a.0")
-	if err == nil {
-		t.Error("Expected error for version string with non-numeric minor version")
-	}
-}

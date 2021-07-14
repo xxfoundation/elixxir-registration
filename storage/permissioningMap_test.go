@@ -112,11 +112,6 @@ import (
 //		t.Errorf(err.Error())
 //		return
 //	}
-//	err = db.UpdateSalt(testId, []byte("test123"))
-//	if err != nil {
-//		t.Errorf(err.Error())
-//		return
-//	}
 //}
 
 // Happy path

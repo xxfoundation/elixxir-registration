@@ -32,7 +32,6 @@ type database interface {
 	InsertApplication(application *Application, unregisteredNode *Node) error
 	RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
-	UpdateSalt(id *id.ID, salt []byte) error
 	UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error
 	UpdateNodeSequence(id *id.ID, sequence string) error
 	GetNode(code string) (*Node, error)

@@ -14,6 +14,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/xx_network/primitives/ndf"
+	"sync"
 	"time"
 )
 
@@ -45,6 +46,8 @@ type Params struct {
 
 	geoIPDBFile      string
 	randomGeoBinning bool
+
+	versionLock sync.RWMutex
 }
 
 // toGroup takes a group represented by a map of string to string,

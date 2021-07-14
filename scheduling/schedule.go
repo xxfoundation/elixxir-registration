@@ -23,7 +23,7 @@ import (
 // scheduler.go contains the business logic for scheduling a round
 
 //size of round creation channel, just sufficiently large enough to not be jammed
-const newRoundChanLen = 100
+const newRoundChanLen = 1000
 
 type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error)

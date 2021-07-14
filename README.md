@@ -70,9 +70,6 @@ dbAddress: ""
 # placement)
 regCodesFilePath: "regCodes.json"
 
-# Client version (will allow all versions with major version 0)
-clientVersion: "0.0.0"
-
 # The duration between polling the disabled Node list for updates (Default 1m)
 disabledNodesPollDuration: 1m
 
