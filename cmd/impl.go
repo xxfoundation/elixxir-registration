@@ -154,9 +154,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: ndf.Registration{
-			Address:        RegParams.publicAddress,
-			TlsCertificate: regImpl.certFromFile,
-			EllipticPubKey: state.GetEllipticPublicKey().MarshalText(),
+			Address:                   RegParams.publicAddress,
+			TlsCertificate:            regImpl.certFromFile,
+			EllipticPubKey:            state.GetEllipticPublicKey().MarshalText(),
+			ClientRegistrationAddress: RegParams.clientRegistrationAddress,
 		},
 		Timestamp: time.Now(),
 		UDB: ndf.UDB{

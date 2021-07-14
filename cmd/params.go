@@ -47,6 +47,8 @@ type Params struct {
 	geoIPDBFile      string
 	randomGeoBinning bool
 
+	clientRegistrationAddress string
+
 	versionLock sync.RWMutex
 }
 
