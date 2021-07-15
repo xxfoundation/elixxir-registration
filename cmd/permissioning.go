@@ -22,6 +22,7 @@ import (
 	"gitlab.com/xx_network/crypto/xx"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/region"
 	"sync/atomic"
 )
 
@@ -320,10 +321,18 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int64, error) {
 
 	gwID := nodeID.DeepCopy()
 	gwID.SetType(id.Gateway)
+
+	bin, err := region.GetRegion(nodeInfo.Sequence)
+	if err != nil {
+		return ndf.Gateway{}, ndf.Node{}, 0,
+			errors.Errorf("Error parsing node sequence: %+v", err)
+	}
+
 	gateway := ndf.Gateway{
 		ID:             gwID.Bytes(),
 		Address:        nodeInfo.GatewayAddress,
 		TlsCertificate: nodeInfo.GatewayCertificate,
+		Bin:            bin,
 	}
 
 	return gateway, n, nodeInfo.DateRegistered.UnixNano(), nil
