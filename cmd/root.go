@@ -91,7 +91,7 @@ var rootCmd = &cobra.Command{
 		nsCertPath := viper.GetString("nsCertPath")
 		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
-		clientRegistration := viper.GetString("clientRegistration")
+		clientRegistration := viper.GetString("registrationAddress")
 		// Set up database connection
 		rawAddr := viper.GetString("dbAddress")
 
@@ -212,10 +212,10 @@ var rootCmd = &cobra.Command{
 			addressSpaceSize:          uint8(viper.GetUint("addressSpace")),
 			disableGatewayPing:        disableGatewayPing,
 
-			disableNDFPruning:         viper.GetBool("disableNDFPruning"),
-			geoIPDBFile:               viper.GetString("geoIPDBFile"),
-			randomGeoBinning:          viper.GetBool("randomGeoBinning"),
-			versionLock:               sync.RWMutex{},
+			disableNDFPruning: viper.GetBool("disableNDFPruning"),
+			geoIPDBFile:       viper.GetString("geoIPDBFile"),
+			randomGeoBinning:  viper.GetBool("randomGeoBinning"),
+			versionLock:       sync.RWMutex{},
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")

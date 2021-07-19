@@ -40,7 +40,7 @@ publicAddress: "0.0.0.0:11420"
 port: 11420
 
 # Public address used in NDF to give to client
-clientRegistrationAddress: "5.6.7.8:11420"
+registrationAddress: "5.6.7.8:11420"
 
 # The minimum version required of gateways to connect
 minGatewayVersion: "0.0.0"
