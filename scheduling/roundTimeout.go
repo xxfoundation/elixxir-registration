@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-
 func waitForRoundTimeout(tracker chan id.Round, state *storage.NetworkState,
 	localRound *round.State, timeout time.Duration, timoutType string) {
 	roundID := localRound.GetRoundID()
@@ -18,13 +17,13 @@ func waitForRoundTimeout(tracker chan id.Round, state *storage.NetworkState,
 	// Wait for the timer to go off
 	case <-roundTimer.C:
 		// Send the timed out round id to the timeout handler
-		jww.INFO.Printf("Round %v has %s timed out after %s, " +
+		jww.INFO.Printf("Round %v has %s timed out after %s, "+
 			"signaling exit", roundID, timoutType, timeout)
 		tracker <- roundID
 	// Signals the round has been completed.
 	// In this case, we can exit the go-routine
 	case <-localRound.GetRoundCompletedChan():
-		if timoutType == "realtime"{
+		if timoutType == "realtime" {
 			state.GetRoundMap().DeleteRound(roundID)
 		}
 		return

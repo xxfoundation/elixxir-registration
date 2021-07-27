@@ -23,7 +23,6 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/netTime"
-	"gitlab.com/xx_network/primitives/rateLimiting"
 	"gitlab.com/xx_network/primitives/utils"
 	"sync"
 	"time"
@@ -31,16 +30,15 @@ import (
 
 // The main registration instance object
 type RegistrationImpl struct {
-	Comms                *registration.Comms
-	params               *Params
-	State                *storage.NetworkState
-	Stopped              *uint32
-	permissioningCert    *x509.Certificate
-	ndfOutputPath        string
-	NdfReady             *uint32
-	certFromFile         string
-	registrationLimiting *rateLimiting.Bucket
-	disableGatewayPing   bool
+	Comms              *registration.Comms
+	params             *Params
+	State              *storage.NetworkState
+	Stopped            *uint32
+	permissioningCert  *x509.Certificate
+	ndfOutputPath      string
+	NdfReady           *uint32
+	certFromFile       string
+	disableGatewayPing bool
 
 	// registration status trackers
 	numRegistered int
@@ -130,9 +128,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		registrationTimes:  make(map[id.ID]int64),
 	}
 
-	// regImpl.registrationLimiting = rateLimiting.Create(params.userRegCapacity, params.userRegLeakRate)
-	regImpl.registrationLimiting = rateLimiting.CreateBucket(params.userRegCapacity, params.userRegCapacity, params.userRegLeakPeriod, func(u uint32, i int64) {})
-
 	if !noTLS {
 		// Read in TLS keys from files
 		cert, err := utils.ReadFile(params.CertPath)
@@ -159,9 +154,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: ndf.Registration{
-			Address:        RegParams.publicAddress,
-			TlsCertificate: regImpl.certFromFile,
-			EllipticPubKey: state.GetEllipticPublicKey().MarshalText(),
+			Address:                   RegParams.publicAddress,
+			TlsCertificate:            regImpl.certFromFile,
+			EllipticPubKey:            state.GetEllipticPublicKey().MarshalText(),
+			ClientRegistrationAddress: RegParams.clientRegistrationAddress,
 		},
 		Timestamp: time.Now(),
 		UDB: ndf.UDB{
@@ -329,13 +325,6 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 // NewImplementation returns a registration server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
-	impl.Functions.RegisterUser = func(msg *pb.UserRegistration) (*pb.UserRegistrationConfirmation, error) {
-		confirmationMessage, err := instance.RegisterUser(msg)
-		if err != nil {
-			jww.ERROR.Printf("RegisterUser error: %+v", err)
-		}
-		return confirmationMessage, err
-	}
 	impl.Functions.RegisterNode = func(salt []byte, serverAddr, serverTlsCert, gatewayAddr,
 		gatewayTlsCert, registrationCode string) error {
 
