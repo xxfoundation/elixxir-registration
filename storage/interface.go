@@ -51,6 +51,7 @@ type MapImpl struct {
 	states            map[string]string
 	ephemeralLengths  map[uint8]*EphemeralLength
 	activeNodes       map[id.ID]*ActiveNode
+	geographicBin     map[string]uint8
 	mut               sync.Mutex
 }
 
@@ -220,6 +221,7 @@ func NewMap() Storage {
 			states:           make(map[string]string),
 			ephemeralLengths: make(map[uint8]*EphemeralLength),
 			activeNodes:      make(map[id.ID]*ActiveNode),
+			geographicBin:    make(map[string]uint8),
 		}}
 }
 
