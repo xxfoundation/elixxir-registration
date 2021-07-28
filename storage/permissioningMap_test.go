@@ -351,41 +351,46 @@ func TestMapImpl_GetStateValue(t *testing.T) {
 
 // Unit test
 func TestMapImpl_GetBin(t *testing.T) {
-	// Set up and populate the map with testing values
 	m := &MapImpl{
 		geographicBin: make(map[string]uint8),
 	}
+
+	_, err := m.GetBins()
+	if err == nil {
+		t.Errorf("Expected error case: Should recieve errors when map is empty")
+	}
+
+	// Set up and populate the map with testing values
 	testStrings := []string{"0", "1", "2", "3", "4"}
-	expectedBins := make([]uint8, 0, len(testStrings))
-	for _, s := range testStrings {
-		bin, err := strconv.Atoi(s)
+	expectedMap := make(map[GeoBin]struct{})
+	for _, code := range testStrings {
+		bin, err := strconv.Atoi(code)
 		if err != nil {
 			t.Fatalf("Failed on setup: %v", err)
 		}
-		m.geographicBin[s] = uint8(bin)
-
-		expectedBins = append(expectedBins, uint8(bin))
+		m.geographicBin[code] = uint8(bin)
+		expectedBin := &GeoBin{Bin: uint8(bin), Country: code}
+		expectedMap[*expectedBin] = struct{}{}
 	}
 
-	// Test that it pulls values as expected
-	for i, s := range testStrings {
-		received, err := m.GetBin(s)
-		if err != nil {
-			t.Errorf("Failed to retrieved bin from map: %v", err)
-		}
-
-		if strings.Compare(strconv.Itoa(int(received)), strconv.Itoa(int(expectedBins[i]))) != 0 {
-			t.Errorf("Unexpected bin with country code %s. "+
-				"\n\tExpected: %v"+
-				"\n\tReceived: %v", s, strconv.Itoa(int(expectedBins[i])), strconv.Itoa(int(received)))
-		}
-
+	// Pull the bins
+	receivedBins, err := m.GetBins()
+	if err != nil {
+		t.Fatalf("Unexpcted error in GetBins(): %v", err)
 	}
 
-	// Failure case: attempt to get a bin from an invalid country code
-	_, err := m.GetBin("GraetBritain")
-	if err == nil {
-		t.Fatalf("Expected failure case. Should not return bin for unpopulated country code!")
+	// Test the results
+	if len(receivedBins) != len(expectedMap) {
+		t.Errorf("Did not receive expected amount of bins."+
+			"\n\tExpected: %d"+
+			"\n\tReceived: %v", len(expectedMap), len(receivedBins))
+	}
+
+	for _, bin := range receivedBins {
+		_, ok := expectedMap[*bin]
+		if !ok {
+			t.Errorf("Retrieved unexpected bin from map.")
+		}
 	}
 
 }

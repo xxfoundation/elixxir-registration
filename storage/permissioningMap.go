@@ -158,10 +158,15 @@ func (m *MapImpl) GetBins() ([]*GeoBin, error) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
-	// Retrieve geographicBin if extant
-	bin, ok := m.geographicBin[countryCode]
-	if !ok {
-		return 0, errors.Errorf("Unable to find geographicBin for country code %s", countryCode)
+	if m.geographicBin == nil || len(m.geographicBin) == 0 {
+		return nil, errors.Errorf("No geographic bins present in storage")
 	}
-	return bin, nil
+
+	geoBins := make([]*GeoBin, 0, len(m.geographicBin))
+	for countryCode, bin := range m.geographicBin {
+		geoBin := &GeoBin{Bin: bin, Country: countryCode}
+		geoBins = append(geoBins, geoBin)
+	}
+
+	return geoBins, nil
 }
