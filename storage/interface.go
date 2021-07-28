@@ -38,6 +38,7 @@ type database interface {
 	GetNodeById(id *id.ID) (*Node, error)
 	GetNodesByStatus(status node.Status) ([]*Node, error)
 	GetActiveNodes() ([]*ActiveNode, error)
+	GetBin(countryCode string) (uint8, error)
 }
 
 // Struct implementing the Database Interface with an underlying Map
@@ -101,7 +102,14 @@ type Application struct {
 
 // Struct representing the ActiveNode table in the Database
 type ActiveNode struct {
-	Id []byte `gorm:"primary_key"`
+	WalletAddress string `gorm:"primary_key"`
+	Id            []byte `gorm:"NOT NULL;UNIQUE"`
+}
+
+// Struct representing the GeoBin table in the Database
+type GeoBin struct {
+	Country string `gorm:"primary_key"`
+	Bin     uint8  `gorm:"NOT NULL"`
 }
 
 // Struct representing the Node table in the Database

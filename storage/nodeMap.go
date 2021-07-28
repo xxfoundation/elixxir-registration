@@ -167,3 +167,9 @@ func (m *MapImpl) GetActiveNodes() ([]*ActiveNode, error) {
 	}
 	return activeNodes, nil
 }
+
+// Return the corresponding Bin for the given countryCode
+func (m *MapImpl) GetBin(countryCode string) (uint8, error) {
+	// TODO
+	return 0, nil
+}
