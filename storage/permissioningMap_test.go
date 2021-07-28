@@ -8,6 +8,7 @@ package storage
 
 import (
 	"gitlab.com/xx_network/primitives/id"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -346,4 +347,45 @@ func TestMapImpl_GetStateValue(t *testing.T) {
 	if !strings.Contains(err.Error(), "Unable to locate state for key") {
 		t.Errorf("Invalid error message getting bad state value: Got %s", err.Error())
 	}
+}
+
+// Unit test
+func TestMapImpl_GetBin(t *testing.T) {
+	// Set up and populate the map with testing values
+	m := &MapImpl{
+		geographicBin: make(map[string]uint8),
+	}
+	testStrings := []string{"0", "1", "2", "3", "4"}
+	expectedBins := make([]uint8, 0, len(testStrings))
+	for _, s := range testStrings {
+		bin, err := strconv.Atoi(s)
+		if err != nil {
+			t.Fatalf("Failed on setup: %v", err)
+		}
+		m.geographicBin[s] = uint8(bin)
+
+		expectedBins = append(expectedBins, uint8(bin))
+	}
+
+	// Test that it pulls values as expected
+	for i, s := range testStrings {
+		received, err := m.GetBin(s)
+		if err != nil {
+			t.Errorf("Failed to retrieved bin from map: %v", err)
+		}
+
+		if strings.Compare(strconv.Itoa(int(received)), strconv.Itoa(int(expectedBins[i]))) != 0 {
+			t.Errorf("Unexpected bin with country code %s. "+
+				"\n\tExpected: %v"+
+				"\n\tReceived: %v", s, strconv.Itoa(int(expectedBins[i])), strconv.Itoa(int(received)))
+		}
+
+	}
+
+	// Failure case: attempt to get a bin from an invalid country code
+	_, err := m.GetBin("GraetBritain")
+	if err == nil {
+		t.Fatalf("Expected failure case. Should not return bin for unpopulated country code!")
+	}
+
 }

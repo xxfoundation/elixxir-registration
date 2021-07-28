@@ -27,6 +27,7 @@ type database interface {
 	GetLatestEphemeralLength() (*EphemeralLength, error)
 	GetEphemeralLengths() ([]*EphemeralLength, error)
 	InsertEphemeralLength(length *EphemeralLength) error
+	GetBins() ([]*GeoBin, error)
 
 	// Node methods
 	InsertApplication(application *Application, unregisteredNode *Node) error
@@ -38,7 +39,6 @@ type database interface {
 	GetNodeById(id *id.ID) (*Node, error)
 	GetNodesByStatus(status node.Status) ([]*Node, error)
 	GetActiveNodes() ([]*ActiveNode, error)
-	GetBin(countryCode string) (uint8, error)
 }
 
 // Struct implementing the Database Interface with an underlying Map

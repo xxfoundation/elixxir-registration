@@ -10,8 +10,6 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/region"
-	"strconv"
-	"strings"
 	"testing"
 )
 
@@ -281,45 +279,4 @@ func TestMapImpl_UpdateSequence(t *testing.T) {
 		t.Errorf("Sequence values did not update correctly, got %s expected %s",
 			result.Sequence, testResult)
 	}
-}
-
-// Unit test
-func TestMapImpl_GetBin(t *testing.T) {
-	// Set up and populate the map with testing values
-	m := &MapImpl{
-		geographicBin: make(map[string]uint8),
-	}
-	testStrings := []string{"0", "1", "2", "3", "4"}
-	expectedBins := make([]uint8, 0, len(testStrings))
-	for _, s := range testStrings {
-		bin, err := strconv.Atoi(s)
-		if err != nil {
-			t.Fatalf("Failed on setup: %v", err)
-		}
-		m.geographicBin[s] = uint8(bin)
-
-		expectedBins = append(expectedBins, uint8(bin))
-	}
-
-	// Test that it pulls values as expected
-	for i, s := range testStrings {
-		received, err := m.GetBin(s)
-		if err != nil {
-			t.Errorf("Failed to retrieved bin from map: %v", err)
-		}
-
-		if strings.Compare(strconv.Itoa(int(received)), strconv.Itoa(int(expectedBins[i]))) != 0 {
-			t.Errorf("Unexpected bin with country code %s. "+
-				"\n\tExpected: %v"+
-				"\n\tReceived: %v", s, strconv.Itoa(int(expectedBins[i])), strconv.Itoa(int(received)))
-		}
-
-	}
-
-	// Failure case: attempt to get a bin from an invalid country code
-	_, err := m.GetBin("GraetBritain")
-	if err == nil {
-		t.Fatalf("Expected failure case. Should not return bin for unpopulated country code!")
-	}
-
 }

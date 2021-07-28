@@ -111,3 +111,10 @@ func (d *DatabaseImpl) InsertEphemeralLength(length *EphemeralLength) error {
 	jww.TRACE.Printf("Attempting to insert EphemeralLength into DB: %+v", length)
 	return d.db.Create(length).Error
 }
+
+// Return the stored list of GeoBin
+func (d *DatabaseImpl) GetBins() ([]*GeoBin, error) {
+	result := &GeoBin{}
+	err := d.db.Take(&result, "country = ?", countryCode).Error
+	return result.Bin, err
+}

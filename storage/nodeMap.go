@@ -167,16 +167,3 @@ func (m *MapImpl) GetActiveNodes() ([]*ActiveNode, error) {
 	}
 	return activeNodes, nil
 }
-
-// Return the corresponding Bin for the given countryCode
-func (m *MapImpl) GetBin(countryCode string) (uint8, error) {
-	m.mut.Lock()
-	defer m.mut.Unlock()
-
-	// Retrieve geographicBin if extant
-	bin, ok := m.geographicBin[countryCode]
-	if !ok {
-		return 0, errors.Errorf("Unable to find geographicBin for country code %s", countryCode)
-	}
-	return bin, nil
-}

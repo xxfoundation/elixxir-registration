@@ -89,10 +89,3 @@ func (d *DatabaseImpl) GetActiveNodes() ([]*ActiveNode, error) {
 	err := d.db.Find(&activeNodes).Error
 	return activeNodes, err
 }
-
-// Return the corresponding Bin for the given countryCode
-func (d *DatabaseImpl) GetBin(countryCode string) (uint8, error) {
-	result := &GeoBin{}
-	err := d.db.Take(&result, "country = ?", countryCode).Error
-	return result.Bin, err
-}
