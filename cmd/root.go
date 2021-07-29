@@ -214,7 +214,7 @@ var rootCmd = &cobra.Command{
 
 			disableNDFPruning: viper.GetBool("disableNDFPruning"),
 			geoIPDBFile:       viper.GetString("geoIPDBFile"),
-			randomGeoBinning:  viper.GetBool("randomGeoBinning"),
+			dynamicGeoBinning: viper.GetBool("dynamicGeoBinning"),
 			versionLock:       sync.RWMutex{},
 		}
 

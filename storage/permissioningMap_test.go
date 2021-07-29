@@ -355,7 +355,7 @@ func TestMapImpl_GetBin(t *testing.T) {
 		geographicBin: make(map[string]uint8),
 	}
 
-	_, err := m.GetBins()
+	_, err := m.getBins()
 	if err == nil {
 		t.Errorf("Expected error case: Should recieve errors when map is empty")
 	}
@@ -374,9 +374,9 @@ func TestMapImpl_GetBin(t *testing.T) {
 	}
 
 	// Pull the bins
-	receivedBins, err := m.GetBins()
+	receivedBins, err := m.getBins()
 	if err != nil {
-		t.Fatalf("Unexpcted error in GetBins(): %v", err)
+		t.Fatalf("Unexpcted error in getBins(): %v", err)
 	}
 
 	// Test the results

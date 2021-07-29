@@ -153,8 +153,8 @@ func (m *MapImpl) InsertEphemeralLength(length *EphemeralLength) error {
 	return nil
 }
 
-// Return the stored list of GeoBin
-func (m *MapImpl) GetBins() ([]*GeoBin, error) {
+// Returns all GeoBin from Storage
+func (m *MapImpl) getBins() ([]*GeoBin, error) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 

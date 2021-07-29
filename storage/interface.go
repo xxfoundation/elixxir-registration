@@ -27,7 +27,7 @@ type database interface {
 	GetLatestEphemeralLength() (*EphemeralLength, error)
 	GetEphemeralLengths() ([]*EphemeralLength, error)
 	InsertEphemeralLength(length *EphemeralLength) error
-	GetBins() ([]*GeoBin, error)
+	getBins() ([]*GeoBin, error)
 
 	// Node methods
 	InsertApplication(application *Application, unregisteredNode *Node) error

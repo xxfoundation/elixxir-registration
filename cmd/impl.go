@@ -50,6 +50,9 @@ type RegistrationImpl struct {
 	// TODO-kill this
 	registrationTimes map[id.ID]int64
 
+	// Keep track of Country -> Bin mapping
+	geoBins map[string]uint8
+
 	// GeoLite2 database reader instance for getting info about an IP address
 	geoIPDB *geoip2.Reader
 
@@ -217,11 +220,19 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 		// Set the GeoIP2 reader to running
 		regImpl.geoIPDBStatus.ToRunning()
-	} else if !params.randomGeoBinning {
-		jww.FATAL.Panic("Must provide either a MaxMind GeoLite2 compatible " +
-			"database file or set the 'randomGeoBinning' flag.")
-	}
 
+		// Determine which type of GeoBinning we're using
+		if regImpl.params.dynamicGeoBinning {
+			regImpl.geoBins, err = storage.PermissioningDb.GetBins()
+			if err != nil {
+				return nil, err
+			}
+			jww.INFO.Printf("Loaded %d GeoBins from Storage!", len(regImpl.geoBins))
+		} else {
+			jww.INFO.Printf("Using static GeoBins!")
+			// TODO
+		}
+	}
 	return regImpl, nil
 }
 

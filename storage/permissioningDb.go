@@ -112,8 +112,8 @@ func (d *DatabaseImpl) InsertEphemeralLength(length *EphemeralLength) error {
 	return d.db.Create(length).Error
 }
 
-// Return the stored list of GeoBin
-func (d *DatabaseImpl) GetBins() ([]*GeoBin, error) {
+// Returns all GeoBin from Storage
+func (d *DatabaseImpl) getBins() ([]*GeoBin, error) {
 	var result []*GeoBin
 	err := d.db.Find(&result).Error
 	return result, err

@@ -18,7 +18,6 @@ import (
 	"net"
 	"strconv"
 	"sync/atomic"
-	"time"
 )
 
 // Error messages.
@@ -34,39 +33,27 @@ const (
 		"not set"
 )
 
-// setNodeBin assigns a region to each node. If a GeoIP2 database reader is
-// supplied, then the region is assigned based off the node IP address's
-// country. If randomGeoBinning in Params is set, then a random region is
-// chosen; this is used for testing. If neither the reader or the flag is set,
-// then an error is returned.
+// setNodeBin assigns a country code to each node
 func (m *RegistrationImpl) setNodeBin(n *node.State) error {
 	// Get country code for node
-	countryCode, err := getAddressCountry(n.GetNodeAddresses(), m.geoIPDB,
-		m.params.randomGeoBinning, &m.geoIPDBStatus)
-
-	// Get the geographical bin that the country belongs to
-	bin, exists := region.GetCountryBin(countryCode)
-	if !exists {
-		return errors.Errorf(noBinErr, countryCode)
-	}
-	jww.DEBUG.Printf("Node %s is in bin %s", n.GetID(), bin)
+	countryCode, err := getAddressCountry(n.GetNodeAddresses(), m.geoIPDB, &m.geoIPDBStatus)
 
 	// Update sequence for the node in the database
-	err = storage.PermissioningDb.UpdateNodeSequence(n.GetID(), bin.String())
+	err = storage.PermissioningDb.UpdateNodeSequence(n.GetID(), countryCode)
 	if err != nil {
-		return errors.Errorf(setDbSequenceErr, n.GetID(), bin)
+		return errors.Errorf(setDbSequenceErr, n.GetID(), countryCode)
 	}
 
 	// Set the state ordering
-	n.SetOrdering(bin.String())
+	bin := region.GeoBin(m.geoBins[countryCode]).String()
+	n.SetOrdering(bin)
 
 	return nil
 }
 
 // getAddressCountry returns an alpha-2 country code for the address. Panics if
 // randomGeoBinning is not set or a geoip2.Reader is not provided.
-func getAddressCountry(address string, geoIPDB *geoip2.Reader,
-	randomGeoBinning bool, geoipStatus *geoipStatus) (string, error) {
+func getAddressCountry(address string, geoIPDB *geoip2.Reader, geoipStatus *geoipStatus) (string, error) {
 	if geoIPDB != nil {
 		// Return an error if the status is not set to running (meaning the
 		// reader has been closed)
@@ -80,10 +67,6 @@ func getAddressCountry(address string, geoIPDB *geoip2.Reader,
 			return "", errors.Errorf(countryLookupErr, err)
 		}
 		return countryCode, nil
-	} else if randomGeoBinning {
-		// Assign a geographical bin from a randomly selected country
-		return getRandomCountry(
-			rand.New(rand.NewSource(time.Now().UnixNano()))), nil
 	}
 
 	err := errors.New(invalidFlagsErr)
