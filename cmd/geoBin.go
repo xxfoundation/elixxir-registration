@@ -33,7 +33,7 @@ const (
 		"not set"
 )
 
-// setNodeBin assigns a country code to each node
+// setNodeBin assigns a GeoBin to each node
 func (m *RegistrationImpl) setNodeBin(n *node.State) error {
 	// Get country code for node
 	countryCode, err := getAddressCountry(n.GetNodeAddresses(), m.geoIPDB, &m.geoIPDBStatus)
