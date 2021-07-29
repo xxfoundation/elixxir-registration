@@ -14,7 +14,6 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/region"
-	"math/rand"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -98,12 +97,6 @@ func lookupCountry(address string, geoIPDB *geoip2.Reader) (string, error) {
 
 	// Return the two letter alpha-2 country code
 	return country.Country.IsoCode, nil
-}
-
-// getRandomCountry returns a random alpha-2 country code.
-func getRandomCountry(rng *rand.Rand) string {
-	randomIndex := rng.Intn(region.CountryLen())
-	return region.GetCountryList()[randomIndex]
 }
 
 // geoipStatus signals the status of the GeoIP2 database reader. It should be
