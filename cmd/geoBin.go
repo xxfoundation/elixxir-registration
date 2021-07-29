@@ -13,7 +13,6 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/primitives/region"
 	"net"
 	"strconv"
 	"sync/atomic"
@@ -32,8 +31,8 @@ const (
 		"not set"
 )
 
-// setNodeBin assigns a GeoBin to each node
-func (m *RegistrationImpl) setNodeBin(n *node.State) error {
+// setNodeSequence assigns a country code to each node
+func (m *RegistrationImpl) setNodeSequence(n *node.State) error {
 	// Get country code for node
 	countryCode, err := getAddressCountry(n.GetNodeAddresses(), m.geoIPDB, &m.geoIPDBStatus)
 
@@ -44,9 +43,7 @@ func (m *RegistrationImpl) setNodeBin(n *node.State) error {
 	}
 
 	// Set the state ordering
-	bin := region.GeoBin(m.geoBins[countryCode]).String()
-	n.SetOrdering(bin)
-
+	n.SetOrdering(countryCode)
 	return nil
 }
 

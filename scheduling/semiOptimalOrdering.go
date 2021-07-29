@@ -2,6 +2,7 @@ package scheduling
 
 import (
 	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/region"
 	"math"
@@ -10,7 +11,7 @@ import (
 // Create a latencyTable
 var latencyTable = createLatencyTable()
 
-func generateSemiOptimalOrdering(nodes []*node.State) ([]*node.State, error) {
+func generateSemiOptimalOrdering(nodes []*node.State, state *storage.NetworkState) ([]*node.State, error) {
 	// Make all permutations of nodes
 	permutations := Permute(nodes)
 	jww.DEBUG.Printf("Looking for most efficient teaming order")
@@ -24,18 +25,11 @@ func generateSemiOptimalOrdering(nodes []*node.State) ([]*node.State, error) {
 		totalLatency := 0
 		for i := 0; i < len(nodes); i++ {
 			// Get the ordering for the current node
-			thisRegion, err := region.GetRegion(nodes[i].GetOrdering())
-			if err != nil {
-				return nil, err
-			}
+			thisRegion := region.GeoBin(state.GetGeoBins()[nodes[i].GetOrdering()])
 
 			// Get the ordering of the next node, circling back if at the last node
 			nextNode := nodes[(i+1)%len(nodes)]
-			nextRegion, err := region.GetRegion(nextNode.GetOrdering())
-			if err != nil {
-				return nil, err
-
-			}
+			nextRegion := region.GeoBin(state.GetGeoBins()[nextNode.GetOrdering()])
 
 			// Calculate the distance and pull the latency from the table
 			totalLatency += latencyTable[thisRegion][nextRegion]

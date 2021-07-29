@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-// Tests that RegistrationImpl.setNodeBin assigns a random bin to a node when
+// Tests that RegistrationImpl.setNodeSequence assigns a random bin to a node when
 // randomGeoBinning is set.
 func TestRegistrationImpl_setNodeBin_RandomBin(t *testing.T) {
 	// Create a map database
@@ -57,9 +57,9 @@ func TestRegistrationImpl_setNodeBin_RandomBin(t *testing.T) {
 	impl := &RegistrationImpl{params: &Params{randomGeoBinning: true}}
 
 	// Expected to generate random bin
-	err = impl.setNodeBin(stateMap.GetNode(testID))
+	err = impl.setNodeSequence(stateMap.GetNode(testID))
 	if err != nil {
-		t.Errorf("setNodeBin returned an error: %+v", err)
+		t.Errorf("setNodeSequence returned an error: %+v", err)
 	}
 
 	// Get node's new bin
@@ -69,18 +69,18 @@ func TestRegistrationImpl_setNodeBin_RandomBin(t *testing.T) {
 	}
 
 	if nodeDB.Sequence == oldNodeBin {
-		t.Errorf("setNodeBin failed to modify the node's bin."+
+		t.Errorf("setNodeSequence failed to modify the node's bin."+
 			"\nold bin: %s\nnew bin: %s", oldNodeBin, nodeDB.Sequence)
 	}
 
 	ordering := stateMap.GetNode(testID).GetOrdering()
 	if ordering == oldNodeBin {
-		t.Errorf("setNodeBin failed to modify the node's ordering."+
+		t.Errorf("setNodeSequence failed to modify the node's ordering."+
 			"\nold bin: %s\nnew bin: %s", oldNodeBin, ordering)
 	}
 }
 
-// Tests that RegistrationImpl.setNodeBin assigns the correct geographic bin for
+// Tests that RegistrationImpl.setNodeSequence assigns the correct geographic bin for
 // the IP address.
 func TestRegistrationImpl_setNodeBin_GeoIP2DB(t *testing.T) {
 	var err error
@@ -122,10 +122,10 @@ func TestRegistrationImpl_setNodeBin_GeoIP2DB(t *testing.T) {
 		t.Fatalf("Failed to add a node to the state map: %+v", err)
 	}
 
-	// Call setNodeBin
-	err = impl.setNodeBin(stateMap.GetNode(testID))
+	// Call setNodeSequence
+	err = impl.setNodeSequence(stateMap.GetNode(testID))
 	if err != nil {
-		t.Errorf("setNodeBin returned an error: %+v", err)
+		t.Errorf("setNodeSequence returned an error: %+v", err)
 	}
 
 	// Get node's new bin
@@ -135,26 +135,26 @@ func TestRegistrationImpl_setNodeBin_GeoIP2DB(t *testing.T) {
 	}
 
 	if nodeDB.Sequence != "Asia" {
-		t.Errorf("setNodeBin failed to set the expected bin."+
+		t.Errorf("setNodeSequence failed to set the expected bin."+
 			"\nexpected: %s\nreceived: %s", "Asia", nodeDB.Sequence)
 	}
 
 	ordering := stateMap.GetNode(testID).GetOrdering()
 	if ordering != "Asia" {
-		t.Errorf("setNodeBin failed to set the state ordering to the expected bin."+
+		t.Errorf("setNodeSequence failed to set the state ordering to the expected bin."+
 			"\nexpected: %s\nreceived: %s", "Asia", ordering)
 	}
 }
 
-// Panic path: test that RegistrationImpl.setNodeBin panics when neither a
+// Panic path: test that RegistrationImpl.setNodeSequence panics when neither a
 // GeoIP2 reader is supplied nor is randomGeoBinning set.
 func TestRegistrationImpl_setNodeBin_NoFlags(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
-			t.Errorf("setNodeBin failed to panic when neither flag was set.")
+			t.Errorf("setNodeSequence failed to panic when neither flag was set.")
 		}
 	}()
 
 	impl := &RegistrationImpl{}
-	_ = impl.setNodeBin(&node.State{})
+	_ = impl.setNodeSequence(&node.State{})
 }

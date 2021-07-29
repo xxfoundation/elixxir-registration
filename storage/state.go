@@ -52,10 +52,11 @@ type NetworkState struct {
 	// List of states of Nodes to be disabled
 	disabledNodesStates *disabledNodes
 
+	// Keep track of Country -> Bin mapping
+	geoBins map[string]uint8
+
 	// NDF state
-
-	unprunedNdf *ndf.NetworkDefinition
-
+	unprunedNdf  *ndf.NetworkDefinition
 	pruneListMux sync.RWMutex
 	pruneList    map[id.ID]interface{}
 	partialNdf   *dataStructures.Ndf
@@ -75,7 +76,7 @@ type NetworkState struct {
 }
 
 // NewState returns a new NetworkState object.
-func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string) (*NetworkState, error) {
+func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string, geoBins map[string]uint8) (*NetworkState, error) {
 
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
@@ -99,6 +100,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		pruneList:           make(map[id.ID]interface{}),
 		ndfOutputPath:       ndfOutputPath,
 		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
+		geoBins:             geoBins,
 	}
 
 	//begin the thread that reads and adds round updates
@@ -231,6 +233,11 @@ func (s *NetworkState) GetFullNdf() *dataStructures.Ndf {
 // GetPartialNdf returns the partial NDF.
 func (s *NetworkState) GetPartialNdf() *dataStructures.Ndf {
 	return s.partialNdf
+}
+
+// GetGeoBin returns the GeoBin map.
+func (s *NetworkState) GetGeoBins() map[string]uint8 {
+	return s.geoBins
 }
 
 // GetUpdates returns all of the updates after the given ID.

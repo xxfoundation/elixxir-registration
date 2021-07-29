@@ -39,7 +39,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	// In the case of random ordering
 	if params.SemiOptimalOrdering {
 		// Generate a team based on latency
-		nodeStateList, err = generateSemiOptimalOrdering(nodes)
+		nodeStateList, err = generateSemiOptimalOrdering(nodes, state)
 		if err != nil {
 			return protoRound{}, errors.WithMessage(err,
 				"Failed to generate optimal ordering")
