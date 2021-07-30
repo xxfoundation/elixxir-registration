@@ -58,7 +58,7 @@ func TestRegistrationImpl_setNodeBin_GeoIP2DB(t *testing.T) {
 	}
 
 	// Call setNodeSequence
-	err = impl.setNodeSequence(stateMap.GetNode(testID))
+	err = impl.setNodeSequence(stateMap.GetNode(testID), stateMap.GetNode(testID).GetNodeAddresses())
 	if err != nil {
 		t.Errorf("setNodeSequence returned an error: %+v", err)
 	}
@@ -91,5 +91,5 @@ func TestRegistrationImpl_setNodeBin_NoFlags(t *testing.T) {
 	}()
 
 	impl := &RegistrationImpl{}
-	_ = impl.setNodeSequence(&node.State{})
+	_ = impl.setNodeSequence(&node.State{}, "")
 }
