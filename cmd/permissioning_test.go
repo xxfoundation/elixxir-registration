@@ -82,7 +82,6 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		udbCertPath:       testkeys.GetUdbCertPath(),
 		NsCertPath:        testkeys.GetUdbCertPath(),
 		disableNDFPruning: true,
-		randomGeoBinning:  true,
 	}
 
 	// Start registration server

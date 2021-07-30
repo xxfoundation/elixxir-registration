@@ -1,6 +1,7 @@
 package scheduling
 
 import (
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -25,11 +26,17 @@ func generateSemiOptimalOrdering(nodes []*node.State, state *storage.NetworkStat
 		totalLatency := 0
 		for i := 0; i < len(nodes); i++ {
 			// Get the ordering for the current node
-			thisRegion := state.GetGeoBins()[nodes[i].GetOrdering()]
+			thisRegion, ok := state.GetGeoBins()[nodes[i].GetOrdering()]
+			if !ok {
+				return nil, errors.Errorf("Unable to locate bin for code %s", nodes[i].GetOrdering())
+			}
 
 			// Get the ordering of the next node, circling back if at the last node
 			nextNode := nodes[(i+1)%len(nodes)]
-			nextRegion := state.GetGeoBins()[nextNode.GetOrdering()]
+			nextRegion, ok := state.GetGeoBins()[nextNode.GetOrdering()]
+			if !ok {
+				return nil, errors.Errorf("Unable to locate bin for code %s", nextNode.GetOrdering())
+			}
 
 			// Calculate the distance and pull the latency from the table
 			totalLatency += latencyTable[thisRegion][nextRegion]

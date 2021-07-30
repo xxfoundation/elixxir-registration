@@ -13,6 +13,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/region"
 	"testing"
 )
 
@@ -38,7 +39,7 @@ func TestStartRound(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -53,7 +54,7 @@ func TestStartRound(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "", 0)
+		err := testState.GetNodeMap().AddNode(nodeList[i], "US", "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -107,7 +108,7 @@ func TestStartRound_BadState(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -122,7 +123,7 @@ func TestStartRound_BadState(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "", 0)
+		err := testState.GetNodeMap().AddNode(nodeList[i], "US", "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -175,7 +176,7 @@ func TestStartRound_BadNode(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -190,7 +191,7 @@ func TestStartRound_BadNode(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "", 0)
+		err := testState.GetNodeMap().AddNode(nodeList[i], "US", "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()

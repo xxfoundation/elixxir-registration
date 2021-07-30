@@ -30,7 +30,7 @@ func TestCreateRound(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -43,7 +43,7 @@ func TestCreateRound(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "", 0)
+		err := testState.GetNodeMap().AddNode(nodeList[i], "US", "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -79,7 +79,7 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -133,7 +133,7 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -189,7 +189,7 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -289,7 +289,7 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

@@ -8,6 +8,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"reflect"
 	"strconv"
@@ -41,7 +42,7 @@ func TestScheduler_NonRandom(t *testing.T) {
 			"PermissioningKey is %+v", err, pk)
 	}
 	// Start registration server
-	state, err := storage.NewState(pk, 8, "")
+	state, err := storage.NewState(pk, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
