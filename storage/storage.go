@@ -9,7 +9,10 @@
 
 package storage
 
-import "testing"
+import (
+	"gitlab.com/xx_network/primitives/region"
+	"testing"
+)
 
 // Global variable for Database interaction
 var PermissioningDb Storage
@@ -21,15 +24,15 @@ type Storage struct {
 }
 
 // Return GeoBins in Map format from Storage
-func (s *Storage) GetBins() (map[string]uint8, error) {
+func (s *Storage) GetBins() (map[string]region.GeoBin, error) {
 	geoBins, err := s.getBins()
 	if err != nil {
 		return nil, err
 	}
 
-	result := make(map[string]uint8, len(geoBins))
+	result := make(map[string]region.GeoBin, len(geoBins))
 	for _, geoBin := range geoBins {
-		result[geoBin.Country] = geoBin.Bin
+		result[geoBin.Country] = region.GeoBin(geoBin.Bin)
 	}
 	return result, nil
 }

@@ -23,6 +23,7 @@ import (
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"strconv"
 	"strings"
@@ -53,7 +54,7 @@ type NetworkState struct {
 	disabledNodesStates *disabledNodes
 
 	// Keep track of Country -> Bin mapping
-	geoBins map[string]uint8
+	geoBins map[string]region.GeoBin
 
 	// NDF state
 	unprunedNdf  *ndf.NetworkDefinition
@@ -76,7 +77,7 @@ type NetworkState struct {
 }
 
 // NewState returns a new NetworkState object.
-func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string, geoBins map[string]uint8) (*NetworkState, error) {
+func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string, geoBins map[string]region.GeoBin) (*NetworkState, error) {
 
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
@@ -236,7 +237,7 @@ func (s *NetworkState) GetPartialNdf() *dataStructures.Ndf {
 }
 
 // GetGeoBin returns the GeoBin map.
-func (s *NetworkState) GetGeoBins() map[string]uint8 {
+func (s *NetworkState) GetGeoBins() map[string]region.GeoBin {
 	return s.geoBins
 }
 

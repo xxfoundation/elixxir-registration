@@ -23,6 +23,7 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/netTime"
+	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"sync"
 	"time"
@@ -122,7 +123,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// If the the GeoIP2 database file is supplied, then use it to open the
 	// GeoIP2 reader; otherwise, error if randomGeoBinning is not set
-	var geoBins map[string]uint8
+	var geoBins map[string]region.GeoBin
 	if params.geoIPDBFile != "" {
 		regImpl.geoIPDB, err = geoip2.Open(params.geoIPDBFile)
 		if err != nil {
@@ -141,8 +142,8 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			}
 			jww.INFO.Printf("Loaded %d GeoBins from Storage!", len(geoBins))
 		} else {
-			jww.INFO.Printf("Using static GeoBins!")
-			// TODO
+			geoBins = region.GetCountryBins()
+			jww.INFO.Printf("Loaded %d GeoBins from Primitives!", len(geoBins))
 		}
 	}
 

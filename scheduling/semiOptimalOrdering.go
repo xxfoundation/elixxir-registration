@@ -25,11 +25,11 @@ func generateSemiOptimalOrdering(nodes []*node.State, state *storage.NetworkStat
 		totalLatency := 0
 		for i := 0; i < len(nodes); i++ {
 			// Get the ordering for the current node
-			thisRegion := region.GeoBin(state.GetGeoBins()[nodes[i].GetOrdering()])
+			thisRegion := state.GetGeoBins()[nodes[i].GetOrdering()]
 
 			// Get the ordering of the next node, circling back if at the last node
 			nextNode := nodes[(i+1)%len(nodes)]
-			nextRegion := region.GeoBin(state.GetGeoBins()[nextNode.GetOrdering()])
+			nextRegion := state.GetGeoBins()[nextNode.GetOrdering()]
 
 			// Calculate the distance and pull the latency from the table
 			totalLatency += latencyTable[thisRegion][nextRegion]
