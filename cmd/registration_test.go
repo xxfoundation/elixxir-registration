@@ -15,7 +15,6 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
 	"gitlab.com/xx_network/primitives/id"
-	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"os"
 	"sync"
@@ -164,7 +163,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	applicationId := uint64(10)
 	newNode := &storage.Node{
 		Code:          "AAAA",
-		Sequence:      region.Americas.String(),
+		Sequence:      "GB",
 		ApplicationId: applicationId,
 	}
 	newApplication := &storage.Application{Id: applicationId}
@@ -202,7 +201,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 
 	// Insert a sample regCode
 	infos := []node.Info{
-		{RegCode: "BBBB", Order: region.Americas.String()},
+		{RegCode: "BBBB", Order: "US"},
 	}
 
 	storage.PopulateNodeRegistrationCodes(infos)
@@ -255,9 +254,9 @@ func TestDoubleRegistration(t *testing.T) {
 
 	// Create reg codes and populate the database
 	infos := []node.Info{
-		{RegCode: "AAAA", Order: region.Americas.String()},
-		{RegCode: "BBBB", Order: region.WesternEurope.String()},
-		{RegCode: "CCCC", Order: region.CentralEurope.String()},
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
 	}
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
@@ -311,9 +310,9 @@ func TestTopology_MultiNodes(t *testing.T) {
 
 	// Create reg codes and populate the database
 	infos := []node.Info{
-		{RegCode: "AAAA", Order: region.Americas.String()},
-		{RegCode: "BBBB", Order: region.WesternEurope.String()},
-		{RegCode: "CCCC", Order: region.CentralEurope.String()},
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
 	}
 
 	storage.PopulateNodeRegistrationCodes(infos)
@@ -380,9 +379,9 @@ func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 
 	// Create reg codes and populate the database
 	infos := []node.Info{
-		{RegCode: "AAAA", Order: region.Americas.String()},
-		{RegCode: "BBBB", Order: region.WesternEurope.String()},
-		{RegCode: "CCCC", Order: region.CentralEurope.String()},
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
 	}
 
 	storage.PopulateNodeRegistrationCodes(infos)
@@ -457,9 +456,9 @@ func TestCheckRegistration_NilMsg(t *testing.T) {
 
 	// Create reg codes and populate the database
 	infos := []node.Info{
-		{RegCode: "AAAA", Order: region.Americas.String()},
-		{RegCode: "BBBB", Order: region.WesternEurope.String()},
-		{RegCode: "CCCC", Order: region.CentralEurope.String()},
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
 	}
 
 	storage.PopulateNodeRegistrationCodes(infos)
@@ -513,9 +512,9 @@ func TestCheckRegistration_InvalidID(t *testing.T) {
 
 	// Create reg codes and populate the database
 	infos := []node.Info{
-		{RegCode: "AAAA", Order: region.Americas.String()},
-		{RegCode: "BBBB", Order: region.WesternEurope.String()},
-		{RegCode: "CCCC", Order: region.CentralEurope.String()},
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
 	}
 
 	storage.PopulateNodeRegistrationCodes(infos)

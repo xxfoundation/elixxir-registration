@@ -5,7 +5,6 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
 	"gitlab.com/xx_network/primitives/id"
-	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"testing"
 	"time"
@@ -29,9 +28,9 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 
 	// Create reg codes and populate the database
 	infos := []node.Info{
-		{RegCode: "AAAA", Order: region.Americas.String()},
-		{RegCode: "BBBB", Order: region.WesternEurope.String()},
-		{RegCode: "CCCC", Order: region.CentralEurope.String()},
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
 	}
 	storage.PopulateNodeRegistrationCodes(infos)
 

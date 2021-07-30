@@ -348,7 +348,6 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		}
 
 		if gatewayUpdate {
-
 			if err := updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err

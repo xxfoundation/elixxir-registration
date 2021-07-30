@@ -312,9 +312,10 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := []node.Info{
-		{RegCode: "BBBB", Order: region.Americas.String()},
-		{RegCode: "CCCC", Order: region.WesternEurope.String()},
-		{RegCode: "DDDD", Order: region.CentralEurope.String()},
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
+		{RegCode: "DDDD", Order: "BF"},
 	}
 	storage.PopulateNodeRegistrationCodes(infos)
 
@@ -411,9 +412,9 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := []node.Info{
-		{RegCode: "BBBB", Order: region.Americas.String()},
-		{RegCode: "CCCC", Order: region.WesternEurope.String()},
-		{RegCode: "DDDD", Order: region.CentralEurope.String()},
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
 	}
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
