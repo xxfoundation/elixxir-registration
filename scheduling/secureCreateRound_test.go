@@ -354,8 +354,7 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	var regionOrder []region.GeoBin
 	var regionOrderStr []string
 	for _, n := range testProtoRound.NodeStateList {
-		order, _ := region.GetRegion(n.GetOrdering())
-		region := n.GetOrdering()
+		order, _ := region.GetCountryBin(n.GetOrdering())
 		regionOrder = append(regionOrder, order)
 		regionOrderStr = append(regionOrderStr, region)
 	}
