@@ -200,8 +200,8 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 
 	// Craft regions for nodes
-	regions := []string{"Americas", "WesternEurope", "CentralEurope",
-		"EasternEurope", "MiddleEast", "Africa", "Russia", "Asia"}
+	regions := []string{"CR", "GB", "SK",
+		"HR", "IQ", "BF", "RU", "CX"}
 
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
@@ -241,10 +241,9 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 	var regionOrder []region.GeoBin
 	var regionOrderStr []string
 	for _, n := range testProtoRound.NodeStateList {
-		order, _ := region.GetRegion(n.GetOrdering())
-		region := n.GetOrdering()
+		order, _ := region.GetCountryBin(n.GetOrdering())
 		regionOrder = append(regionOrder, order)
-		regionOrderStr = append(regionOrderStr, region)
+		regionOrderStr = append(regionOrderStr, order.String())
 	}
 
 	t.Log("Team order outputted by CreateRound: ", regionOrderStr)
@@ -300,8 +299,8 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	nodeStateList := make([]*node.State, testParams.TeamSize*2)
 
 	// Craft regions for nodes
-	regions := []string{"Americas", "WesternEurope", "CentralEurope",
-		"EasternEurope", "MiddleEast", "Africa", "Russia", "Asia"}
+	regions := []string{"CR", "GB", "SK",
+		"HR", "IQ", "BF", "RU", "CX"}
 
 	// Populate the pool with 2x the team size
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
@@ -356,7 +355,7 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	for _, n := range testProtoRound.NodeStateList {
 		order, _ := region.GetCountryBin(n.GetOrdering())
 		regionOrder = append(regionOrder, order)
-		regionOrderStr = append(regionOrderStr, region)
+		regionOrderStr = append(regionOrderStr, order.String())
 	}
 
 	// Output the teaming order to the log in human readable format
