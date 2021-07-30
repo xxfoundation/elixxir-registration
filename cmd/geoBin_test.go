@@ -57,7 +57,7 @@ func TestRegistrationImpl_setNodeBin_RandomBin(t *testing.T) {
 	impl := &RegistrationImpl{params: &Params{randomGeoBinning: true}}
 
 	// Expected to generate random bin
-	err = impl.setNodeBin(stateMap.GetNode(testID))
+	err = impl.setNodeBin(stateMap.GetNode(testID), stateMap.GetNode(testID).GetNodeAddresses())
 	if err != nil {
 		t.Errorf("setNodeBin returned an error: %+v", err)
 	}
@@ -123,7 +123,7 @@ func TestRegistrationImpl_setNodeBin_GeoIP2DB(t *testing.T) {
 	}
 
 	// Call setNodeBin
-	err = impl.setNodeBin(stateMap.GetNode(testID))
+	err = impl.setNodeBin(stateMap.GetNode(testID), stateMap.GetNode(testID).GetNodeAddresses())
 	if err != nil {
 		t.Errorf("setNodeBin returned an error: %+v", err)
 	}
@@ -156,5 +156,5 @@ func TestRegistrationImpl_setNodeBin_NoFlags(t *testing.T) {
 	}()
 
 	impl := &RegistrationImpl{}
-	_ = impl.setNodeBin(&node.State{})
+	_ = impl.setNodeBin(&node.State{}, "")
 }
