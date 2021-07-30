@@ -14,8 +14,8 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/region"
+	"gitlab.com/xx_network/primitives/utils"
 	"math/rand"
-	"net"
 	"strconv"
 	"sync/atomic"
 	"time"
@@ -23,7 +23,6 @@ import (
 
 // Error messages.
 const (
-	splitHostPortErr  = "failed to split node IP and port: %+v"
 	parseIpErr        = "failed to parse node's address %q as an IP address"
 	ipdbErr           = "failed to get node's country: %+v"
 	ipdbNotRunningErr = "GeoIP2 database not running, reader probably closed"
@@ -38,10 +37,12 @@ const (
 // supplied, then the region is assigned based off the node IP address's
 // country. If randomGeoBinning in Params is set, then a random region is
 // chosen; this is used for testing. If neither the reader or the flag is set,
-// then an error is returned.
-func (m *RegistrationImpl) setNodeBin(n *node.State) error {
+// then an error is returned. The nodeIpAddr is the IP of of the node when it
+// connects to permissioning; it is not the IP or domain name reported by the
+// node.
+func (m *RegistrationImpl) setNodeBin(n *node.State, nodeIpAddr string) error {
 	// Get country code for node
-	countryCode, err := getAddressCountry(n.GetNodeAddresses(), m.geoIPDB,
+	countryCode, err := getAddressCountry(nodeIpAddr, m.geoIPDB,
 		m.params.randomGeoBinning, &m.geoIPDBStatus)
 
 	// Get the geographical bin that the country belongs to
@@ -65,7 +66,7 @@ func (m *RegistrationImpl) setNodeBin(n *node.State) error {
 
 // getAddressCountry returns an alpha-2 country code for the address. Panics if
 // randomGeoBinning is not set or a geoip2.Reader is not provided.
-func getAddressCountry(address string, geoIPDB *geoip2.Reader,
+func getAddressCountry(ipAddr string, geoIPDB *geoip2.Reader,
 	randomGeoBinning bool, geoipStatus *geoipStatus) (string, error) {
 	if geoIPDB != nil {
 		// Return an error if the status is not set to running (meaning the
@@ -75,7 +76,7 @@ func getAddressCountry(address string, geoIPDB *geoip2.Reader,
 		}
 
 		// Get country code for the country of the node's IP address
-		countryCode, err := lookupCountry(address, geoIPDB)
+		countryCode, err := lookupCountry(ipAddr, geoIPDB)
 		if err != nil {
 			return "", errors.Errorf(countryLookupErr, err)
 		}
@@ -94,17 +95,11 @@ func getAddressCountry(address string, geoIPDB *geoip2.Reader,
 
 // lookupCountry returns the alpha-2 country code of where the address is
 // located as found in the GeoIP2 database.
-func lookupCountry(address string, geoIPDB *geoip2.Reader) (string, error) {
-	// Extract node's IP from the full address
-	ipString, _, err := net.SplitHostPort(address)
-	if err != nil {
-		return "", errors.Errorf(splitHostPortErr, err)
-	}
-
+func lookupCountry(ipAddr string, geoIPDB *geoip2.Reader) (string, error) {
 	// Parse the IP string into a net.IP object
-	ip := net.ParseIP(ipString)
+	ip := utils.ParseIP(ipAddr)
 	if ip == nil {
-		return "", errors.Errorf(parseIpErr, ipString)
+		return "", errors.Errorf(parseIpErr, ipAddr)
 	}
 
 	// Get the node's country from its IP address via the GeoIP2 database
