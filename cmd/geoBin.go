@@ -13,10 +13,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
-	"net"
-	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
-	"math/rand"
 	"strconv"
 	"sync/atomic"
 )
@@ -27,7 +24,6 @@ const (
 	ipdbErr           = "failed to get node's country: %+v"
 	ipdbNotRunningErr = "GeoIP2 database not running, reader probably closed"
 	countryLookupErr  = "failed to get node's country: %+v"
-	noBinErr          = "no bin associated with country %q"
 	setDbSequenceErr  = "failed to set bin of node %s to %s"
 	invalidFlagsErr   = "no GeoIP2 database provided and randomGeoBinning is " +
 		"not set"
@@ -36,7 +32,7 @@ const (
 // setNodeSequence assigns a country code to each node
 func (m *RegistrationImpl) setNodeSequence(n *node.State, nodeIpAddr string) error {
 	// Get country code for node
-	countryCode, err := getAddressCountry(nodeIpAddr, n.GetNodeAddresses(), m.geoIPDB, &m.geoIPDBStatus)
+	countryCode, err := getAddressCountry(nodeIpAddr, m.geoIPDB, &m.geoIPDBStatus)
 
 	// Update sequence for the node in the database
 	err = storage.PermissioningDb.UpdateNodeSequence(n.GetID(), countryCode)
