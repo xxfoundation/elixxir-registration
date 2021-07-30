@@ -73,7 +73,6 @@ func TestMain(m *testing.M) {
 		minimumNodes:      3,
 		minGatewayVersion: minGatewayVersion,
 		minServerVersion:  minServerVersion,
-		randomGeoBinning:  true,
 	}
 	nodeComm = nodeComms.StartNode(&id.TempGateway, nodeAddr, 0, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
@@ -106,11 +105,10 @@ func TestEmptyDataBase(t *testing.T) {
 
 	// Start the registration server
 	testParams := Params{
-		CertPath:         testkeys.GetCACertPath(),
-		KeyPath:          testkeys.GetCAKeyPath(),
-		udbCertPath:      testkeys.GetUdbCertPath(),
-		NsCertPath:       testkeys.GetUdbCertPath(),
-		randomGeoBinning: true,
+		CertPath:    testkeys.GetCACertPath(),
+		KeyPath:     testkeys.GetCAKeyPath(),
+		udbCertPath: testkeys.GetUdbCertPath(),
+		NsCertPath:  testkeys.GetUdbCertPath(),
 	}
 	// Start registration server
 	impl, err := StartRegistration(testParams)

@@ -13,12 +13,9 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
-	"math/rand"
 	"strconv"
 	"sync/atomic"
-	"time"
 )
 
 // Error messages.
@@ -27,47 +24,30 @@ const (
 	ipdbErr           = "failed to get node's country: %+v"
 	ipdbNotRunningErr = "GeoIP2 database not running, reader probably closed"
 	countryLookupErr  = "failed to get node's country: %+v"
-	noBinErr          = "no bin associated with country %q"
 	setDbSequenceErr  = "failed to set bin of node %s to %s"
 	invalidFlagsErr   = "no GeoIP2 database provided and randomGeoBinning is " +
 		"not set"
 )
 
-// setNodeBin assigns a region to each node. If a GeoIP2 database reader is
-// supplied, then the region is assigned based off the node IP address's
-// country. If randomGeoBinning in Params is set, then a random region is
-// chosen; this is used for testing. If neither the reader or the flag is set,
-// then an error is returned. The nodeIpAddr is the IP of of the node when it
-// connects to permissioning; it is not the IP or domain name reported by the
-// node.
-func (m *RegistrationImpl) setNodeBin(n *node.State, nodeIpAddr string) error {
+// setNodeSequence assigns a country code to each node
+func (m *RegistrationImpl) setNodeSequence(n *node.State, nodeIpAddr string) error {
 	// Get country code for node
-	countryCode, err := getAddressCountry(nodeIpAddr, m.geoIPDB,
-		m.params.randomGeoBinning, &m.geoIPDBStatus)
-
-	// Get the geographical bin that the country belongs to
-	bin, exists := region.GetCountryBin(countryCode)
-	if !exists {
-		return errors.Errorf(noBinErr, countryCode)
-	}
-	jww.DEBUG.Printf("Node %s is in bin %s", n.GetID(), bin)
+	countryCode, err := getAddressCountry(nodeIpAddr, m.geoIPDB, &m.geoIPDBStatus)
 
 	// Update sequence for the node in the database
-	err = storage.PermissioningDb.UpdateNodeSequence(n.GetID(), bin.String())
+	err = storage.PermissioningDb.UpdateNodeSequence(n.GetID(), countryCode)
 	if err != nil {
-		return errors.Errorf(setDbSequenceErr, n.GetID(), bin)
+		return errors.Errorf(setDbSequenceErr, n.GetID(), countryCode)
 	}
 
 	// Set the state ordering
-	n.SetOrdering(bin.String())
-
+	n.SetOrdering(countryCode)
 	return nil
 }
 
 // getAddressCountry returns an alpha-2 country code for the address. Panics if
 // randomGeoBinning is not set or a geoip2.Reader is not provided.
-func getAddressCountry(ipAddr string, geoIPDB *geoip2.Reader,
-	randomGeoBinning bool, geoipStatus *geoipStatus) (string, error) {
+func getAddressCountry(ipAddr string, geoIPDB *geoip2.Reader, geoipStatus *geoipStatus) (string, error) {
 	if geoIPDB != nil {
 		// Return an error if the status is not set to running (meaning the
 		// reader has been closed)
@@ -81,10 +61,6 @@ func getAddressCountry(ipAddr string, geoIPDB *geoip2.Reader,
 			return "", errors.Errorf(countryLookupErr, err)
 		}
 		return countryCode, nil
-	} else if randomGeoBinning {
-		// Assign a geographical bin from a randomly selected country
-		return getRandomCountry(
-			rand.New(rand.NewSource(time.Now().UnixNano()))), nil
 	}
 
 	err := errors.New(invalidFlagsErr)
@@ -110,12 +86,6 @@ func lookupCountry(ipAddr string, geoIPDB *geoip2.Reader) (string, error) {
 
 	// Return the two letter alpha-2 country code
 	return country.Country.IsoCode, nil
-}
-
-// getRandomCountry returns a random alpha-2 country code.
-func getRandomCountry(rng *rand.Rand) string {
-	randomIndex := rng.Intn(region.CountryLen())
-	return region.GetCountryList()[randomIndex]
 }
 
 // geoipStatus signals the status of the GeoIP2 database reader. It should be

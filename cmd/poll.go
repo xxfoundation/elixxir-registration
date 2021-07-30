@@ -375,7 +375,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
-		err := m.setNodeBin(n, nodeIpAddr)
+		err := m.setNodeSequence(n, nodeIpAddr)
 		if err != nil {
 			return false, err
 		}

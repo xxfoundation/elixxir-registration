@@ -44,8 +44,8 @@ type Params struct {
 
 	disableNDFPruning bool
 
-	geoIPDBFile      string
-	randomGeoBinning bool
+	geoIPDBFile       string
+	dynamicGeoBinning bool
 
 	clientRegistrationAddress string
 

@@ -8,6 +8,7 @@ package storage
 
 import (
 	"gitlab.com/xx_network/primitives/id"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -346,4 +347,50 @@ func TestMapImpl_GetStateValue(t *testing.T) {
 	if !strings.Contains(err.Error(), "Unable to locate state for key") {
 		t.Errorf("Invalid error message getting bad state value: Got %s", err.Error())
 	}
+}
+
+// Unit test
+func TestMapImpl_GetBin(t *testing.T) {
+	m := &MapImpl{
+		geographicBin: make(map[string]uint8),
+	}
+
+	_, err := m.getBins()
+	if err == nil {
+		t.Errorf("Expected error case: Should recieve errors when map is empty")
+	}
+
+	// Set up and populate the map with testing values
+	testStrings := []string{"0", "1", "2", "3", "4"}
+	expectedMap := make(map[GeoBin]struct{})
+	for _, code := range testStrings {
+		bin, err := strconv.Atoi(code)
+		if err != nil {
+			t.Fatalf("Failed on setup: %v", err)
+		}
+		m.geographicBin[code] = uint8(bin)
+		expectedBin := &GeoBin{Bin: uint8(bin), Country: code}
+		expectedMap[*expectedBin] = struct{}{}
+	}
+
+	// Pull the bins
+	receivedBins, err := m.getBins()
+	if err != nil {
+		t.Fatalf("Unexpcted error in getBins(): %v", err)
+	}
+
+	// Test the results
+	if len(receivedBins) != len(expectedMap) {
+		t.Errorf("Did not receive expected amount of bins."+
+			"\n\tExpected: %d"+
+			"\n\tReceived: %v", len(expectedMap), len(receivedBins))
+	}
+
+	for _, bin := range receivedBins {
+		_, ok := expectedMap[*bin]
+		if !ok {
+			t.Errorf("Retrieved unexpected bin from map.")
+		}
+	}
+
 }

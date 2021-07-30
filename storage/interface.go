@@ -27,6 +27,7 @@ type database interface {
 	GetLatestEphemeralLength() (*EphemeralLength, error)
 	GetEphemeralLengths() ([]*EphemeralLength, error)
 	InsertEphemeralLength(length *EphemeralLength) error
+	getBins() ([]*GeoBin, error)
 
 	// Node methods
 	InsertApplication(application *Application, unregisteredNode *Node) error
@@ -50,6 +51,7 @@ type MapImpl struct {
 	states            map[string]string
 	ephemeralLengths  map[uint8]*EphemeralLength
 	activeNodes       map[id.ID]*ActiveNode
+	geographicBin     map[string]uint8
 	mut               sync.Mutex
 }
 
@@ -101,7 +103,14 @@ type Application struct {
 
 // Struct representing the ActiveNode table in the Database
 type ActiveNode struct {
-	Id []byte `gorm:"primary_key"`
+	WalletAddress string `gorm:"primary_key"`
+	Id            []byte `gorm:"NOT NULL;UNIQUE"`
+}
+
+// Struct representing the GeoBin table in the Database
+type GeoBin struct {
+	Country string `gorm:"primary_key"`
+	Bin     uint8  `gorm:"NOT NULL"`
 }
 
 // Struct representing the Node table in the Database
@@ -212,6 +221,7 @@ func NewMap() Storage {
 			states:           make(map[string]string),
 			ephemeralLengths: make(map[uint8]*EphemeralLength),
 			activeNodes:      make(map[id.ID]*ActiveNode),
+			geographicBin:    make(map[string]uint8),
 		}}
 }
 

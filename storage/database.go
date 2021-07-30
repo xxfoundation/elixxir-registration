@@ -70,7 +70,7 @@ func NewDatabase(username, password, database, address,
 	// WARNING: Order is important. Do not change without Database testing
 	models := []interface{}{
 		&State{}, &Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
-		&RoundError{}, EphemeralLength{}, ActiveNode{},
+		&RoundError{}, EphemeralLength{}, ActiveNode{}, GeoBin{},
 	}
 	for _, model := range models {
 		err = db.AutoMigrate(model).Error
