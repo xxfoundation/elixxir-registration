@@ -31,8 +31,17 @@ const (
 
 // setNodeSequence assigns a country code to each node
 func (m *RegistrationImpl) setNodeSequence(n *node.State, nodeIpAddr string) error {
+	var countryCode string
+	var err error
 	// Get country code for node
-	countryCode, err := getAddressCountry(nodeIpAddr, m.geoIPDB, &m.geoIPDBStatus)
+	if disableGeoBinning {
+		countryCode = n.GetOrdering()
+	} else {
+		countryCode, err = getAddressCountry(nodeIpAddr, m.geoIPDB, &m.geoIPDBStatus)
+		if err != nil {
+			return err
+		}
+	}
 
 	// Update sequence for the node in the database
 	err = storage.PermissioningDb.UpdateNodeSequence(n.GetID(), countryCode)

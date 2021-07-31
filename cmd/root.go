@@ -47,6 +47,7 @@ var (
 	disabledNodesPollDuration time.Duration
 
 	permissiveIPChecking bool
+	disableGeoBinning    bool
 )
 
 // Default duration between polls of the disabled Node list for updates.
@@ -264,6 +265,9 @@ var rootCmd = &cobra.Command{
 		onlyScheduleActive := viper.GetBool("OnlyScheduleActive")
 		metricTrackerQuitChan := make(chan struct{})
 		go TrackNodeMetrics(impl, metricTrackerQuitChan, nodeMetricInterval, onlyScheduleActive)
+
+		//disable geobinning for testing
+		disableGeoBinning = viper.GetBool("disableGeoBinning")
 
 		// Run address space updater until stopped
 		viper.SetDefault("addressSpaceSizeUpdateInterval", 5*time.Minute)

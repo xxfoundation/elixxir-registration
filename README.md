@@ -129,6 +129,9 @@ onlyScheduleActive: false
 geoIPDBFile: "/GeoLite2-City.mmdb"
 # In place of static CountryCode -> Bin map, use consensus-supplied GeoBins
 dynamicGeoBinning: false
+
+# For testing, use the sequence as the country code
+disableGeoBinning: false
 ```
 
 ### SchedulingConfig template:
