@@ -337,9 +337,15 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		m.NDFLock.Lock()
 		currentNDF := m.State.GetUnprunedNdf()
 
+		if currentNDF == nil {
+			m.NDFLock.Unlock()
+			return errors.New("Received nil ndf from" +
+				" m.State.GetUnprunedNdf")
+		}
+
 		n.SetConnectivity(node.PortUnknown)
 
-		if nodeUpdate {
+		if nodeUpdate && nodeAddress != "" {
 			nodeHost.UpdateAddress(nodeAddress)
 			if err := updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
@@ -347,7 +353,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 			}
 		}
 
-		if gatewayUpdate {
+		if gatewayUpdate && gatewayAddress != "" {
 			if err := updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
