@@ -39,6 +39,7 @@ type database interface {
 	GetNodeById(id *id.ID) (*Node, error)
 	GetNodesByStatus(status node.Status) ([]*Node, error)
 	GetActiveNodes() ([]*ActiveNode, error)
+	UpdateGeoIP(appId uint64, location, geo_bin, gps_location string) error
 }
 
 // Struct implementing the Database Interface with an underlying Map
