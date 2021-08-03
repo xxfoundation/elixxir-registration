@@ -29,6 +29,11 @@ const (
 		"not set"
 )
 
+func (m *RegistrationImpl) setNodeGeos(n *node.State, location, geo_bin, gps_location string) error {
+
+	return storage.PermissioningDb.UpdateGeoIP(n.GetAppID(), location, geo_bin, gps_location)
+}
+
 // setNodeSequence assigns a country code to each node
 func (m *RegistrationImpl) setNodeSequence(n *node.State, nodeIpAddr string) error {
 	var countryCode string

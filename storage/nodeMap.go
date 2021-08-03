@@ -10,6 +10,7 @@ package storage
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -40,6 +41,17 @@ func (m *MapImpl) InsertApplication(application *Application, unregisteredNode *
 	m.nodes[unregisteredNode.Code] = unregisteredNode
 	m.applications[application.Id] = application
 	return nil
+}
+
+func (m *MapImpl) UpdateGeoIP(appId uint64, location, geo_bin, gps_location string) error {
+	if app, ok := m.applications[appId]; ok {
+		app.Location = location
+		app.GeoBin = geo_bin
+		app.GpsLocation = gps_location
+		return nil
+	} else {
+		return errors.New(fmt.Sprintf("No application found with ID %d", appId))
+	}
 }
 
 // Update the address fields for the Node with the given id
