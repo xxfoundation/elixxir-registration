@@ -404,7 +404,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 			nodeHost, exists := m.Comms.GetHost(n.GetID())
 
 			nodePing := exists &&
-				utils.IsPublicAddress(nodeHost.GetAddress()) != nil &&
+				utils.IsPublicAddress(nodeHost.GetAddress()) == nil &&
 				nodeHost.IsOnline()
 
 			gwPing := true
@@ -414,7 +414,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 				params := connect.GetDefaultHostParams()
 				params.AuthEnabled = false
 				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), nil, params)
-				gwPing = err == nil && utils.IsPublicAddress(n.GetGatewayAddress()) != nil && gwHost.IsOnline()
+				gwPing = err == nil && utils.IsPublicAddress(n.GetGatewayAddress()) == nil && gwHost.IsOnline()
 			}
 
 			if nodePing && gwPing {
