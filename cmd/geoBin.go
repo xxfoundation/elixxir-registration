@@ -8,6 +8,8 @@
 package cmd
 
 import (
+	"fmt"
+	"gitlab.com/xx_network/primitives/region"
 	"strconv"
 	"sync/atomic"
 
@@ -37,15 +39,33 @@ func (m *RegistrationImpl) setNodeGeos(n *node.State, location, geo_bin, gps_loc
 
 // setNodeSequence assigns a country code to each node
 func (m *RegistrationImpl) setNodeSequence(n *node.State, nodeIpAddr string) error {
-	var countryCode string
+	var countryCode, countryName, city, gps string
+	var geobin region.GeoBin
 	var err error
+	var ok bool
 	// Get country code for node
 	if disableGeoBinning {
 		countryCode = n.GetOrdering()
 	} else {
 		countryCode, err = getAddressCountry(nodeIpAddr, m.geoIPDB, &m.geoIPDBStatus)
 		if err != nil {
-			return err
+			return errors.WithMessage(err, "Failed to get country for address")
+		}
+		city, err = getAddressCity(nodeIpAddr, m.geoIPDB, &m.geoIPDBStatus)
+		if err != nil {
+			return errors.WithMessage(err, "Failed to get city for address")
+		}
+		gps, err = getAddressCoords(nodeIpAddr, m.geoIPDB, &m.geoIPDBStatus)
+		if err != nil {
+			return errors.WithMessage(err, "Failed to get gps for address")
+		}
+		geobin, ok = region.GetCountryBin(countryCode)
+		if !ok {
+			return errors.WithMessage(err, "Could not get bin for country code")
+		}
+		countryName, err = lookupCountryName(nodeIpAddr, m.geoIPDB)
+		if err != nil {
+			return errors.WithMessage(err, "Could not get country name")
 		}
 	}
 
@@ -54,6 +74,8 @@ func (m *RegistrationImpl) setNodeSequence(n *node.State, nodeIpAddr string) err
 	if err != nil {
 		return errors.Errorf(setDbSequenceErr, n.GetID(), countryCode)
 	}
+
+	err = storage.PermissioningDb.UpdateGeoIP(n.GetAppID(), fmt.Sprintf("%s, %s", city, countryName), geobin.String(), gps)
 
 	// Set the state ordering
 	n.SetOrdering(countryCode)
@@ -146,28 +168,45 @@ func lookupCity(ipAddr string, geoIPDB *geoip2.Reader) (string, error) {
 	return country.City.Names["en"], nil
 }
 
+func lookupCountryName(ipAddr string, geoIPDB *geoip2.Reader) (string, error) {
+	// Parse the IP string into a net.IP object
+	ip := utils.ParseIP(ipAddr)
+	if ip == nil {
+		return "", errors.Errorf(parseIpErr, ipAddr)
+	}
+
+	// Get the node's country from its IP address via the GeoIP2 database
+	country, err := geoIPDB.Country(ip)
+	if err != nil {
+		return "", errors.Errorf(ipdbErr, err)
+	}
+
+	// Return the city
+	return country.Country.Names["en"], nil
+}
+
 // getAddressCoords returns the coords for an IP address. Panics if
 // randomGeoBinning is not set or a geoip2.Reader is not provided.
-func getAddressCoords(ipAddr string, geoIPDB *geoip2.Reader, geoipStatus *geoipStatus) (float64, float64, error) {
+func getAddressCoords(ipAddr string, geoIPDB *geoip2.Reader, geoipStatus *geoipStatus) (string, error) {
 	if geoIPDB != nil {
 		// Return an error if the status is not set to running (meaning the
 		// reader has been closed)
 		if !geoipStatus.IsRunning() {
-			return 0.0, 0.0, errors.New(ipdbNotRunningErr)
+			return "0.0, 0.0", errors.New(ipdbNotRunningErr)
 		}
 
 		// Get country code for the country of the node's IP address
 		latitude, longitude, err := lookupCoords(ipAddr, geoIPDB)
 		if err != nil {
-			return 0.0, 0.0, errors.Errorf(countryLookupErr, err)
+			return "0.0, 0.0", errors.Errorf(countryLookupErr, err)
 		}
-		return latitude, longitude, nil
+		return fmt.Sprintf("%f, %f", latitude, longitude), nil
 	}
 
 	err := errors.New(invalidFlagsErr)
 	jww.FATAL.Panic("Cannot get node bins: " + err.Error())
 
-	return 0.0, 0.0, err
+	return "0.0, 0.0", err
 }
 
 // lookupCoords returns the coords of where the address approx. is
