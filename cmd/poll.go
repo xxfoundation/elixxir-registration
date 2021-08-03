@@ -21,7 +21,6 @@ import (
 	"gitlab.com/xx_network/comms/signature"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
-	"gitlab.com/xx_network/primitives/utils"
 	"math/rand"
 	"sync/atomic"
 )
@@ -383,9 +382,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 		go func() {
 			nodeHost, exists := m.Comms.GetHost(n.GetID())
 
-			nodePing := exists &&
-				utils.IsPublicAddress(nodeHost.GetAddress()) != nil &&
-				nodeHost.IsOnline()
+			nodePing := exists && nodeHost.IsOnline()
 
 			gwPing := true
 			if !disableGatewayPing {
@@ -394,7 +391,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 				params := connect.GetDefaultHostParams()
 				params.AuthEnabled = false
 				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), nil, params)
-				gwPing = err == nil && utils.IsPublicAddress(n.GetGatewayAddress()) != nil && gwHost.IsOnline()
+				gwPing = err == nil && gwHost.IsOnline()
 			}
 
 			if nodePing && gwPing {
