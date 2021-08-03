@@ -183,6 +183,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		disableGatewayPing := viper.GetBool("disableGatewayPing")
+		disableNodePing := viper.GetBool("disableNodePing")
 
 		permissiveIPChecking = viper.GetBool("permissiveIPChecking")
 
@@ -212,6 +213,7 @@ var rootCmd = &cobra.Command{
 			minClientVersion:          minClientVersion,
 			addressSpaceSize:          uint8(viper.GetUint("addressSpace")),
 			disableGatewayPing:        disableGatewayPing,
+			disableNodePing:           disableNodePing,
 
 			disableNDFPruning: viper.GetBool("disableNDFPruning"),
 			geoIPDBFile:       viper.GetString("geoIPDBFile"),

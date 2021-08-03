@@ -40,6 +40,7 @@ type RegistrationImpl struct {
 	NdfReady           *uint32
 	certFromFile       string
 	disableGatewayPing bool
+	disableNodePing    bool
 
 	// registration status trackers
 	numRegistered int
@@ -118,6 +119,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		numRegistered:      0,
 		beginScheduling:    make(chan struct{}, 1),
 		disableGatewayPing: params.disableGatewayPing,
+		disableNodePing:    params.disableNodePing,
 		registrationTimes:  make(map[id.ID]int64),
 	}
 
@@ -378,4 +380,9 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 
 func (m *RegistrationImpl) GetDisableGatewayPingFlag() bool {
 	return m.disableGatewayPing
+}
+
+// GetDisableNodePingFlag returns the disableNodePing flag
+func (m *RegistrationImpl) GetDisableNodePingFlag() bool {
+	return m.disableNodePing
 }

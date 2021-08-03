@@ -115,6 +115,7 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 	n.SetConnectivity(node.PortSuccessful)
 
 	impl.disableGatewayPing = true
+	impl.disableNodePing = true
 
 	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
@@ -198,6 +199,7 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 	n.SetConnectivity(node.PortSuccessful)
 
 	impl.disableGatewayPing = true
+	impl.disableNodePing = true
 
 	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {

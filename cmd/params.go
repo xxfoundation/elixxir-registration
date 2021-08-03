@@ -41,6 +41,7 @@ type Params struct {
 	minClientVersion      version.Version
 	addressSpaceSize      uint8
 	disableGatewayPing    bool
+	disableNodePing       bool
 
 	disableNDFPruning bool
 
