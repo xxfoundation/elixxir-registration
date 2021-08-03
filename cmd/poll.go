@@ -328,6 +328,20 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", msg.ServerAddress,
 			gatewayAddress)
 
+		if nodeUpdate && !utils.IsIP(nodeAddress) {
+			err := utils.IsDomainName(nodeAddress)
+			if err != nil {
+				return err
+			}
+		}
+
+		if gatewayUpdate && !utils.IsIP(gatewayAddress) {
+			err := utils.IsDomainName(gatewayAddress)
+			if err != nil {
+				return err
+			}
+		}
+
 		// Update address information in Storage
 		err := storage.PermissioningDb.UpdateNodeAddresses(nodeHost.GetId(), nodeAddress, gatewayAddress)
 		if err != nil {
@@ -345,7 +359,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 
 		n.SetConnectivity(node.PortUnknown)
 
-		if nodeUpdate && nodeAddress != "" {
+		if nodeUpdate {
 			nodeHost.UpdateAddress(nodeAddress)
 			if err := updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
@@ -353,7 +367,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 			}
 		}
 
-		if gatewayUpdate && gatewayAddress != "" {
+		if gatewayUpdate {
 			if err := updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
