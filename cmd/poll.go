@@ -74,7 +74,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 	// Check the node's connectivity
 	continuePoll, err := m.checkConnectivity(n, auth.IpAddress, activity,
-		m.GetDisableGatewayPingFlag())
+		m.GetDisableGatewayPingFlag(), m.GetDisableNodePingFlag())
 	if err != nil || !continuePoll {
 		return response, err
 	}
@@ -390,7 +390,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 // The nodeIpAddr is the IP of of the node when it connects to permissioning; it
 // is not the IP or domain name reported by the node.
 func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
-	activity current.Activity, disableGatewayPing bool) (bool, error) {
+	activity current.Activity, disableGatewayPing, disableNodePing bool) (bool, error) {
 
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
@@ -403,8 +403,9 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 		go func() {
 			nodeHost, exists := m.Comms.GetHost(n.GetID())
 
-			nodePing := exists &&
-				utils.IsPublicAddress(nodeHost.GetAddress()) == nil &&
+			nodePing := exists && (disableNodePing ||
+				utils.IsPublicAddress(
+					nodeHost.GetAddress()) == nil) &&
 				nodeHost.IsOnline()
 
 			gwPing := true
