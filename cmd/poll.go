@@ -382,12 +382,12 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 		// Ping the server and attempt on that port
 		go func() {
 			nodeHost, exists := m.Comms.GetHost(n.GetID())
-			jww.INFO.Printf("[CHECKCONN] Node %s address in host object: %s", nodeHost.GetId(), nodeHost.GetAddress())
+			jww.INFO.Printf("[CHECKCONN]Node %s address in host object: %s", nodeHost.GetId(), nodeHost.GetAddress())
 			jww.INFO.Printf("[CHECKCONN]Node %s address IsPublicAddress: %s", nodeHost.GetId(), utils.IsPublicAddress(nodeHost.GetAddress()))
 			jww.INFO.Printf("[CHECKCONN]Node %s address IsOnline: %t", nodeHost.GetId(), nodeHost.IsOnline())
 
 			nodePing := exists &&
-				utils.IsPublicAddress(nodeHost.GetAddress()) != nil &&
+				utils.IsPublicAddress(nodeHost.GetAddress()) == nil &&
 				nodeHost.IsOnline()
 
 			gwPing := true
@@ -400,7 +400,7 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 				jww.INFO.Printf("[CHECKCONN]Gw %s address in host object: %s", nodeHost.GetId(), gwHost.GetAddress())
 				jww.INFO.Printf("[CHECKCONN]Gw %s address IsPublicAddress: %s", nodeHost.GetId(), utils.IsPublicAddress(gwHost.GetAddress()))
 				jww.INFO.Printf("[CHECKCONN]Gw %s address IsOnline: %t", nodeHost.GetId(), gwHost.IsOnline())
-				gwPing = err == nil && utils.IsPublicAddress(n.GetGatewayAddress()) != nil && gwHost.IsOnline()
+				gwPing = err == nil && utils.IsPublicAddress(n.GetGatewayAddress()) == nil && gwHost.IsOnline()
 			}
 
 			if nodePing && gwPing {
