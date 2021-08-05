@@ -64,6 +64,8 @@ type RegistrationImpl struct {
 // function used to schedule nodes
 type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 
+var LoadAllRegNodes bool
+
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) (*RegistrationImpl, error) {
 
@@ -194,22 +196,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		jww.WARN.Printf("Configured to run without notifications bot!")
 	}
 
-	// update the internal state with the newly-formed NDF
-	err = regImpl.State.UpdateNdf(networkDef)
-	if err != nil {
-		return nil, err
-	}
-
-	// Start the communication server
-	regImpl.Comms = registration.StartRegistrationServer(&id.Permissioning,
-		params.Address, NewImplementation(regImpl),
-		[]byte(regImpl.certFromFile), rsaKeyPem)
-
-	// In the noTLS pathway, disable authentication
-	if noTLS {
-		regImpl.Comms.DisableAuth()
-	}
-
 	// If the the GeoIP2 database file is supplied, then use it to open the
 	// GeoIP2 reader; otherwise, error if randomGeoBinning is not set
 	if params.geoIPDBFile != "" {
@@ -224,6 +210,29 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	} else if !params.randomGeoBinning {
 		jww.FATAL.Panic("Must provide either a MaxMind GeoLite2 compatible " +
 			"database file or set the 'randomGeoBinning' flag.")
+	}
+
+	// update the internal state with the newly-formed NDF
+	err = regImpl.State.UpdateNdf(networkDef)
+	if err != nil {
+		return nil, err
+	}
+
+	if LoadAllRegNodes {
+		err = regImpl.LoadAllRegisteredNodes()
+		if err != nil {
+			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
+		}
+	}
+
+	// Start the communication server
+	regImpl.Comms = registration.StartRegistrationServer(&id.Permissioning,
+		params.Address, NewImplementation(regImpl),
+		[]byte(regImpl.certFromFile), rsaKeyPem)
+
+	// In the noTLS pathway, disable authentication
+	if noTLS {
+		regImpl.Comms.DisableAuth()
 	}
 
 	return regImpl, nil

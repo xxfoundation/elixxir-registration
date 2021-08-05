@@ -242,6 +242,8 @@ var rootCmd = &cobra.Command{
 
 		jww.INFO.Println("Starting Permissioning Server...")
 
+		LoadAllRegNodes = true
+
 		// Start registration server
 		impl, err := StartRegistration(RegParams)
 		if err != nil {
@@ -250,11 +252,6 @@ var rootCmd = &cobra.Command{
 
 		viper.OnConfigChange(impl.updateVersions)
 		viper.WatchConfig()
-
-		err = impl.LoadAllRegisteredNodes()
-		if err != nil {
-			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
-		}
 
 		// Get disabled Nodes poll duration from config file or default to 1
 		// minute if not set
