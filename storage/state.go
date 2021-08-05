@@ -378,67 +378,6 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	return nil
 }
 
-// UpdateNdf updates internal NDF structures with the specified new NDF.
-func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
-
-	ndfMarshabled, _ := newNdf.Marshal()
-	s.unprunedNdf, _ = ndf.Unmarshal(ndfMarshabled)
-
-	s.pruneListMux.RLock()
-
-	//prune the NDF
-	for i := 0; i < len(newNdf.Nodes); i++ {
-		nid, _ := id.Unmarshal(newNdf.Nodes[i].ID)
-		if _, exists := s.pruneList[*nid]; exists {
-			newNdf.Nodes = append(newNdf.Nodes[:i], newNdf.Nodes[i+1:]...)
-			newNdf.Gateways = append(newNdf.Gateways[:i], newNdf.Gateways[i+1:]...)
-			i--
-		}
-	}
-
-	s.pruneListMux.RUnlock()
-
-	// Build NDF comms messages
-	fullNdfMsg := &pb.NDF{}
-	fullNdfMsg.Ndf, err = newNdf.Marshal()
-	if err != nil {
-		return
-	}
-	partialNdfMsg := &pb.NDF{}
-	partialNdfMsg.Ndf, err = newNdf.StripNdf().Marshal()
-	if err != nil {
-		return
-	}
-
-	// Sign NDF comms messages
-	err = signature.SignRsa(fullNdfMsg, s.rsaPrivateKey)
-	if err != nil {
-		return
-	}
-	err = signature.SignRsa(partialNdfMsg, s.rsaPrivateKey)
-	if err != nil {
-		return
-	}
-
-	// Assign NDF comms messages
-	err = s.fullNdf.Update(fullNdfMsg)
-	if err != nil {
-		return err
-	}
-
-	err = s.partialNdf.Update(partialNdfMsg)
-	if err != nil {
-		return err
-	}
-
-	err = outputToJSON(newNdf, s.ndfOutputPath)
-	if err != nil {
-		jww.ERROR.Printf("unable to output NDF JSON file: %+v", err)
-	}
-
-	return nil
-}
-
 // GetPrivateKey returns the server's private key.
 func (s *NetworkState) GetPrivateKey() *rsa.PrivateKey {
 	return s.rsaPrivateKey

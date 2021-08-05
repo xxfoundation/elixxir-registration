@@ -4,6 +4,7 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
+	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
@@ -92,16 +93,22 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	}
 
 	// Call to load all registered nodes from DB
-	err = impl.LoadAllRegisteredNodes()
+	hosts, err := impl.LoadAllRegisteredNodes()
 	if err != nil {
 		t.Error("LoadAllRegisteredNodes returned an error: ", err)
 	}
 	// endregion
 
+	hostsMap := make(map[id.ID]*connect.Host)
+
+	for i := range hosts {
+		hostsMap[*hosts[i].GetId()] = hosts[i]
+	}
+
 	// region Host map checking
 	// TODO: there doesn't seem to be a way to get the number of nodes in the host map that's obvious to me
 	// Check that the active node stuff is alright
-	hmActiveNode, hmActiveNodeOk := impl.Comms.GetHost(activeNodeId)
+	hmActiveNode, hmActiveNodeOk := hostsMap[*activeNodeId]
 	if !hmActiveNodeOk {
 		t.Error("Getting active node from host map did not return okay.")
 	}
@@ -109,7 +116,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		t.Error("Unexpected node ID for node 0:\r\tGot: %i\r\tExpected: %i", hmActiveNode.GetId(), activeNodeId)
 	}
 
-	hmBannedNode, hmBannedNodeOk := impl.Comms.GetHost(bannedNodeId)
+	hmBannedNode, hmBannedNodeOk := hostsMap[*bannedNodeId]
 	if !hmBannedNodeOk {
 		t.Error("Getting active node from host map did not return okay.")
 	}
