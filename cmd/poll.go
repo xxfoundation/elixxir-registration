@@ -94,6 +94,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 		// Return the updated NDFs
 		response.FullNDF = m.State.GetFullNdf().GetPb()
+		n.SetSendNDF()
+	} else if n.CheckSendNDF() {
 		response.PartialNDF = m.State.GetPartialNdf().GetPb()
 	} else {
 		// Fetch latest round updates
@@ -102,6 +104,8 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 			return response, err
 		}
 	}
+
+	// Commit u
 
 	// Commit updates reported by the node if node involved in the current round
 	jww.TRACE.Printf("Updating state for node %s: %+v",

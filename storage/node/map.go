@@ -38,6 +38,7 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string, appID ui
 	pfState := PortUnknown
 
 	numPolls := uint64(0)
+	sendNDF := uint32(0)
 	nsm.nodeStates[*id] =
 		&State{
 			activity:       current.NOT_STARTED,
@@ -52,6 +53,7 @@ func (nsm *StateMap) AddNode(id *id.ID, ordering, nAddr, gwAddr string, appID ui
 			mux:            sync.RWMutex{},
 			connectivity:   &pfState,
 			applicationID:  appID,
+			sendNDF:        &sendNDF,
 		}
 
 	return nil

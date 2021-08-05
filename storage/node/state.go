@@ -82,11 +82,21 @@ type State struct {
 	// Status of node's connectivity, i.e. whether the node
 	// has port forwarding
 	connectivity *uint32
+
+	sendNDF *uint32
 }
 
 // Increment function for numPolls
 func (n *State) IncrementNumPolls() {
 	atomic.AddUint64(n.numPolls, 1)
+}
+
+func (n *State) SetSendNDF() {
+	atomic.StoreUint32(n.sendNDF, 1)
+}
+
+func (n *State) CheckSendNDF() bool {
+	return atomic.CompareAndSwapUint32(n.sendNDF, 1, 0)
 }
 
 // Returns the current value of numPolls and then resets numPolls to zero
