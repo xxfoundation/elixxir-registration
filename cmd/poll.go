@@ -94,6 +94,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 		// Return the updated NDFs
 		response.FullNDF = m.State.GetFullNdf().GetPb()
+	} else if isSame = m.State.GetPartialNdf().CompareHash(msg.Partial.Hash); !isSame {
 		response.PartialNDF = m.State.GetPartialNdf().GetPb()
 	} else {
 		// Fetch latest round updates
