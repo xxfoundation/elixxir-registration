@@ -218,8 +218,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		return nil, err
 	}
 
+	var hosts []*connect.Host
+
 	if LoadAllRegNodes {
-		err = regImpl.LoadAllRegisteredNodes()
+		hosts, err = regImpl.LoadAllRegisteredNodes()
 		if err != nil {
 			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
 		}
@@ -228,16 +230,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Start the communication server
 	regImpl.Comms = registration.StartRegistrationServer(&id.Permissioning,
 		params.Address, NewImplementation(regImpl),
-		[]byte(regImpl.certFromFile), rsaKeyPem)
-
-	for _, pn := range newHosts {
-		//add the node to the host object for authenticated communications
-		_, err = regImpl.Comms.AddHost(pn.Id, pn.Addr, pn.Cert, connect.GetDefaultHostParams())
-		if err != nil {
-			return nil, errors.Errorf("Could not register host for Server %s: %+v", pn.Addr, err)
-		}
-
-	}
+		[]byte(regImpl.certFromFile), rsaKeyPem, hosts)
 
 	// In the noTLS pathway, disable authentication
 	if noTLS {

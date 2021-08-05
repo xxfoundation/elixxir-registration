@@ -27,58 +27,6 @@ import (
 	"sync/atomic"
 )
 
-var disabledNodes = map[string]bool{
-	"ebqXTJbHRRVBBtOtLWLjz9IjXStM9MNIUeq6zLY6KwcC": true,
-	"FCybdQUAz1crrgBNuqav9i4D7nn1eClMQOhFJtwuBH4C": true,
-	"+mTYsByq2UDKEERbMGM9bGvVTxSDqnD0rlbNdfCuvz4C": true,
-	"JFCQK+VSZnCQGY0SiCfD7XhEPW8VKu/OrPnnQgTt+tgC": true,
-	"Z+OQBM56nUUlkZq6rK6gFQ5OKnX1cIuMl+FNnwq1+okC": true,
-	"0bRQkL1dK6g8ZDnvfOJhW8kXjQsJ9jHZthqF2/qZCm8C": true,
-	"pI4cdWUqX8MLTinb9lMHEfOG4G+Qe219vWrSE2fSuAUC": true,
-	"CH6O08uybucXtnXpY0fuDhGn0S2JaRqaCV9z2h4ZXtMC": true,
-	"v4PJtanmfrBh5aS/OMTTBKDpSK5VxLaJiCDsQA+WSBEC": true,
-	"LfeVbGIawHdWvJM+ZChnfhrtgiObvaI8mBsyTedAvZwC": true,
-	"ZsUDqruiIXEOxDirJ8FesRx3Igu+sLwtH7i/OxLhE50C": true,
-	"/xvnoSma2l9A8cqeb+slS9SFFb+8EGogrsHaqKPE0bAC": true,
-	"W+uuS/7mN+PglqnkQeFO1pllaYoquVjeFvFNnj6IwzgC": true,
-	"pxNi0vqD6RWsibYZe11b+8WIL7Bb+pKjgIZcEez3ggkC": true,
-	"2TGOROlsC8h32jdSKx0P8knQiS/1SMACwLSN/piLxBAC": true,
-	"IWeH7eAKlYQI83c5l5CYaUBrWPIMgYxji/e55VCr6KEC": true,
-	"fr0EwplwSgpEbFKW5dt0Cqw9G01VfKOKxrDzdaXPreQC": true,
-	"q6MtMidme0zZ9mOE31DwtOWKEORaMm2Ilq3FaftGLJIC": true,
-	"RyPIFyn/jflA/8YQWf2BaQHPH5WnvcYyam6QYvWRUiYC": true,
-	"8/hKY3NZXI3bCvqWgvk8O2HFbmkKxAsyqqPIWgGlBMoC": true,
-	"LlF/GXzFCbxR9yuLZICgiPno/qy+ve38DAStkHB7/xcC": true,
-	"9Ft4LTpFMah8wZFnNiqfwokl8TxMv49IwB8r02Rk60UC": true,
-	"yLuHrz9eKOGSHTRiQwbns1pZih1VjO74owV+1LUzGHEC": true,
-	"f95Z/cbhHvwv+SXpPoFCZ0+ui3sQoP30vMnHV6YpEwkC": true,
-	"Lahqz/k1O6HkjR8T6e4vYL+35nPb087b3EG60yd2sPMC": true,
-	"p2IcZ/OC0Ze1+koCpVvbko+jlp8RbRKCZrs0KSafv0oC": true,
-	"xu2vw+aNEezjhkfAWxtuPtsCC709tpFBTo8EJLMpTFoC": true,
-	"pJXHAgE8AMihTDTHR4eGYy6gqSWFi5UgIiuzm/+7rrQC": true,
-	"gLEqm6MzjIf9aV5OX7cJhE4TfPQldGyDI1qfFl3ab/0C": true,
-	"d9flItpkadOst86zEzb8NSuLe0jMWp4ZmbqgAmKDTVoC": true,
-	"qEiXYfGPQ9/5xadVQG/xIWZ7dICilVeKjCakm/lqQmwC": true,
-	"1Kc2suTKVTuYaM5QQUhPpde6s48AjuCiTGZV6mmS6W8C": true,
-	"97LbEHPuoyj1bZ4hY9po6KNDMFhiTuLbdgsi514w81wC": true,
-	"fXNdadFLKt5sJ7Hcc1W7N2GrrPy6kdk30RBrYuNUA8YC": true,
-	"5StSHICOHLMNZrPTJuQrgfI8Ha2wFYAzaWXltY2ZvPcC": true,
-	"N96uWg07cE9Jnhc2/yxYSH1FvFSUhCqYzrTlSmFsQ8IC": true,
-	"954W9lPMVkKtVyrGXABt3kgtl4F+HoDLCROfuqbLtaEC": true,
-	"MA7/KEGHHd1LFBQyzgU39JemmL2RzT+v7ZZCB6UzNb4C": true,
-	"sYz3qh7EzwXMoCXlEdBOsFXanYD/AAZS0CZgwZ+2Im0C": true,
-	"GaCavWy3lhhG3KsIEUsYL8SIeI2kbK+ftfRvC1XrQT4C": true,
-	"3WiO+pruuFTijVUj8S/ckAWxwatRDQIYYhLJZ7YsdBIC": true,
-	"3vaKmaJnEC9cES32aleF7am5/M2rguGT0NSfnJU09BYC": true,
-	"3Te6Gty9l7L1CABbo+Qw9NT5aa0b6KOkC3NiwIVaGkwC": true,
-	"NkChK9PfkIer3sHfpp/3afa546MpyPR0MPuXFHqc1v4C": true,
-	"Zj9Q8ASv3/7Zyc/Jjp5j82jVlbn4laTQpHtR4291tcUC": true,
-	"zwYeWNhqClLqkfTr3rIE1Z+0cpxqxNKAqisgeeYxg6EC": true,
-	"1VMmgjJMDXDcPb2a2tkgi/YUJJATlgADGWUCq5+fBEUC": true,
-	"KaU77SzsSWNU8ie7NtqTDcKQHilxmyzEx0G3hp+dRQQC": true,
-	"JOWdt0DEReX/gvl2dK1rlOr0lU+JDM4vJNfY2bo0UhMC": true,
-}
-
 // Server->Permissioning unified poll function
 func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
 
@@ -94,10 +42,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	// Ensure client is properly authenticated
 	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
 		return response, connect.AuthError(auth.Sender.GetId())
-	}
-
-	if _, exists := disabledNodes[auth.Sender.GetId().String()]; exists {
-		return nil, nil
 	}
 
 	// Check for correct version
@@ -286,31 +230,22 @@ func checkVersion(p *Params, msg *pb.PermissioningPoll) error {
 // updateNdfNodeAddr searches the NDF nodes for a matching node ID and updates
 // its address to the required address.
 func updateNdfNodeAddr(nid *id.ID, requiredAddr string, ndf *ndf.NetworkDefinition) error {
-	replaced := false
-
 	// TODO: Have a faster search with an efficiency greater than O(n)
 	// Search the list of NDF nodes for a matching ID and update the address
 	for i, n := range ndf.Nodes {
 		if bytes.Equal(n.ID, nid[:]) {
 			ndf.Nodes[i].Address = requiredAddr
-			replaced = true
-			break
+			return nil
 		}
 	}
 
-	// Return an error if no matching node is found
-	if !replaced {
-		return errors.Errorf("Could not find node %s in the state map in "+
-			"order to update its address", nid.String())
-	}
-
-	return nil
+	return errors.Errorf("Could not find node %s in the state map in "+
+		"order to update its address", nid.String())
 }
 
 // updateNdfGatewayAddr searches the NDF gateways for a matching gateway ID and
 // updates its address to the required address.
 func updateNdfGatewayAddr(nid *id.ID, requiredAddr string, ndf *ndf.NetworkDefinition) error {
-	replaced := false
 	gid := nid.DeepCopy()
 	gid.SetType(id.Gateway)
 
@@ -319,18 +254,12 @@ func updateNdfGatewayAddr(nid *id.ID, requiredAddr string, ndf *ndf.NetworkDefin
 	for i, gw := range ndf.Gateways {
 		if bytes.Equal(gw.ID, gid[:]) {
 			ndf.Gateways[i].Address = requiredAddr
-			replaced = true
-			break
+			return nil
 		}
 	}
 
-	// Return an error if no matching gateway is found
-	if !replaced {
-		return errors.Errorf("Could not find gateway %s in the state map "+
-			"in order to update its address", gid.String())
-	}
-
-	return nil
+	return errors.Errorf("Could not find gateway %s in the state map "+
+		"in order to update its address", gid.String())
 }
 
 // Verify that the error in permissioningpoll is valid
@@ -375,8 +304,14 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 	gatewayAddress, nodeAddress := msg.GatewayAddress, msg.ServerAddress
 
 	// Update server and gateway addresses in state, if necessary
-	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
-	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
+	nodeUpdate, err := n.UpdateNodeAddresses(nodeAddress)
+	if err != nil {
+		return err
+	}
+	gatewayUpdate, err := n.UpdateGatewayAddresses(gatewayAddress)
+	if err != nil {
+		return err
+	}
 
 	// If state required changes, then check the NDF
 	if nodeUpdate || gatewayUpdate {
