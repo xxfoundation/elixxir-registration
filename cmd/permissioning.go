@@ -134,6 +134,14 @@ func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, 
 	return m.completeNodeRegistration(registrationCode)
 }
 
+type protoHost struct {
+	Id   *id.ID
+	Addr string
+	Cert []byte
+}
+
+var newHosts []protoHost
+
 // Loads all registered nodes and puts them into the host object and node map.
 // Should be run on startup.
 func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
@@ -147,11 +155,11 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
 	for _, n := range nodes {
 		nid, err := id.Unmarshal(n.Id)
 
-		//add the node to the host object for authenticated communications
-		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), connect.GetDefaultHostParams())
-		if err != nil {
-			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
-		}
+		newHosts = append(newHosts, protoHost{
+			Id:   nid,
+			Addr: n.ServerAddress,
+			Cert: []byte(n.NodeCertificate),
+		})
 
 		//add the node to the node map to track its state
 		err = m.State.GetNodeMap().AddNode(nid, n.Sequence, n.ServerAddress, n.GatewayAddress, n.ApplicationId)
@@ -175,10 +183,11 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
 		nid, err := id.Unmarshal(n.Id)
 
 		//add the node to the host object for authenticated communications
-		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), connect.GetDefaultHostParams())
-		if err != nil {
-			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
-		}
+		newHosts = append(newHosts, protoHost{
+			Id:   nid,
+			Addr: n.ServerAddress,
+			Cert: []byte(n.NodeCertificate),
+		})
 
 		//add the node to the node map to track its state
 		err = m.State.GetNodeMap().AddBannedNode(nid, n.Sequence, n.ServerAddress, n.GatewayAddress)

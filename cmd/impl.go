@@ -230,6 +230,15 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		params.Address, NewImplementation(regImpl),
 		[]byte(regImpl.certFromFile), rsaKeyPem)
 
+	for _, pn := range newHosts {
+		//add the node to the host object for authenticated communications
+		_, err = regImpl.Comms.AddHost(pn.Id, pn.Addr, pn.Cert, connect.GetDefaultHostParams())
+		if err != nil {
+			return nil, errors.Errorf("Could not register host for Server %s: %+v", pn.Addr, err)
+		}
+
+	}
+
 	// In the noTLS pathway, disable authentication
 	if noTLS {
 		regImpl.Comms.DisableAuth()
