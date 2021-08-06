@@ -10,6 +10,7 @@ package storage
 
 import (
 	"crypto/rand"
+	"encoding/base64"
 	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -374,6 +375,8 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	if err != nil {
 		jww.ERROR.Printf("unable to output NDF JSON file: %+v", err)
 	}
+
+	jww.INFO.Printf("Full NDF updated to: %s", base64.StdEncoding.EncodeToString(s.fullNdf.GetHash()))
 
 	return nil
 }
