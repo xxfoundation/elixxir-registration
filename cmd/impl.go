@@ -371,11 +371,6 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
 		// ensure a bad poll can not take down the permisisoning server
 		response, err := instance.Poll(msg, auth)
-		if err != nil && response != nil {
-			response.FullNDF = nil
-			response.PartialNDF = nil
-			response.Updates = nil
-		}
 
 		return response, err
 	}
