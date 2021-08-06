@@ -251,51 +251,6 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	}
 }*/
 
-// Error path: Failed auth
-func TestRegistrationImpl_PollFailAuth(t *testing.T) {
-	testString := "test"
-
-	// Start registration server
-	ndfReady := uint32(1)
-
-	state, err := storage.NewState(getTestKey(), 8, "", region.GetCountryBins())
-	if err != nil {
-		t.Errorf("Unable to create state: %+v", err)
-	}
-
-	testVersion, _ := version.ParseVersion("0.0.0")
-	impl := RegistrationImpl{
-		State:    state,
-		NdfReady: &ndfReady,
-		params: &Params{
-			minGatewayVersion: testVersion,
-			minServerVersion:  testVersion,
-		},
-	}
-
-	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
-		Registration: ndf.Registration{
-			Address:        "420",
-			TlsCertificate: "",
-		},
-	})
-
-	// Make a simple auth object that will fail the checks
-	testHost, _ := connect.NewHost(id.NewIdFromString(testString, id.Node, t),
-		testString, make([]byte, 0), connect.GetDefaultHostParams())
-	testAuth := &connect.Auth{
-		IsAuthenticated: false,
-		Sender:          testHost,
-	}
-
-	dummyMessage := &pb.PermissioningPoll{}
-
-	_, err = impl.Poll(dummyMessage, testAuth)
-	if err == nil || err.Error() != connect.AuthError(testAuth.Sender.GetId()).Error() {
-		t.Errorf("Unexpected error polling: %+v", err)
-	}
-}
-
 //Happy path
 func TestRegistrationImpl_PollNdf(t *testing.T) {
 	//Create database

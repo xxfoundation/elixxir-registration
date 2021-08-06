@@ -38,11 +38,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 			"is nil, poll cannot be processed")
 	}
 
-	// Ensure client is properly authenticated
-	if !auth.IsAuthenticated || auth.Sender.IsDynamicHost() {
-		return response, connect.AuthError(auth.Sender.GetId())
-	}
-
 	// Check for correct version
 	err := checkVersion(m.params, msg)
 	if err != nil {
