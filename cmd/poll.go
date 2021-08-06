@@ -95,12 +95,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		// Return the updated NDFs
 		response.FullNDF = m.State.GetFullNdf().GetPb()
 		response.PartialNDF = m.State.GetPartialNdf().GetPb()
-	} else {
-		// Fetch latest round updates
-		response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
-		if err != nil {
-			return response, err
-		}
+	}
+
+	// Fetch latest round updates
+	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
+	if err != nil {
+		return response, err
 	}
 
 	// Commit updates reported by the node if node involved in the current round
