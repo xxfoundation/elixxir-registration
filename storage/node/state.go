@@ -381,8 +381,9 @@ func (n *State) SetRound(r *round.State) error {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 	if n.currentRound != nil {
-		return errors.New("could not set the Node's round when it is " +
-			"already set")
+		return errors.Errorf("could not set the Node %s round when it is "+
+			"already set, current round: %v, new round: %v", n.id,
+			n.currentRound.GetRoundID(), r.GetRoundID())
 	}
 
 	n.currentRound = r

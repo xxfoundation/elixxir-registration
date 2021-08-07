@@ -38,10 +38,9 @@ func startRound(round protoRound, state *storage.NetworkState, roundTracker *Rou
 	for i, n := range round.NodeStateList {
 		jwalterweatherman.TRACE.Printf("Node %v is (%d)/(%d) of round",
 			round.Topology.GetNodeAtIndex(i), i, len(round.NodeStateList))
-		err := n.SetRound(r)
+		err = n.SetRound(r)
 		if err != nil {
-			err = errors.WithMessagef(err, "could not add round %v to node %s", r.GetRoundID(), n.GetID())
-			return nil, err
+			return nil, errors.WithMessagef(err, "could not add round %v to node %s", r.GetRoundID(), n.GetID())
 		}
 	}
 
