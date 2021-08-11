@@ -12,7 +12,6 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/primitives/id"
-	"strconv"
 )
 
 // createSimpleRound.go contains the logic to construct a team for a round and
@@ -32,40 +31,20 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	var newRound protoRound
 
 	//build the topology
-	nodeMap := state.GetNodeMap()
 	nodeStateList := make([]*node.State, params.TeamSize)
 	orderedNodeList := make([]*id.ID, params.TeamSize)
 
-	if params.SemiOptimalOrdering {
-		// Generate a team based on latency
-		nodeStateList, err = generateSemiOptimalOrdering(nodes, state)
-		if err != nil {
-			return protoRound{}, errors.WithMessage(err,
-				"Failed to generate optimal ordering")
-		}
+	// Generate a team based on latency
+	nodeStateList, err = generateSemiOptimalOrdering(nodes, state)
+	if err != nil {
+		return protoRound{}, errors.WithMessage(err,
+			"Failed to generate optimal ordering")
+	}
 
-		// Parse the node list to get the order
-		for i, n := range nodeStateList {
-			nid := n.GetID()
-			orderedNodeList[i] = nid
-		}
-	} else {
-		// Otherwise go in the order derived
-		// from the pool picking and the node's ordering
-		for i, nid := range nodes {
-			n := nodeMap.GetNode(nid.GetID())
-			nodeStateList[i] = n
-
-			// Get the position for the node
-			position, err := strconv.Atoi(n.GetOrdering())
-			if err != nil {
-				return protoRound{}, errors.WithMessagef(err,
-					"Could not parse ordering info ('%s') from node %s",
-					n.GetOrdering(), nid.GetID().String())
-			}
-
-			orderedNodeList[position] = nid.GetID()
-		}
+	// Parse the node list to get the order
+	for i, n := range nodeStateList {
+		nid := n.GetID()
+		orderedNodeList[i] = nid
 	}
 
 	// Construct the proto-round object

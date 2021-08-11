@@ -15,83 +15,8 @@ import (
 	"gitlab.com/xx_network/primitives/region"
 	mathRand "math/rand"
 	"reflect"
-	"strconv"
 	"testing"
 )
-
-// Happy path
-func TestCreateRound_NonRandom(t *testing.T) {
-	// Build params for scheduling
-	testParams := Params{
-		TeamSize:            5,
-		BatchSize:           32,
-		RandomOrdering:      false,
-		Threshold:           0,
-		NodeCleanUpInterval: 3,
-		Secure:              false,
-	}
-
-	// Build network state
-	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
-	if err != nil {
-		t.Errorf("Failed to create test state: %v", err)
-		t.FailNow()
-	}
-
-	// Build node list
-	nodeList := make([]*id.ID, testParams.TeamSize)
-	nodeStateList := make([]*node.State, testParams.TeamSize)
-
-	// Build pool
-	testPool := NewWaitingPool()
-
-	for i := 0; i < int(testParams.TeamSize); i++ {
-		nid := id.NewIdFromUInt(uint64(i), id.Node, t)
-		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], strconv.Itoa(int(i)), "", "", 0)
-		if err != nil {
-			t.Errorf("Couldn't add node: %v", err)
-			t.FailNow()
-		}
-		nodeState := testState.GetNodeMap().GetNode(nid)
-		nodeStateList[i] = nodeState
-		testPool.Add(nodeState)
-	}
-
-	expectedTopology := connect.NewCircuit(nodeList)
-
-	roundID, err := testState.IncrementRoundID()
-	if err != nil {
-		t.Errorf("IncrementRoundID() failed: %+v", err)
-	}
-
-	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState)
-	if err != nil {
-		t.Errorf("Happy path of createSimpleRound failed: %v", err)
-	}
-
-	if testProtoRound.ID != roundID {
-		t.Errorf("ProtoRound's id returned unexpected value!"+
-			"\n\tExpected: %d"+
-			"\n\tReceived: %d", roundID, testProtoRound.ID)
-	}
-
-	if !reflect.DeepEqual(testProtoRound.Topology, expectedTopology) {
-		t.Errorf("ProtoRound's topology returned unexpected value!"+
-			"\n\tExpected: %v"+
-			"\n\tReceived: %v", expectedTopology, testProtoRound.Topology)
-	}
-
-	if testParams.BatchSize != testProtoRound.BatchSize {
-		t.Errorf("ProtoRound's batchsize returned unexpected value!"+
-			"\n\tExpected: %v"+
-			"\n\tReceived: %v", testParams.BatchSize, testProtoRound.BatchSize)
-
-	}
-
-}
 
 // Happy path
 func TestCreateRound_Random(t *testing.T) {
