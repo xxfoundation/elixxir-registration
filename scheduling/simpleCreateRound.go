@@ -3,11 +3,11 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
+
 package scheduling
 
 import (
 	"github.com/pkg/errors"
-	"gitlab.com/elixxir/crypto/shuffle"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
@@ -36,7 +36,6 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	nodeStateList := make([]*node.State, params.TeamSize)
 	orderedNodeList := make([]*id.ID, params.TeamSize)
 
-	// In the case of random ordering
 	if params.SemiOptimalOrdering {
 		// Generate a team based on latency
 		nodeStateList, err = generateSemiOptimalOrdering(nodes, state)
@@ -49,24 +48,6 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 		for i, n := range nodeStateList {
 			nid := n.GetID()
 			orderedNodeList[i] = nid
-		}
-	} else if params.RandomOrdering {
-		// Input an incrementing array of ints
-		randomIndex := make([]uint64, params.TeamSize)
-		for i := range randomIndex {
-			randomIndex[i] = uint64(i)
-		}
-
-		// Shuffle array of ints randomly using Fisher-Yates shuffle
-		// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
-		shuffle.Shuffle(&randomIndex)
-
-		for i, nid := range nodes {
-			n := nodeMap.GetNode(nid.GetID())
-			nodeStateList[i] = n
-			// Use the shuffled array as an indexing order for
-			//  the nodes' topological order
-			orderedNodeList[randomIndex[i]] = nid.GetID()
 		}
 	} else {
 		// Otherwise go in the order derived
@@ -87,7 +68,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 		}
 	}
 
-	// Construct the protoround object
+	// Construct the proto-round object
 	newRound.Topology = connect.NewCircuit(orderedNodeList)
 	newRound.ID = roundID
 	newRound.BatchSize = params.BatchSize
