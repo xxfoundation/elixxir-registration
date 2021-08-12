@@ -3,7 +3,6 @@ module gitlab.com/elixxir/registration
 go 1.13
 
 require (
-	github.com/audiolion/ipip v1.0.0 // indirect
 	github.com/denisenkom/go-mssqldb v0.0.0-20200428022330-06a60b6afbbc // indirect
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
@@ -20,11 +19,11 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/spf13/viper v1.7.1
-	gitlab.com/elixxir/comms v0.0.4-0.20210806005425-5d9ef1cb62f0
-	gitlab.com/elixxir/crypto v0.0.7-0.20210715174359-2ee9461daae7
+	gitlab.com/elixxir/comms v0.0.4-0.20210812192116-5fe032a7cbd3
+	gitlab.com/elixxir/crypto v0.0.7-0.20210803232056-ba3ff44cc618
 	gitlab.com/elixxir/primitives v0.0.3-0.20210803231939-7b924f78eaac
-	gitlab.com/xx_network/comms v0.0.4-0.20210806004558-10a717d0c45e
-	gitlab.com/xx_network/crypto v0.0.5-0.20210715174114-f33d03bc10ec
+	gitlab.com/xx_network/comms v0.0.4-0.20210812154251-ad8c4e828677
+	gitlab.com/xx_network/crypto v0.0.5-0.20210803231814-b18476a2257c
 	gitlab.com/xx_network/primitives v0.0.4-0.20210803222745-e898d5e546e9
 	google.golang.org/genproto v0.0.0-20210315173758-2651cd453018 // indirect
 )
