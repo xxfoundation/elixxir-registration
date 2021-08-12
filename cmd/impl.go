@@ -23,7 +23,7 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/netTime"
-	"gitlab.com/xx_network/primitives/rateLimiting"
+	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"sync"
 	"time"
@@ -31,16 +31,14 @@ import (
 
 // The main registration instance object
 type RegistrationImpl struct {
-	Comms                *registration.Comms
-	params               *Params
-	State                *storage.NetworkState
-	Stopped              *uint32
-	permissioningCert    *x509.Certificate
-	ndfOutputPath        string
-	NdfReady             *uint32
-	certFromFile         string
-	registrationLimiting *rateLimiting.Bucket
-	disableGatewayPing   bool
+	Comms             *registration.Comms
+	params            *Params
+	State             *storage.NetworkState
+	Stopped           *uint32
+	permissioningCert *x509.Certificate
+	ndfOutputPath     string
+	NdfReady          *uint32
+	certFromFile      string
 
 	// registration status trackers
 	numRegistered int
@@ -112,28 +110,49 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			"database: %v.", err)
 	}
 
+	// Build default parameters
+	regImpl := &RegistrationImpl{
+		params:            &params,
+		ndfOutputPath:     params.NdfOutputPath,
+		NdfReady:          &ndfReady,
+		Stopped:           &roundCreationStopped,
+		numRegistered:     0,
+		beginScheduling:   make(chan struct{}, 1),
+		registrationTimes: make(map[id.ID]int64),
+	}
+
+	// If the the GeoIP2 database file is supplied, then use it to open the
+	// GeoIP2 reader; otherwise, error if randomGeoBinning is not set
+	var geoBins map[string]region.GeoBin
+	if params.geoIPDBFile != "" {
+		regImpl.geoIPDB, err = geoip2.Open(params.geoIPDBFile)
+		if err != nil {
+			return nil,
+				errors.Errorf("failed to load GeoIP2 database file: %+v", err)
+		}
+
+		// Set the GeoIP2 reader to running
+		regImpl.geoIPDBStatus.ToRunning()
+
+		// Determine which type of GeoBinning we're using
+		if regImpl.params.blockchainGeoBinning {
+			geoBins, err = storage.PermissioningDb.GetBins()
+			if err != nil {
+				return nil, err
+			}
+			jww.INFO.Printf("Loaded %d GeoBins from Storage!", len(geoBins))
+		} else {
+			geoBins = region.GetCountryBins()
+			jww.INFO.Printf("Loaded %d GeoBins from Primitives!", len(geoBins))
+		}
+	}
+
 	// Initialize the state tracking object
-	state, err := storage.NewState(
-		rsaPrivateKey, uint32(newestAddressSpace.Size), params.NdfOutputPath)
+	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size),
+		params.NdfOutputPath, geoBins)
 	if err != nil {
 		return nil, err
 	}
-
-	// Build default parameters
-	regImpl := &RegistrationImpl{
-		State:              state,
-		params:             &params,
-		ndfOutputPath:      params.NdfOutputPath,
-		NdfReady:           &ndfReady,
-		Stopped:            &roundCreationStopped,
-		numRegistered:      0,
-		beginScheduling:    make(chan struct{}, 1),
-		disableGatewayPing: params.disableGatewayPing,
-		registrationTimes:  make(map[id.ID]int64),
-	}
-
-	// regImpl.registrationLimiting = rateLimiting.Create(params.userRegCapacity, params.userRegLeakRate)
-	regImpl.registrationLimiting = rateLimiting.CreateBucket(params.userRegCapacity, params.userRegCapacity, params.userRegLeakPeriod, func(u uint32, i int64) {})
 
 	if !noTLS {
 		// Read in TLS keys from files
@@ -161,9 +180,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: ndf.Registration{
-			Address:        RegParams.publicAddress,
-			TlsCertificate: regImpl.certFromFile,
-			EllipticPubKey: state.GetEllipticPublicKey().MarshalText(),
+			Address:                   RegParams.publicAddress,
+			TlsCertificate:            regImpl.certFromFile,
+			EllipticPubKey:            regImpl.State.GetEllipticPublicKey().MarshalText(),
+			ClientRegistrationAddress: RegParams.clientRegistrationAddress,
 		},
 		Timestamp: time.Now(),
 		UDB: ndf.UDB{
@@ -198,7 +218,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// If the the GeoIP2 database file is supplied, then use it to open the
 	// GeoIP2 reader; otherwise, error if randomGeoBinning is not set
-	if params.geoIPDBFile != "" {
+	if params.disableGeoBinning {
+		jww.WARN.Printf("Running with geobinning disabled. Nodes are expected to " +
+			"have proper country codes in their inserted sequence. This feature should be used for testing only")
+	} else if params.geoIPDBFile != "" {
 		regImpl.geoIPDB, err = geoip2.Open(params.geoIPDBFile)
 		if err != nil {
 			return nil,
@@ -207,7 +230,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 		// Set the GeoIP2 reader to running
 		regImpl.geoIPDBStatus.ToRunning()
-	} else if !params.randomGeoBinning {
+	} else {
 		jww.FATAL.Panic("Must provide either a MaxMind GeoLite2 compatible " +
 			"database file or set the 'randomGeoBinning' flag.")
 	}
@@ -340,13 +363,6 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 // NewImplementation returns a registration server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
-	impl.Functions.RegisterUser = func(msg *pb.UserRegistration) (*pb.UserRegistrationConfirmation, error) {
-		confirmationMessage, err := instance.RegisterUser(msg)
-		if err != nil {
-			jww.ERROR.Printf("RegisterUser error: %+v", err)
-		}
-		return confirmationMessage, err
-	}
 	impl.Functions.RegisterNode = func(salt []byte, serverAddr, serverTlsCert, gatewayAddr,
 		gatewayTlsCert, registrationCode string) error {
 
@@ -387,8 +403,4 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	}
 
 	return impl
-}
-
-func (m *RegistrationImpl) GetDisableGatewayPingFlag() bool {
-	return m.disableGatewayPing
 }

@@ -40,15 +40,16 @@ type Params struct {
 	minServerVersion      version.Version
 	minClientVersion      version.Version
 	addressSpaceSize      uint8
-	disableGatewayPing    bool
-	// User registration can take userRegCapacity registrations in userRegLeakPeriod period of time
-	userRegCapacity   uint32
-	userRegLeakPeriod time.Duration
+	allowLocalIPs         bool
+	disableGeoBinning     bool
+	blockchainGeoBinning  bool
+	disablePing           bool
 
 	disableNDFPruning bool
 
-	geoIPDBFile      string
-	randomGeoBinning bool
+	geoIPDBFile string
+
+	clientRegistrationAddress string
 
 	versionLock sync.RWMutex
 }

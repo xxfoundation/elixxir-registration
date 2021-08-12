@@ -229,8 +229,8 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) {
 	jww.TRACE.Printf("Realtime for round %v took: %v", roundInfo.GetRoundId(), realTimeDuration)
 
 	err := storage.PermissioningDb.InsertRoundMetric(metric, roundInfo.Topology)
-	if err!=nil{
-		jww.ERROR.Printf("Failed to insert round metric from " +
+	if err != nil {
+		jww.ERROR.Printf("Failed to insert round metric from "+
 			"completed round: %+v", err)
 	}
 }
@@ -256,7 +256,7 @@ func killRound(state *storage.NetworkState, r *round.State,
 			"update to kill round %v", r.GetRoundID())
 	}
 
-	go func(){
+	go func() {
 		// Attempt to insert the RoundMetric for the failed round
 		metric := &storage.RoundMetric{
 			Id:            uint64(roundId),

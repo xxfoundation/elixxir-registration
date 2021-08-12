@@ -325,10 +325,10 @@ func assembleNdf(code string) (ndf.Gateway, ndf.Node, int64, error) {
 	gwID := nodeID.DeepCopy()
 	gwID.SetType(id.Gateway)
 
-	bin, err := region.GetRegion(nodeInfo.Sequence)
-	if err != nil {
+	bin, exists := region.GetCountryBin(nodeInfo.Sequence)
+	if !exists {
 		return ndf.Gateway{}, ndf.Node{}, 0,
-			errors.Errorf("Error parsing node sequence: %+v", err)
+			errors.Errorf("Error parsing node sequence %s, countru does not exist", nodeInfo.Sequence)
 	}
 
 	gateway := ndf.Gateway{

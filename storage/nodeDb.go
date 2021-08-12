@@ -10,6 +10,7 @@
 package storage
 
 import (
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
@@ -88,4 +89,24 @@ func (d *DatabaseImpl) GetActiveNodes() ([]*ActiveNode, error) {
 	var activeNodes []*ActiveNode
 	err := d.db.Find(&activeNodes).Error
 	return activeNodes, err
+}
+
+func (d *DatabaseImpl) UpdateGeoIP(appId uint64, location, geo_bin, gps_location string) error {
+	app := &Application{
+		Id: appId,
+	}
+	err := d.db.First(&app).Error
+	if err != nil {
+		return errors.WithMessagef(err, "Failed to find application with id %d", appId)
+	}
+
+	app.GeoBin = geo_bin
+	app.GpsLocation = gps_location
+	app.Location = location
+
+	err = d.db.Save(&app).Error
+	if err != nil {
+		return errors.WithMessagef(err, "Failed to update geo info for app id %d", appId)
+	}
+	return nil
 }

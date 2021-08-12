@@ -10,7 +10,6 @@ package cmd
 
 import (
 	"bytes"
-	"github.com/audiolion/ipip"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -22,8 +21,8 @@ import (
 	"gitlab.com/xx_network/comms/signature"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/utils"
 	"math/rand"
-	"net"
 	"sync/atomic"
 )
 
@@ -74,7 +73,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	}
 
 	// Check the node's connectivity
-	continuePoll, err := m.checkConnectivity(n, activity, m.GetDisableGatewayPingFlag())
+	continuePoll, err := m.checkConnectivity(n, auth.IpAddress, activity)
 	if err != nil || !continuePoll {
 		return response, err
 	}
@@ -319,6 +318,20 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", msg.ServerAddress,
 			gatewayAddress)
 
+		if nodeUpdate && !utils.IsIP(nodeAddress) {
+			err := utils.IsDomainName(nodeAddress)
+			if err != nil {
+				return err
+			}
+		}
+
+		if gatewayUpdate && !utils.IsIP(gatewayAddress) {
+			err := utils.IsDomainName(gatewayAddress)
+			if err != nil {
+				return err
+			}
+		}
+
 		// Update address information in Storage
 		err := storage.PermissioningDb.UpdateNodeAddresses(nodeHost.GetId(), nodeAddress, gatewayAddress)
 		if err != nil {
@@ -327,6 +340,12 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 
 		m.NDFLock.Lock()
 		currentNDF := m.State.GetUnprunedNdf()
+
+		if currentNDF == nil {
+			m.NDFLock.Unlock()
+			return errors.New("Received nil ndf from" +
+				" m.State.GetUnprunedNdf")
+		}
 
 		n.SetConnectivity(node.PortUnknown)
 
@@ -339,7 +358,6 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		}
 
 		if gatewayUpdate {
-
 			if err := updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
 				m.NDFLock.Unlock()
 				return err
@@ -357,33 +375,44 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 	return nil
 }
 
-// Handles the responses to the different connectivity states of a node
-// if boolean is true the poll should continue
-func (m *RegistrationImpl) checkConnectivity(n *node.State,
-	activity current.Activity, disableGatewayPing bool) (bool, error) {
+// checkConnectivity handles the responses to the different connectivity states
+// of a node. If the returned boolean is true, then the poll should continue.
+// The nodeIpAddr is the IP of of the node when it connects to permissioning; it
+// is not the IP or domain name reported by the node.
+func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
+	activity current.Activity) (bool, error) {
 
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
-		err := m.setNodeBin(n)
+		err := m.setNodeSequence(n, nodeIpAddr)
 		if err != nil {
 			return false, err
 		}
 		// If we are not sure on whether the port has been forwarded
 		// Ping the server and attempt on that port
 		go func() {
-			nodeHost, exists := m.Comms.GetHost(n.GetID())
+			var nodePing, gwPing bool
+			if m.params.disablePing {
+				nodePing, gwPing = true, true
+			} else {
+				//ping the node
+				nodeHost, exists := m.Comms.GetHost(n.GetID())
 
-			nodePing := exists && isValidAddr(nodeHost.GetAddress()) &&
-				nodeHost.IsOnline()
+				nodePing = exists &&
+					(utils.IsPublicAddress(nodeHost.GetAddress()) == nil || m.params.allowLocalIPs) &&
+					nodeHost.IsOnline()
 
-			gwPing := true
-			if !disableGatewayPing {
+				//build gateway host
 				gwID := nodeHost.GetId().DeepCopy()
 				gwID.SetType(id.Gateway)
 				params := connect.GetDefaultHostParams()
 				params.AuthEnabled = false
 				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), nil, params)
-				gwPing = err == nil && isValidAddr(n.GetGatewayAddress()) && gwHost.IsOnline()
+
+				//ping the gateway
+				gwPing = (err == nil) &&
+					(utils.IsPublicAddress(n.GetGatewayAddress()) == nil || m.params.allowLocalIPs) &&
+					gwHost.IsOnline()
 			}
 
 			if nodePing && gwPing {
@@ -459,27 +488,4 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State,
 	}
 
 	return false, nil
-}
-
-//fixme: move this to primitives and research more
-func isValidAddr(addr string) bool {
-	if permissiveIPChecking {
-		return true
-	}
-	host, _, err := net.SplitHostPort(addr)
-	if err != nil || host == "" {
-		return false
-	}
-
-	ip := net.ParseIP(host)
-	if ip == nil {
-		return false
-	}
-
-	if ipip.IsPrivate(ip) || ip.IsLoopback() || ip.IsUnspecified() ||
-		ip.IsMulticast() {
-		return false
-	}
-
-	return true
 }
