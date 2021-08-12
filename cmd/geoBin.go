@@ -44,7 +44,7 @@ func (m *RegistrationImpl) setNodeSequence(n *node.State, nodeIpAddr string) err
 	var err error
 	var ok bool
 	// Get country code for node
-	if disableGeoBinning {
+	if m.params.disableGeoBinning {
 		countryCode = n.GetOrdering()
 	} else {
 		countryCode, err = getAddressCountry(nodeIpAddr, m.geoIPDB, &m.geoIPDBStatus)

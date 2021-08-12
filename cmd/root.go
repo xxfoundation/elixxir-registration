@@ -45,9 +45,6 @@ var (
 
 	// Duration between polls of the disabled Node list for updates.
 	disabledNodesPollDuration time.Duration
-
-	permissiveIPChecking bool
-	disableGeoBinning    bool
 )
 
 // Default duration between polls of the disabled Node list for updates.
@@ -182,11 +179,6 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Could not parse duration: %+v", err)
 		}
 
-		disableGatewayPing := viper.GetBool("disableGatewayPing")
-		disableNodePing := viper.GetBool("disableNodePing")
-
-		permissiveIPChecking = viper.GetBool("permissiveIPChecking")
-
 		viper.SetDefault("addressSpace", 5)
 
 		// Populate params
@@ -212,13 +204,14 @@ var rootCmd = &cobra.Command{
 			minServerVersion:          minServerVersion,
 			minClientVersion:          minClientVersion,
 			addressSpaceSize:          uint8(viper.GetUint("addressSpace")),
-			disableGatewayPing:        disableGatewayPing,
-			disableNodePing:           disableNodePing,
+			allowLocalIPs:             viper.GetBool("allowLocalIPs"),
+			disableGeoBinning:         viper.GetBool("disableGeoBinning"),
+			blockchainGeoBinning:      viper.GetBool("blockchainGeoBinning"),
 
 			disableNDFPruning: viper.GetBool("disableNDFPruning"),
 			geoIPDBFile:       viper.GetString("geoIPDBFile"),
-			dynamicGeoBinning: viper.GetBool("dynamicGeoBinning"),
-			versionLock:       sync.RWMutex{},
+
+			versionLock: sync.RWMutex{},
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -264,9 +257,6 @@ var rootCmd = &cobra.Command{
 		onlyScheduleActive := viper.GetBool("OnlyScheduleActive")
 		metricTrackerQuitChan := make(chan struct{})
 		go TrackNodeMetrics(impl, metricTrackerQuitChan, nodeMetricInterval, onlyScheduleActive)
-
-		//disable geobinning for testing
-		disableGeoBinning = viper.GetBool("disableGeoBinning")
 
 		// Run address space updater until stopped
 		viper.SetDefault("addressSpaceSizeUpdateInterval", 5*time.Minute)

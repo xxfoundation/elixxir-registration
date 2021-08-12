@@ -73,8 +73,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	}
 
 	// Check the node's connectivity
-	continuePoll, err := m.checkConnectivity(n, auth.IpAddress, activity,
-		m.GetDisableGatewayPingFlag(), m.GetDisableNodePingFlag())
+	continuePoll, err := m.checkConnectivity(n, auth.IpAddress, activity)
 	if err != nil || !continuePoll {
 		return response, err
 	}
@@ -381,7 +380,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 // The nodeIpAddr is the IP of of the node when it connects to permissioning; it
 // is not the IP or domain name reported by the node.
 func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
-	activity current.Activity, disableGatewayPing, disableNodePing bool) (bool, error) {
+	activity current.Activity) (bool, error) {
 
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
@@ -392,21 +391,28 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 		// If we are not sure on whether the port has been forwarded
 		// Ping the server and attempt on that port
 		go func() {
-			nodeHost, exists := m.Comms.GetHost(n.GetID())
+			var nodePing, gwPing bool
+			if m.params.disablePing {
+				nodePing, gwPing = true, true
+			} else {
+				//ping the node
+				nodeHost, exists := m.Comms.GetHost(n.GetID())
 
-			nodePing := exists && (disableNodePing ||
-				utils.IsPublicAddress(
-					nodeHost.GetAddress()) == nil) &&
-				nodeHost.IsOnline()
+				nodePing = exists &&
+					(utils.IsPublicAddress(nodeHost.GetAddress()) == nil || m.params.allowLocalIPs) &&
+					nodeHost.IsOnline()
 
-			gwPing := true
-			if !disableGatewayPing {
+				//build gateway host
 				gwID := nodeHost.GetId().DeepCopy()
 				gwID.SetType(id.Gateway)
 				params := connect.GetDefaultHostParams()
 				params.AuthEnabled = false
 				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), nil, params)
-				gwPing = err == nil && utils.IsPublicAddress(n.GetGatewayAddress()) == nil && gwHost.IsOnline()
+
+				//ping the gateway
+				gwPing = (err == nil) &&
+					(utils.IsPublicAddress(n.GetGatewayAddress()) == nil || m.params.allowLocalIPs) &&
+					gwHost.IsOnline()
 			}
 
 			if nodePing && gwPing {
