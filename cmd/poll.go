@@ -73,8 +73,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	}
 
 	// Check the node's connectivity
-	continuePoll, err := m.checkConnectivity(n, auth.IpAddress, activity,
-		m.GetDisableGatewayPingFlag(), m.GetDisableNodePingFlag())
+	continuePoll, err := m.checkConnectivity(n, auth.IpAddress, activity)
 	if err != nil || !continuePoll {
 		return response, err
 	}
@@ -95,12 +94,12 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		// Return the updated NDFs
 		response.FullNDF = m.State.GetFullNdf().GetPb()
 		response.PartialNDF = m.State.GetPartialNdf().GetPb()
-	} else {
-		// Fetch latest round updates
-		response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
-		if err != nil {
-			return response, err
-		}
+	}
+
+	// Fetch latest round updates
+	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
+	if err != nil {
+		return response, err
 	}
 
 	// Commit updates reported by the node if node involved in the current round
@@ -230,31 +229,22 @@ func checkVersion(p *Params, msg *pb.PermissioningPoll) error {
 // updateNdfNodeAddr searches the NDF nodes for a matching node ID and updates
 // its address to the required address.
 func updateNdfNodeAddr(nid *id.ID, requiredAddr string, ndf *ndf.NetworkDefinition) error {
-	replaced := false
-
 	// TODO: Have a faster search with an efficiency greater than O(n)
 	// Search the list of NDF nodes for a matching ID and update the address
 	for i, n := range ndf.Nodes {
 		if bytes.Equal(n.ID, nid[:]) {
 			ndf.Nodes[i].Address = requiredAddr
-			replaced = true
-			break
+			return nil
 		}
 	}
 
-	// Return an error if no matching node is found
-	if !replaced {
-		return errors.Errorf("Could not find node %s in the state map in "+
-			"order to update its address", nid.String())
-	}
-
-	return nil
+	return errors.Errorf("Could not find node %s in the state map in "+
+		"order to update its address", nid.String())
 }
 
 // updateNdfGatewayAddr searches the NDF gateways for a matching gateway ID and
 // updates its address to the required address.
 func updateNdfGatewayAddr(nid *id.ID, requiredAddr string, ndf *ndf.NetworkDefinition) error {
-	replaced := false
 	gid := nid.DeepCopy()
 	gid.SetType(id.Gateway)
 
@@ -263,18 +253,12 @@ func updateNdfGatewayAddr(nid *id.ID, requiredAddr string, ndf *ndf.NetworkDefin
 	for i, gw := range ndf.Gateways {
 		if bytes.Equal(gw.ID, gid[:]) {
 			ndf.Gateways[i].Address = requiredAddr
-			replaced = true
-			break
+			return nil
 		}
 	}
 
-	// Return an error if no matching gateway is found
-	if !replaced {
-		return errors.Errorf("Could not find gateway %s in the state map "+
-			"in order to update its address", gid.String())
-	}
-
-	return nil
+	return errors.Errorf("Could not find gateway %s in the state map "+
+		"in order to update its address", gid.String())
 }
 
 // Verify that the error in permissioningpoll is valid
@@ -319,8 +303,14 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 	gatewayAddress, nodeAddress := msg.GatewayAddress, msg.ServerAddress
 
 	// Update server and gateway addresses in state, if necessary
-	nodeUpdate := n.UpdateNodeAddresses(nodeAddress)
-	gatewayUpdate := n.UpdateGatewayAddresses(gatewayAddress)
+	nodeUpdate, err := n.UpdateNodeAddresses(nodeAddress)
+	if err != nil {
+		return err
+	}
+	gatewayUpdate, err := n.UpdateGatewayAddresses(gatewayAddress)
+	if err != nil {
+		return err
+	}
 
 	// If state required changes, then check the NDF
 	if nodeUpdate || gatewayUpdate {
@@ -390,7 +380,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 // The nodeIpAddr is the IP of of the node when it connects to permissioning; it
 // is not the IP or domain name reported by the node.
 func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
-	activity current.Activity, disableGatewayPing, disableNodePing bool) (bool, error) {
+	activity current.Activity) (bool, error) {
 
 	switch n.GetConnectivity() {
 	case node.PortUnknown:
@@ -401,21 +391,28 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 		// If we are not sure on whether the port has been forwarded
 		// Ping the server and attempt on that port
 		go func() {
-			nodeHost, exists := m.Comms.GetHost(n.GetID())
+			var nodePing, gwPing bool
+			if m.params.disablePing {
+				nodePing, gwPing = true, true
+			} else {
+				//ping the node
+				nodeHost, exists := m.Comms.GetHost(n.GetID())
 
-			nodePing := exists && (disableNodePing ||
-				utils.IsPublicAddress(
-					nodeHost.GetAddress()) == nil) &&
-				nodeHost.IsOnline()
+				nodePing = exists &&
+					(utils.IsPublicAddress(nodeHost.GetAddress()) == nil || m.params.allowLocalIPs) &&
+					nodeHost.IsOnline()
 
-			gwPing := true
-			if !disableGatewayPing {
+				//build gateway host
 				gwID := nodeHost.GetId().DeepCopy()
 				gwID.SetType(id.Gateway)
 				params := connect.GetDefaultHostParams()
 				params.AuthEnabled = false
 				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), nil, params)
-				gwPing = err == nil && utils.IsPublicAddress(n.GetGatewayAddress()) == nil && gwHost.IsOnline()
+
+				//ping the gateway
+				gwPing = (err == nil) &&
+					(utils.IsPublicAddress(n.GetGatewayAddress()) == nil || m.params.allowLocalIPs) &&
+					gwHost.IsOnline()
 			}
 
 			if nodePing && gwPing {

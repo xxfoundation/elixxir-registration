@@ -510,8 +510,8 @@ func TestNodeState_SetRound_Invalid(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("SetRound did not an error which it should have failed")
-	} else if !strings.Contains(err.Error(), "could not set the Node's "+
-		"round when it is already set") {
+	} else if !strings.Contains(err.Error(), "could not set the Node <nil> "+
+		"round when it is already set, current round: 69, new round: 42") {
 		t.Errorf("Incorrect error returned from failed SetRound: %s", err)
 	}
 

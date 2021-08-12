@@ -54,7 +54,6 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	permissiveIPChecking = true
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
@@ -114,8 +113,7 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 	n := impl.State.GetNodeMap().GetNode(testID)
 	n.SetConnectivity(node.PortSuccessful)
 
-	impl.disableGatewayPing = true
-	impl.disableNodePing = true
+	impl.params.disablePing = true
 
 	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
@@ -136,7 +134,6 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	permissiveIPChecking = true
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
@@ -198,8 +195,7 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 	n := impl.State.GetNodeMap().GetNode(testID)
 	n.SetConnectivity(node.PortSuccessful)
 
-	impl.disableGatewayPing = true
-	impl.disableNodePing = true
+	impl.params.disablePing = true
 
 	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
