@@ -36,7 +36,6 @@ var (
 	logLevel             uint // 0 = info, 1 = debug, >1 = trace
 	noTLS                bool
 	RegParams            Params
-	ClientRegCodes       []string
 	disablePermissioning bool
 	disabledNodesPath    string
 
@@ -48,6 +47,7 @@ var (
 	disabledNodesPollDuration time.Duration
 
 	permissiveIPChecking bool
+	disableGeoBinning    bool
 )
 
 // Default duration between polls of the disabled Node list for updates.
@@ -92,7 +92,7 @@ var rootCmd = &cobra.Command{
 		nsCertPath := viper.GetString("nsCertPath")
 		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
-
+		clientRegistration := viper.GetString("registrationAddress")
 		// Set up database connection
 		rawAddr := viper.GetString("dbAddress")
 
@@ -130,9 +130,6 @@ var rootCmd = &cobra.Command{
 			jww.WARN.Printf("No registration code file found. This may be" +
 				"normal in live deployments")
 		}
-
-		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
-		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
 		// Get user discovery ID and DH public key from contact file
 		udbId, udbDhPubKey := readUdContact(viper.GetString("udContactPath"))
@@ -186,24 +183,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		disableGatewayPing := viper.GetBool("disableGatewayPing")
-
-		userRegLeakPeriodString := viper.GetString("userRegLeakPeriod")
-		var userRegLeakPeriod time.Duration
-		if userRegLeakPeriodString != "" {
-			// specified, so try to parse
-			userRegLeakPeriod, err = time.ParseDuration(userRegLeakPeriodString)
-			if err != nil {
-				jww.FATAL.Panicf("Could not parse duration: %+v", err)
-			}
-		} else {
-			// use default
-			userRegLeakPeriod = time.Hour * 24
-		}
-		userRegCapacity := viper.GetUint32("userRegCapacity")
-		if userRegCapacity == 0 {
-			// use default
-			userRegCapacity = 1000
-		}
+		disableNodePing := viper.GetBool("disableNodePing")
 
 		permissiveIPChecking = viper.GetBool("permissiveIPChecking")
 
@@ -211,33 +191,34 @@ var rootCmd = &cobra.Command{
 
 		// Populate params
 		RegParams = Params{
-			Address:               localAddress,
-			CertPath:              certPath,
-			KeyPath:               keyPath,
-			NdfOutputPath:         ndfOutputPath,
-			NsCertPath:            nsCertPath,
-			NsAddress:             nsAddress,
-			cmix:                  *cmix,
-			e2e:                   *e2e,
-			publicAddress:         publicAddress,
-			schedulingKillTimeout: schedulingKillTimeout,
-			closeTimeout:          closeTimeout,
-			minimumNodes:          viper.GetUint32("minimumNodes"),
-			udbId:                 udbId,
-			udbDhPubKey:           udbDhPubKey,
-			udbCertPath:           udbCertPath,
-			udbAddress:            udbAddress,
-			minGatewayVersion:     minGatewayVersion,
-			minServerVersion:      minServerVersion,
-			minClientVersion:      minClientVersion,
-			addressSpaceSize:      uint8(viper.GetUint("addressSpace")),
-			disableGatewayPing:    disableGatewayPing,
-			userRegCapacity:       userRegCapacity,
-			userRegLeakPeriod:     userRegLeakPeriod,
-			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
-			geoIPDBFile:           viper.GetString("geoIPDBFile"),
-			randomGeoBinning:      viper.GetBool("randomGeoBinning"),
-			versionLock:           sync.RWMutex{},
+			Address:                   localAddress,
+			CertPath:                  certPath,
+			KeyPath:                   keyPath,
+			NdfOutputPath:             ndfOutputPath,
+			NsCertPath:                nsCertPath,
+			NsAddress:                 nsAddress,
+			cmix:                      *cmix,
+			e2e:                       *e2e,
+			publicAddress:             publicAddress,
+			clientRegistrationAddress: clientRegistration,
+			schedulingKillTimeout:     schedulingKillTimeout,
+			closeTimeout:              closeTimeout,
+			minimumNodes:              viper.GetUint32("minimumNodes"),
+			udbId:                     udbId,
+			udbDhPubKey:               udbDhPubKey,
+			udbCertPath:               udbCertPath,
+			udbAddress:                udbAddress,
+			minGatewayVersion:         minGatewayVersion,
+			minServerVersion:          minServerVersion,
+			minClientVersion:          minClientVersion,
+			addressSpaceSize:          uint8(viper.GetUint("addressSpace")),
+			disableGatewayPing:        disableGatewayPing,
+			disableNodePing:           disableNodePing,
+
+			disableNDFPruning: viper.GetBool("disableNDFPruning"),
+			geoIPDBFile:       viper.GetString("geoIPDBFile"),
+			dynamicGeoBinning: viper.GetBool("dynamicGeoBinning"),
+			versionLock:       sync.RWMutex{},
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -283,6 +264,9 @@ var rootCmd = &cobra.Command{
 		onlyScheduleActive := viper.GetBool("OnlyScheduleActive")
 		metricTrackerQuitChan := make(chan struct{})
 		go TrackNodeMetrics(impl, metricTrackerQuitChan, nodeMetricInterval, onlyScheduleActive)
+
+		//disable geobinning for testing
+		disableGeoBinning = viper.GetBool("disableGeoBinning")
 
 		// Run address space updater until stopped
 		viper.SetDefault("addressSpaceSizeUpdateInterval", 5*time.Minute)

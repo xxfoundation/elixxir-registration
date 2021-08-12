@@ -69,9 +69,8 @@ func NewDatabase(username, password, database, address,
 	// Initialize the Database schema
 	// WARNING: Order is important. Do not change without Database testing
 	models := []interface{}{
-		&RegistrationCode{}, &User{}, &State{},
-		&Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
-		&RoundError{}, EphemeralLength{}, ActiveNode{},
+		&State{}, &Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
+		&RoundError{}, EphemeralLength{}, ActiveNode{}, GeoBin{},
 	}
 	for _, model := range models {
 		err = db.AutoMigrate(model).Error

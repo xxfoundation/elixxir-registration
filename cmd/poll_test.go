@@ -115,6 +115,7 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 	n.SetConnectivity(node.PortSuccessful)
 
 	impl.disableGatewayPing = true
+	impl.disableNodePing = true
 
 	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
@@ -198,6 +199,7 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 	n.SetConnectivity(node.PortSuccessful)
 
 	impl.disableGatewayPing = true
+	impl.disableNodePing = true
 
 	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
@@ -256,7 +258,7 @@ func TestRegistrationImpl_PollFailAuth(t *testing.T) {
 	// Start registration server
 	ndfReady := uint32(1)
 
-	state, err := storage.NewState(getTestKey(), 8, "")
+	state, err := storage.NewState(getTestKey(), 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -312,9 +314,10 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := []node.Info{
-		{RegCode: "BBBB", Order: region.Americas.String()},
-		{RegCode: "CCCC", Order: region.WesternEurope.String()},
-		{RegCode: "DDDD", Order: region.CentralEurope.String()},
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
+		{RegCode: "DDDD", Order: "BF"},
 	}
 	storage.PopulateNodeRegistrationCodes(infos)
 
@@ -411,9 +414,9 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 
 	//Create reg codes and populate the database
 	infos := []node.Info{
-		{RegCode: "BBBB", Order: region.Americas.String()},
-		{RegCode: "CCCC", Order: region.WesternEurope.String()},
-		{RegCode: "DDDD", Order: region.CentralEurope.String()},
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
 	}
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
@@ -1039,7 +1042,7 @@ func TestVerifyError(t *testing.T) {
 	// Start registration server
 	ndfReady := uint32(0)
 
-	state, err := storage.NewState(pk, 8, "")
+	state, err := storage.NewState(pk, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
