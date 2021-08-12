@@ -51,11 +51,6 @@ minServerVersion:  "0.0.0"
 # The minimum version required of clients to connect
 minClientVersion: "0.0.0"
 
-# Disable pinging of Gateway public IP address.
-disableGatewayPing: false
-# Disable pinging of Node public IP address.
-disableNodePing: false
-
 # Disable pruning of NDF for offline nodes
 # if set to false, network will sleep for five minutes on start
 disableNDFPruning: true
@@ -129,11 +124,16 @@ onlyScheduleActive: false
 
 # A MaxMind GeoLite2 database file to lookup IPs against for geobinning
 geoIPDBFile: "/GeoLite2-City.mmdb"
-# In place of static CountryCode -> Bin map, use consensus-supplied GeoBins
-dynamicGeoBinning: false
 
-# For testing, use the sequence as the country code
+
+# For testing, use the sequence as the country code. Do not use the geobinning database
 disableGeoBinning: false
+
+# For testing, do not exclude node or gateway IPs which are local to the machine
+allowLocalIPs: false
+
+# Pulls geobin information from the blockchain instead of the hardcoded info
+blockchainGeoBinning: false
 ```
 
 ### SchedulingConfig template:

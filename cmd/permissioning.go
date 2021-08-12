@@ -134,61 +134,64 @@ func (m *RegistrationImpl) RegisterNode(salt []byte, serverAddr, serverTlsCert, 
 	return m.completeNodeRegistration(registrationCode)
 }
 
+type protoHost struct {
+	Id   *id.ID
+	Addr string
+	Cert []byte
+}
+
+var newHosts []protoHost
+
 // Loads all registered nodes and puts them into the host object and node map.
 // Should be run on startup.
-func (m *RegistrationImpl) LoadAllRegisteredNodes() error {
+func (m *RegistrationImpl) LoadAllRegisteredNodes() ([]*connect.Host, error) {
 	// TODO: This code could probably use some cleanup
 	// TODO: We might consider refactoring the ban timer code and this code to share stuff, they might have similar goals.
+	hosts := make([]*connect.Host, 0)
+
 	nodes, err := storage.PermissioningDb.GetNodesByStatus(node.Active)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, n := range nodes {
 		nid, err := id.Unmarshal(n.Id)
 
-		//add the node to the host object for authenticated communications
-		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), connect.GetDefaultHostParams())
-		if err != nil {
-			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
-		}
-
+		h, _ := connect.NewHost(nid, n.ServerAddress, []byte(n.NodeCertificate), connect.GetDefaultHostParams())
+		hosts = append(hosts, h)
 		//add the node to the node map to track its state
 		err = m.State.GetNodeMap().AddNode(nid, n.Sequence, n.ServerAddress, n.GatewayAddress, n.ApplicationId)
 		if err != nil {
-			return errors.WithMessage(err, "Could not register node with "+
+			return nil, errors.WithMessage(err, "Could not register node with "+
 				"state tracker")
 		}
 
 		err = m.completeNodeRegistration(n.Code)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	bannedNodes, err := storage.PermissioningDb.GetNodesByStatus(node.Banned)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, n := range bannedNodes {
 		nid, err := id.Unmarshal(n.Id)
 
-		//add the node to the host object for authenticated communications
-		_, err = m.Comms.AddHost(nid, n.ServerAddress, []byte(n.NodeCertificate), connect.GetDefaultHostParams())
-		if err != nil {
-			return errors.Errorf("Could not register host for Server %s: %+v", n.ServerAddress, err)
-		}
+		h, _ := connect.NewHost(nid, n.ServerAddress, []byte(n.NodeCertificate), connect.GetDefaultHostParams())
+		hosts = append(hosts, h)
 
 		//add the node to the node map to track its state
 		err = m.State.GetNodeMap().AddBannedNode(nid, n.Sequence, n.ServerAddress, n.GatewayAddress)
 		if err != nil {
-			return errors.WithMessage(err, "Could not register node with "+
+			return nil, errors.WithMessage(err, "Could not register node with "+
 				"state tracker")
 		}
 	}
 
-	return nil
+	return hosts, nil
 }
 
 // Handles including new registrations in the network

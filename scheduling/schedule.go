@@ -100,8 +100,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 			ourRound, err := startRound(newRound, state, roundTracker)
 			if err != nil {
-				jww.ERROR.Printf("Failed to start round: %+v", err)
-				break
+				jww.FATAL.Panicf("Failed to start round %v: %+v", newRound.ID, err)
+				continue
 			}
 
 			go waitForRoundTimeout(roundTimeoutTracker, state, ourRound,
@@ -109,7 +109,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				"precomputation")
 		}
 
-		jww.ERROR.Printf("Round creation thread should never exit: %v", err)
+		jww.FATAL.Panicf("Round creation thread should never exit: %v", err)
 
 	}()
 

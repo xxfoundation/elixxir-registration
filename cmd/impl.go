@@ -31,16 +31,14 @@ import (
 
 // The main registration instance object
 type RegistrationImpl struct {
-	Comms              *registration.Comms
-	params             *Params
-	State              *storage.NetworkState
-	Stopped            *uint32
-	permissioningCert  *x509.Certificate
-	ndfOutputPath      string
-	NdfReady           *uint32
-	certFromFile       string
-	disableGatewayPing bool
-	disableNodePing    bool
+	Comms             *registration.Comms
+	params            *Params
+	State             *storage.NetworkState
+	Stopped           *uint32
+	permissioningCert *x509.Certificate
+	ndfOutputPath     string
+	NdfReady          *uint32
+	certFromFile      string
 
 	// registration status trackers
 	numRegistered int
@@ -63,6 +61,8 @@ type RegistrationImpl struct {
 
 // function used to schedule nodes
 type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
+
+var LoadAllRegNodes bool
 
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) (*RegistrationImpl, error) {
@@ -112,15 +112,13 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		params:             &params,
-		ndfOutputPath:      params.NdfOutputPath,
-		NdfReady:           &ndfReady,
-		Stopped:            &roundCreationStopped,
-		numRegistered:      0,
-		beginScheduling:    make(chan struct{}, 1),
-		disableGatewayPing: params.disableGatewayPing,
-		disableNodePing:    params.disableNodePing,
-		registrationTimes:  make(map[id.ID]int64),
+		params:            &params,
+		ndfOutputPath:     params.NdfOutputPath,
+		NdfReady:          &ndfReady,
+		Stopped:           &roundCreationStopped,
+		numRegistered:     0,
+		beginScheduling:   make(chan struct{}, 1),
+		registrationTimes: make(map[id.ID]int64),
 	}
 
 	// If the the GeoIP2 database file is supplied, then use it to open the
@@ -137,7 +135,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		regImpl.geoIPDBStatus.ToRunning()
 
 		// Determine which type of GeoBinning we're using
-		if regImpl.params.dynamicGeoBinning {
+		if regImpl.params.blockchainGeoBinning {
 			geoBins, err = storage.PermissioningDb.GetBins()
 			if err != nil {
 				return nil, err
@@ -218,21 +216,50 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		jww.WARN.Printf("Configured to run without notifications bot!")
 	}
 
+	// If the the GeoIP2 database file is supplied, then use it to open the
+	// GeoIP2 reader; otherwise, error if randomGeoBinning is not set
+	if params.disableGeoBinning {
+		jww.WARN.Printf("Running with geobinning disabled. Nodes are expected to " +
+			"have proper country codes in their inserted sequence. This feature should be used for testing only")
+	} else if params.geoIPDBFile != "" {
+		regImpl.geoIPDB, err = geoip2.Open(params.geoIPDBFile)
+		if err != nil {
+			return nil,
+				errors.Errorf("failed to load GeoIP2 database file: %+v", err)
+		}
+
+		// Set the GeoIP2 reader to running
+		regImpl.geoIPDBStatus.ToRunning()
+	} else {
+		jww.FATAL.Panic("Must provide either a MaxMind GeoLite2 compatible " +
+			"database file or set the 'randomGeoBinning' flag.")
+	}
+
 	// update the internal state with the newly-formed NDF
 	err = regImpl.State.UpdateNdf(networkDef)
 	if err != nil {
 		return nil, err
 	}
 
+	var hosts []*connect.Host
+
+	if LoadAllRegNodes {
+		hosts, err = regImpl.LoadAllRegisteredNodes()
+		if err != nil {
+			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
+		}
+	}
+
 	// Start the communication server
 	regImpl.Comms = registration.StartRegistrationServer(&id.Permissioning,
 		params.Address, NewImplementation(regImpl),
-		[]byte(regImpl.certFromFile), rsaKeyPem)
+		[]byte(regImpl.certFromFile), rsaKeyPem, hosts)
 
 	// In the noTLS pathway, disable authentication
 	if noTLS {
 		regImpl.Comms.DisableAuth()
 	}
+
 	return regImpl, nil
 }
 
@@ -376,13 +403,4 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	}
 
 	return impl
-}
-
-func (m *RegistrationImpl) GetDisableGatewayPingFlag() bool {
-	return m.disableGatewayPing
-}
-
-// GetDisableNodePingFlag returns the disableNodePing flag
-func (m *RegistrationImpl) GetDisableNodePingFlag() bool {
-	return m.disableNodePing
 }

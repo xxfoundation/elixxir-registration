@@ -40,13 +40,14 @@ type Params struct {
 	minServerVersion      version.Version
 	minClientVersion      version.Version
 	addressSpaceSize      uint8
-	disableGatewayPing    bool
-	disableNodePing       bool
+	allowLocalIPs         bool
+	disableGeoBinning     bool
+	blockchainGeoBinning  bool
+	disablePing           bool
 
 	disableNDFPruning bool
 
-	geoIPDBFile       string
-	dynamicGeoBinning bool
+	geoIPDBFile string
 
 	clientRegistrationAddress string
 
