@@ -134,17 +134,18 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		// Set the GeoIP2 reader to running
 		regImpl.geoIPDBStatus.ToRunning()
 
-		// Determine which type of GeoBinning we're using
-		if regImpl.params.blockchainGeoBinning {
-			geoBins, err = storage.PermissioningDb.GetBins()
-			if err != nil {
-				return nil, err
-			}
-			jww.INFO.Printf("Loaded %d GeoBins from Storage!", len(geoBins))
-		} else {
-			geoBins = region.GetCountryBins()
-			jww.INFO.Printf("Loaded %d GeoBins from Primitives!", len(geoBins))
+	}
+
+	// Determine which type of GeoBinning we're using
+	if regImpl.params.blockchainGeoBinning {
+		geoBins, err = storage.PermissioningDb.GetBins()
+		if err != nil {
+			return nil, err
 		}
+		jww.INFO.Printf("Loaded %d GeoBins from Storage!", len(geoBins))
+	} else {
+		geoBins = region.GetCountryBins()
+		jww.INFO.Printf("Loaded %d GeoBins from Primitives!", len(geoBins))
 	}
 
 	// Initialize the state tracking object
