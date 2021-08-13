@@ -6,8 +6,8 @@
 package transition
 
 import (
-	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/states"
+	"git.xx.network/elixxir/primitives/current"
+	"git.xx.network/elixxir/primitives/states"
 	"reflect"
 	"testing"
 )

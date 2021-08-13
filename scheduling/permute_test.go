@@ -7,7 +7,7 @@ package scheduling
 
 import (
 	"fmt"
-	"gitlab.com/elixxir/registration/storage/node"
+	"git.xx.network/elixxir/registration/storage/node"
 	"strconv"
 	"testing"
 )

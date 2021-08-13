@@ -10,9 +10,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/jwalterweatherman"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/primitives/states"
-	"gitlab.com/elixxir/registration/storage"
-	"gitlab.com/elixxir/registration/storage/round"
+	"git.xx.network/elixxir/primitives/states"
+	"git.xx.network/elixxir/registration/storage"
+	"git.xx.network/elixxir/registration/storage/round"
 	"time"
 )
 

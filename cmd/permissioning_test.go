@@ -1,12 +1,12 @@
 package cmd
 
 import (
-	"gitlab.com/elixxir/registration/storage"
-	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/elixxir/registration/testkeys"
-	"gitlab.com/xx_network/comms/connect"
-	"gitlab.com/xx_network/primitives/id"
-	"gitlab.com/xx_network/primitives/utils"
+	"git.xx.network/elixxir/registration/storage"
+	"git.xx.network/elixxir/registration/storage/node"
+	"git.xx.network/elixxir/registration/testkeys"
+	"git.xx.network/xx_network/comms/connect"
+	"git.xx.network/xx_network/primitives/id"
+	"git.xx.network/xx_network/primitives/utils"
 	"testing"
 	"time"
 )

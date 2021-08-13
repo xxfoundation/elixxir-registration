@@ -8,9 +8,9 @@
 package scheduling
 
 import (
-	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/registration/storage"
-	"gitlab.com/elixxir/registration/storage/node"
+	"git.xx.network/elixxir/primitives/current"
+	"git.xx.network/elixxir/registration/storage"
+	"git.xx.network/elixxir/registration/storage/node"
 	"time"
 )
 

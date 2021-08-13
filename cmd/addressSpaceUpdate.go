@@ -9,8 +9,8 @@ package cmd
 import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/registration/storage"
-	"gitlab.com/xx_network/primitives/ndf"
+	"git.xx.network/elixxir/registration/storage"
+	"git.xx.network/xx_network/primitives/ndf"
 	"sort"
 	"time"
 )

@@ -9,16 +9,16 @@ package cmd
 
 import (
 	"fmt"
-	"gitlab.com/xx_network/primitives/region"
+	"git.xx.network/xx_network/primitives/region"
 	"strconv"
 	"sync/atomic"
 
 	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/registration/storage"
-	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/primitives/utils"
+	"git.xx.network/elixxir/registration/storage"
+	"git.xx.network/elixxir/registration/storage/node"
+	"git.xx.network/xx_network/primitives/utils"
 )
 
 // Error messages.

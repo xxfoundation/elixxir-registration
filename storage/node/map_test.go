@@ -7,9 +7,9 @@
 package node
 
 import (
-	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/registration/storage/round"
-	"gitlab.com/xx_network/primitives/id"
+	"git.xx.network/elixxir/primitives/current"
+	"git.xx.network/elixxir/registration/storage/round"
+	"git.xx.network/xx_network/primitives/id"
 	"math/rand"
 	"strings"
 	"testing"

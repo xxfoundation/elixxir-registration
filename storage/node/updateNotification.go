@@ -8,9 +8,9 @@ package node
 // Contains the node's update notification object
 
 import (
-	"gitlab.com/elixxir/comms/mixmessages"
-	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/xx_network/primitives/id"
+	"git.xx.network/elixxir/comms/mixmessages"
+	"git.xx.network/elixxir/primitives/current"
+	"git.xx.network/xx_network/primitives/id"
 )
 
 // UpdateNotification structure used to notify the control thread that the

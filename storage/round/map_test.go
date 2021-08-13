@@ -7,9 +7,9 @@
 package round
 
 import (
-	"gitlab.com/elixxir/primitives/states"
-	"gitlab.com/xx_network/comms/connect"
-	"gitlab.com/xx_network/primitives/id"
+	"git.xx.network/elixxir/primitives/states"
+	"git.xx.network/xx_network/comms/connect"
+	"git.xx.network/xx_network/primitives/id"
 	"testing"
 	"time"
 )

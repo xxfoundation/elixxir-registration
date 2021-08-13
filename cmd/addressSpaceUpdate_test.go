@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"gitlab.com/elixxir/registration/storage"
-	"gitlab.com/xx_network/primitives/ndf"
-	"gitlab.com/xx_network/primitives/region"
+	"git.xx.network/elixxir/registration/storage"
+	"git.xx.network/xx_network/primitives/ndf"
+	"git.xx.network/xx_network/primitives/region"
 	"reflect"
 	"testing"
 	"time"

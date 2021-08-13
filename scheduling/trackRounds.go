@@ -3,12 +3,12 @@ package scheduling
 import (
 	"fmt"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/primitives/current"
-	"gitlab.com/elixxir/primitives/states"
-	"gitlab.com/elixxir/registration/storage"
-	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/elixxir/registration/storage/round"
-	"gitlab.com/xx_network/primitives/id"
+	"git.xx.network/elixxir/primitives/current"
+	"git.xx.network/elixxir/primitives/states"
+	"git.xx.network/elixxir/registration/storage"
+	"git.xx.network/elixxir/registration/storage/node"
+	"git.xx.network/elixxir/registration/storage/round"
+	"git.xx.network/xx_network/primitives/id"
 	"sync/atomic"
 	"time"
 )

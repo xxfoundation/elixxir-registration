@@ -10,7 +10,7 @@
 package storage
 
 import (
-	"gitlab.com/xx_network/primitives/region"
+	"git.xx.network/xx_network/primitives/region"
 	"testing"
 )
 

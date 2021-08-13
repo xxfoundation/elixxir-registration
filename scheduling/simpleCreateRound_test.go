@@ -7,12 +7,12 @@ package scheduling
 
 import (
 	"crypto/rand"
-	"gitlab.com/elixxir/registration/storage"
-	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/comms/connect"
-	"gitlab.com/xx_network/crypto/signature/rsa"
-	"gitlab.com/xx_network/primitives/id"
-	"gitlab.com/xx_network/primitives/region"
+	"git.xx.network/elixxir/registration/storage"
+	"git.xx.network/elixxir/registration/storage/node"
+	"git.xx.network/xx_network/comms/connect"
+	"git.xx.network/xx_network/crypto/signature/rsa"
+	"git.xx.network/xx_network/primitives/id"
+	"git.xx.network/xx_network/primitives/region"
 	mathRand "math/rand"
 	"reflect"
 	"testing"

@@ -7,9 +7,9 @@
 package storage
 
 import (
-	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/primitives/id"
-	"gitlab.com/xx_network/primitives/utils"
+	"git.xx.network/elixxir/registration/storage/node"
+	"git.xx.network/xx_network/primitives/id"
+	"git.xx.network/xx_network/primitives/utils"
 	"math/rand"
 	"os"
 	"reflect"

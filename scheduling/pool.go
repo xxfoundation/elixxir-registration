@@ -9,8 +9,8 @@ import (
 	"github.com/golang-collections/collections/set"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/crypto/shuffle"
-	"gitlab.com/elixxir/registration/storage/node"
+	"git.xx.network/elixxir/crypto/shuffle"
+	"git.xx.network/elixxir/registration/storage/node"
 	"sync"
 )
 

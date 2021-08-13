@@ -2,9 +2,9 @@ package scheduling
 
 import (
 	jww "github.com/spf13/jwalterweatherman"
-	"gitlab.com/elixxir/registration/storage"
-	"gitlab.com/elixxir/registration/storage/round"
-	"gitlab.com/xx_network/primitives/id"
+	"git.xx.network/elixxir/registration/storage"
+	"git.xx.network/elixxir/registration/storage/round"
+	"git.xx.network/xx_network/primitives/id"
 	"time"
 )
 

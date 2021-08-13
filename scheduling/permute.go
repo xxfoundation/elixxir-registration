@@ -5,7 +5,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 package scheduling
 
-import "gitlab.com/elixxir/registration/storage/node"
+import "git.xx.network/elixxir/registration/storage/node"
 
 // permute.go contains the implementation of Heap's algorithm, used to generate all
 // possible permutations of n objects
