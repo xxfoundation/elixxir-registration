@@ -22,7 +22,6 @@ func TestCreateRound(t *testing.T) {
 	testParams := Params{
 		TeamSize:            9,
 		BatchSize:           32,
-		RandomOrdering:      true,
 		Threshold:           1,
 		NodeCleanUpInterval: 3,
 	}
@@ -71,7 +70,6 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 	testParams := Params{
 		TeamSize:            9,
 		BatchSize:           32,
-		RandomOrdering:      true,
 		Threshold:           5,
 		NodeCleanUpInterval: 3,
 	}
@@ -125,7 +123,6 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 	testParams := Params{
 		TeamSize:            9,
 		BatchSize:           32,
-		RandomOrdering:      true,
 		Threshold:           25,
 		NodeCleanUpInterval: 3,
 	}
@@ -181,7 +178,6 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		RandomOrdering:      true,
 		Threshold:           2,
 		NodeCleanUpInterval: 3,
 	}
@@ -280,8 +276,8 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		RandomOrdering:      true,
 		Threshold:           2,
+		SemiOptimalOrdering: true,
 		NodeCleanUpInterval: 3,
 	}
 
