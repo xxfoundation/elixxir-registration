@@ -10,8 +10,10 @@
 package storage
 
 import (
+	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/region"
 	"testing"
+	"time"
 )
 
 // Global variable for Database interaction
@@ -35,6 +37,17 @@ func (s *Storage) GetBins() (map[string]region.GeoBin, error) {
 		result[geoBin.Country] = region.GeoBin(geoBin.Bin)
 	}
 	return result, nil
+}
+
+// Set LastActive to now for all the given Nodes in storage
+func (s *Storage) UpdateLastActive(ids []*id.ID) error {
+	idsBytes := make([][]byte, len(ids))
+	for i, nodeId := range ids {
+		idsBytes[i] = nodeId.Marshal()
+	}
+	currentTime := time.Now()
+
+	return s.updateLastActive(idsBytes, currentTime)
 }
 
 // Test use only function for exposing MapImpl
