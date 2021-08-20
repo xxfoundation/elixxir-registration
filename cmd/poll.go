@@ -96,7 +96,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		response.PartialNDF = m.State.GetPartialNdf().GetPb()
 	}
 
-	// Fetch latest round updates
+	// Fetch the latest round updates
 	response.Updates, err = m.State.GetUpdates(int(msg.LastUpdate))
 	if err != nil {
 		return response, err
@@ -118,7 +118,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	// return early before we get the polling lock
 	stopped := atomic.LoadUint32(m.Stopped) == 1
 	if activity == current.NOT_STARTED || stopped {
-		return response, err
+		return response, nil
 	}
 
 	// Ensure any errors are properly formatted before sending an update
@@ -149,7 +149,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 		return response, err
 	}
 
-	// If updating to an error state, attach the error the the update
+	// If updating to an error state, attach the error to the update
 	if updateNotification.ToActivity == current.ERROR {
 		updateNotification.Error = msg.Error
 	}
@@ -377,7 +377,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 
 // checkConnectivity handles the responses to the different connectivity states
 // of a node. If the returned boolean is true, then the poll should continue.
-// The nodeIpAddr is the IP of of the node when it connects to permissioning; it
+// The nodeIpAddr is the IP of the node when it connects to permissioning; it
 // is not the IP or domain name reported by the node.
 func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 	activity current.Activity) (bool, error) {

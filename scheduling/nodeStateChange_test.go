@@ -631,7 +631,7 @@ func TestKillRound(t *testing.T) {
 
 	tesTracker := NewRoundTracker()
 
-	err = killRound(testState, r, re, tesTracker, nil)
+	err = killRound(testState, r, re, tesTracker)
 	if err != nil {
 		t.Errorf("Unexpected error in happy path: %v", err)
 	}
