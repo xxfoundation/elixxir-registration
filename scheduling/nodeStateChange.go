@@ -38,6 +38,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	hasRound, r := n.GetCurrentRound()
 	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED && update.ToActivity != current.ERROR
 	if roundErrored {
+		n.ClearRound()
 		return nil
 	}
 	if update.ClientErrors != nil && len(update.ClientErrors) > 0 {
@@ -56,7 +57,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 				jww.FATAL.Panicf("Failed to sign error message for banned node %s: %+v", update.Node, err)
 			}
 			n.ClearRound()
-			return killRound(state, r, banError, roundTracker, pool)
+			return killRound(state, r, banError, roundTracker)
 		} else {
 			pool.Ban(n)
 			return nil
@@ -203,7 +204,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			//send the signal that the round is complete
 			r.DenoteRoundCompleted()
 			n.ClearRound()
-			err = killRound(state, r, update.Error, roundTracker, pool)
+			err = killRound(state, r, update.Error, roundTracker)
 		}
 		return err
 	}
@@ -237,7 +238,7 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) {
 
 // killRound sets the round to failed and clears the node's round
 func killRound(state *storage.NetworkState, r *round.State,
-	roundError *pb.RoundError, roundTracker *RoundTracker, pool *waitingPool) error {
+	roundError *pb.RoundError, roundTracker *RoundTracker) error {
 	r.AppendError(roundError)
 
 	err := r.Update(states.FAILED, time.Now())
