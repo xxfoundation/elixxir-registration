@@ -155,6 +155,7 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 
 	// Check the round error state
 	if n.currentRound != nil && n.currentRound.GetRoundState() == states.FAILED && newActivity != current.ERROR {
+		n.ClearRound()
 		return false, UpdateNotification{}, errors.Errorf("Round %d has failed, state cannot be updated",
 			n.currentRound.GetRoundID())
 	}

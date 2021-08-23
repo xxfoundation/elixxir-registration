@@ -139,7 +139,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		// Receive a signal to kill the scheduler
 		case killed = <-killchan:
 			// Also kill the unsticker
-			jww.WARN.Printf("Scheduler has recived a kill signal, exit process has begun")
+			jww.WARN.Printf("Scheduler has received a kill signal, exit process has begun")
 		// When we get a node update, move past the select statement
 		case update = <-state.GetNodeUpdateChannel():
 			hasUpdate = true
