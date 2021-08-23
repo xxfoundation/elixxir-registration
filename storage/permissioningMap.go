@@ -152,3 +152,21 @@ func (m *MapImpl) InsertEphemeralLength(length *EphemeralLength) error {
 	m.ephemeralLengths[length.Length] = length
 	return nil
 }
+
+// Returns all GeoBin from Storage
+func (m *MapImpl) getBins() ([]*GeoBin, error) {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	if m.geographicBin == nil || len(m.geographicBin) == 0 {
+		return nil, errors.Errorf("No geographic bins present in storage")
+	}
+
+	geoBins := make([]*GeoBin, 0, len(m.geographicBin))
+	for countryCode, bin := range m.geographicBin {
+		geoBin := &GeoBin{Bin: bin, Country: countryCode}
+		geoBins = append(geoBins, geoBin)
+	}
+
+	return geoBins, nil
+}

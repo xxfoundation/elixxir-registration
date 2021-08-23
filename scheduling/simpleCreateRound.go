@@ -3,16 +3,15 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
+
 package scheduling
 
 import (
 	"github.com/pkg/errors"
-	"gitlab.com/elixxir/crypto/shuffle"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/primitives/id"
-	"strconv"
 )
 
 // createSimpleRound.go contains the logic to construct a team for a round and
@@ -32,62 +31,23 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	var newRound protoRound
 
 	//build the topology
-	nodeMap := state.GetNodeMap()
 	nodeStateList := make([]*node.State, params.TeamSize)
 	orderedNodeList := make([]*id.ID, params.TeamSize)
 
-	// In the case of random ordering
-	if params.SemiOptimalOrdering {
-		// Generate a team based on latency
-		nodeStateList, err = generateSemiOptimalOrdering(nodes)
-		if err != nil {
-			return protoRound{}, errors.WithMessage(err,
-				"Failed to generate optimal ordering")
-		}
-
-		// Parse the node list to get the order
-		for i, n := range nodeStateList {
-			nid := n.GetID()
-			orderedNodeList[i] = nid
-		}
-	} else if params.RandomOrdering {
-		// Input an incrementing array of ints
-		randomIndex := make([]uint64, params.TeamSize)
-		for i := range randomIndex {
-			randomIndex[i] = uint64(i)
-		}
-
-		// Shuffle array of ints randomly using Fisher-Yates shuffle
-		// https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
-		shuffle.Shuffle(&randomIndex)
-
-		for i, nid := range nodes {
-			n := nodeMap.GetNode(nid.GetID())
-			nodeStateList[i] = n
-			// Use the shuffled array as an indexing order for
-			//  the nodes' topological order
-			orderedNodeList[randomIndex[i]] = nid.GetID()
-		}
-	} else {
-		// Otherwise go in the order derived
-		// from the pool picking and the node's ordering
-		for i, nid := range nodes {
-			n := nodeMap.GetNode(nid.GetID())
-			nodeStateList[i] = n
-
-			// Get the position for the node
-			position, err := strconv.Atoi(n.GetOrdering())
-			if err != nil {
-				return protoRound{}, errors.WithMessagef(err,
-					"Could not parse ordering info ('%s') from node %s",
-					n.GetOrdering(), nid.GetID().String())
-			}
-
-			orderedNodeList[position] = nid.GetID()
-		}
+	// Generate a team based on latency
+	nodeStateList, err = generateSemiOptimalOrdering(nodes, state)
+	if err != nil {
+		return protoRound{}, errors.WithMessage(err,
+			"Failed to generate optimal ordering")
 	}
 
-	// Construct the protoround object
+	// Parse the node list to get the order
+	for i, n := range nodeStateList {
+		nid := n.GetID()
+		orderedNodeList[i] = nid
+	}
+
+	// Construct the proto-round object
 	newRound.Topology = connect.NewCircuit(orderedNodeList)
 	newRound.ID = roundID
 	newRound.BatchSize = params.BatchSize

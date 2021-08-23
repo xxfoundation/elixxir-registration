@@ -6,6 +6,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/region"
 	mathRand "math/rand"
 
 	"strconv"
@@ -21,7 +22,6 @@ func TestCreateRound(t *testing.T) {
 	testParams := Params{
 		TeamSize:            9,
 		BatchSize:           32,
-		RandomOrdering:      true,
 		Threshold:           1,
 		NodeCleanUpInterval: 3,
 	}
@@ -29,7 +29,7 @@ func TestCreateRound(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -42,7 +42,7 @@ func TestCreateRound(t *testing.T) {
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
 		nodeList[i] = nid
-		err := testState.GetNodeMap().AddNode(nodeList[i], "Americas", "", "", 0)
+		err := testState.GetNodeMap().AddNode(nodeList[i], "US", "", "", 0)
 		if err != nil {
 			t.Errorf("Couldn't add node: %v", err)
 			t.FailNow()
@@ -70,7 +70,6 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 	testParams := Params{
 		TeamSize:            9,
 		BatchSize:           32,
-		RandomOrdering:      true,
 		Threshold:           5,
 		NodeCleanUpInterval: 3,
 	}
@@ -78,7 +77,7 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -124,7 +123,6 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 	testParams := Params{
 		TeamSize:            9,
 		BatchSize:           32,
-		RandomOrdering:      true,
 		Threshold:           25,
 		NodeCleanUpInterval: 3,
 	}
@@ -132,7 +130,7 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -180,7 +178,6 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		RandomOrdering:      true,
 		Threshold:           2,
 		NodeCleanUpInterval: 3,
 	}
@@ -188,7 +185,7 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -199,8 +196,8 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 	nodeStateList := make([]*node.State, testParams.TeamSize)
 
 	// Craft regions for nodes
-	regions := []string{"Americas", "WesternEurope", "CentralEurope",
-		"EasternEurope", "MiddleEast", "Africa", "Russia", "Asia"}
+	regions := []string{"CR", "GB", "SK",
+		"HR", "IQ", "BF", "RU", "CX"}
 
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
 		nid := id.NewIdFromUInt(i, id.Node, t)
@@ -237,13 +234,12 @@ func TestCreateRound_EfficientTeam_AllRegions(t *testing.T) {
 			"\n\tReceived: %v ms", expectedDuration, duration)
 	}
 
-	var regionOrder []int
+	var regionOrder []region.GeoBin
 	var regionOrderStr []string
 	for _, n := range testProtoRound.NodeStateList {
-		order, _ := getRegion(n.GetOrdering())
-		region := n.GetOrdering()
+		order, _ := region.GetCountryBin(n.GetOrdering())
 		regionOrder = append(regionOrder, order)
-		regionOrderStr = append(regionOrderStr, region)
+		regionOrderStr = append(regionOrderStr, order.String())
 	}
 
 	t.Log("Team order outputted by CreateRound: ", regionOrderStr)
@@ -280,15 +276,15 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		RandomOrdering:      true,
 		Threshold:           2,
+		SemiOptimalOrdering: true,
 		NodeCleanUpInterval: 3,
 	}
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "")
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -299,8 +295,8 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	nodeStateList := make([]*node.State, testParams.TeamSize*2)
 
 	// Craft regions for nodes
-	regions := []string{"Americas", "WesternEurope", "CentralEurope",
-		"EasternEurope", "MiddleEast", "Africa", "Russia", "Asia"}
+	regions := []string{"CR", "GB", "SK",
+		"HR", "IQ", "BF", "RU", "CX"}
 
 	// Populate the pool with 2x the team size
 	for i := uint64(0); i < uint64(len(nodeList)); i++ {
@@ -350,13 +346,12 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 
 	// Parse the order of the regions
 	// one for testing and one for logging
-	var regionOrder []int
+	var regionOrder []region.GeoBin
 	var regionOrderStr []string
 	for _, n := range testProtoRound.NodeStateList {
-		order, _ := getRegion(n.GetOrdering())
-		region := n.GetOrdering()
+		order, _ := region.GetCountryBin(n.GetOrdering())
 		regionOrder = append(regionOrder, order)
-		regionOrderStr = append(regionOrderStr, region)
+		regionOrderStr = append(regionOrderStr, order.String())
 	}
 
 	// Output the teaming order to the log in human readable format
@@ -395,7 +390,7 @@ type regionTransitionValidation struct {
 }
 
 // Create the valid jumps for each region
-func newRegionTransitionValidation(from ...int) regionTransitionValidation {
+func newRegionTransitionValidation(from ...region.GeoBin) regionTransitionValidation {
 	tv := regionTransitionValidation{}
 
 	for _, f := range from {
@@ -410,20 +405,20 @@ func newRegionTransitionValidation(from ...int) regionTransitionValidation {
 // in a undirected graph of what are good internet connections
 func newTransitions() regionTransition {
 	t := regionTransition{}
-	t[Americas] = newRegionTransitionValidation(Americas, Asia, WesternEurope)
-	t[WesternEurope] = newRegionTransitionValidation(WesternEurope, Americas, Africa, CentralEurope)
-	t[CentralEurope] = newRegionTransitionValidation(CentralEurope, Africa, MiddleEast, EasternEurope, WesternEurope)
-	t[EasternEurope] = newRegionTransitionValidation(EasternEurope, MiddleEast, Russia, CentralEurope)
-	t[MiddleEast] = newRegionTransitionValidation(MiddleEast, EasternEurope, Asia, CentralEurope)
-	t[Africa] = newRegionTransitionValidation(Africa, WesternEurope, CentralEurope)
-	t[Russia] = newRegionTransitionValidation(Russia, Asia, EasternEurope)
-	t[Asia] = newRegionTransitionValidation(Asia, Americas, MiddleEast, Russia)
+	t[region.Americas] = newRegionTransitionValidation(region.Americas, region.Asia, region.WesternEurope)
+	t[region.WesternEurope] = newRegionTransitionValidation(region.WesternEurope, region.Americas, region.Africa, region.CentralEurope)
+	t[region.CentralEurope] = newRegionTransitionValidation(region.CentralEurope, region.Africa, region.MiddleEast, region.EasternEurope, region.WesternEurope)
+	t[region.EasternEurope] = newRegionTransitionValidation(region.EasternEurope, region.MiddleEast, region.Russia, region.CentralEurope)
+	t[region.MiddleEast] = newRegionTransitionValidation(region.MiddleEast, region.EasternEurope, region.Asia, region.CentralEurope)
+	t[region.Africa] = newRegionTransitionValidation(region.Africa, region.WesternEurope, region.CentralEurope)
+	t[region.Russia] = newRegionTransitionValidation(region.Russia, region.Asia, region.EasternEurope)
+	t[region.Asia] = newRegionTransitionValidation(region.Asia, region.Americas, region.MiddleEast, region.Russia)
 
 	return t
 }
 
 // IsValidTransition checks the transitionValidation to see if
 //  the attempted transition is valid
-func (r regionTransition) isValidTransition(from, to int) bool {
+func (r regionTransition) isValidTransition(from, to region.GeoBin) bool {
 	return r[to].from[from]
 }

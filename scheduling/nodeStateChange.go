@@ -191,8 +191,10 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			r.DenoteRoundCompleted()
 			roundTracker.RemoveActiveRound(r.GetRoundID())
 
+			go StoreRoundMetric(roundInfo)
+
 			// Commit metrics about the round to storage
-			return StoreRoundMetric(roundInfo)
+			return nil
 		}
 	case current.ERROR, current.CRASH:
 		// If in an error or crash state, kill the round if the node has one
@@ -210,7 +212,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 }
 
 // Insert metrics about the newly-completed round into storage
-func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
+func StoreRoundMetric(roundInfo *pb.RoundInfo) {
 	metric := &storage.RoundMetric{
 		Id:            roundInfo.ID,
 		PrecompStart:  time.Unix(0, int64(roundInfo.Timestamps[states.PRECOMPUTING])),
@@ -226,7 +228,11 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) error {
 	jww.TRACE.Printf("Precomp for round %v took: %v", roundInfo.GetRoundId(), precompDuration)
 	jww.TRACE.Printf("Realtime for round %v took: %v", roundInfo.GetRoundId(), realTimeDuration)
 
-	return storage.PermissioningDb.InsertRoundMetric(metric, roundInfo.Topology)
+	err := storage.PermissioningDb.InsertRoundMetric(metric, roundInfo.Topology)
+	if err != nil {
+		jww.ERROR.Printf("Failed to insert round metric from "+
+			"completed round: %+v", err)
+	}
 }
 
 // killRound sets the round to failed and clears the node's round
@@ -250,41 +256,43 @@ func killRound(state *storage.NetworkState, r *round.State,
 			"update to kill round %v", r.GetRoundID())
 	}
 
-	// Attempt to insert the RoundMetric for the failed round
-	metric := &storage.RoundMetric{
-		Id:            uint64(roundId),
-		PrecompStart:  time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.PRECOMPUTING])),
-		PrecompEnd:    time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.STANDBY])),
-		RealtimeStart: time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.REALTIME])),
-		RealtimeEnd:   time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.FAILED])),
-		BatchSize:     r.BuildRoundInfo().BatchSize,
-	}
+	go func() {
+		// Attempt to insert the RoundMetric for the failed round
+		metric := &storage.RoundMetric{
+			Id:            uint64(roundId),
+			PrecompStart:  time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.PRECOMPUTING])),
+			PrecompEnd:    time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.STANDBY])),
+			RealtimeStart: time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.REALTIME])),
+			RealtimeEnd:   time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.FAILED])),
+			BatchSize:     r.BuildRoundInfo().BatchSize,
+		}
 
-	err = storage.PermissioningDb.InsertRoundMetric(metric,
-		roundInfo.Topology)
-	if err != nil {
-		jww.WARN.Printf("Could not insert round metric: %+v", err)
-		err = nil
-	}
+		errInsert := storage.PermissioningDb.InsertRoundMetric(metric,
+			roundInfo.Topology)
+		if errInsert != nil {
+			jww.WARN.Printf("Could not insert round metric: %+v", errInsert)
+			err = nil
+		}
 
-	nid, err := id.Unmarshal(roundError.NodeId)
-	var idStr string
-	if err != nil {
-		idStr = "N/A"
-	} else {
-		idStr = nid.String()
-	}
+		nid, err := id.Unmarshal(roundError.NodeId)
+		var idStr string
+		if err != nil {
+			idStr = "N/A"
+		} else {
+			idStr = nid.String()
+		}
 
-	formattedError := fmt.Sprintf("Round Error from %s: %s", idStr, roundError.Error)
-	jww.INFO.Print(formattedError)
+		formattedError := fmt.Sprintf("Round Error from %s: %s", idStr, roundError.Error)
+		jww.INFO.Print(formattedError)
 
-	// Next, attempt to insert the error for the failed round
-	err = storage.PermissioningDb.InsertRoundError(roundId, formattedError)
-	if err != nil {
-		jww.WARN.Printf("Could not insert round error: %+v", err)
-		err = nil
-	}
-	state.GetNodeMap().GetNodeStates()
+		// Next, attempt to insert the error for the failed round
+		errInsert = storage.PermissioningDb.InsertRoundError(roundId, formattedError)
+		if err != nil {
+			jww.WARN.Printf("Could not insert round error: %+v", errInsert)
+			err = nil
+		}
+		state.GetNodeMap().GetNodeStates()
+	}()
 
 	return err
 }

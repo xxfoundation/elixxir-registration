@@ -23,7 +23,7 @@ import (
 // scheduler.go contains the business logic for scheduling a round
 
 //size of round creation channel, just sufficiently large enough to not be jammed
-const newRoundChanLen = 100
+const newRoundChanLen = 1000
 
 type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error)
@@ -100,8 +100,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 			ourRound, err := startRound(newRound, state, roundTracker)
 			if err != nil {
-				jww.ERROR.Printf("Failed to start round: %+v", err)
-				break
+				jww.FATAL.Panicf("Failed to start round %v: %+v", newRound.ID, err)
+				continue
 			}
 
 			go waitForRoundTimeout(roundTimeoutTracker, state, ourRound,
@@ -109,7 +109,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 				"precomputation")
 		}
 
-		jww.ERROR.Printf("Round creation thread should never exit: %v", err)
+		jww.FATAL.Panicf("Round creation thread should never exit: %v", err)
 
 	}()
 

@@ -19,6 +19,8 @@ import (
 	"time"
 )
 
+const ipUpdateTimeout = 30 * time.Minute
+
 // Enumeration of connectivity statuses for a node
 const (
 	PortUnknown uint32 = iota
@@ -65,10 +67,12 @@ type State struct {
 	applicationID uint64
 
 	// Address of node
-	nodeAddress string
+	nodeAddress      string
+	lastNodeUpdateTS time.Time
 
 	// Address of gateway
-	gatewayAddress string
+	gatewayAddress      string
+	lastGatewayUpdateTS time.Time
 
 	// when a Node poll is received, this nodes polling lock is. If
 	// there is no update, it is released in this endpoint, otherwise it is
@@ -286,16 +290,23 @@ func (n *State) GetPollingLock() *sync.Mutex {
 }
 
 // UpdateNodeAddresses updates the address if it is warranted.
-func (n *State) UpdateNodeAddresses(node string) bool {
+func (n *State) UpdateNodeAddresses(node string) (bool, error) {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 
-	if n.nodeAddress != node {
-		n.nodeAddress = node
-		return true
+	if n.nodeAddress == node {
+		return false, nil
 	}
 
-	return false
+	if time.Since(n.lastNodeUpdateTS) < ipUpdateTimeout {
+		return false, errors.Errorf("cannot update node ip from %s to %s, can only "+
+			"update every %s, last update was at %s", n.nodeAddress, node, ipUpdateTimeout, n.lastGatewayUpdateTS)
+	}
+
+	n.nodeAddress = node
+	n.lastNodeUpdateTS = time.Now()
+
+	return true, nil
 }
 
 // GetNodeAddresses return the current node address.
@@ -307,21 +318,38 @@ func (n *State) GetNodeAddresses() string {
 }
 
 // UpdateGatewayAddresses updates the address if it is warranted
-func (n *State) UpdateGatewayAddresses(gateway string) bool {
+func (n *State) UpdateGatewayAddresses(gateway string) (bool, error) {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 
-	if gateway != "" && n.gatewayAddress != gateway {
-		n.gatewayAddress = gateway
-		return true
+	if gateway == "" || n.gatewayAddress == gateway {
+		return false, nil
 	}
 
-	return false
+	if time.Since(n.lastGatewayUpdateTS) < ipUpdateTimeout {
+		return false, errors.Errorf("cannot update gateway ip from %s to %s, can only "+
+			"update every %s, last update was at %s", n.gatewayAddress, gateway, ipUpdateTimeout, n.lastGatewayUpdateTS)
+	}
+
+	n.gatewayAddress = gateway
+	n.lastGatewayUpdateTS = time.Now()
+
+	return true, nil
 }
 
-// gets the ordering string for use in team formation
+// GetOrdering return the ordering string for use in team formation.
 func (n *State) GetOrdering() string {
+	n.mux.RLock()
+	defer n.mux.RUnlock()
+
 	return n.ordering
+}
+
+// SetOrdering sets the State ordering string.
+func (n *State) SetOrdering(ordering string) {
+	n.mux.Lock()
+	n.ordering = ordering
+	n.mux.Unlock()
 }
 
 // gets the ID of the Node
@@ -354,8 +382,9 @@ func (n *State) SetRound(r *round.State) error {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 	if n.currentRound != nil {
-		return errors.New("could not set the Node's round when it is " +
-			"already set")
+		return errors.Errorf("could not set the Node %s round when it is "+
+			"already set, current round: %v, new round: %v", n.id,
+			n.currentRound.GetRoundID(), r.GetRoundID())
 	}
 
 	n.currentRound = r
@@ -391,13 +420,6 @@ func (n *State) SetLastPoll(lastPoll time.Time, t *testing.T) {
 		panic("Cannot directly set node.State's last poll outside of testing")
 	}
 	n.lastPoll = lastPoll
-}
-
-func (n *State) SetOrdering(ordering string, t *testing.T) {
-	if t == nil {
-		panic("Cannot directly set node.State's ordering outside of testing")
-	}
-	n.ordering = ordering
 }
 
 func (n *State) GetGatewayAddress() string {

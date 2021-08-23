@@ -27,35 +27,32 @@ type database interface {
 	GetLatestEphemeralLength() (*EphemeralLength, error)
 	GetEphemeralLengths() ([]*EphemeralLength, error)
 	InsertEphemeralLength(length *EphemeralLength) error
+	getBins() ([]*GeoBin, error)
 
 	// Node methods
 	InsertApplication(application *Application, unregisteredNode *Node) error
 	RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
 		gatewayAddress, gatewayCert string) error
-	UpdateSalt(id *id.ID, salt []byte) error
+	UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error
+	UpdateNodeSequence(id *id.ID, sequence string) error
 	GetNode(code string) (*Node, error)
 	GetNodeById(id *id.ID) (*Node, error)
 	GetNodesByStatus(status node.Status) ([]*Node, error)
-	UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error
-
-	// Client methods
-	InsertClientRegCode(code string, uses int) error
-	UseCode(code string) error
-	GetUser(publicKey string) (*User, error)
-	InsertUser(user *User) error
+	GetActiveNodes() ([]*ActiveNode, error)
+	UpdateGeoIP(appId uint64, location, geo_bin, gps_location string) error
 }
 
 // Struct implementing the Database Interface with an underlying Map
 type MapImpl struct {
-	clients           map[string]*RegistrationCode
 	nodes             map[string]*Node
-	users             map[string]*User
 	applications      map[uint64]*Application
 	nodeMetrics       map[uint64]*NodeMetric
 	nodeMetricCounter uint64
 	roundMetrics      map[uint64]*RoundMetric
 	states            map[string]string
 	ephemeralLengths  map[uint8]*EphemeralLength
+	activeNodes       map[id.ID]*ActiveNode
+	geographicBin     map[string]uint8
 	mut               sync.Mutex
 }
 
@@ -71,24 +68,6 @@ const (
 	RoundIdKey  = "RoundId"
 	EllipticKey = "EllipticKey"
 )
-
-// Struct representing a RegistrationCode table in the Database
-type RegistrationCode struct {
-	// Registration code acts as the primary key
-	Code string `gorm:"primary_key"`
-	// Remaining uses for the RegistrationCode
-	RemainingUses int
-}
-
-// Struct representing the User table in the Database
-type User struct {
-	// User TLS public certificate in PEM string format
-	PublicKey string `gorm:"primary_key"`
-	// User reception key in PEM string format
-	ReceptionKey string `gorm:"NOT NULL;UNIQUE"`
-	// Timestamp in which user registered with permissioning
-	RegistrationTimestamp time.Time `gorm:"NOT NULL"`
-}
 
 // Struct representing the Node's Application table in the Database
 type Application struct {
@@ -121,6 +100,18 @@ type Application struct {
 	Discord   string
 	Instagram string
 	Medium    string
+}
+
+// Struct representing the ActiveNode table in the Database
+type ActiveNode struct {
+	WalletAddress string `gorm:"primary_key"`
+	Id            []byte `gorm:"NOT NULL;UNIQUE"`
+}
+
+// Struct representing the GeoBin table in the Database
+type GeoBin struct {
+	Country string `gorm:"primary_key"`
+	Bin     uint8  `gorm:"NOT NULL"`
 }
 
 // Struct representing the Node table in the Database
@@ -213,7 +204,7 @@ type RoundError struct {
 	Error string `gorm:"NOT NULL"`
 }
 
-// Struct representing the validity period of an ephemeral ID length
+// Struct represegnting the validity period of an ephemeral ID length
 type EphemeralLength struct {
 	Length    uint8     `gorm:"primary_key;AUTO_INCREMENT:false"`
 	Timestamp time.Time `gorm:"NOT NULL;UNIQUE"`
@@ -228,22 +219,11 @@ func NewMap() Storage {
 			nodes:            make(map[string]*Node),
 			nodeMetrics:      make(map[uint64]*NodeMetric),
 			roundMetrics:     make(map[uint64]*RoundMetric),
-			clients:          make(map[string]*RegistrationCode),
-			users:            make(map[string]*User),
 			states:           make(map[string]string),
 			ephemeralLengths: make(map[uint8]*EphemeralLength),
+			activeNodes:      make(map[id.ID]*ActiveNode),
+			geographicBin:    make(map[string]uint8),
 		}}
-}
-
-// Adds Client registration codes to the Database
-func PopulateClientRegistrationCodes(codes []string, uses int) {
-	for _, code := range codes {
-		err := PermissioningDb.InsertClientRegCode(code, uses)
-		if err != nil {
-			jww.ERROR.Printf("Unable to populate Client registration code: %+v",
-				err)
-		}
-	}
 }
 
 // Adds Node registration codes to the Database

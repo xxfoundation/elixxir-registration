@@ -21,6 +21,7 @@ import (
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	mrand "math/rand"
 	"os"
@@ -58,7 +59,7 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, 8, "")
+	state, err := NewState(privateKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("NewState() produced an unexpected error:\n%v", err)
 	}
@@ -445,7 +446,7 @@ func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 	}
 
 	// Generate new NetworkState using the private key
-	state, err := NewState(privKey, 8, "")
+	state, err := NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		return state, privKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
 	}
@@ -462,17 +463,11 @@ func TestNetworkState_IncrementRoundID(t *testing.T) {
 		t.Errorf(err.Error())
 		t.FailNow()
 	}
-	err = PermissioningDb.UpsertState(&State{
-		Key:   RoundIdKey,
-		Value: fmt.Sprintf("%d", testID),
-	})
-	if err != nil {
-		t.Errorf(err.Error())
-	}
 
 	testPath := "testRoundID.txt"
 	incrementAmount := uint64(10)
 	testState := NetworkState{}
+	testState.roundID = id.Round(testID)
 
 	defer func() {
 		err := os.RemoveAll(testPath)
