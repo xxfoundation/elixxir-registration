@@ -7,7 +7,6 @@
 package node
 
 import (
-	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
@@ -238,8 +237,6 @@ func TestNodeState_Update_Valid_RequiresRound_RoundNil(t *testing.T) {
 // tests that State update functions properly when the state it is updated
 // to is not the one it is not at
 func TestNodeState_Update_Valid_RequiresRound_Round_InvalidState(t *testing.T) {
-	jww.SetLogThreshold(jww.LevelTrace)
-	jww.SetStdoutThreshold(jww.LevelTrace)
 	ns := State{
 		activity:     current.WAITING,
 		lastPoll:     time.Now(),
