@@ -3,6 +3,7 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
+
 package scheduling
 
 // Contains the handler for node updates
@@ -36,11 +37,14 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	// here which blocks all future polls until processing completes
 	defer n.GetPollingLock().Unlock()
 	hasRound, r := n.GetCurrentRound()
+
+	// FIXME: This code can't be reached, as the same condition returns an error
+	// FIXME: in the node.Update function earlier in the Poll call
 	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED && update.ToActivity != current.ERROR
 	if roundErrored {
-		n.ClearRound()
 		return nil
 	}
+
 	if update.ClientErrors != nil && len(update.ClientErrors) > 0 {
 		r.AppendClientErrors(update.ClientErrors)
 	}
@@ -292,7 +296,6 @@ func killRound(state *storage.NetworkState, r *round.State,
 			jww.WARN.Printf("Could not insert round error: %+v", errInsert)
 			err = nil
 		}
-		state.GetNodeMap().GetNodeStates()
 	}()
 
 	return err
