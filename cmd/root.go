@@ -49,6 +49,7 @@ var (
 
 // Default duration between polls of the disabled Node list for updates.
 const defaultDisabledNodesPollDuration = time.Minute
+const defaultPruneRetention = 24 * 7 * time.Hour
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -180,6 +181,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		viper.SetDefault("addressSpace", 5)
+		viper.SetDefault("pruneRetentionLimit", defaultPruneRetention)
 
 		// Populate params
 		RegParams = Params{
@@ -208,8 +210,9 @@ var rootCmd = &cobra.Command{
 			disableGeoBinning:         viper.GetBool("disableGeoBinning"),
 			blockchainGeoBinning:      viper.GetBool("blockchainGeoBinning"),
 
-			disableNDFPruning: viper.GetBool("disableNDFPruning"),
-			geoIPDBFile:       viper.GetString("geoIPDBFile"),
+			disableNDFPruning:   viper.GetBool("disableNDFPruning"),
+			geoIPDBFile:         viper.GetString("geoIPDBFile"),
+			pruneRetentionLimit: viper.GetDuration("pruneRetentionLimit"),
 
 			versionLock: sync.RWMutex{},
 		}
