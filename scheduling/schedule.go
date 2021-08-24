@@ -101,7 +101,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			ourRound, err := startRound(newRound, state, roundTracker)
 			if err != nil {
 				jww.FATAL.Panicf("Failed to start round %v: %+v", newRound.ID, err)
-				continue
 			}
 
 			go waitForRoundTimeout(roundTimeoutTracker, state, ourRound,
@@ -140,7 +139,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		// Receive a signal to kill the scheduler
 		case killed = <-killchan:
 			// Also kill the unsticker
-			jww.WARN.Printf("Scheduler has recived a kill signal, exit process has begun")
+			jww.WARN.Printf("Scheduler has received a kill signal, exit process has begun")
 		// When we get a node update, move past the select statement
 		case update = <-state.GetNodeUpdateChannel():
 			hasUpdate = true
@@ -152,7 +151,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		atomic.AddUint32(&iterationsCount, 1)
 		if isRoundTimeout {
 			// Handle the timed out round
-			err := timeoutRound(state, timedOutRoundID, roundTracker, pool)
+			err := timeoutRound(state, timedOutRoundID, roundTracker)
 			if err != nil {
 				return err
 			}
@@ -213,7 +212,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 // Helper function which handles when we receive a timed out round
 func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
-	roundTracker *RoundTracker, pool *waitingPool) error {
+	roundTracker *RoundTracker) error {
 	// On a timeout, check if the round is completed. If not, kill it
 	ourRound := state.GetRoundMap().GetRound(timeoutRoundID)
 	roundState := ourRound.GetRoundState()
@@ -243,7 +242,7 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 				ourRound.GetRoundID(), err)
 		}
 
-		err = killRound(state, ourRound, timeoutError, roundTracker, pool)
+		err = killRound(state, ourRound, timeoutError, roundTracker)
 		if err != nil {
 			return errors.WithMessagef(err, "Failed to kill round %d: %s",
 				ourRound.GetRoundID(), err)
