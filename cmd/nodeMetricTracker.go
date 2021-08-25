@@ -37,16 +37,46 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{},
 			var toPrune []*id.ID
 			var active map[id.ID]bool
 			var err error
-
 			if onlyScheduleActive {
 				active, err = GetActiveNodeIDs()
 				if err != nil {
 					jww.ERROR.Print(err)
 				}
+
+			}
+
+			activeNodes := make([]*id.ID, len(active))
+			// Serialize the active node map
+			for i, activeNode := range activeNodes {
+				activeNodes[i] = activeNode
+			}
+
+			// Update all the active nodes in the database
+			err = storage.PermissioningDb.UpdateLastActive(activeNodes)
+			if err != nil {
+				jww.ERROR.Printf("TrackNodeMetrics: Could not update last active: %v", err)
+			}
+
+			nodes, err := storage.PermissioningDb.GetNodes()
+			if err != nil {
+				jww.ERROR.Printf("TrackNodeMetrics: Could not retrieve nodes: %+v", err)
+			}
+
+			// Place in a map
+			dbMap := make(map[id.ID]*storage.Node)
+			for _, node := range nodes {
+				nid, err := id.Unmarshal(node.Id)
+				if err != nil {
+					jww.ERROR.Printf("Could not unmarshal ID from database: %+v", err)
+					continue
+				}
+
+				dbMap[*nid] = node
 			}
 
 			// Iterate over the Node States
 			nodeStates := impl.State.GetNodeMap().GetNodeStates()
+			var toUpdate []*id.ID
 			for _, nodeState := range nodeStates {
 
 				// Build the NodeMetric
@@ -60,7 +90,23 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{},
 
 				// set the node to prune if it has not contacted
 				if metric.NumPings == 0 || (onlyScheduleActive && !active[*nodeState.GetID()]) {
-					toPrune = append(toPrune, nodeState.GetID())
+					impl.State.SetStaleNode(nodeState.GetID())
+				} else {
+					nodeState.SetLastActive()
+				}
+
+				dbNode, ok := dbMap[*nodeState.GetID()]
+				if !ok {
+					jww.ERROR.Printf("Node [%s] exists in "+
+						"state map but not in the database", nodeState.GetID())
+				} else {
+					if nodeState.GetLastActive().After(dbNode.LastActive) {
+						toUpdate = append(toUpdate, nodeState.GetID())
+					}
+
+					if time.Since(dbNode.LastActive) > impl.params.pruneRetentionLimit {
+						toPrune = append(toPrune, nodeState.GetID())
+					}
 				}
 
 				// Store the NodeMetric
@@ -71,6 +117,12 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{},
 							"Unable to store node metric: %+v", err)
 					}
 				}
+			}
+
+			// Update all the active nodes in the database
+			err = storage.PermissioningDb.UpdateLastActive(toUpdate)
+			if err != nil {
+				jww.ERROR.Printf("TrackNodeMetrics: Could not update last active: %v", err)
 			}
 
 			if !RegParams.disableNDFPruning {

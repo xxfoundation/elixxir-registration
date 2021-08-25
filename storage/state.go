@@ -61,8 +61,14 @@ type NetworkState struct {
 	unprunedNdf  *ndf.NetworkDefinition
 	pruneListMux sync.RWMutex
 	pruneList    map[id.ID]interface{}
-	partialNdf   *dataStructures.Ndf
-	fullNdf      *dataStructures.Ndf
+	// List of stale (offline or old) nodes that
+	// have not contacted permissioning in a while,
+	// but not long enough to be pruned
+	staleList    map[id.ID]interface{}
+	staleListMux sync.RWMutex
+
+	partialNdf *dataStructures.Ndf
+	fullNdf    *dataStructures.Ndf
 
 	// Address space size
 	addressSpaceSize *uint32
@@ -100,6 +106,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		rsaPrivateKey:       rsaPrivKey,
 		addressSpaceSize:    &addressSpaceSize,
 		pruneList:           make(map[id.ID]interface{}),
+		staleList:           make(map[id.ID]interface{}),
 		ndfOutputPath:       ndfOutputPath,
 		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
 		geoBins:             geoBins,
@@ -215,6 +222,25 @@ func (s *NetworkState) SetPrunedNode(id *id.ID) {
 	s.pruneList[*id] = nil
 }
 
+func (s *NetworkState) SetStaleNodes(ids []*id.ID) {
+	s.staleListMux.Lock()
+	defer s.staleListMux.Unlock()
+
+	s.staleList = make(map[id.ID]interface{})
+
+	for _, i := range ids {
+		s.pruneList[*i] = nil
+	}
+
+}
+
+func (s *NetworkState) SetStaleNode(id *id.ID) {
+	s.staleListMux.Lock()
+	defer s.staleListMux.Unlock()
+
+	s.staleList[*id] = nil
+}
+
 func (s *NetworkState) IsPruned(node *id.ID) bool {
 	s.pruneListMux.RLock()
 	defer s.pruneListMux.RUnlock()
@@ -328,22 +354,27 @@ func (s *NetworkState) RoundAdderRoutine() {
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
-
 	ndfMarshabled, _ := newNdf.Marshal()
 	s.unprunedNdf, _ = ndf.Unmarshal(ndfMarshabled)
 
 	s.pruneListMux.RLock()
-
+	s.staleListMux.RLock()
 	//prune the NDF
 	for i := 0; i < len(newNdf.Nodes); i++ {
 		nid, _ := id.Unmarshal(newNdf.Nodes[i].ID)
-		if _, exists := s.pruneList[*nid]; exists {
+		if _, exists := s.pruneList[*nid]; exists { // Prune nodes if in the prune list
 			newNdf.Nodes = append(newNdf.Nodes[:i], newNdf.Nodes[i+1:]...)
 			newNdf.Gateways = append(newNdf.Gateways[:i], newNdf.Gateways[i+1:]...)
 			i--
+		} else if _, exists := s.staleList[*nid]; exists { // Set status of stale nodes
+			newNdf.Nodes[i].Status = ndf.Stale
+		} else {
+			newNdf.Nodes[i].Status = ndf.Active
 		}
+
 	}
 
+	s.staleListMux.RUnlock()
 	s.pruneListMux.RUnlock()
 
 	// Build NDF comms messages
