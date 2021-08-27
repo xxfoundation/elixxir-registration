@@ -112,12 +112,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 	}()
 
-	unstickerQuitChan := make(chan struct{})
-	// begin the thread that takes nodes stuck in waiting out of waiting
-	go func() {
-		UnstickNodes(state, pool, params.PrecomputationTimeout*time.Second, unstickerQuitChan)
-	}()
-
 	var killed chan struct{}
 
 	iterationsCount := uint32(0)
@@ -200,8 +194,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			// Stop round creation
 			close(newRoundChan)
 			jww.WARN.Printf("Scheduler is exiting due to kill signal")
-			// Also kill the unsticking thread
-			unstickerQuitChan <- struct{}{}
 			killed <- struct{}{}
 			return nil
 		}
