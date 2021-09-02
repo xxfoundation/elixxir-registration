@@ -90,7 +90,7 @@ build:
     - mkdir -p upload
     - mv release/registration.stateless.* upload/
     - /upload-artifacts.sh upload/
-    - /hash-file.sh registration.linux64
+    - /hash-file.sh release/registration.linux64
   artifacts:
     paths:
      - release/
