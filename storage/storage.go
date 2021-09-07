@@ -10,7 +10,9 @@
 package storage
 
 import (
+	"github.com/pkg/errors"
 	"gitlab.com/xx_network/primitives/region"
+	"strconv"
 	"testing"
 )
 
@@ -35,6 +37,19 @@ func (s *Storage) GetBins() (map[string]region.GeoBin, error) {
 		result[geoBin.Country] = region.GeoBin(geoBin.Bin)
 	}
 	return result, nil
+}
+
+// Helper for returning a uint64 from the State table
+func (s *Storage) GetStateInt(key string) (uint64, error) {
+	valueStr, err := s.GetStateValue(key)
+	if err != nil {
+		return 0, errors.Errorf("Unable to find %s: %+v", key, err)
+	}
+	value, err := strconv.ParseUint(valueStr, 10, 32)
+	if err != nil {
+		return 0, errors.Errorf("Unable to decode %s: %+v", key, err)
+	}
+	return value, nil
 }
 
 // Test use only function for exposing MapImpl

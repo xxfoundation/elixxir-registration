@@ -64,9 +64,21 @@ type State struct {
 
 // Enumerates Keys in the State table
 const (
+	// Used internally
 	UpdateIdKey = "UpdateId"
 	RoundIdKey  = "RoundId"
 	EllipticKey = "EllipticKey"
+
+	// Provided externally
+	PrecompTimeout       = "timeouts_precomputation"
+	RealtimeTimeout      = "timeouts_realtime"
+	AdvertisementTimeout = "timeouts_advertisement"
+	TeamSize             = "scheduling_team_size"
+	BatchSize            = "scheduling_batch_size"
+	MinDelay             = "scheduling_min_delay"
+	PoolThreshold        = "scheduling_pool_threshold"
+	MaxRegistrations     = "registration_max"
+	RegistrationPeriod   = "registration_period"
 )
 
 // Struct representing the Node's Application table in the Database

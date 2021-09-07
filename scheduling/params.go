@@ -11,11 +11,16 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/primitives/id"
+	"sync"
 	"time"
 )
 
 // JSONable structure which defines the parameters of the scheduler
 type Params struct {
+	// Need a mutex as params can be modified out of band
+	// NOTE: This causes tons of warnings, which can be ignored with proper usage
+	sync.RWMutex
+
 	// selects if the secure or simple node selection algorithm is used
 	Secure bool
 	// number of nodes in a team
@@ -37,15 +42,6 @@ type Params struct {
 	RealtimeTimeout time.Duration
 	//Debug flag used to cause regular prints about the state of the network
 	DebugTrackRounds bool
-
-	//SIMPLE ONLY//
-	// sets if simple teaming randomly orders nodes or orders based upon the
-	// number in the `order` string
-	// SemiOptimalOrdering is the ordering designed for secure teaming.
-	// Prefers RandomOrdering
-	// todo: remove this once deployment has been updated
-	RandomOrdering      bool
-	SemiOptimalOrdering bool
 
 	//SECURE ONLY
 	// sets the minimum number of nodes in the waiting pool before secure teaming
