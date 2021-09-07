@@ -30,7 +30,7 @@ type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 
 // Scheduler constructs the teaming parameters and sets up the scheduling
 func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan chan struct{}) error {
-	var params *Params
+	var params *safeParams
 	err := json.Unmarshal(serialParam, params)
 	if err != nil {
 		return errors.WithMessage(err, "Could not extract parameters")
@@ -56,7 +56,7 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 }
 
 // Runs an infinite loop that checks for updates to scheduling parameters
-func updateParams(params *Params, updateFreq time.Duration) {
+func updateParams(params *safeParams, updateFreq time.Duration) {
 	for {
 		teamSize, err := storage.PermissioningDb.GetStateInt(storage.TeamSize)
 		if err != nil {
@@ -101,7 +101,7 @@ func updateParams(params *Params, updateFreq time.Duration) {
 
 // scheduler is a utility function which builds a round by handling a node's
 // state changes then creating a team from the nodes in the pool
-func scheduler(params *Params, state *storage.NetworkState, killchan chan chan struct{}) error {
+func scheduler(params *safeParams, state *storage.NetworkState, killchan chan chan struct{}) error {
 
 	// Pool which tracks nodes which are not in a team
 	pool := NewWaitingPool()
@@ -128,9 +128,7 @@ func scheduler(params *Params, state *storage.NetworkState, killchan chan chan s
 
 	//begin the thread that starts rounds
 	go func() {
-		params.RLock()
-		paramsCopy := *params
-		params.RUnlock()
+		paramsCopy := params.safeCopy()
 
 		lastRound := time.Now()
 		var err error
@@ -168,9 +166,7 @@ func scheduler(params *Params, state *storage.NetworkState, killchan chan chan s
 
 	// Start receiving updates from nodes
 	for true {
-		params.RLock()
-		paramsCopy := *params
-		params.RUnlock()
+		paramsCopy := params.safeCopy()
 
 		isRoundTimeout := false
 		var update node.UpdateNotification
