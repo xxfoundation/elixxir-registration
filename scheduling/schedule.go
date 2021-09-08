@@ -58,40 +58,60 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 // Runs an infinite loop that checks for updates to scheduling parameters
 func updateParams(params *safeParams, updateFreq time.Duration) {
 	for {
+		newParams := make(map[string]uint64, 0)
 		teamSize, err := storage.PermissioningDb.GetStateInt(storage.TeamSize)
 		if err != nil {
 			jww.ERROR.Printf(err.Error())
 			continue
 		}
+		newParams[storage.TeamSize] = teamSize
 		batchSize, err := storage.PermissioningDb.GetStateInt(storage.BatchSize)
 		if err != nil {
 			jww.ERROR.Printf(err.Error())
 			continue
 		}
+		newParams[storage.BatchSize] = batchSize
 		precompTimeout, err := storage.PermissioningDb.GetStateInt(storage.PrecompTimeout)
 		if err != nil {
 			jww.ERROR.Printf(err.Error())
 			continue
 		}
+		newParams[storage.PrecompTimeout] = precompTimeout
 		realtimeTimeout, err := storage.PermissioningDb.GetStateInt(storage.RealtimeTimeout)
 		if err != nil {
 			jww.ERROR.Printf(err.Error())
 			continue
 		}
+		newParams[storage.RealtimeTimeout] = realtimeTimeout
 		minDelay, err := storage.PermissioningDb.GetStateInt(storage.MinDelay)
 		if err != nil {
 			jww.ERROR.Printf(err.Error())
 			continue
 		}
+		newParams[storage.MinDelay] = minDelay
+		realtimeDelay, err := storage.PermissioningDb.GetStateInt(storage.AdvertisementTimeout)
+		if err != nil {
+			jww.ERROR.Printf(err.Error())
+			continue
+		}
+		newParams[storage.AdvertisementTimeout] = realtimeDelay
+		threshold, err := storage.PermissioningDb.GetStateInt(storage.PoolThreshold)
+		if err != nil {
+			jww.ERROR.Printf(err.Error())
+			continue
+		}
+		newParams[storage.PoolThreshold] = threshold
 
 		jww.INFO.Printf("Preparing to update scheduling params...")
 		params.Lock()
-		jww.INFO.Printf("Updating scheduling params...")
+		jww.INFO.Printf("Updating scheduling params: %+v", newParams)
 		params.TeamSize = uint32(teamSize)
 		params.BatchSize = uint32(batchSize)
 		params.PrecomputationTimeout = time.Duration(precompTimeout)
 		params.RealtimeTimeout = time.Duration(realtimeTimeout)
 		params.MinimumDelay = time.Duration(minDelay)
+		params.RealtimeTimeout = time.Duration(realtimeDelay)
+		params.Threshold = uint32(threshold)
 		params.Unlock()
 
 		time.Sleep(updateFreq)

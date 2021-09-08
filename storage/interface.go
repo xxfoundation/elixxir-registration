@@ -77,8 +77,10 @@ const (
 	BatchSize            = "scheduling_batch_size"
 	MinDelay             = "scheduling_min_delay"
 	PoolThreshold        = "scheduling_pool_threshold"
-	MaxRegistrations     = "registration_max"
-	RegistrationPeriod   = "registration_period"
+
+	// TODO: Client reg repo?
+	MaxRegistrations   = "registration_max"
+	RegistrationPeriod = "registration_period"
 )
 
 // Struct representing the Node's Application table in the Database

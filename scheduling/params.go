@@ -5,7 +5,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 package scheduling
 
-// Contains the scheduling params object and the internal protoround object
+// Contains the scheduling params object and the internal protoRound object
 
 import (
 	"gitlab.com/elixxir/registration/storage/node"
