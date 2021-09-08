@@ -277,7 +277,6 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 		TeamSize:            8,
 		BatchSize:           32,
 		Threshold:           2,
-		SemiOptimalOrdering: true,
 		NodeCleanUpInterval: 3,
 	}
 
