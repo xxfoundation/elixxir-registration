@@ -143,16 +143,17 @@ pruneRetentionLimit: "168h"
 ### SchedulingConfig template:
 ```json
 {
-  "TeamSize": 4,
+  "TeamSize": 3,
   "BatchSize": 32,
-  "RandomOrdering": false,
-  "SemiOptimalOrdering": false,
   "MinimumDelay": 60,
   "RealtimeDelay": 3000,
   "Threshold":     10,
   "NodeCleanUpInterval": 3,  
   "Secure": 		     true,
-  "RoundTimeout": 60
+  "PrecomputationTimeout": 30,
+  "RealtimeTimeout": 15,
+  "ResourceQueueTimeout": 10000,
+  "DebugTrackRounds": true
 }
 ```
 

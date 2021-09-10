@@ -11,7 +11,9 @@ package storage
 
 import (
 	"gitlab.com/xx_network/primitives/id"
+	"github.com/pkg/errors"
 	"gitlab.com/xx_network/primitives/region"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -48,6 +50,19 @@ func (s *Storage) UpdateLastActive(ids []*id.ID) error {
 	currentTime := time.Now()
 
 	return s.updateLastActive(idsBytes, currentTime)
+}
+
+// Helper for returning a uint64 from the State table
+func (s *Storage) GetStateInt(key string) (uint64, error) {
+	valueStr, err := s.GetStateValue(key)
+	if err != nil {
+		return 0, errors.Errorf("Unable to find %s: %+v", key, err)
+	}
+	value, err := strconv.ParseUint(valueStr, 10, 32)
+	if err != nil {
+		return 0, errors.Errorf("Unable to decode %s: %+v", key, err)
+	}
+	return value, nil
 }
 
 // Test use only function for exposing MapImpl
