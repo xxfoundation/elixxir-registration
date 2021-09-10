@@ -52,6 +52,11 @@ type Params struct {
 	clientRegistrationAddress string
 
 	versionLock sync.RWMutex
+
+	// How long offline nodes remain in the NDF. If a node is
+	// offline past this duration the node is cleared from the
+	// NDF. Expects duration in"h". (Defaults to 1 week (168 hours)
+	pruneRetentionLimit time.Duration
 }
 
 // toGroup takes a group represented by a map of string to string,

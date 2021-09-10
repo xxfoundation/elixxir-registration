@@ -62,17 +62,18 @@ func TestMain(m *testing.M) {
 	}
 
 	testParams = Params{
-		Address:           permAddr,
-		CertPath:          testkeys.GetCACertPath(),
-		KeyPath:           testkeys.GetCAKeyPath(),
-		NdfOutputPath:     testkeys.GetNDFPath(),
-		publicAddress:     permAddr,
-		udbCertPath:       testkeys.GetUdbCertPath(),
-		NsCertPath:        testkeys.GetUdbCertPath(),
-		minimumNodes:      3,
-		minGatewayVersion: minGatewayVersion,
-		minServerVersion:  minServerVersion,
-		disableGeoBinning: true,
+		Address:             permAddr,
+		CertPath:            testkeys.GetCACertPath(),
+		KeyPath:             testkeys.GetCAKeyPath(),
+		NdfOutputPath:       testkeys.GetNDFPath(),
+		publicAddress:       permAddr,
+		udbCertPath:         testkeys.GetUdbCertPath(),
+		NsCertPath:          testkeys.GetUdbCertPath(),
+		minimumNodes:        3,
+		minGatewayVersion:   minGatewayVersion,
+		minServerVersion:    minServerVersion,
+		disableGeoBinning:   true,
+		pruneRetentionLimit: 500 * time.Millisecond,
 	}
 	nodeComm = nodeComms.StartNode(&id.TempGateway, nodeAddr, 0, nodeComms.NewImplementation(), nodeCert, nodeKey)
 

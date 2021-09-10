@@ -35,11 +35,13 @@ type database interface {
 		gatewayAddress, gatewayCert string) error
 	UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error
 	UpdateNodeSequence(id *id.ID, sequence string) error
+	UpdateGeoIP(appId uint64, location, geoBin, gpsLocation string) error
+	updateLastActive(ids [][]byte, lastActive time.Time) error
 	GetNode(code string) (*Node, error)
+	GetNodes() ([]*Node, error)
 	GetNodeById(id *id.ID) (*Node, error)
 	GetNodesByStatus(status node.Status) ([]*Node, error)
 	GetActiveNodes() ([]*ActiveNode, error)
-	UpdateGeoIP(appId uint64, location, geo_bin, gps_location string) error
 }
 
 // Struct implementing the Database Interface with an underlying Map
@@ -150,6 +152,8 @@ type Node struct {
 
 	// Date/time that the node was registered
 	DateRegistered time.Time
+	// Date/time that the node was last active
+	LastActive time.Time
 	// Node's network status
 	Status uint8 `gorm:"NOT NULL"`
 
