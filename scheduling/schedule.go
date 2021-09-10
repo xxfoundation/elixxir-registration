@@ -49,8 +49,8 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 		params.RealtimeTimeout = 15
 	}
 
-	// TODO: Set up frequency
-	go updateParams(params, 1*time.Minute)
+	// TODO: Set up frequency as a configuration option
+	go updateParams(params, 5*time.Minute)
 
 	return scheduler(params, state, killchan)
 }
