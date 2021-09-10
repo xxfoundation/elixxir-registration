@@ -3,6 +3,7 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
+
 package scheduling
 
 // Contains the handler for node updates
@@ -36,11 +37,14 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	// here which blocks all future polls until processing completes
 	defer n.GetPollingLock().Unlock()
 	hasRound, r := n.GetCurrentRound()
-	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED &&
-		(update.ToActivity != current.ERROR && update.ToActivity != current.CRASH)
+
+	// FIXME: This code can't be reached, as the same condition returns an error
+	// FIXME: in the node.Update function earlier in the Poll call
+	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED && (update.ToActivity != current.ERROR && update.ToActivity != current.CRASH)
 	if roundErrored {
 		return nil
 	}
+
 	if update.ClientErrors != nil && len(update.ClientErrors) > 0 {
 		r.AppendClientErrors(update.ClientErrors)
 	}
@@ -57,7 +61,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 				jww.FATAL.Panicf("Failed to sign error message for banned node %s: %+v", update.Node, err)
 			}
 			n.ClearRound()
-			return killRound(state, r, banError, roundTracker, pool)
+			return killRound(state, r, banError, roundTracker)
 		} else {
 			pool.Ban(n)
 			return nil
@@ -203,7 +207,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			//send the signal that the round is complete
 			r.DenoteRoundCompleted()
 			n.ClearRound()
-			err = killRound(state, r, update.Error, roundTracker, pool)
+			err = killRound(state, r, update.Error, roundTracker)
 		}
 		return err
 	}
@@ -237,7 +241,7 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) {
 
 // killRound sets the round to failed and clears the node's round
 func killRound(state *storage.NetworkState, r *round.State,
-	roundError *pb.RoundError, roundTracker *RoundTracker, pool *waitingPool) error {
+	roundError *pb.RoundError, roundTracker *RoundTracker) error {
 	r.AppendError(roundError)
 
 	err := r.Update(states.FAILED, time.Now())
@@ -291,7 +295,6 @@ func killRound(state *storage.NetworkState, r *round.State,
 			jww.WARN.Printf("Could not insert round error: %+v", errInsert)
 			err = nil
 		}
-		state.GetNodeMap().GetNodeStates()
 	}()
 
 	return err

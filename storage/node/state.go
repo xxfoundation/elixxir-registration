@@ -156,7 +156,11 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 	// Check the round error state
 	if n.currentRound != nil && n.currentRound.GetRoundState() == states.FAILED &&
 		(newActivity != current.ERROR && newActivity != current.CRASH) {
-		return false, UpdateNotification{}, errors.New("Round has failed, state cannot be updated")
+		rid := n.currentRound.GetRoundID()
+		// Clear the round to prevent looping on this error
+		n.currentRound = nil
+		return false, UpdateNotification{}, errors.Errorf("Round %d has failed, state cannot be updated",
+			rid)
 	}
 
 	//if the activity is the one that the Node is already in, do nothing
@@ -173,7 +177,7 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 				"invalid transition", oldActivity, newActivity)
 	}
 
-	// check that the state of the round the Node is assoceated with is correct
+	// check that the state of the round the Node is associated with is correct
 	// for the transition
 	if transition.Node.NeedsRound(newActivity) == transition.Yes {
 
@@ -195,7 +199,7 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 		}
 	}
 
-	//check that the Node doesnt have a round if it shouldn't
+	//check that the Node doesn't have a round if it shouldn't
 	if transition.Node.NeedsRound(newActivity) == transition.No && n.currentRound != nil {
 		return false, UpdateNotification{},
 			errors.Errorf("Node update from %s to %s failed, "+
