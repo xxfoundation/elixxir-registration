@@ -22,10 +22,11 @@ const (
 )
 
 func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{},
-	nodeMetricInterval time.Duration, onlyScheduleActive bool) {
+	nodeMetricInterval time.Duration) {
 	jww.DEBUG.Printf("Beginning storage of node metrics every %+v...",
 		nodeMetricInterval)
 	nodeTicker := time.NewTicker(nodeMetricInterval)
+	onlyScheduleActive := impl.params.onlyScheduleActive
 	for {
 		// Store the metric start time
 		startTime := time.Now()

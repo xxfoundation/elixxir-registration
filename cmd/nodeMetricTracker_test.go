@@ -143,7 +143,7 @@ func TestTrackNodeMetrics(t *testing.T) {
 	}
 
 	go TrackNodeMetrics(impl, kill,
-		interval, true)
+		interval)
 
 	time.Sleep(interval * 4)
 

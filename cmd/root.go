@@ -209,6 +209,7 @@ var rootCmd = &cobra.Command{
 			allowLocalIPs:             viper.GetBool("allowLocalIPs"),
 			disableGeoBinning:         viper.GetBool("disableGeoBinning"),
 			blockchainGeoBinning:      viper.GetBool("blockchainGeoBinning"),
+			onlyScheduleActive:        viper.GetBool("OnlyScheduleActive"),
 
 			disableNDFPruning:   viper.GetBool("disableNDFPruning"),
 			geoIPDBFile:         viper.GetString("geoIPDBFile"),
@@ -258,9 +259,8 @@ var rootCmd = &cobra.Command{
 			viper.GetInt64("nodeMetricInterval")) * time.Second
 
 		// Run the Node metric tracker forever in another thread
-		onlyScheduleActive := viper.GetBool("OnlyScheduleActive")
 		metricTrackerQuitChan := make(chan struct{})
-		go TrackNodeMetrics(impl, metricTrackerQuitChan, nodeMetricInterval, onlyScheduleActive)
+		go TrackNodeMetrics(impl, metricTrackerQuitChan, nodeMetricInterval)
 
 		// Run address space updater until stopped
 		viper.SetDefault("addressSpaceSizeUpdateInterval", 5*time.Minute)
