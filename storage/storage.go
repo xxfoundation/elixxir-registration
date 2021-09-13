@@ -10,8 +10,8 @@
 package storage
 
 import (
-	"gitlab.com/xx_network/primitives/id"
 	"github.com/pkg/errors"
+	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/region"
 	"strconv"
 	"testing"
@@ -58,7 +58,7 @@ func (s *Storage) GetStateInt(key string) (uint64, error) {
 	if err != nil {
 		return 0, errors.Errorf("Unable to find %s: %+v", key, err)
 	}
-	value, err := strconv.ParseUint(valueStr, 10, 32)
+	value, err := strconv.ParseUint(valueStr, 10, 64)
 	if err != nil {
 		return 0, errors.Errorf("Unable to decode %s: %+v", key, err)
 	}

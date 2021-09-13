@@ -141,10 +141,13 @@ pruneRetentionLimit: "168h"
 ```
 
 ### SchedulingConfig template:
+
+Note: All times in MS
+
 ```json
 {
   "TeamSize": 3,
-  "BatchSize": 32,
+  "BatchSize": 64,
   "MinimumDelay": 60,
   "RealtimeDelay": 3000,
   "Threshold":     10,

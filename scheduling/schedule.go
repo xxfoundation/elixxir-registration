@@ -23,8 +23,14 @@ import (
 
 // scheduler.go contains the business logic for scheduling a round
 
-//size of round creation channel, just sufficiently large enough to not be jammed
-const newRoundChanLen = 1000
+const (
+	//size of round creation channel, just sufficiently large enough to not be jammed
+	newRoundChanLen = 1000
+
+	// how long a node needs to not act to be considered offline or in-active for the
+	// print. arbitrarily chosen.
+	timeToInactive = 3 * time.Minute
+)
 
 type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error)
@@ -39,15 +45,14 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 
 	// If resource queue timeout isn't set, set it to a default of 3 minutes
 	if params.ResourceQueueTimeout == 0 {
-		params.ResourceQueueTimeout = 180000 // 180000 ms = 3 minutes
+		params.ResourceQueueTimeout = 180000
 	}
-	// If roundTimeout hasn't set, set to a default of one minute
+	// If round times haven't been set, set to a default of one minute
 	if params.PrecomputationTimeout == 0 {
-		params.PrecomputationTimeout = 60
+		params.PrecomputationTimeout = 6000
 	}
-
 	if params.RealtimeTimeout == 0 {
-		params.RealtimeTimeout = 15
+		params.RealtimeTimeout = 1500
 	}
 
 	// TODO: Set up frequency as a configuration option
@@ -168,7 +173,7 @@ func scheduler(params *safeParams, state *storage.NetworkState, killchan chan ch
 			}
 
 			go waitForRoundTimeout(roundTimeoutTracker, state, ourRound,
-				paramsCopy.PrecomputationTimeout*time.Second,
+				paramsCopy.PrecomputationTimeout*time.Millisecond,
 				"precomputation")
 		}
 
@@ -220,7 +225,7 @@ func scheduler(params *safeParams, state *storage.NetworkState, killchan chan ch
 			// Handle the node's state change
 			err = HandleNodeUpdates(update, pool, state,
 				paramsCopy.RealtimeDelay*time.Millisecond, roundTracker, roundTimeoutTracker,
-				paramsCopy.RealtimeTimeout*time.Second)
+				paramsCopy.RealtimeTimeout*time.Millisecond)
 			if err != nil {
 				return err
 			}
@@ -313,7 +318,3 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 	}
 	return nil
 }
-
-// how long a node needs to not act to be considered offline or in-active for the
-// print. arbitrarily chosen.
-const timeToInactive = 3 * time.Minute

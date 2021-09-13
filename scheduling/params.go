@@ -40,18 +40,19 @@ type Params struct {
 	TeamSize uint32
 	// number of slots in a batch
 	BatchSize uint32
-	// Resource queue timeout on nodes (ms)
-	ResourceQueueTimeout time.Duration
 
-	// Time in ms between assigning a round
+	// NOTE: All times in MS
+	// Resource queue timeout on nodes
+	ResourceQueueTimeout time.Duration
+	// Time between assigning a round
 	MinimumDelay time.Duration
-	// delay in ms for a realtime round to start
+	// Delay for a realtime round to start
 	RealtimeDelay time.Duration
-	// Time in seconds between cleaning up offline nodes
+	// Time between cleaning up offline nodes
 	NodeCleanUpInterval time.Duration
-	// Time in seconds until round precomputation times out
+	// Time until round precomputation times out
 	PrecomputationTimeout time.Duration
-	// Time in second until round realtime times out
+	// Time until round realtime times out
 	RealtimeTimeout time.Duration
 	//Debug flag used to cause regular prints about the state of the network
 	DebugTrackRounds bool
