@@ -43,18 +43,17 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{},
 					jww.ERROR.Print(err)
 				}
 
-			}
+				// Serialize the active node map
+				activeNodes := make([]*id.ID, 0, len(active))
+				for activeId := range active {
+					activeNodes = append(activeNodes, &activeId)
+				}
 
-			activeNodes := make([]*id.ID, 0, len(active))
-			// Serialize the active node map
-			for activeId := range active {
-				activeNodes = append(activeNodes, &activeId)
-			}
-
-			// Update all the active nodes in the database
-			err = storage.PermissioningDb.UpdateLastActive(activeNodes)
-			if err != nil {
-				jww.ERROR.Printf("TrackNodeMetrics: Could not update last active: %v", err)
+				// Update all the active nodes in the database
+				err = storage.PermissioningDb.UpdateLastActive(activeNodes)
+				if err != nil {
+					jww.ERROR.Printf("TrackNodeMetrics: Could not update last active: %v", err)
+				}
 			}
 
 			nodes, err := storage.PermissioningDb.GetNodes()
