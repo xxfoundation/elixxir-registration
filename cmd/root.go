@@ -218,6 +218,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
+		jww.INFO.Printf("Params: %+v", RegParams)
 
 		LoadAllRegNodes = true
 

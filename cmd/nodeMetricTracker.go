@@ -42,6 +42,7 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{},
 				if err != nil {
 					jww.ERROR.Print(err)
 				}
+				jww.DEBUG.Printf("Found %d active nodes!", len(active))
 
 				// Serialize the active node map
 				activeNodes := make([]*id.ID, 0, len(active))
