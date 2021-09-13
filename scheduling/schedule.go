@@ -116,7 +116,7 @@ func updateParams(params *safeParams, updateFreq time.Duration) {
 		params.PrecomputationTimeout = time.Duration(precompTimeout)
 		params.RealtimeTimeout = time.Duration(realtimeTimeout)
 		params.MinimumDelay = time.Duration(minDelay)
-		params.RealtimeTimeout = time.Duration(realtimeDelay)
+		params.RealtimeDelay = time.Duration(realtimeDelay)
 		params.Threshold = uint32(threshold)
 		params.Unlock()
 

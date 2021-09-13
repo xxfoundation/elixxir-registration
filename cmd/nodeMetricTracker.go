@@ -66,13 +66,15 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{},
 			// Place in a map
 			dbMap := make(map[id.ID]*storage.Node)
 			for _, node := range nodes {
-				nid, err := id.Unmarshal(node.Id)
-				if err != nil {
-					jww.ERROR.Printf("Could not unmarshal ID from database: %+v", err)
-					continue
+				// It's possible to have empty node IDs in database
+				if len(node.Id) > 0 {
+					nid, err := id.Unmarshal(node.Id)
+					if err != nil {
+						jww.ERROR.Printf("Could not unmarshal ID from database: %+v", err)
+						continue
+					}
+					dbMap[*nid] = node
 				}
-
-				dbMap[*nid] = node
 			}
 
 			// Iterate over the Node States
