@@ -49,10 +49,10 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 	}
 	// If round times haven't been set, set to a default of one minute
 	if params.PrecomputationTimeout == 0 {
-		params.PrecomputationTimeout = 6000
+		params.PrecomputationTimeout = 60000
 	}
 	if params.RealtimeTimeout == 0 {
-		params.RealtimeTimeout = 1500
+		params.RealtimeTimeout = 15000
 	}
 
 	// TODO: Set up frequency as a configuration option
