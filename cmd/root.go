@@ -209,7 +209,7 @@ var rootCmd = &cobra.Command{
 			allowLocalIPs:             viper.GetBool("allowLocalIPs"),
 			disableGeoBinning:         viper.GetBool("disableGeoBinning"),
 			blockchainGeoBinning:      viper.GetBool("blockchainGeoBinning"),
-			onlyScheduleActive:        viper.GetBool("OnlyScheduleActive"),
+			onlyScheduleActive:        viper.GetBool("onlyScheduleActive"),
 
 			disableNDFPruning:   viper.GetBool("disableNDFPruning"),
 			geoIPDBFile:         viper.GetString("geoIPDBFile"),
