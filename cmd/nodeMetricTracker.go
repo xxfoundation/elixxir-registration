@@ -45,10 +45,10 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{},
 
 			}
 
-			activeNodes := make([]*id.ID, len(active))
+			activeNodes := make([]*id.ID, 0, len(active))
 			// Serialize the active node map
-			for i, activeNode := range activeNodes {
-				activeNodes[i] = activeNode
+			for activeId := range active {
+				activeNodes = append(activeNodes, &activeId)
 			}
 
 			// Update all the active nodes in the database
