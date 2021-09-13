@@ -31,25 +31,24 @@ type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 
 // Scheduler constructs the teaming parameters and sets up the scheduling
 func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan chan struct{}) error {
-	var rawParams *Params
-	err := json.Unmarshal(serialParam, rawParams)
+	params := &safeParams{}
+	err := json.Unmarshal(serialParam, params)
 	if err != nil {
 		return errors.WithMessage(err, "Could not extract parameters")
 	}
 
 	// If resource queue timeout isn't set, set it to a default of 3 minutes
-	if rawParams.ResourceQueueTimeout == 0 {
-		rawParams.ResourceQueueTimeout = 180000 // 180000 ms = 3 minutes
+	if params.ResourceQueueTimeout == 0 {
+		params.ResourceQueueTimeout = 180000 // 180000 ms = 3 minutes
 	}
 	// If roundTimeout hasn't set, set to a default of one minute
-	if rawParams.PrecomputationTimeout == 0 {
-		rawParams.PrecomputationTimeout = 60
-	}
-	if rawParams.RealtimeTimeout == 0 {
-		rawParams.RealtimeTimeout = 15
+	if params.PrecomputationTimeout == 0 {
+		params.PrecomputationTimeout = 60
 	}
 
-	params := &safeParams{Params: rawParams}
+	if params.RealtimeTimeout == 0 {
+		params.RealtimeTimeout = 15
+	}
 
 	// TODO: Set up frequency as a configuration option
 	go updateParams(params, 5*time.Minute)
