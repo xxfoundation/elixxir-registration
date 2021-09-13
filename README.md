@@ -151,11 +151,11 @@ Note: All times in MS
   "MinimumDelay": 60,
   "RealtimeDelay": 3000,
   "Threshold":     10,
-  "NodeCleanUpInterval": 3,  
+  "NodeCleanUpInterval": 180000,  
   "Secure": 		     true,
-  "PrecomputationTimeout": 30,
-  "RealtimeTimeout": 15,
-  "ResourceQueueTimeout": 10000,
+  "PrecomputationTimeout": 30000,
+  "RealtimeTimeout": 15000,
+  "ResourceQueueTimeout": 180000,
   "DebugTrackRounds": true
 }
 ```
