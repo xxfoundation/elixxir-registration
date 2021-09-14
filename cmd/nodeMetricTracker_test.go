@@ -149,10 +149,10 @@ func TestTrackNodeMetrics(t *testing.T) {
 
 	resultNdf := impl.State.GetFullNdf().Get()
 
-	if len(resultNdf.Nodes) != 2 {
+	if len(resultNdf.Nodes) != 1 {
 		t.Fatalf("Unexpected amount of nodes in NDF."+
 			"\n\tExpected: %d"+
-			"\n\tReceived: %d", 2, len(resultNdf.Nodes))
+			"\n\tReceived: %d", 1, len(resultNdf.Nodes))
 	}
 
 	for _, n := range resultNdf.Nodes {

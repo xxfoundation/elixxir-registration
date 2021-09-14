@@ -101,6 +101,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		partialNdf:          partialNdf,
 		rsaPrivateKey:       rsaPrivKey,
 		addressSpaceSize:    &addressSpaceSize,
+		pruneList:           make(map[id.ID]bool),
 		ndfOutputPath:       ndfOutputPath,
 		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
 		geoBins:             geoBins,

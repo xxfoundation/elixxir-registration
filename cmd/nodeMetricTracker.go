@@ -35,7 +35,7 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 			return
 		// Wait for the ticker to fire
 		case <-nodeTicker.C:
-			var toPrune map[id.ID]bool
+			toPrune := make(map[id.ID]bool)
 			var toUpdate []*id.ID
 			var err error
 
