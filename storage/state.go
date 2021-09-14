@@ -60,12 +60,8 @@ type NetworkState struct {
 	// NDF state
 	unprunedNdf  *ndf.NetworkDefinition
 	pruneListMux sync.RWMutex
-	pruneList    map[id.ID]interface{}
-	// List of stale (offline or old) nodes that
-	// have not contacted permissioning in a while,
-	// but not long enough to be pruned
-	staleList    map[id.ID]interface{}
-	staleListMux sync.RWMutex
+	// Boolean determines whether Node is omitted from NDF
+	pruneList map[id.ID]bool
 
 	partialNdf *dataStructures.Ndf
 	fullNdf    *dataStructures.Ndf
@@ -105,8 +101,6 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		partialNdf:          partialNdf,
 		rsaPrivateKey:       rsaPrivKey,
 		addressSpaceSize:    &addressSpaceSize,
-		pruneList:           make(map[id.ID]interface{}),
-		staleList:           make(map[id.ID]interface{}),
 		ndfOutputPath:       ndfOutputPath,
 		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
 		geoBins:             geoBins,
@@ -189,56 +183,41 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 	return state, nil
 }
 
+// Adds pruned nodes, used by disabledNodes
 func (s *NetworkState) setPrunedNodesNoReset(ids []*id.ID) {
 	s.pruneListMux.Lock()
 	defer s.pruneListMux.Unlock()
 
 	for _, i := range ids {
-		s.pruneList[*i] = nil
+		// Disabled nodes will remain in NDF
+		s.pruneList[*i] = false
 	}
 }
 
-func (s *NetworkState) SetPrunedNodes(ids []*id.ID) {
+// Sets pruned Nodes, including disabled Nodes
+// Used by node metrics tracker
+func (s *NetworkState) SetPrunedNodes(prunedNodes map[id.ID]bool) {
 	s.pruneListMux.Lock()
 	defer s.pruneListMux.Unlock()
 
-	s.pruneList = make(map[id.ID]interface{})
+	s.pruneList = prunedNodes
 
-	for _, i := range ids {
-		s.pruneList[*i] = nil
-	}
 	if s.disabledNodesStates != nil {
 		disabled := s.disabledNodesStates.getDisabledNodes()
 		for _, i := range disabled {
-			s.pruneList[*i] = nil
+			// Disabled nodes will remain in NDF
+			s.pruneList[*i] = false
 		}
 	}
 }
 
+// Sets a Node as pruned (to be removed from NDF)
+// Used on startup
 func (s *NetworkState) SetPrunedNode(id *id.ID) {
 	s.pruneListMux.Lock()
 	defer s.pruneListMux.Unlock()
 
-	s.pruneList[*id] = nil
-}
-
-func (s *NetworkState) SetStaleNodes(ids []*id.ID) {
-	s.staleListMux.Lock()
-	defer s.staleListMux.Unlock()
-
-	s.staleList = make(map[id.ID]interface{})
-
-	for _, i := range ids {
-		s.pruneList[*i] = nil
-	}
-
-}
-
-func (s *NetworkState) SetStaleNode(id *id.ID) {
-	s.staleListMux.Lock()
-	defer s.staleListMux.Unlock()
-
-	s.staleList[*id] = nil
+	s.pruneList[*id] = false
 }
 
 func (s *NetworkState) IsPruned(node *id.ID) bool {
@@ -354,27 +333,28 @@ func (s *NetworkState) RoundAdderRoutine() {
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
-	ndfMarshabled, _ := newNdf.Marshal()
-	s.unprunedNdf, _ = ndf.Unmarshal(ndfMarshabled)
+	ndfMarshalled, _ := newNdf.Marshal()
+	s.unprunedNdf, _ = ndf.Unmarshal(ndfMarshalled)
 
 	s.pruneListMux.RLock()
-	s.staleListMux.RLock()
 	//prune the NDF
 	for i := 0; i < len(newNdf.Nodes); i++ {
 		nid, _ := id.Unmarshal(newNdf.Nodes[i].ID)
-		if _, exists := s.pruneList[*nid]; exists { // Prune nodes if in the prune list
-			newNdf.Nodes = append(newNdf.Nodes[:i], newNdf.Nodes[i+1:]...)
-			newNdf.Gateways = append(newNdf.Gateways[:i], newNdf.Gateways[i+1:]...)
-			i--
-		} else if _, exists := s.staleList[*nid]; exists { // Set status of stale nodes
-			newNdf.Nodes[i].Status = ndf.Stale
+
+		// Prune nodes if in the prune list
+		if isPruned, exists := s.pruneList[*nid]; exists {
+			if isPruned {
+				newNdf.Nodes = append(newNdf.Nodes[:i], newNdf.Nodes[i+1:]...)
+				newNdf.Gateways = append(newNdf.Gateways[:i], newNdf.Gateways[i+1:]...)
+				i--
+			} else {
+				newNdf.Nodes[i].Status = ndf.Stale
+			}
 		} else {
 			newNdf.Nodes[i].Status = ndf.Active
 		}
 
 	}
-
-	s.staleListMux.RUnlock()
 	s.pruneListMux.RUnlock()
 
 	// Build NDF comms messages
