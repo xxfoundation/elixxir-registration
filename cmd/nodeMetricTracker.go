@@ -35,7 +35,10 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 			return
 		// Wait for the ticker to fire
 		case <-nodeTicker.C:
+			// Keep track of stale/pruned nodes
+			// Set to true if pruned, false if stale
 			toPrune := make(map[id.ID]bool)
+			// List of nodes to update activity in Storage
 			var toUpdate []*id.ID
 			var err error
 

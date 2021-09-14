@@ -218,7 +218,7 @@ func (s *NetworkState) SetPrunedNode(id *id.ID) {
 	s.pruneListMux.Lock()
 	defer s.pruneListMux.Unlock()
 
-	s.pruneList[*id] = false
+	s.pruneList[*id] = true
 }
 
 func (s *NetworkState) IsPruned(node *id.ID) bool {
