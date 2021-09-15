@@ -43,14 +43,15 @@ func (m *MapImpl) InsertApplication(application *Application, unregisteredNode *
 	return nil
 }
 
-func (m *MapImpl) UpdateGeoIP(appId uint64, location, geo_bin, gps_location string) error {
+// Update the given applicationId with the given GeoIP information
+func (m *MapImpl) UpdateGeoIP(appId uint64, location, geoBin, gpsLocation string) error {
 	if app, ok := m.applications[appId]; ok {
 		app.Location = location
-		app.GeoBin = geo_bin
-		app.GpsLocation = gps_location
+		app.GeoBin = geoBin
+		app.GpsLocation = gpsLocation
 		return nil
 	} else {
-		return errors.New(fmt.Sprintf("No application found with ID %d", appId))
+		return errors.New(fmt.Sprintf("Unable to update GeoIP: No application found with ID %d", appId))
 	}
 }
 
@@ -85,6 +86,21 @@ func (m *MapImpl) UpdateNodeSequence(id *id.ID, sequence string) error {
 	return errors.Errorf("unable to update sequence for %s", id.String())
 }
 
+// Update LastActive field for all given Node IDs in Storage
+func (m *MapImpl) updateLastActive(ids [][]byte, lastActive time.Time) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	for _, nodeId := range ids {
+		for _, v := range m.nodes {
+			if bytes.Compare(v.Id, nodeId) == 0 {
+				v.LastActive = lastActive
+			}
+		}
+	}
+	return nil
+}
+
 // If Node registration code is valid, add Node information
 func (m *MapImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddress, serverCert,
 	gatewayAddress, gatewayCert string) error {
@@ -117,6 +133,18 @@ func (m *MapImpl) GetNode(code string) (*Node, error) {
 		return nil, errors.Errorf("unable to get node %s", code)
 	}
 	return info, nil
+}
+
+// Return all nodes in Storage
+func (m *MapImpl) GetNodes() ([]*Node, error) {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	nodes := make([]*Node, 0)
+	for _, v := range m.nodes {
+		nodes = append(nodes, v)
+	}
+	return nodes, nil
 }
 
 // Get Node information for the given Node ID

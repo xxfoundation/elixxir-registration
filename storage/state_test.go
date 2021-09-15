@@ -527,7 +527,7 @@ func TestNetworkState_GetRoundID(t *testing.T) {
 func TestNetworkState_CreateDisabledNodes(t *testing.T) {
 	// Get test data
 	testData, stateMap, expectedStateSet := generateIdLists(3, t)
-	state := &NetworkState{nodes: stateMap, pruneList: make(map[id.ID]interface{})}
+	state := &NetworkState{nodes: stateMap, pruneList: make(map[id.ID]bool)}
 	testData = "\n \n\n" + testData + "\n  "
 	testPath := "testDisabledNodesList.txt"
 

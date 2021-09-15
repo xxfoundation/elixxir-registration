@@ -3,6 +3,7 @@
 //                                                                             /
 // All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
+
 package scheduling
 
 import (
@@ -22,39 +23,111 @@ import (
 
 // scheduler.go contains the business logic for scheduling a round
 
-//size of round creation channel, just sufficiently large enough to not be jammed
-const newRoundChanLen = 1000
+const (
+	//size of round creation channel, just sufficiently large enough to not be jammed
+	newRoundChanLen = 1000
+
+	// how long a node needs to not act to be considered offline or in-active for the
+	// print. arbitrarily chosen.
+	timeToInactive = 3 * time.Minute
+)
 
 type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error)
 
 // Scheduler constructs the teaming parameters and sets up the scheduling
 func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan chan struct{}) error {
-	var params Params
-	err := json.Unmarshal(serialParam, &params)
+	params := &safeParams{}
+	err := json.Unmarshal(serialParam, params)
 	if err != nil {
 		return errors.WithMessage(err, "Could not extract parameters")
 	}
 
 	// If resource queue timeout isn't set, set it to a default of 3 minutes
 	if params.ResourceQueueTimeout == 0 {
-		params.ResourceQueueTimeout = 180000 // 180000 ms = 3 minutes
+		params.ResourceQueueTimeout = 180000
 	}
-	// If roundTimeout hasn't set, set to a default of one minute
+	// If round times haven't been set, set to a default of one minute
 	if params.PrecomputationTimeout == 0 {
-		params.PrecomputationTimeout = 60
+		params.PrecomputationTimeout = 60000
+	}
+	if params.RealtimeTimeout == 0 {
+		params.RealtimeTimeout = 15000
 	}
 
-	if params.RealtimeTimeout == 0 {
-		params.RealtimeTimeout = 15
-	}
+	// TODO: Set up frequency as a configuration option
+	go updateParams(params, 5*time.Minute)
 
 	return scheduler(params, state, killchan)
 }
 
+// Runs an infinite loop that checks for updates to scheduling parameters
+func updateParams(params *safeParams, updateFreq time.Duration) {
+	for {
+		newParams := make(map[string]uint64, 0)
+		teamSize, err := storage.PermissioningDb.GetStateInt(storage.TeamSize)
+		if err != nil {
+			jww.ERROR.Printf(err.Error())
+			continue
+		}
+		newParams[storage.TeamSize] = teamSize
+		batchSize, err := storage.PermissioningDb.GetStateInt(storage.BatchSize)
+		if err != nil {
+			jww.ERROR.Printf(err.Error())
+			continue
+		}
+		newParams[storage.BatchSize] = batchSize
+		precompTimeout, err := storage.PermissioningDb.GetStateInt(storage.PrecompTimeout)
+		if err != nil {
+			jww.ERROR.Printf(err.Error())
+			continue
+		}
+		newParams[storage.PrecompTimeout] = precompTimeout
+		realtimeTimeout, err := storage.PermissioningDb.GetStateInt(storage.RealtimeTimeout)
+		if err != nil {
+			jww.ERROR.Printf(err.Error())
+			continue
+		}
+		newParams[storage.RealtimeTimeout] = realtimeTimeout
+		minDelay, err := storage.PermissioningDb.GetStateInt(storage.MinDelay)
+		if err != nil {
+			jww.ERROR.Printf(err.Error())
+			continue
+		}
+		newParams[storage.MinDelay] = minDelay
+		realtimeDelay, err := storage.PermissioningDb.GetStateInt(storage.AdvertisementTimeout)
+		if err != nil {
+			jww.ERROR.Printf(err.Error())
+			continue
+		}
+		newParams[storage.AdvertisementTimeout] = realtimeDelay
+		threshold, err := storage.PermissioningDb.GetStateInt(storage.PoolThreshold)
+		if err != nil {
+			jww.ERROR.Printf(err.Error())
+			continue
+		}
+		newParams[storage.PoolThreshold] = threshold
+
+		jww.INFO.Printf("Preparing to update scheduling params...")
+		params.Lock()
+		jww.INFO.Printf("Updating scheduling params: %+v", newParams)
+		params.TeamSize = uint32(teamSize)
+		params.BatchSize = uint32(batchSize)
+		params.PrecomputationTimeout = time.Duration(precompTimeout)
+		params.RealtimeTimeout = time.Duration(realtimeTimeout)
+		params.MinimumDelay = time.Duration(minDelay)
+		params.RealtimeDelay = time.Duration(realtimeDelay)
+		params.Threshold = uint32(threshold)
+		params.Unlock()
+
+		time.Sleep(updateFreq)
+	}
+
+}
+
 // scheduler is a utility function which builds a round by handling a node's
 // state changes then creating a team from the nodes in the pool
-func scheduler(params Params, state *storage.NetworkState, killchan chan chan struct{}) error {
+func scheduler(params *safeParams, state *storage.NetworkState, killchan chan chan struct{}) error {
 
 	// Pool which tracks nodes which are not in a team
 	pool := NewWaitingPool()
@@ -62,22 +135,16 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	// Channel to send new rounds over to be created
 	newRoundChan := make(chan protoRound, newRoundChanLen)
 
-	// Calculate the realtime delay from params
-	rtDelay := params.RealtimeDelay * time.Millisecond
-
 	// Select the correct round creator
 	var createRound roundCreator
-	var teamFormationThreshold uint32
 
 	// Identify which teaming algorithm we will be using
 	if params.Secure {
 		jww.INFO.Printf("Using Secure Teaming Algorithm")
 		createRound = createSecureRound
-		teamFormationThreshold = params.Threshold
 	} else {
 		jww.INFO.Printf("Using Simple Teaming Algorithm")
 		createRound = createSimpleRound
-		teamFormationThreshold = params.TeamSize
 	}
 
 	// Channel to communicate that a round has timed out
@@ -87,9 +154,11 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 	//begin the thread that starts rounds
 	go func() {
+		paramsCopy := params.safeCopy()
+
 		lastRound := time.Now()
 		var err error
-		minRoundDelay := params.MinimumDelay * time.Millisecond
+		minRoundDelay := paramsCopy.MinimumDelay * time.Millisecond
 		for newRound := range newRoundChan {
 
 			// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
@@ -104,7 +173,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			}
 
 			go waitForRoundTimeout(roundTimeoutTracker, state, ourRound,
-				params.PrecomputationTimeout*time.Second,
+				paramsCopy.PrecomputationTimeout*time.Millisecond,
 				"precomputation")
 		}
 
@@ -113,17 +182,18 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 	}()
 
 	var killed chan struct{}
-
 	iterationsCount := uint32(0)
 
 	// optional debug print which regularly prints the status of rounds and nodes
 	// turned on by setting DebugTrackRounds to true in the scheduling config
 	if params.DebugTrackRounds {
-		go trackRounds(params, state, pool, roundTracker, &iterationsCount)
+		go trackRounds(state, pool, roundTracker, &iterationsCount)
 	}
 
 	// Start receiving updates from nodes
 	for true {
+		paramsCopy := params.safeCopy()
+
 		isRoundTimeout := false
 		var update node.UpdateNotification
 		var timedOutRoundID id.Round
@@ -154,8 +224,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 			// Handle the node's state change
 			err = HandleNodeUpdates(update, pool, state,
-				rtDelay, roundTracker, roundTimeoutTracker,
-				params.RealtimeTimeout*time.Second)
+				paramsCopy.RealtimeDelay*time.Millisecond, roundTracker, roundTimeoutTracker,
+				paramsCopy.RealtimeTimeout*time.Millisecond)
 			if err != nil {
 				return err
 			}
@@ -167,6 +237,12 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			numNodesInPool := pool.Len()
 
 			// Create a new round if the pool is full
+			var teamFormationThreshold uint32
+			if paramsCopy.Secure {
+				teamFormationThreshold = paramsCopy.Threshold
+			} else {
+				teamFormationThreshold = paramsCopy.TeamSize
+			}
 			if numNodesInPool >= int(teamFormationThreshold) && killed == nil {
 
 				// Increment round ID
@@ -176,7 +252,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 					return err
 				}
 
-				newRound, err := createRound(params, pool, currentID, state)
+				newRound, err := createRound(paramsCopy, pool, currentID, state)
 				if err != nil {
 					return err
 				}
@@ -242,7 +318,3 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 	}
 	return nil
 }
-
-// how long a node needs to not act to be considered offline or in-active for the
-// print. arbitrarily chosen.
-const timeToInactive = 3 * time.Minute

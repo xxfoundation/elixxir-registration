@@ -24,7 +24,6 @@ func TestStartRound(t *testing.T) {
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		RandomOrdering:      false,
 		Threshold:           1,
 		Secure:              false,
 		NodeCleanUpInterval: 3,
@@ -93,7 +92,6 @@ func TestStartRound_BadState(t *testing.T) {
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		RandomOrdering:      false,
 		Threshold:           1,
 		Secure:              false,
 		NodeCleanUpInterval: 3,
@@ -167,7 +165,6 @@ func TestStartRound_BadNode(t *testing.T) {
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		RandomOrdering:      false,
 		Threshold:           1,
 		Secure:              false,
 		NodeCleanUpInterval: 3,

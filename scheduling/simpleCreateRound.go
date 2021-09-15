@@ -12,6 +12,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/primitives/id"
+	"time"
 )
 
 // createSimpleRound.go contains the logic to construct a team for a round and
@@ -52,7 +53,7 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	newRound.ID = roundID
 	newRound.BatchSize = params.BatchSize
 	newRound.NodeStateList = nodeStateList
-	newRound.ResourceQueueTimeout = params.ResourceQueueTimeout
+	newRound.ResourceQueueTimeout = params.ResourceQueueTimeout * time.Millisecond
 	return newRound, nil
 
 }

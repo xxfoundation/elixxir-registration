@@ -49,6 +49,7 @@ var (
 
 // Default duration between polls of the disabled Node list for updates.
 const defaultDisabledNodesPollDuration = time.Minute
+const defaultPruneRetention = 24 * 7 * time.Hour
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -180,6 +181,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		viper.SetDefault("addressSpace", 5)
+		viper.SetDefault("pruneRetentionLimit", defaultPruneRetention)
 
 		// Populate params
 		RegParams = Params{
@@ -207,14 +209,17 @@ var rootCmd = &cobra.Command{
 			allowLocalIPs:             viper.GetBool("allowLocalIPs"),
 			disableGeoBinning:         viper.GetBool("disableGeoBinning"),
 			blockchainGeoBinning:      viper.GetBool("blockchainGeoBinning"),
+			onlyScheduleActive:        viper.GetBool("onlyScheduleActive"),
 
-			disableNDFPruning: viper.GetBool("disableNDFPruning"),
-			geoIPDBFile:       viper.GetString("geoIPDBFile"),
+			disableNDFPruning:   viper.GetBool("disableNDFPruning"),
+			geoIPDBFile:         viper.GetString("geoIPDBFile"),
+			pruneRetentionLimit: viper.GetDuration("pruneRetentionLimit"),
 
 			versionLock: sync.RWMutex{},
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
+		jww.INFO.Printf("Params: %+v", RegParams)
 
 		LoadAllRegNodes = true
 
@@ -254,9 +259,8 @@ var rootCmd = &cobra.Command{
 			viper.GetInt64("nodeMetricInterval")) * time.Second
 
 		// Run the Node metric tracker forever in another thread
-		onlyScheduleActive := viper.GetBool("OnlyScheduleActive")
 		metricTrackerQuitChan := make(chan struct{})
-		go TrackNodeMetrics(impl, metricTrackerQuitChan, nodeMetricInterval, onlyScheduleActive)
+		go TrackNodeMetrics(impl, metricTrackerQuitChan, nodeMetricInterval)
 
 		// Run address space updater until stopped
 		viper.SetDefault("addressSpaceSizeUpdateInterval", 5*time.Minute)

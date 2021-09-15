@@ -24,7 +24,6 @@ func TestCreateRound_Random(t *testing.T) {
 	testParams := Params{
 		TeamSize:            5,
 		BatchSize:           32,
-		SemiOptimalOrdering: true,
 		Threshold:           0,
 		NodeCleanUpInterval: 3,
 		Secure:              false,
@@ -88,9 +87,8 @@ func TestCreateRound_Random(t *testing.T) {
 func TestCreateRound_BadOrdering(t *testing.T) {
 	// Build scheduling params
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	// Build network state
@@ -140,8 +138,6 @@ func TestCreateSimpleRound_SemiOptimal(t *testing.T) {
 	testParams := Params{
 		TeamSize:            9,
 		BatchSize:           32,
-		RandomOrdering:      true,
-		SemiOptimalOrdering: true,
 		Threshold:           1,
 		Secure:              false,
 		NodeCleanUpInterval: 3,
@@ -249,8 +245,6 @@ func TestCreateSimpleRound_SemiOptimal_BadRegion(t *testing.T) {
 	testParams := Params{
 		TeamSize:            9,
 		BatchSize:           32,
-		RandomOrdering:      true,
-		SemiOptimalOrdering: true,
 		Threshold:           1,
 		Secure:              false,
 		NodeCleanUpInterval: 3,

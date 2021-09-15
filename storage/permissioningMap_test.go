@@ -83,7 +83,9 @@ import (
 //	jww.FATAL.Printf(val)
 //
 //	testCode := "test"
+//	testCode2 := "test2"
 //	testId := id.NewIdFromString(testCode, id.Node, t)
+//	testId2 := id.NewIdFromString(testCode2, id.Node, t)
 //	testAppId := uint64(10010)
 //	newApp := &Application{
 //		Id:          testAppId,
@@ -108,11 +110,23 @@ import (
 //		t.Errorf(err.Error())
 //		return
 //	}
+//
+//	err = db.UpdateLastActive([]*id.ID{testId, testId2})
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
 //	err = db.UpdateNodeAddresses(testId, "6.6.6.6", "6.6.7.7")
 //	if err != nil {
 //		t.Errorf(err.Error())
 //		return
 //	}
+//	nodes, err := db.GetNodes()
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	jww.FATAL.Printf("%+v", nodes[0])
 //}
 
 // Happy path

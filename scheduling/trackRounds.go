@@ -16,7 +16,7 @@ import (
 // Tracks rounds, periodically outputs how many teams are in various rounds
 // This isn't included in tests because it is hard to test and is only a data collector for logs.
 // It's used in live environment logs to check stability.
-func trackRounds(params Params, state *storage.NetworkState, pool *waitingPool,
+func trackRounds(state *storage.NetworkState, pool *waitingPool,
 	roundTracker *RoundTracker, schedulerIteration *uint32) {
 	// Period of polling the state map for logs
 	schedulingTicker := time.NewTicker(1 * time.Minute)

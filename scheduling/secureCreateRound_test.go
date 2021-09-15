@@ -277,7 +277,6 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 		TeamSize:            8,
 		BatchSize:           32,
 		Threshold:           2,
-		SemiOptimalOrdering: true,
 		NodeCleanUpInterval: 3,
 	}
 
@@ -334,7 +333,7 @@ func TestCreateRound_EfficientTeam_RandomRegions(t *testing.T) {
 	}
 
 	duration := time.Now().Sub(start)
-	expectedDuration := int64(40)
+	expectedDuration := int64(45)
 
 	// Check that it did not take an excessive amount of time
 	// to create the round

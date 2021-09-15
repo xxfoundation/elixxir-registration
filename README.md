@@ -134,21 +134,29 @@ allowLocalIPs: false
 
 # Pulls geobin information from the blockchain instead of the hardcoded info
 blockchainGeoBinning: false
+
+# How long offline nodes remain in the NDF. If a node is offline past this duration
+# the node is pruned from the NDF. Expects duration in"h". (Defaults to 1 week (168 hours)
+pruneRetentionLimit: "168h"
 ```
 
 ### SchedulingConfig template:
+
+Note: All times in MS
+
 ```json
 {
-  "TeamSize": 4,
-  "BatchSize": 32,
-  "RandomOrdering": false,
-  "SemiOptimalOrdering": false,
+  "TeamSize": 3,
+  "BatchSize": 64,
   "MinimumDelay": 60,
   "RealtimeDelay": 3000,
-  "Threshold":     10,
-  "NodeCleanUpInterval": 3,  
-  "Secure": 		     true,
-  "RoundTimeout": 60
+  "Threshold": 10,
+  "NodeCleanUpInterval": 180000,  
+  "Secure": true,
+  "PrecomputationTimeout": 30000,
+  "RealtimeTimeout": 15000,
+  "ResourceQueueTimeout": 180000,
+  "DebugTrackRounds": true
 }
 ```
 
