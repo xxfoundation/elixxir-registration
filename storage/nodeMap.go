@@ -10,6 +10,7 @@ package storage
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -42,18 +43,46 @@ func (m *MapImpl) InsertApplication(application *Application, unregisteredNode *
 	return nil
 }
 
-// Update the Salt for a given Node ID
-func (m *MapImpl) UpdateSalt(id *id.ID, salt []byte) error {
-	n, err := m.GetNodeById(id)
-	if err != nil {
-		return err
+func (m *MapImpl) UpdateGeoIP(appId uint64, location, geo_bin, gps_location string) error {
+	if app, ok := m.applications[appId]; ok {
+		app.Location = location
+		app.GeoBin = geo_bin
+		app.GpsLocation = gps_location
+		return nil
+	} else {
+		return errors.New(fmt.Sprintf("No application found with ID %d", appId))
 	}
+}
 
+// Update the address fields for the Node with the given id
+func (m *MapImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
 	m.mut.Lock()
 	defer m.mut.Unlock()
-	n.Salt = salt
 
-	return nil
+	for _, v := range m.nodes {
+		if bytes.Compare(v.Id, id.Marshal()) == 0 {
+			v.GatewayAddress = gwAddr
+			v.ServerAddress = nodeAddr
+			return nil
+		}
+	}
+
+	return errors.Errorf("unable to update addresses for %s", id.String())
+}
+
+// Update the sequence field for the Node with the given id
+func (m *MapImpl) UpdateNodeSequence(id *id.ID, sequence string) error {
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	for _, v := range m.nodes {
+		if bytes.Compare(v.Id, id.Marshal()) == 0 {
+			v.Sequence = sequence
+			return nil
+		}
+	}
+
+	return errors.Errorf("unable to update sequence for %s", id.String())
 }
 
 // If Node registration code is valid, add Node information
@@ -103,7 +132,7 @@ func (m *MapImpl) GetNodeById(id *id.ID) (*Node, error) {
 	return nil, errors.Errorf("unable to get node %s", id.String())
 }
 
-// Return all nodes in storage with the given Status
+// Return all nodes in Storage with the given Status
 func (m *MapImpl) GetNodesByStatus(status node.Status) ([]*Node, error) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
@@ -139,18 +168,14 @@ func (m *MapImpl) BannedNode(id *id.ID, t interface{}) error {
 	return errors.New("Node could not be found in map")
 }
 
-// Update the address fields for the Node with the given id
-func (m *MapImpl) UpdateNodeAddresses(id *id.ID, nodeAddr, gwAddr string) error {
+// Return all ActiveNodes in Storage
+func (m *MapImpl) GetActiveNodes() ([]*ActiveNode, error) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
-	for _, v := range m.nodes {
-		if bytes.Compare(v.Id, id.Marshal()) == 0 {
-			v.GatewayAddress = gwAddr
-			v.ServerAddress = nodeAddr
-			return nil
-		}
+	activeNodes := make([]*ActiveNode, 0)
+	for _, v := range m.activeNodes {
+		activeNodes = append(activeNodes, v)
 	}
-
-	return errors.Errorf("unable to update addresses for %s", id.String())
+	return activeNodes, nil
 }

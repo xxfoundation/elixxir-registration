@@ -14,7 +14,6 @@ import (
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/xx_network/comms/signature"
 	"gitlab.com/xx_network/primitives/id"
 	"sync/atomic"
@@ -24,7 +23,7 @@ import (
 // scheduler.go contains the business logic for scheduling a round
 
 //size of round creation channel, just sufficiently large enough to not be jammed
-const newRoundChanLen = 100
+const newRoundChanLen = 1000
 
 type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error)
@@ -42,8 +41,12 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 		params.ResourceQueueTimeout = 180000 // 180000 ms = 3 minutes
 	}
 	// If roundTimeout hasn't set, set to a default of one minute
-	if params.RoundTimeout == 0 {
-		params.RoundTimeout = 60
+	if params.PrecomputationTimeout == 0 {
+		params.PrecomputationTimeout = 60
+	}
+
+	if params.RealtimeTimeout == 0 {
+		params.RealtimeTimeout = 15
 	}
 
 	return scheduler(params, state, killchan)
@@ -97,36 +100,16 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 			ourRound, err := startRound(newRound, state, roundTracker)
 			if err != nil {
-				break
+				jww.FATAL.Panicf("Failed to start round %v: %+v", newRound.ID, err)
 			}
 
-			go func(roundID id.Round, localRound *round.State) {
-				// Allow for round the to be added to the map
-				roundTimer := time.NewTimer(params.RoundTimeout * time.Second)
-				select {
-				// Wait for the timer to go off
-				case <-roundTimer.C:
-
-					// Send the timed out round id to the timeout handler
-					jww.INFO.Printf("Round %v has timed out, signaling exit", roundID)
-					roundTimeoutTracker <- roundID
-				// Signals the round has been completed.
-				// In this case, we can exit the go-routine
-				case <-localRound.GetRoundCompletedChan():
-					state.GetRoundMap().DeleteRound(roundID)
-					return
-				}
-			}(newRound.ID, ourRound)
+			go waitForRoundTimeout(roundTimeoutTracker, state, ourRound,
+				params.PrecomputationTimeout*time.Second,
+				"precomputation")
 		}
 
-		jww.ERROR.Printf("Round creation thread should never exit: %s", err)
+		jww.FATAL.Panicf("Round creation thread should never exit: %v", err)
 
-	}()
-
-	unstickerQuitChan := make(chan struct{})
-	// begin the thread that takes nodes stuck in waiting out of waiting
-	go func() {
-		UnstickNodes(state, pool, params.RoundTimeout*time.Second, unstickerQuitChan)
 	}()
 
 	var killed chan struct{}
@@ -150,7 +133,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		// Receive a signal to kill the scheduler
 		case killed = <-killchan:
 			// Also kill the unsticker
-			jww.WARN.Printf("Scheduler has recived a kill signal, exit process has begun")
+			jww.WARN.Printf("Scheduler has received a kill signal, exit process has begun")
 		// When we get a node update, move past the select statement
 		case update = <-state.GetNodeUpdateChannel():
 			hasUpdate = true
@@ -162,7 +145,7 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 		atomic.AddUint32(&iterationsCount, 1)
 		if isRoundTimeout {
 			// Handle the timed out round
-			err := timeoutRound(state, timedOutRoundID, roundTracker, pool)
+			err := timeoutRound(state, timedOutRoundID, roundTracker)
 			if err != nil {
 				return err
 			}
@@ -171,7 +154,8 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 			// Handle the node's state change
 			err = HandleNodeUpdates(update, pool, state,
-				rtDelay, roundTracker)
+				rtDelay, roundTracker, roundTimeoutTracker,
+				params.RealtimeTimeout*time.Second)
 			if err != nil {
 				return err
 			}
@@ -210,8 +194,6 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 			// Stop round creation
 			close(newRoundChan)
 			jww.WARN.Printf("Scheduler is exiting due to kill signal")
-			// Also kill the unsticking thread
-			unstickerQuitChan <- struct{}{}
 			killed <- struct{}{}
 			return nil
 		}
@@ -222,28 +204,37 @@ func scheduler(params Params, state *storage.NetworkState, killchan chan chan st
 
 // Helper function which handles when we receive a timed out round
 func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
-	roundTracker *RoundTracker, pool *waitingPool) error {
+	roundTracker *RoundTracker) error {
 	// On a timeout, check if the round is completed. If not, kill it
 	ourRound := state.GetRoundMap().GetRound(timeoutRoundID)
 	roundState := ourRound.GetRoundState()
 
 	// If the round is neither in completed or failed
 	if roundState != states.COMPLETED && roundState != states.FAILED {
+
+		timeoutType := "precomputation"
+
+		if roundState > states.PRECOMPUTING {
+			timeoutType = "realtime"
+		}
+
 		// Build the round error message
 		timeoutError := &pb.RoundError{
 			Id:     uint64(ourRound.GetRoundID()),
 			NodeId: id.Permissioning.Marshal(),
-			Error:  fmt.Sprintf("Round %d killed due to a round time out", ourRound.GetRoundID()),
+			Error: fmt.Sprintf("Round %d killed due to a %s "+
+				"round time out", ourRound.GetRoundID(), timeoutType),
 		}
 
 		// Sign the error message with our private key
-		err := signature.Sign(timeoutError, state.GetPrivateKey())
+		err := signature.SignRsa(timeoutError, state.GetPrivateKey())
 		if err != nil {
 			jww.FATAL.Panicf("Failed to sign error message for "+
-				"timed out round %d: %+v", ourRound.GetRoundID(), err)
+				"%s timed out round %d: %+v", timeoutType,
+				ourRound.GetRoundID(), err)
 		}
 
-		err = killRound(state, ourRound, timeoutError, roundTracker, pool)
+		err = killRound(state, ourRound, timeoutError, roundTracker)
 		if err != nil {
 			return errors.WithMessagef(err, "Failed to kill round %d: %s",
 				ourRound.GetRoundID(), err)

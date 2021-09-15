@@ -24,6 +24,7 @@ import (
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"sync"
 	"sync/atomic"
@@ -41,11 +42,18 @@ func getTestKey() *rsa.PrivateKey {
 
 // Happy path
 func TestRegistrationImpl_Poll_NDF(t *testing.T) {
+
+	// Create a database
+	var err error
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Fatalf("Failed to create new database: %+v", err)
+	}
+
 	testID := id.NewIdFromUInt(0, id.Node, t)
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	permissiveIPChecking = true
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
@@ -105,7 +113,7 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 	n := impl.State.GetNodeMap().GetNode(testID)
 	n.SetConnectivity(node.PortSuccessful)
 
-	impl.disableGatewayPing = true
+	impl.params.disablePing = true
 
 	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
@@ -126,7 +134,6 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	permissiveIPChecking = true
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
@@ -173,6 +180,7 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 			ID:    1,
 			State: uint32(states.PRECOMPUTING),
 		})
+	time.Sleep(100 * time.Millisecond)
 
 	if err != nil {
 		t.Errorf("Could not add round update: %s", err)
@@ -187,7 +195,7 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 	n := impl.State.GetNodeMap().GetNode(testID)
 	n.SetConnectivity(node.PortSuccessful)
 
-	impl.disableGatewayPing = true
+	impl.params.disablePing = true
 
 	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
@@ -239,49 +247,6 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	}
 }*/
 
-// Error path: Failed auth
-func TestRegistrationImpl_PollFailAuth(t *testing.T) {
-	testString := "test"
-
-	// Start registration server
-	ndfReady := uint32(1)
-	state, err := storage.NewState(getTestKey(), 8, "")
-	if err != nil {
-		t.Errorf("Unable to create state: %+v", err)
-	}
-	testVersion, _ := version.ParseVersion("0.0.0")
-	impl := RegistrationImpl{
-		State:    state,
-		NdfReady: &ndfReady,
-		params: &Params{
-			minGatewayVersion: testVersion,
-			minServerVersion:  testVersion,
-		},
-	}
-
-	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
-		Registration: ndf.Registration{
-			Address:        "420",
-			TlsCertificate: "",
-		},
-	})
-
-	// Make a simple auth object that will fail the checks
-	testHost, _ := connect.NewHost(id.NewIdFromString(testString, id.Node, t),
-		testString, make([]byte, 0), connect.GetDefaultHostParams())
-	testAuth := &connect.Auth{
-		IsAuthenticated: false,
-		Sender:          testHost,
-	}
-
-	dummyMessage := &pb.PermissioningPoll{}
-
-	_, err = impl.Poll(dummyMessage, testAuth)
-	if err == nil || err.Error() != connect.AuthError(testAuth.Sender.GetId()).Error() {
-		t.Errorf("Unexpected error polling: %+v", err)
-	}
-}
-
 //Happy path
 func TestRegistrationImpl_PollNdf(t *testing.T) {
 	//Create database
@@ -292,11 +257,19 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
+
 	//Create reg codes and populate the database
-	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"},
-		node.Info{RegCode: "CCCC", Order: "1"},
-		node.Info{RegCode: "DDDD", Order: "2"})
+	infos := []node.Info{
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
+		{RegCode: "DDDD", Order: "BF"},
+	}
 	storage.PopulateNodeRegistrationCodes(infos)
 
 	RegParams = testParams
@@ -384,11 +357,18 @@ func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
+
 	//Create reg codes and populate the database
-	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"},
-		node.Info{RegCode: "CCCC", Order: "1"},
-		node.Info{RegCode: "DDDD", Order: "2"})
+	infos := []node.Info{
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
+	}
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 	//Setup udb configurations
@@ -433,6 +413,12 @@ func TestPoll_BannedNode(t *testing.T) {
 		"password", "regCodes", "0.0.0.0", "-1")
 	if err != nil {
 		t.Errorf("%+v", err)
+	}
+
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
 	}
 
 	testID := id.NewIdFromUInt(0, id.Node, t)
@@ -588,8 +574,12 @@ func TestCheckVersion(t *testing.T) {
 
 	requiredServer, _ := version.ParseVersion("1.3.2")
 	requiredGateway, _ := version.ParseVersion("1.3.2")
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	err := checkVersion(p, testMsg)
 	if err != nil {
 		t.Errorf("checkVersion() unexpectedly errored: %+v", err)
 	}
@@ -606,7 +596,12 @@ func TestCheckVersion_EmptyVersions(t *testing.T) {
 	requiredServer, _ := version.ParseVersion("1.3.2")
 	requiredGateway, _ := version.ParseVersion("1.3.2")
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err != nil {
 		t.Errorf("checkVersion() unexpectedly errored on empty version "+
 			"strings: %+v", err)
@@ -623,8 +618,12 @@ func TestCheckVersion_Edge(t *testing.T) {
 
 	requiredServer, _ := version.ParseVersion("1.3.2")
 	requiredGateway, _ := version.ParseVersion("1.3.2")
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	err := checkVersion(p, testMsg)
 	if err != nil {
 		t.Errorf("checkVersion() unexpectedly errored: %+v", err)
 	}
@@ -641,7 +640,12 @@ func TestCheckVersion_ParseErrorGateway(t *testing.T) {
 	requiredServer, _ := version.ParseVersion("1.3.2")
 	requiredGateway, _ := version.ParseVersion("1.3.2")
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err == nil {
 		t.Errorf("checkVersion() did not error on invalid gateway version.")
 	}
@@ -658,7 +662,12 @@ func TestCheckVersion_ParseErrorServer(t *testing.T) {
 	requiredServer, _ := version.ParseVersion("1.3.2")
 	requiredGateway, _ := version.ParseVersion("1.3.2")
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err == nil {
 		t.Errorf("checkVersion() did not error on invalid server version.")
 	}
@@ -679,7 +688,12 @@ func TestCheckVersion_InvalidVersionGateway(t *testing.T) {
 		"\" is incompatible with the required version \"" +
 		requiredGateway.String() + "\"."
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err != nil && err.Error() != expectedError {
 		t.Errorf("checkVersion() did not produce the correct error on "+
 			"incompatible gateway version.\n\texpected: %+v\n\treceived: %+v",
@@ -705,7 +719,12 @@ func TestCheckVersion_InvalidVersionServer(t *testing.T) {
 		"\" is incompatible with the required version \"" +
 		requiredServer.String() + "\"."
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err != nil && err.Error() != expectedError {
 		t.Errorf("checkVersion() did not produce the correct error on "+
 			"incompatible server version.\n\texpected: %+v\n\treceived: %+v",
@@ -731,7 +750,12 @@ func TestCheckVersion_InvalidVersionGatewayAndServer(t *testing.T) {
 		"\" is incompatible with the required version \"" +
 		requiredGateway.String() + "\"."
 
-	err := checkVersion(requiredGateway, requiredServer, testMsg)
+	p := &Params{
+		minGatewayVersion: requiredGateway,
+		minServerVersion:  requiredServer,
+	}
+
+	err := checkVersion(p, testMsg)
 	if err != nil && err.Error() != expectedError {
 		t.Errorf("checkVersion() did not produce the correct error on "+
 			"incompatible gateway version.\n\texpected: %+v\n\treceived: %+v",
@@ -952,12 +976,12 @@ func TestUpdateNdfGatewayAddr_Error(t *testing.T) {
 func TestVerifyError(t *testing.T) {
 	nodeCert, err := utils.ReadFile(testkeys.GetNodeCertPath())
 	if err != nil {
-		fmt.Printf("Could not get node cert: %+v\n", err)
+		t.Errorf("Could not get node cert: %+v\n", err)
 	}
 
 	nodeKey, err = utils.ReadFile(testkeys.GetNodeKeyPath())
 	if err != nil {
-		fmt.Printf("Could not get node key: %+v\n", err)
+		t.Errorf("Could not get node key: %+v\n", err)
 	}
 
 	// Read in private key
@@ -968,10 +992,12 @@ func TestVerifyError(t *testing.T) {
 	}
 	// Start registration server
 	ndfReady := uint32(0)
-	state, err := storage.NewState(pk, 8, "")
+
+	state, err := storage.NewState(pk, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
+
 	testVersion, _ := version.ParseVersion("0.0.0")
 	testManager := connect.NewManagerTesting(t)
 	impl := &RegistrationImpl{
@@ -1009,7 +1035,7 @@ func TestVerifyError(t *testing.T) {
 		t.Error("Failed to load pk")
 	}
 
-	err = signature.Sign(errMsg, loadedKey)
+	err = signature.SignRsa(errMsg, loadedKey)
 	if err != nil {
 		t.Error("Failed to sign message")
 	}

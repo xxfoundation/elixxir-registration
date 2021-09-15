@@ -251,9 +251,9 @@ func TestNodeState_Update_Valid_RequiresRound_Round_InvalidState(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("Node state update returned no error on invalid state change")
-	} else if !strings.Contains(err.Error(), "Round has failed, state cannot be updated") {
+	} else if !strings.Contains(err.Error(), "state cannot be updated") {
 		t.Errorf("Node state update returned the wrong error on "+
-			"state change requiring round in teh correct state but in wrong one: %s", err)
+			"state change requiring round in the correct state but in wrong one: %s", err)
 	}
 
 	timeDelta := ns.lastPoll.Sub(before)
@@ -510,8 +510,8 @@ func TestNodeState_SetRound_Invalid(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("SetRound did not an error which it should have failed")
-	} else if !strings.Contains(err.Error(), "could not set the Node's "+
-		"round when it is already set") {
+	} else if !strings.Contains(err.Error(), "could not set the Node <nil> "+
+		"round when it is already set, current round: 69, new round: 42") {
 		t.Errorf("Incorrect error returned from failed SetRound: %s", err)
 	}
 

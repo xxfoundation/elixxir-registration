@@ -33,11 +33,14 @@ udbCertPath: "udb.crt"
 # Address for UDB
 udbAddress: "1.2.3.4:11420"
 
-# Public address, used in NDF it gives to client
+# Public address, used in NDF it gives to nodes
 publicAddress: "0.0.0.0:11420"
 
 # The listening port of this server
 port: 11420
+
+# Public address used in NDF to give to client
+registrationAddress: "5.6.7.8:11420"
 
 # The minimum version required of gateways to connect
 minGatewayVersion: "0.0.0"
@@ -47,9 +50,6 @@ minServerVersion:  "0.0.0"
 
 # The minimum version required of clients to connect
 minClientVersion: "0.0.0"
-
-# Disable pinging of Gateway public IP address.
-disableGatewayPing: false
 
 # Disable pruning of NDF for offline nodes
 # if set to false, network will sleep for five minutes on start
@@ -69,16 +69,6 @@ dbAddress: ""
 # Path to JSON file with list of Node registration codes (in order of network 
 # placement)
 regCodesFilePath: "regCodes.json"
-
-# List of client codes to be added to the database (for testing)
-clientRegCodes:
-  - "AAAA"
-  - "BBBB"
-  - "CCCC"
-    
-
-# Client version (will allow all versions with major version 0)
-clientVersion: "0.0.0"
 
 # The duration between polling the disabled Node list for updates (Default 1m)
 disabledNodesPollDuration: 1m
@@ -122,13 +112,28 @@ nsAddress: ""
 # Path to certificate for the notification server
 nsCertPath: ""
 
-# Maximum number of connections per period
-userRegCapacity: 1000
-# How often the number of connections is reset
-userRegLeakPeriod: "24h"
+# The initial size of the address space used for ephemeral IDs (Default: 5)
+addressSpace: 32
 
-# The size of the address space used for ephemeral IDs
-addressSpace: 10
+# The interval between checks of storage for address space size updates.
+# (Default 5m)
+addressSpaceSizeUpdateInterval: 5m
+
+# Toggles use of only active nodes in node metric tracker
+onlyScheduleActive: false
+
+# A MaxMind GeoLite2 database file to lookup IPs against for geobinning
+geoIPDBFile: "/GeoLite2-City.mmdb"
+
+
+# For testing, use the sequence as the country code. Do not use the geobinning database
+disableGeoBinning: false
+
+# For testing, do not exclude node or gateway IPs which are local to the machine
+allowLocalIPs: false
+
+# Pulls geobin information from the blockchain instead of the hardcoded info
+blockchainGeoBinning: false
 ```
 
 ### SchedulingConfig template:

@@ -111,3 +111,10 @@ func (d *DatabaseImpl) InsertEphemeralLength(length *EphemeralLength) error {
 	jww.TRACE.Printf("Attempting to insert EphemeralLength into DB: %+v", length)
 	return d.db.Create(length).Error
 }
+
+// Returns all GeoBin from Storage
+func (d *DatabaseImpl) getBins() ([]*GeoBin, error) {
+	var result []*GeoBin
+	err := d.db.Find(&result).Error
+	return result, err
+}

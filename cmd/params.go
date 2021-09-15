@@ -14,6 +14,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/primitives/version"
 	"gitlab.com/xx_network/primitives/ndf"
+	"sync"
 	"time"
 )
 
@@ -38,13 +39,19 @@ type Params struct {
 	minGatewayVersion     version.Version
 	minServerVersion      version.Version
 	minClientVersion      version.Version
-	addressSpace          uint32
-	disableGatewayPing    bool
-	// User registration can take userRegCapacity registrations in userRegLeakPeriod period of time
-	userRegCapacity   uint32
-	userRegLeakPeriod time.Duration
+	addressSpaceSize      uint8
+	allowLocalIPs         bool
+	disableGeoBinning     bool
+	blockchainGeoBinning  bool
+	disablePing           bool
 
 	disableNDFPruning bool
+
+	geoIPDBFile string
+
+	clientRegistrationAddress string
+
+	versionLock sync.RWMutex
 }
 
 // toGroup takes a group represented by a map of string to string,

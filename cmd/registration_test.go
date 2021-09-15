@@ -69,11 +69,10 @@ func TestMain(m *testing.M) {
 		publicAddress:     permAddr,
 		udbCertPath:       testkeys.GetUdbCertPath(),
 		NsCertPath:        testkeys.GetUdbCertPath(),
-		userRegCapacity:   5,
-		userRegLeakPeriod: time.Hour,
 		minimumNodes:      3,
 		minGatewayVersion: minGatewayVersion,
 		minServerVersion:  minServerVersion,
+		disableGeoBinning: true,
 	}
 	nodeComm = nodeComms.StartNode(&id.TempGateway, nodeAddr, 0, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
@@ -88,28 +87,34 @@ func TestMain(m *testing.M) {
 
 // Error path: Test an insertion on an empty database
 func TestEmptyDataBase(t *testing.T) {
+
+	dblck.Lock()
+	defer dblck.Unlock()
+	var err error
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
+
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
+
 	// Start the registration server
 	testParams := Params{
 		CertPath:          testkeys.GetCACertPath(),
 		KeyPath:           testkeys.GetCAKeyPath(),
 		udbCertPath:       testkeys.GetUdbCertPath(),
 		NsCertPath:        testkeys.GetUdbCertPath(),
-		userRegLeakPeriod: time.Hour,
-		userRegCapacity:   5,
+		disableGeoBinning: true,
 	}
 	// Start registration server
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf(err.Error())
-	}
-
-	dblck.Lock()
-	defer dblck.Unlock()
-
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
-	if err != nil {
-		t.Errorf("%+v", err)
 	}
 
 	// using node cert as gateway cert
@@ -125,6 +130,20 @@ func TestEmptyDataBase(t *testing.T) {
 
 // Happy path: looking for a code that is in the database
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
+
+	var err error
+	storage.PermissioningDb, _, err = storage.NewDatabase("test",
+		"password", "regCodes", "0.0.0.0", "-1")
+	if err != nil {
+		t.Errorf("%+v", err)
+	}
+
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
+
 	// Start registration server
 	testParams.Address = "0.0.0.0:5901"
 	impl, err := StartRegistration(testParams)
@@ -146,7 +165,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	applicationId := uint64(10)
 	newNode := &storage.Node{
 		Code:          "AAAA",
-		Sequence:      "0",
+		Sequence:      "GB",
 		ApplicationId: applicationId,
 	}
 	newApplication := &storage.Application{Id: applicationId}
@@ -163,42 +182,6 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	}
 }
 
-// Happy Path:  Insert a reg code along with a node
-func TestRegCodeExists_RegUser(t *testing.T) {
-	// Initialize an implementation and the permissioning server
-	impl, err := StartRegistration(testParams)
-	if err != nil {
-		t.Errorf("Unable to start: %+v", err)
-	}
-	dblck.Lock()
-	defer dblck.Unlock()
-
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
-	if err != nil {
-		t.Errorf("%+v", err)
-	}
-
-	// Insert regcodes into it
-	err = storage.PermissioningDb.InsertClientRegCode("AAAA", 100)
-	if err != nil {
-		t.Errorf("Failed to insert client reg code %+v", err)
-	}
-
-	// Attempt to register a user
-	sig, receptionSig, err := impl.RegisterUser("AAAA", string(nodeKey), string(nodeKey))
-
-	if err != nil {
-		t.Errorf("Failed to register a node when it should have worked: %+v", err)
-	}
-
-	if sig == nil || receptionSig == nil {
-		t.Errorf("Failed to sign public key, recieved %+v as a signature & %+v as a receptionSignature",
-			sig, receptionSig)
-	}
-	impl.Comms.Shutdown()
-}
-
 // Attempt to register a node after the
 func TestCompleteRegistration_HappyPath(t *testing.T) {
 	// Initialize the database
@@ -212,9 +195,16 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 		t.Errorf("%+v", err)
 	}
 
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
+
 	// Insert a sample regCode
-	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "BBBB", Order: "0"})
+	infos := []node.Info{
+		{RegCode: "BBBB", Order: "US"},
+	}
 
 	storage.PopulateNodeRegistrationCodes(infos)
 	localParams := testParams
@@ -258,12 +248,18 @@ func TestDoubleRegistration(t *testing.T) {
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
 
 	// Create reg codes and populate the database
-	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
-		node.Info{RegCode: "BBBB", Order: "1"},
-		node.Info{RegCode: "CCCC", Order: "2"})
+	infos := []node.Info{
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
+	}
 	storage.PopulateNodeRegistrationCodes(infos)
 	RegParams = testParams
 
@@ -308,12 +304,18 @@ func TestTopology_MultiNodes(t *testing.T) {
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
 
 	// Create reg codes and populate the database
-	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
-		node.Info{RegCode: "BBBB", Order: "1"},
-		node.Info{RegCode: "CCCC", Order: "2"})
+	infos := []node.Info{
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
+	}
 
 	storage.PopulateNodeRegistrationCodes(infos)
 
@@ -371,12 +373,18 @@ func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
 
 	// Create reg codes and populate the database
-	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
-		node.Info{RegCode: "BBBB", Order: "1"},
-		node.Info{RegCode: "CCCC", Order: "2"})
+	infos := []node.Info{
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
+	}
 
 	storage.PopulateNodeRegistrationCodes(infos)
 
@@ -442,12 +450,18 @@ func TestCheckRegistration_NilMsg(t *testing.T) {
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
 
 	// Create reg codes and populate the database
-	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
-		node.Info{RegCode: "BBBB", Order: "1"},
-		node.Info{RegCode: "CCCC", Order: "2"})
+	infos := []node.Info{
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
+	}
 
 	storage.PopulateNodeRegistrationCodes(infos)
 
@@ -492,12 +506,18 @@ func TestCheckRegistration_InvalidID(t *testing.T) {
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
+	err = storage.PermissioningDb.InsertEphemeralLength(
+		&storage.EphemeralLength{Length: 8, Timestamp: time.Now()})
+	if err != nil {
+		t.Errorf("Failed to insert ephemeral length into database: %+v", err)
+	}
 
 	// Create reg codes and populate the database
-	infos := make([]node.Info, 0)
-	infos = append(infos, node.Info{RegCode: "AAAA", Order: "0"},
-		node.Info{RegCode: "BBBB", Order: "1"},
-		node.Info{RegCode: "CCCC", Order: "2"})
+	infos := []node.Info{
+		{RegCode: "AAAA", Order: "CR"},
+		{RegCode: "BBBB", Order: "GB"},
+		{RegCode: "CCCC", Order: "BF"},
+	}
 
 	storage.PopulateNodeRegistrationCodes(infos)
 
@@ -533,107 +553,4 @@ func TestCheckRegistration_InvalidID(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected error path. Should not be able to marshall an invalid ID")
 	}
-}
-
-// Test a case that should pass validation
-func TestValidateClientVersion_Success(t *testing.T) {
-	err := validateVersion("0.0.0a")
-	if err != nil {
-		t.Errorf("Unexpected error from validateVersion: %+v", err.Error())
-	}
-}
-
-// Test some cases that shouldn't pass validation
-func TestValidateClientVersion_Failure(t *testing.T) {
-	err := validateVersion("")
-	if err == nil {
-		t.Error("Expected error for empty version string")
-	}
-	err = validateVersion("0")
-	if err == nil {
-		t.Error("Expected error for version string with one number")
-	}
-	err = validateVersion("0.0")
-	if err == nil {
-		t.Error("Expected error for version string with two numbers")
-	}
-	err = validateVersion("a.4.0")
-	if err == nil {
-		t.Error("Expected error for version string with non-numeric major version")
-	}
-	err = validateVersion("4.a.0")
-	if err == nil {
-		t.Error("Expected error for version string with non-numeric minor version")
-	}
-}
-
-// Happy Path: Inserts users until the max is reached, waits until the timer has
-// cleared the number of allowed registrations and inserts another user.
-func TestRegCodeExists_RegUser_Timer(t *testing.T) {
-
-	testParams2 := Params{
-		Address:           "0.0.0.0:5905",
-		CertPath:          testkeys.GetCACertPath(),
-		KeyPath:           testkeys.GetCAKeyPath(),
-		NdfOutputPath:     testkeys.GetNDFPath(),
-		udbCertPath:       testkeys.GetUdbCertPath(),
-		NsCertPath:        testkeys.GetUdbCertPath(),
-		publicAddress:     "0.0.0.0:5905",
-		userRegCapacity:   4,
-		userRegLeakPeriod: 3 * time.Second,
-	}
-
-	// Start registration server
-	impl, err := StartRegistration(testParams2)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	dblck.Lock()
-	defer dblck.Unlock()
-
-	// Initialize the database
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
-	if err != nil {
-		t.Errorf("%+v", err)
-	}
-
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "B", "C")
-	if err != nil {
-		t.Errorf("Failed to register a user when it should have worked: %+v", err)
-	}
-
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "C", "D")
-	if err != nil {
-		t.Errorf("Failed to register a user when it should have worked: %+v", err)
-	}
-
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "D", "E")
-	if err != nil {
-		t.Errorf("Failed to register a user when it should have worked: %+v", err)
-	}
-
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "E", "F")
-	if err != nil {
-		t.Errorf("Failed to register a user when it should have worked: %+v", err)
-	}
-
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "F", "G")
-	if err == nil {
-		t.Errorf("Did not fail to register a user when it should not have worked: %+v", err)
-	}
-
-	time.Sleep(testParams2.userRegLeakPeriod)
-	// Attempt to register a user
-	_, _, err = impl.RegisterUser("", "G", "H")
-	if err != nil {
-		t.Errorf("Failed to register a user when it should have worked: %+v", err)
-	}
-
-	impl.Comms.Shutdown()
 }

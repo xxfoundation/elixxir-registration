@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/go-homedir"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	jww "github.com/spf13/jwalterweatherman"
 	"github.com/spf13/viper"
@@ -22,13 +21,11 @@ import (
 	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
-	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/utils"
 	"net"
 	"os"
 	"path"
-	"strconv"
-	"strings"
+	"runtime/pprof"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -39,9 +36,6 @@ var (
 	logLevel             uint // 0 = info, 1 = debug, >1 = trace
 	noTLS                bool
 	RegParams            Params
-	ClientRegCodes       []string
-	clientVersion        string
-	clientVersionLock    sync.RWMutex
 	disablePermissioning bool
 	disabledNodesPath    string
 
@@ -51,8 +45,6 @@ var (
 
 	// Duration between polls of the disabled Node list for updates.
 	disabledNodesPollDuration time.Duration
-
-	permissiveIPChecking bool
 )
 
 // Default duration between polls of the disabled Node list for updates.
@@ -65,6 +57,15 @@ var rootCmd = &cobra.Command{
 	Long:  `This server provides registration functions on cMix`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
+		profileOut := viper.GetString("profile-cpu")
+		if profileOut != "" {
+			f, err := os.Create(profileOut)
+			if err != nil {
+				jww.FATAL.Panicf("%+v", err)
+			}
+			pprof.StartCPUProfile(f)
+		}
+
 		cmixMap := viper.GetStringMapString("groups.cmix")
 		e2eMap := viper.GetStringMapString("groups.e2e")
 
@@ -80,15 +81,15 @@ var rootCmd = &cobra.Command{
 		// Parse config file options
 		certPath := viper.GetString("certPath")
 		keyPath := viper.GetString("keyPath")
+
 		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 		ndfOutputPath := viper.GetString("ndfOutputPath")
-		setClientVersion(viper.GetString("clientVersion"))
 		ipAddr := viper.GetString("publicAddress")
 		// Get Notification Server address and cert Path
 		nsCertPath := viper.GetString("nsCertPath")
 		nsAddress := viper.GetString("nsAddress")
 		publicAddress := fmt.Sprintf("%s:%d", ipAddr, viper.GetInt("port"))
-
+		clientRegistration := viper.GetString("registrationAddress")
 		// Set up database connection
 		rawAddr := viper.GetString("dbAddress")
 
@@ -126,9 +127,6 @@ var rootCmd = &cobra.Command{
 			jww.WARN.Printf("No registration code file found. This may be" +
 				"normal in live deployments")
 		}
-
-		ClientRegCodes = viper.GetStringSlice("clientRegCodes")
-		storage.PopulateClientRegistrationCodes(ClientRegCodes, 1000)
 
 		// Get user discovery ID and DH public key from contact file
 		udbId, udbDhPubKey := readUdContact(viper.GetString("udContactPath"))
@@ -181,57 +179,44 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf("Could not parse duration: %+v", err)
 		}
 
-		disableGatewayPing := viper.GetBool("disableGatewayPing")
-
-		userRegLeakPeriodString := viper.GetString("userRegLeakPeriod")
-		var userRegLeakPeriod time.Duration
-		if userRegLeakPeriodString != "" {
-			// specified, so try to parse
-			userRegLeakPeriod, err = time.ParseDuration(userRegLeakPeriodString)
-			if err != nil {
-				jww.FATAL.Panicf("Could not parse duration: %+v", err)
-			}
-		} else {
-			// use default
-			userRegLeakPeriod = time.Hour * 24
-		}
-		userRegCapacity := viper.GetUint32("userRegCapacity")
-		if userRegCapacity == 0 {
-			// use default
-			userRegCapacity = 1000
-		}
-
-		permissiveIPChecking = viper.GetBool("permissiveIPChecking")
+		viper.SetDefault("addressSpace", 5)
 
 		// Populate params
 		RegParams = Params{
-			Address:               localAddress,
-			CertPath:              certPath,
-			KeyPath:               keyPath,
-			NdfOutputPath:         ndfOutputPath,
-			cmix:                  *cmix,
-			e2e:                   *e2e,
-			publicAddress:         publicAddress,
-			NsAddress:             nsAddress,
-			NsCertPath:            nsCertPath,
-			schedulingKillTimeout: schedulingKillTimeout,
-			closeTimeout:          closeTimeout,
-			udbId:                 udbId,
-			udbDhPubKey:           udbDhPubKey,
-			udbCertPath:           udbCertPath,
-			udbAddress:            udbAddress,
-			minimumNodes:          viper.GetUint32("minimumNodes"),
-			minGatewayVersion:     minGatewayVersion,
-			minServerVersion:      minServerVersion,
-			minClientVersion:      minClientVersion,
-			disableGatewayPing:    disableGatewayPing,
-			userRegLeakPeriod:     userRegLeakPeriod,
-			userRegCapacity:       userRegCapacity,
-			addressSpace:          viper.GetUint32("addressSpace"),
-			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
+			Address:                   localAddress,
+			CertPath:                  certPath,
+			KeyPath:                   keyPath,
+			NdfOutputPath:             ndfOutputPath,
+			NsCertPath:                nsCertPath,
+			NsAddress:                 nsAddress,
+			cmix:                      *cmix,
+			e2e:                       *e2e,
+			publicAddress:             publicAddress,
+			clientRegistrationAddress: clientRegistration,
+			schedulingKillTimeout:     schedulingKillTimeout,
+			closeTimeout:              closeTimeout,
+			minimumNodes:              viper.GetUint32("minimumNodes"),
+			udbId:                     udbId,
+			udbDhPubKey:               udbDhPubKey,
+			udbCertPath:               udbCertPath,
+			udbAddress:                udbAddress,
+			minGatewayVersion:         minGatewayVersion,
+			minServerVersion:          minServerVersion,
+			minClientVersion:          minClientVersion,
+			addressSpaceSize:          uint8(viper.GetUint("addressSpace")),
+			allowLocalIPs:             viper.GetBool("allowLocalIPs"),
+			disableGeoBinning:         viper.GetBool("disableGeoBinning"),
+			blockchainGeoBinning:      viper.GetBool("blockchainGeoBinning"),
+
+			disableNDFPruning: viper.GetBool("disableNDFPruning"),
+			geoIPDBFile:       viper.GetString("geoIPDBFile"),
+
+			versionLock: sync.RWMutex{},
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
+
+		LoadAllRegNodes = true
 
 		// Start registration server
 		impl, err := StartRegistration(RegParams)
@@ -239,10 +224,8 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
-		err = impl.LoadAllRegisteredNodes()
-		if err != nil {
-			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
-		}
+		viper.OnConfigChange(impl.updateVersions)
+		viper.WatchConfig()
 
 		// Get disabled Nodes poll duration from config file or default to 1
 		// minute if not set
@@ -269,59 +252,18 @@ var rootCmd = &cobra.Command{
 		// Determine how long between storing Node metrics
 		nodeMetricInterval := time.Duration(
 			viper.GetInt64("nodeMetricInterval")) * time.Second
-		nodeTicker := time.NewTicker(nodeMetricInterval)
 
 		// Run the Node metric tracker forever in another thread
+		onlyScheduleActive := viper.GetBool("OnlyScheduleActive")
 		metricTrackerQuitChan := make(chan struct{})
-		go func(quitChan chan struct{}) {
-			jww.DEBUG.Printf("Beginning storage of node metrics every %+v...",
-				nodeMetricInterval)
-			for {
-				// Store the metric start time
-				startTime := time.Now()
-				select {
-				// Wait for the ticker to fire
-				case <-nodeTicker.C:
-					var toPrune []*id.ID
-					// Iterate over the Node States
-					nodeStates := impl.State.GetNodeMap().GetNodeStates()
-					for _, nodeState := range nodeStates {
+		go TrackNodeMetrics(impl, metricTrackerQuitChan, nodeMetricInterval, onlyScheduleActive)
 
-						// Build the NodeMetric
-						currentTime := time.Now()
-						metric := &storage.NodeMetric{
-							NodeId:    nodeState.GetID().Bytes(),
-							StartTime: startTime,
-							EndTime:   currentTime,
-							NumPings:  nodeState.GetAndResetNumPolls(),
-						}
-
-						//set the node to prune if it has not contacted
-						if metric.NumPings == 0 {
-							toPrune = append(toPrune, nodeState.GetID())
-						}
-
-						// Store the NodeMetric
-						err := storage.PermissioningDb.InsertNodeMetric(metric)
-						if err != nil {
-							jww.FATAL.Panicf(
-								"Unable to store node metric: %+v", err)
-						}
-					}
-
-					if !RegParams.disableNDFPruning {
-						//add disabled nodes to the prune list
-						jww.DEBUG.Printf("Setting %d pruned nodes", len(toPrune))
-						impl.State.SetPrunedNodes(toPrune)
-						err := impl.State.UpdateNdf(impl.State.GetUnprunedNdf())
-						if err != nil {
-							jww.ERROR.Printf("Failed to regenerate the " +
-								"NDF after changing pruning")
-						}
-					}
-				}
-			}
-		}(metricTrackerQuitChan)
+		// Run address space updater until stopped
+		viper.SetDefault("addressSpaceSizeUpdateInterval", 5*time.Minute)
+		addressSpaceSizeUpdateInterval := viper.GetDuration("addressSpaceSizeUpdateInterval")
+		addressSpaceTrackerQuitChan := make(chan struct{})
+		go impl.TrackAddressSpaceSizeUpdates(addressSpaceSizeUpdateInterval,
+			storage.PermissioningDb, addressSpaceTrackerQuitChan)
 
 		// Determine how long between polling for banned nodes
 		interval := viper.GetInt("BanTrackerInterval")
@@ -394,6 +336,16 @@ var rootCmd = &cobra.Command{
 			// Stop polling for disabled Nodes
 			disabledNodePollQuitChan <- struct{}{}
 
+			// Stop address space tracker
+			addressSpaceTrackerQuitChan <- struct{}{}
+
+			// Close GeoIP2 reader
+			impl.geoIPDBStatus.ToStopped()
+			err := impl.geoIPDB.Close()
+			if err != nil {
+				jww.ERROR.Printf("Error closing GeoIP2 database reader: %+v", err)
+			}
+
 			// Close connection to the database
 			err = closeFunc()
 			if err != nil {
@@ -401,23 +353,29 @@ var rootCmd = &cobra.Command{
 			}
 		}
 		stopEverything := func() {
+			if profileOut != "" {
+				pprof.StopCPUProfile()
+			}
 			stopOnce.Do(stopRounds)
 			stopForKillOnce.Do(stopForKill)
 		}
 		ReceiveUSR2Signal(stopEverything)
 
 		// Block forever on Signal Handler for safe program exit
-		ReceiveExitSignal(func() int {
-			stopEverything()
-			if atomic.LoadUint32(impl.Stopped) == 1 {
-				return 0
-			} else {
-				return -1
-			}
-		})
+		stopCh := ReceiveExitSignal()
 
 		// Block forever to prevent the program ending
-		select {}
+		// Block until a signal is received, then call the function
+		// provided
+		select {
+		case <-stopCh:
+			jww.INFO.Printf(
+				"Received Exit (SIGTERM or SIGINT) signal...\n")
+			stopEverything()
+			if atomic.LoadUint32(impl.Stopped) != 1 {
+				os.Exit(-1)
+			}
+		}
 	},
 }
 
@@ -492,6 +450,10 @@ func init() {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}
 
+	rootCmd.Flags().String("profile-cpu", "",
+		"Enable cpu profiling to this file")
+	viper.BindPFlag("profile-cpu", rootCmd.Flags().Lookup("profile-cpu"))
+
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -541,42 +503,47 @@ func initConfig() {
 			jww.ERROR.Printf("Unable to parse config file (%s): %+v", cfgFile, err)
 			validConfig = false
 		}
-		viper.OnConfigChange(updateClientVersion)
-		viper.WatchConfig()
 	}
 }
 
-func updateClientVersion(in fsnotify.Event) {
-	newVersion := viper.GetString("clientVersion")
-	err := validateVersion(newVersion)
+func (m *RegistrationImpl) updateVersions(in fsnotify.Event) {
+	// Parse version strings
+	clientVersion := viper.GetString("minClientVersion")
+	_, err := version.ParseVersion(clientVersion)
 	if err != nil {
-		panic(err)
+		jww.FATAL.Panicf("Attempted client version update is invalid: %v", err)
 	}
-	setClientVersion(newVersion)
-}
 
-func setClientVersion(version string) {
-	clientVersionLock.Lock()
-	clientVersion = version
-	clientVersionLock.Unlock()
-}
+	minGatewayVersionString := viper.GetString("minGatewayVersion")
+	minGatewayVersion, err := version.ParseVersion(minGatewayVersionString)
+	if err != nil {
+		jww.FATAL.Panicf("Could not parse minGatewayVersion %#v: %+v",
+			minGatewayVersionString, err)
+	}
 
-func validateVersion(versionString string) error {
-	// If a version string has more than 2 dots in it, anything after the first
-	// 2 dots is considered to be part of the patch version
-	versions := strings.SplitN(versionString, ".", 3)
-	if len(versions) != 3 {
-		return errors.New("Client version string must contain a major, minor, and patch version separated by \".\"")
-	}
-	_, err := strconv.Atoi(versions[0])
+	minServerVersionString := viper.GetString("minServerVersion")
+	minServerVersion, err := version.ParseVersion(minServerVersionString)
 	if err != nil {
-		return errors.New("Major client version couldn't be parsed as integer")
+		jww.FATAL.Panicf("Could not parse minServerVersion %#v: %+v",
+			minServerVersionString, err)
 	}
-	_, err = strconv.Atoi(versions[1])
+
+	// Modify the client version
+	m.NDFLock.Lock()
+	updateNDF := m.State.GetUnprunedNdf()
+	jww.DEBUG.Printf("Updating client version from %s to %s", updateNDF.ClientVersion, clientVersion)
+	updateNDF.ClientVersion = clientVersion
+	err = m.State.UpdateNdf(updateNDF)
 	if err != nil {
-		return errors.New("Minor client version couldn't be parsed as integer")
+		jww.FATAL.Panicf("Failed to update client version in NDF: %v", err)
 	}
-	return nil
+	m.NDFLock.Unlock()
+
+	// Modify server and gateway versions
+	m.params.versionLock.Lock()
+	m.params.minGatewayVersion = minGatewayVersion
+	m.params.minServerVersion = minServerVersion
+	m.params.versionLock.Unlock()
 }
 
 // initLog initializes logging thresholds and the log path.

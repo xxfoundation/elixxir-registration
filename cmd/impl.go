@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"crypto/x509"
+	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -21,7 +22,8 @@ import (
 	"gitlab.com/xx_network/crypto/tls"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
-	"gitlab.com/xx_network/primitives/rateLimiting"
+	"gitlab.com/xx_network/primitives/netTime"
+	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"sync"
 	"time"
@@ -29,32 +31,38 @@ import (
 
 // The main registration instance object
 type RegistrationImpl struct {
-	Comms                *registration.Comms
-	params               *Params
-	State                *storage.NetworkState
-	Stopped              *uint32
-	permissioningCert    *x509.Certificate
-	ndfOutputPath        string
-	NdfReady             *uint32
-	certFromFile         string
-	registrationLimiting *rateLimiting.Bucket
-	disableGatewayPing   bool
+	Comms             *registration.Comms
+	params            *Params
+	State             *storage.NetworkState
+	Stopped           *uint32
+	permissioningCert *x509.Certificate
+	ndfOutputPath     string
+	NdfReady          *uint32
+	certFromFile      string
 
-	//registration status trackers
+	// registration status trackers
 	numRegistered int
-	//FIXME: it is possible that polling lock and registration lock
+	// FIXME: it is possible that polling lock and registration lock
 	// do the same job and could conflict. reconsiderations of this logic
 	// may be fruitful
 	registrationLock sync.Mutex
 	beginScheduling  chan struct{}
-	//TODO-kill this
+	// TODO-kill this
 	registrationTimes map[id.ID]int64
+
+	// GeoLite2 database reader instance for getting info about an IP address
+	geoIPDB *geoip2.Reader
+
+	// Status of the geoip2.Reader; signals if the reader is running or stopped
+	geoIPDBStatus geoipStatus
 
 	NDFLock sync.Mutex
 }
 
-//function used to schedule nodes
+// function used to schedule nodes
 type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
+
+var LoadAllRegNodes bool
 
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) (*RegistrationImpl, error) {
@@ -64,39 +72,88 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	roundCreationStopped := uint32(0)
 
 	// Read in private key
-	key, err := utils.ReadFile(params.KeyPath)
+	rsaKeyPem, err := utils.ReadFile(params.KeyPath)
 	if err != nil {
 		return nil, errors.Errorf("failed to read key at %+v: %+v",
 			params.KeyPath, err)
 	}
 
-	pk, err := rsa.LoadPrivateKeyFromPem(key)
+	rsaPrivateKey, err := rsa.LoadPrivateKeyFromPem(rsaKeyPem)
 	if err != nil {
 		return nil, errors.Errorf("Failed to parse permissioning server key: %+v. "+
-			"PermissioningKey is %+v", err, pk)
+			"PermissioningKey is %+v", err, rsaPrivateKey)
 	}
 
-	// Initialize the state tracking object
-	state, err := storage.NewState(pk, params.addressSpace, params.NdfOutputPath)
+	// Check if any address space sizes are saved to the database and if not,
+	// use the size from the config file
+	if _, err := storage.PermissioningDb.GetLatestEphemeralLength(); err != nil {
+		jww.WARN.Printf("Using address space size of %d from config due to "+
+			"error receiving address space size from storage: %s",
+			params.addressSpaceSize, err)
+
+		err := storage.PermissioningDb.InsertEphemeralLength(
+			&storage.EphemeralLength{
+				Length:    params.addressSpaceSize,
+				Timestamp: netTime.Now(),
+			})
+		if err != nil {
+			return nil, errors.Errorf("Failed to save initial address space "+
+				"size %d to database: %+v", params.addressSpaceSize, err)
+		}
+	}
+
+	// Get list of addresses spaces from database
+	addressSpaces, newestAddressSpace, err := GetAddressSpaceSizesFromStorage(
+		storage.PermissioningDb)
 	if err != nil {
-		return nil, err
+		return nil, errors.Errorf("Failed to get ephemeral ID lengths from "+
+			"database: %v.", err)
 	}
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		State:              state,
-		params:             &params,
-		ndfOutputPath:      params.NdfOutputPath,
-		NdfReady:           &ndfReady,
-		Stopped:            &roundCreationStopped,
-		numRegistered:      0,
-		beginScheduling:    make(chan struct{}, 1),
-		disableGatewayPing: params.disableGatewayPing,
-		registrationTimes:  make(map[id.ID]int64),
+		params:            &params,
+		ndfOutputPath:     params.NdfOutputPath,
+		NdfReady:          &ndfReady,
+		Stopped:           &roundCreationStopped,
+		numRegistered:     0,
+		beginScheduling:   make(chan struct{}, 1),
+		registrationTimes: make(map[id.ID]int64),
 	}
 
-	//regImpl.registrationLimiting = rateLimiting.Create(params.userRegCapacity, params.userRegLeakRate)
-	regImpl.registrationLimiting = rateLimiting.CreateBucket(params.userRegCapacity, params.userRegCapacity, params.userRegLeakPeriod, func(u uint32, i int64) {})
+	// If the the GeoIP2 database file is supplied, then use it to open the
+	// GeoIP2 reader; otherwise, error if randomGeoBinning is not set
+	var geoBins map[string]region.GeoBin
+	if params.geoIPDBFile != "" {
+		regImpl.geoIPDB, err = geoip2.Open(params.geoIPDBFile)
+		if err != nil {
+			return nil,
+				errors.Errorf("failed to load GeoIP2 database file: %+v", err)
+		}
+
+		// Set the GeoIP2 reader to running
+		regImpl.geoIPDBStatus.ToRunning()
+
+	}
+
+	// Determine which type of GeoBinning we're using
+	if regImpl.params.blockchainGeoBinning {
+		geoBins, err = storage.PermissioningDb.GetBins()
+		if err != nil {
+			return nil, err
+		}
+		jww.INFO.Printf("Loaded %d GeoBins from Storage!", len(geoBins))
+	} else {
+		geoBins = region.GetCountryBins()
+		jww.INFO.Printf("Loaded %d GeoBins from Primitives!", len(geoBins))
+	}
+
+	// Initialize the state tracking object
+	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size),
+		params.NdfOutputPath, geoBins)
+	if err != nil {
+		return nil, err
+	}
 
 	if !noTLS {
 		// Read in TLS keys from files
@@ -124,8 +181,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Construct the NDF
 	networkDef := &ndf.NetworkDefinition{
 		Registration: ndf.Registration{
-			Address:        RegParams.publicAddress,
-			TlsCertificate: regImpl.certFromFile,
+			Address:                   RegParams.publicAddress,
+			TlsCertificate:            regImpl.certFromFile,
+			EllipticPubKey:            regImpl.State.GetEllipticPublicKey().MarshalText(),
+			ClientRegistrationAddress: RegParams.clientRegistrationAddress,
 		},
 		Timestamp: time.Now(),
 		UDB: ndf.UDB{
@@ -138,10 +197,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		CMIX: RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
-		Nodes:            make([]ndf.Node, 0),
-		Gateways:         make([]ndf.Gateway, 0),
-		AddressSpaceSize: params.addressSpace,
-		ClientVersion:    RegParams.minClientVersion.String(),
+		Nodes:         make([]ndf.Node, 0),
+		Gateways:      make([]ndf.Gateway, 0),
+		AddressSpace:  addressSpaces,
+		ClientVersion: RegParams.minClientVersion.String(),
 	}
 
 	// Assemble notification server information if configured
@@ -158,16 +217,44 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		jww.WARN.Printf("Configured to run without notifications bot!")
 	}
 
+	// If the the GeoIP2 database file is supplied, then use it to open the
+	// GeoIP2 reader; otherwise, error if randomGeoBinning is not set
+	if params.disableGeoBinning {
+		jww.WARN.Printf("Running with geobinning disabled. Nodes are expected to " +
+			"have proper country codes in their inserted sequence. This feature should be used for testing only")
+	} else if params.geoIPDBFile != "" {
+		regImpl.geoIPDB, err = geoip2.Open(params.geoIPDBFile)
+		if err != nil {
+			return nil,
+				errors.Errorf("failed to load GeoIP2 database file: %+v", err)
+		}
+
+		// Set the GeoIP2 reader to running
+		regImpl.geoIPDBStatus.ToRunning()
+	} else {
+		jww.FATAL.Panic("Must provide either a MaxMind GeoLite2 compatible " +
+			"database file or set the 'randomGeoBinning' flag.")
+	}
+
 	// update the internal state with the newly-formed NDF
 	err = regImpl.State.UpdateNdf(networkDef)
 	if err != nil {
 		return nil, err
 	}
 
+	var hosts []*connect.Host
+
+	if LoadAllRegNodes {
+		hosts, err = regImpl.LoadAllRegisteredNodes()
+		if err != nil {
+			jww.FATAL.Panicf("Could not load all nodes from database: %+v", err)
+		}
+	}
+
 	// Start the communication server
 	regImpl.Comms = registration.StartRegistrationServer(&id.Permissioning,
 		params.Address, NewImplementation(regImpl),
-		[]byte(regImpl.certFromFile), key)
+		[]byte(regImpl.certFromFile), rsaKeyPem, hosts)
 
 	// In the noTLS pathway, disable authentication
 	if noTLS {
@@ -261,7 +348,7 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 			return errors.WithMessage(err, "Could not ban node")
 		}
 
-		//take the polling lock
+		// take the polling lock
 		ns.GetPollingLock().Lock()
 
 		/// Send the node's update notification to the scheduler
@@ -277,13 +364,6 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 // NewImplementation returns a registration server Handler
 func NewImplementation(instance *RegistrationImpl) *registration.Implementation {
 	impl := registration.NewImplementation()
-	impl.Functions.RegisterUser = func(regCode string, pubKey, receptionPubKey string) ([]byte, []byte, error) {
-		transmissionSig, receptionSig, err := instance.RegisterUser(regCode, pubKey, receptionPubKey)
-		if err != nil {
-			jww.ERROR.Printf("RegisterUser error: %+v", err)
-		}
-		return transmissionSig, receptionSig, err
-	}
 	impl.Functions.RegisterNode = func(salt []byte, serverAddr, serverTlsCert, gatewayAddr,
 		gatewayTlsCert, registrationCode string) error {
 
@@ -306,14 +386,14 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	}
 
 	impl.Functions.Poll = func(msg *pb.PermissioningPoll, auth *connect.Auth) (*pb.PermissionPollResponse, error) {
-		//ensure a bad poll can not take down the permisisoning server
+		// ensure a bad poll can not take down the permisisoning server
 		response, err := instance.Poll(msg, auth)
 
 		return response, err
 	}
 
 	// This comm is not authenticated as servers call this early in their
-	//lifecycle to check if they've already registered
+	// lifecycle to check if they've already registered
 	impl.Functions.CheckRegistration = func(msg *pb.RegisteredNodeCheck) (confirmation *pb.RegisteredNodeConfirmation, e error) {
 
 		response, e := instance.CheckNodeRegistration(msg)
@@ -324,8 +404,4 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	}
 
 	return impl
-}
-
-func (m *RegistrationImpl) GetDisableGatewayPingFlag() bool {
-	return m.disableGatewayPing
 }

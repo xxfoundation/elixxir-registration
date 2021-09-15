@@ -12,6 +12,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/region"
 	"reflect"
 	"testing"
 	"time"
@@ -198,7 +199,8 @@ func setupNode(t *testing.T, testState *storage.NetworkState, newId uint64) *nod
 func setupNodeMap(t *testing.T) *storage.NetworkState {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, 8, "")
+
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

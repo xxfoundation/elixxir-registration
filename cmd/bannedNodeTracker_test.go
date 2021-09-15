@@ -7,12 +7,12 @@ package cmd
 
 import (
 	"crypto/rand"
-	"fmt"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
+	"gitlab.com/xx_network/primitives/region"
 	"sync"
 	"testing"
 )
@@ -28,7 +28,8 @@ func TestBannedNodeTracker(t *testing.T) {
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-	testState, err := storage.NewState(privKey, 8, "")
+
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
 	impl := &RegistrationImpl{
 		State:   testState,
 		NDFLock: sync.Mutex{},
@@ -104,7 +105,6 @@ func createNode(testState *storage.NetworkState, order, regCode string, appId in
 	if err != nil {
 		t.Fatalf("Failed to generate random bytes: %v", err)
 	}
-	fmt.Printf("banned: %v\n", idBytes)
 
 	// Create a node with a banned status
 	applicationId := uint64(appId)
