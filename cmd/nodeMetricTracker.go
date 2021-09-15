@@ -42,6 +42,16 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 			var toUpdate []*id.ID
 			var err error
 
+			// Obtain active nodes
+			var active map[id.ID]bool
+			if onlyScheduleActive {
+				active, err = GetActiveNodeIDs()
+				if err != nil {
+					jww.ERROR.Print(err)
+				}
+				jww.DEBUG.Printf("Found %d active nodes!", len(active))
+			}
+
 			// Iterate over the Node States
 			nodeStates := impl.State.GetNodeMap().GetNodeStates()
 			for _, nodeState := range nodeStates {
@@ -53,16 +63,6 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 					StartTime: startTime,
 					EndTime:   currentTime,
 					NumPings:  nodeState.GetAndResetNumPolls(),
-				}
-
-				// Obtain active nodes
-				var active map[id.ID]bool
-				if onlyScheduleActive {
-					active, err = GetActiveNodeIDs()
-					if err != nil {
-						jww.ERROR.Print(err)
-					}
-					jww.DEBUG.Printf("Found %d active nodes!", len(active))
 				}
 
 				// set the node to prune if it has not contacted
