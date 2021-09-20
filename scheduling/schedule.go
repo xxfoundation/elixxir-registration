@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-// scheduler.go contains the business logic for scheduling a round
+// Scheduler.go contains the business logic for scheduling a round
 
 const (
 	//size of round creation channel, just sufficiently large enough to not be jammed
@@ -35,12 +35,12 @@ const (
 type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error)
 
-// Scheduler constructs the teaming parameters and sets up the scheduling
-func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan chan struct{}) error {
-	params := &safeParams{}
+func ParseParams(serialParam []byte) *SafeParams {
+	// Parse params JSON
+	params := &SafeParams{}
 	err := json.Unmarshal(serialParam, params)
 	if err != nil {
-		return errors.WithMessage(err, "Could not extract parameters")
+		jww.FATAL.Panicf("Scheduling Algorithm exited: Could not extract parameters")
 	}
 
 	// If resource queue timeout isn't set, set it to a default of 3 minutes
@@ -55,14 +55,11 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 		params.RealtimeTimeout = 15000
 	}
 
-	// TODO: Set up frequency as a configuration option
-	go updateParams(params, 5*time.Minute)
-
-	return scheduler(params, state, killchan)
+	return params
 }
 
 // Runs an infinite loop that checks for updates to scheduling parameters
-func updateParams(params *safeParams, updateFreq time.Duration) {
+func UpdateParams(params *SafeParams, updateFreq time.Duration) {
 	for {
 		newParams := make(map[string]uint64, 0)
 		teamSize, err := storage.PermissioningDb.GetStateInt(storage.TeamSize)
@@ -125,9 +122,9 @@ func updateParams(params *safeParams, updateFreq time.Duration) {
 
 }
 
-// scheduler is a utility function which builds a round by handling a node's
+// Scheduler is a utility function which builds a round by handling a node's
 // state changes then creating a team from the nodes in the pool
-func scheduler(params *safeParams, state *storage.NetworkState, killchan chan chan struct{}) error {
+func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan chan struct{}) error {
 
 	// Pool which tracks nodes which are not in a team
 	pool := NewWaitingPool()
@@ -200,7 +197,7 @@ func scheduler(params *safeParams, state *storage.NetworkState, killchan chan ch
 		hasUpdate := false
 
 		select {
-		// Receive a signal to kill the scheduler
+		// Receive a signal to kill the Scheduler
 		case killed = <-killchan:
 			// Also kill the unsticker
 			jww.WARN.Printf("Scheduler has received a kill signal, exit process has begun")
@@ -264,8 +261,8 @@ func scheduler(params *safeParams, state *storage.NetworkState, killchan chan ch
 			}
 		}
 
-		// If the scheduler is to be killed and no rounds are in progress,
-		// kill the scheduler
+		// If the Scheduler is to be killed and no rounds are in progress,
+		// kill the Scheduler
 		if killed != nil && roundTracker.Len() == 0 {
 			// Stop round creation
 			close(newRoundChan)
@@ -275,7 +272,7 @@ func scheduler(params *safeParams, state *storage.NetworkState, killchan chan ch
 		}
 	}
 
-	return errors.New("single scheduler should never exit")
+	return errors.New("single Scheduler should never exit")
 }
 
 // Helper function which handles when we receive a timed out round
