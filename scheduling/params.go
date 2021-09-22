@@ -56,6 +56,8 @@ type Params struct {
 	RealtimeTimeout time.Duration
 	//Debug flag used to cause regular prints about the state of the network
 	DebugTrackRounds bool
+	//Flag used to enable blockchain integration
+	UseBlockchainParameters bool
 
 	//SECURE ONLY
 	// sets the minimum number of nodes in the waiting pool before secure teaming

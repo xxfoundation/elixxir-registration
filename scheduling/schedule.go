@@ -56,7 +56,9 @@ func Scheduler(serialParam []byte, state *storage.NetworkState, killchan chan ch
 	}
 
 	// TODO: Set up frequency as a configuration option
-	go updateParams(params, 5*time.Minute)
+	if params.UseBlockchainParameters {
+		go updateParams(params, 5*time.Minute)
+	}
 
 	return scheduler(params, state, killchan)
 }
