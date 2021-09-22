@@ -17,7 +17,7 @@ import (
 
 // This exists to provide thread-safe functionality to the Params object
 // and to allow making safe copies of the internal Params object
-type safeParams struct {
+type SafeParams struct {
 	// Need a mutex as params can be modified out of band
 	sync.RWMutex
 
@@ -26,13 +26,13 @@ type safeParams struct {
 }
 
 // Allows for safe duplication of the current internal Params object
-func (s *safeParams) safeCopy() Params {
+func (s *SafeParams) safeCopy() Params {
 	s.RLock()
 	defer s.RUnlock()
 	return *s.Params
 }
 
-// JSONable structure which defines the parameters of the scheduler
+// JSONable structure which defines the parameters of the Scheduler
 type Params struct {
 	// selects if the secure or simple node selection algorithm is used
 	Secure bool
