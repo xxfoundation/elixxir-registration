@@ -45,6 +45,7 @@ type Params struct {
 	blockchainGeoBinning  bool
 	disablePing           bool
 	onlyScheduleActive    bool
+	enableBlockchain      bool
 
 	disableNDFPruning bool
 

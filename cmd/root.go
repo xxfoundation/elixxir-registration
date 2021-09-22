@@ -211,6 +211,7 @@ var rootCmd = &cobra.Command{
 			disableGeoBinning:         viper.GetBool("disableGeoBinning"),
 			blockchainGeoBinning:      viper.GetBool("blockchainGeoBinning"),
 			onlyScheduleActive:        viper.GetBool("onlyScheduleActive"),
+			enableBlockchain:          viper.GetBool("enableBlockchain"),
 
 			disableNDFPruning:   viper.GetBool("disableNDFPruning"),
 			geoIPDBFile:         viper.GetString("geoIPDBFile"),
@@ -323,8 +324,9 @@ var rootCmd = &cobra.Command{
 				params.RealtimeTimeout = 15000
 			}
 
-			// TODO: Set up frequency as a configuration option
-			if impl.params.onlyScheduleActive { // Initialize param update if blockchain is enable
+			// Initialize param update if it is enabled
+			if impl.params.enableBlockchain {
+				// TODO: Set up frequency as a configuration option
 				go scheduling.UpdateParams(params, 5*time.Minute)
 			}
 

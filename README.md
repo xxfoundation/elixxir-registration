@@ -122,6 +122,9 @@ addressSpaceSizeUpdateInterval: 5m
 # Toggles use of only active nodes in node metric tracker
 onlyScheduleActive: false
 
+# Toggles blockchain integration functionality
+enableBlockchain: false
+
 # A MaxMind GeoLite2 database file to lookup IPs against for geobinning
 geoIPDBFile: "/GeoLite2-City.mmdb"
 
