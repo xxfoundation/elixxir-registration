@@ -38,11 +38,11 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	defer n.GetPollingLock().Unlock()
 	hasRound, r := n.GetCurrentRound()
 
-	// FIXME: This code can't be reached, as the same condition returns an error
-	// FIXME: in the node.Update function earlier in the Poll call
+	// Enforce that only error updates are allowed for a failed round
 	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED && update.ToActivity != current.ERROR
 	if roundErrored {
-		return nil
+		return errors.Errorf("Round %d has failed, state cannot be updated to %s",
+			r.GetRoundID(), update.ToActivity.String())
 	}
 
 	if update.ClientErrors != nil && len(update.ClientErrors) > 0 {
@@ -58,7 +58,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			}
 			err := signature.SignRsa(banError, state.GetPrivateKey())
 			if err != nil {
-				jww.FATAL.Panicf("Failed to sign error message for banned node %s: %+v", update.Node, err)
+				return errors.Errorf("Failed to sign error message for banned node %s: %+v", update.Node, err)
 			}
 			n.ClearRound()
 			return killRound(state, r, banError, roundTracker)

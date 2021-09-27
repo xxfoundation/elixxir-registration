@@ -247,13 +247,10 @@ func TestNodeState_Update_Valid_RequiresRound_Round_InvalidState(t *testing.T) {
 
 	before := time.Now()
 
-	updated, old, err := ns.Update(current.PRECOMPUTING)
+	updated, _, err := ns.Update(current.PRECOMPUTING)
 
-	if err == nil {
-		t.Errorf("Node state update returned no error on invalid state change")
-	} else if !strings.Contains(err.Error(), "state cannot be updated") {
-		t.Errorf("Node state update returned the wrong error on "+
-			"state change requiring round in the correct state but in wrong one: %s", err)
+	if err != nil {
+		t.Errorf(err.Error())
 	}
 
 	timeDelta := ns.lastPoll.Sub(before)
@@ -262,18 +259,13 @@ func TestNodeState_Update_Valid_RequiresRound_Round_InvalidState(t *testing.T) {
 			"checkpoint: %s", timeDelta)
 	}
 
-	if updated == true {
-		t.Errorf("Node state should not have updated")
+	if updated == false {
+		t.Errorf("Node state should have updated")
 	}
 
-	// Returns default updateNotification object on failed update
-	if !reflect.DeepEqual(old, UpdateNotification{}) {
-		t.Errorf("Node state returned the wrong old state")
-	}
-
-	if ns.activity != current.WAITING {
+	if ns.activity != current.ERROR {
 		t.Errorf("Internal Node activity is not correct: "+
-			"Expected: %s, Recieved: %s", current.WAITING, ns.activity)
+			"Expected: %s, Recieved: %s", current.ERROR, ns.activity)
 	}
 }
 
