@@ -332,7 +332,7 @@ var rootCmd = &cobra.Command{
 
 			// Initialize scheduling
 			err = scheduling.Scheduler(params, impl.State, roundCreationQuitChan)
-			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
+			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err.Error())
 		}()
 
 		var stopOnce sync.Once
@@ -484,8 +484,10 @@ func init() {
 
 	rootCmd.Flags().String("profile-cpu", "",
 		"Enable cpu profiling to this file")
-	viper.BindPFlag("profile-cpu", rootCmd.Flags().Lookup("profile-cpu"))
-
+	err = viper.BindPFlag("profile-cpu", rootCmd.Flags().Lookup("profile-cpu"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.

@@ -7,7 +7,6 @@
 package scheduling
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -34,29 +33,6 @@ const (
 
 type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
 	state *storage.NetworkState) (protoRound, error)
-
-func ParseParams(serialParam []byte) *SafeParams {
-	// Parse params JSON
-	params := &SafeParams{}
-	err := json.Unmarshal(serialParam, params)
-	if err != nil {
-		jww.FATAL.Panicf("Scheduling Algorithm exited: Could not extract parameters")
-	}
-
-	// If resource queue timeout isn't set, set it to a default of 3 minutes
-	if params.ResourceQueueTimeout == 0 {
-		params.ResourceQueueTimeout = 180000
-	}
-	// If round times haven't been set, set to a default of one minute
-	if params.PrecomputationTimeout == 0 {
-		params.PrecomputationTimeout = 60000
-	}
-	if params.RealtimeTimeout == 0 {
-		params.RealtimeTimeout = 15000
-	}
-
-	return params
-}
 
 // Runs an infinite loop that checks for updates to scheduling parameters
 func UpdateParams(params *SafeParams, updateFreq time.Duration) {
