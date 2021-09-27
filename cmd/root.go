@@ -9,7 +9,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/go-homedir"
@@ -306,23 +305,7 @@ var rootCmd = &cobra.Command{
 		// Begin scheduling algorithm
 		go func() {
 			// Parse params JSON
-			params := &scheduling.SafeParams{}
-			err := json.Unmarshal(SchedulingConfig, params)
-			if err != nil {
-				jww.FATAL.Panicf("Scheduling Algorithm exited: Could not extract parameters")
-			}
-
-			// If resource queue timeout isn't set, set it to a default of 3 minutes
-			if params.ResourceQueueTimeout == 0 {
-				params.ResourceQueueTimeout = 180000
-			}
-			// If round times haven't been set, set to a default of one minute
-			if params.PrecomputationTimeout == 0 {
-				params.PrecomputationTimeout = 60000
-			}
-			if params.RealtimeTimeout == 0 {
-				params.RealtimeTimeout = 15000
-			}
+			params := scheduling.ParseParams(SchedulingConfig)
 
 			// Initialize param update if it is enabled
 			if impl.params.enableBlockchain {
