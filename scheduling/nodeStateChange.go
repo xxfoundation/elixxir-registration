@@ -244,22 +244,23 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo, realtimeEnd states.Round) {
 // killRound sets the round to failed and clears the node's round
 func killRound(state *storage.NetworkState, r *round.State,
 	roundError *pb.RoundError, roundTracker *RoundTracker) error {
+
+	roundId := r.GetRoundID()
 	r.AppendError(roundError)
 
 	err := r.Update(states.FAILED, time.Now())
 
 	if err == nil {
-		roundTracker.RemoveActiveRound(r.GetRoundID())
+		roundTracker.RemoveActiveRound(roundId)
 	}
 
-	roundId := r.GetRoundID()
 	roundInfo := r.BuildRoundInfo()
 
 	// Build the round info and update the network state
 	err = state.AddRoundUpdate(roundInfo)
 	if err != nil {
 		return errors.WithMessagef(err, "Could not issue "+
-			"update to kill round %v", r.GetRoundID())
+			"update to kill round %v", roundId)
 	}
 
 	go func() {
