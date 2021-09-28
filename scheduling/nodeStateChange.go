@@ -264,7 +264,7 @@ func killRound(state *storage.NetworkState, r *round.State,
 
 	go func() {
 		// Attempt to insert the RoundMetric for the failed round
-		StoreRoundMetric(r.BuildRoundInfo(), states.FAILED)
+		StoreRoundMetric(roundInfo, states.FAILED)
 
 		// Return early if there is no roundError
 		if roundError == nil {
