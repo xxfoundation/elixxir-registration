@@ -844,7 +844,7 @@ func TestHandleNodeUpdates_Realtime_UpdateError(t *testing.T) {
 	}
 }
 
-// Tests that HandleNodeUpdates() returns nil when there is a round error.
+// Tests that HandleNodeUpdates() returns an error when there is a round error and node isn't transitioning to error
 func TestHandleNodeUpdates_RoundErrored(t *testing.T) {
 	testParams := Params{
 		TeamSize:  5,
@@ -893,10 +893,8 @@ func TestHandleNodeUpdates_RoundErrored(t *testing.T) {
 
 	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
 		roundTracker, timeoutCh, 15*time.Second)
-	if err != nil {
-		t.Errorf("HandleNodeUpdates() recieved an unexpected error"+
-			"\n\texpected: %v\n\treceived: %v",
-			nil, err)
+	if err == nil {
+		t.Errorf("Expected an error return!")
 	}
 }
 
