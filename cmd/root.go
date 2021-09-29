@@ -9,6 +9,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/go-homedir"
@@ -315,7 +316,10 @@ var rootCmd = &cobra.Command{
 
 			// Initialize scheduling
 			err = scheduling.Scheduler(params, impl.State, roundCreationQuitChan)
-			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err.Error())
+			if err == nil {
+				err = errors.New("")
+			}
+			jww.FATAL.Panicf("Scheduling Algorithm exited: %v", err)
 		}()
 
 		var stopOnce sync.Once

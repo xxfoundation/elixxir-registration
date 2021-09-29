@@ -249,7 +249,6 @@ func killRound(state *storage.NetworkState, r *round.State,
 	r.AppendError(roundError)
 
 	err := r.Update(states.FAILED, time.Now())
-
 	if err == nil {
 		roundTracker.RemoveActiveRound(roundId)
 	}
