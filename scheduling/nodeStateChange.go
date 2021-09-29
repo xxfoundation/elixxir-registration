@@ -41,8 +41,9 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	// Enforce that only error updates are allowed for a failed round
 	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED && update.ToActivity != current.ERROR
 	if roundErrored {
-		return errors.Errorf("Round %d has failed, state for %s cannot be updated to %s",
-			r.GetRoundID(), update.Node.String(), update.ToActivity.String())
+		jww.WARN.Printf("Round %d has failed, state for %s cannot be updated to %s, moving to %s",
+			r.GetRoundID(), update.Node.String(), update.ToActivity.String(), current.ERROR)
+		update.ToActivity = current.ERROR
 	}
 
 	if update.ClientErrors != nil && len(update.ClientErrors) > 0 {
