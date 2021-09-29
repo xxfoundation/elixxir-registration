@@ -893,8 +893,8 @@ func TestHandleNodeUpdates_RoundErrored(t *testing.T) {
 
 	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
 		roundTracker, timeoutCh, 15*time.Second)
-	if err == nil {
-		t.Errorf("Expected an error return!")
+	if err != nil {
+		t.Errorf("Expected no error return!")
 	}
 }
 
