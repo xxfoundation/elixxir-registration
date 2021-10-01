@@ -9,7 +9,7 @@
 package cmd
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/fsnotify/fsnotify"
 	"github.com/mitchellh/go-homedir"
@@ -306,23 +306,7 @@ var rootCmd = &cobra.Command{
 		// Begin scheduling algorithm
 		go func() {
 			// Parse params JSON
-			params := &scheduling.SafeParams{}
-			err := json.Unmarshal(SchedulingConfig, params)
-			if err != nil {
-				jww.FATAL.Panicf("Scheduling Algorithm exited: Could not extract parameters")
-			}
-
-			// If resource queue timeout isn't set, set it to a default of 3 minutes
-			if params.ResourceQueueTimeout == 0 {
-				params.ResourceQueueTimeout = 180000
-			}
-			// If round times haven't been set, set to a default of one minute
-			if params.PrecomputationTimeout == 0 {
-				params.PrecomputationTimeout = 60000
-			}
-			if params.RealtimeTimeout == 0 {
-				params.RealtimeTimeout = 15000
-			}
+			params := scheduling.ParseParams(SchedulingConfig)
 
 			// Initialize param update if it is enabled
 			if impl.params.enableBlockchain {
@@ -332,7 +316,10 @@ var rootCmd = &cobra.Command{
 
 			// Initialize scheduling
 			err = scheduling.Scheduler(params, impl.State, roundCreationQuitChan)
-			jww.FATAL.Panicf("Scheduling Algorithm exited: %s", err)
+			if err == nil {
+				err = errors.New("")
+			}
+			jww.FATAL.Panicf("Scheduling Algorithm exited: %v", err)
 		}()
 
 		var stopOnce sync.Once
@@ -484,8 +471,10 @@ func init() {
 
 	rootCmd.Flags().String("profile-cpu", "",
 		"Enable cpu profiling to this file")
-	viper.BindPFlag("profile-cpu", rootCmd.Flags().Lookup("profile-cpu"))
-
+	err = viper.BindPFlag("profile-cpu", rootCmd.Flags().Lookup("profile-cpu"))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
 }
 
 // initConfig reads in config file and ENV variables if set.
