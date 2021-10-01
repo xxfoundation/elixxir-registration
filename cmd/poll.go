@@ -302,6 +302,12 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 	// Pull the addresses out of the message
 	gatewayAddress, nodeAddress := msg.GatewayAddress, msg.ServerAddress
 
+	// Prevent adding same address for both Node and Gateway
+	if nodeAddress == gatewayAddress && len(nodeAddress) > 0 {
+		return errors.Errorf("Cannot handle node which has the same "+
+			"gateway and node address of: %s and %s", nodeAddress, gatewayAddress)
+	}
+
 	// Update server and gateway addresses in state, if necessary
 	nodeUpdate, err := n.UpdateNodeAddresses(nodeAddress)
 	if err != nil {
