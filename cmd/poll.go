@@ -65,7 +65,6 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 	activity := current.Activity(msg.Activity)
 
-
 	// update ip addresses if necessary
 	err = checkIPAddresses(m, n, msg, auth.Sender)
 	if err != nil {
@@ -303,8 +302,9 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 	// Pull the addresses out of the message
 	gatewayAddress, nodeAddress := msg.GatewayAddress, msg.ServerAddress
 
-	if nodeAddress==gatewayAddress{
-		return errors.Errorf("Cannot handle node which has the same " +
+	// Prevent adding same address for both Node and Gateway
+	if nodeAddress == gatewayAddress && len(nodeAddress) > 0 {
+		return errors.Errorf("Cannot handle node which has the same "+
 			"gateway and node address of: %s and %s", nodeAddress, gatewayAddress)
 	}
 
