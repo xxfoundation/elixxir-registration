@@ -403,10 +403,10 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 			} else {
 				//ping the node
 				nodeHost, exists := m.Comms.GetHost(n.GetID())
-
+				_, isOnline := nodeHost.IsOnline()
 				nodePing = exists &&
 					(utils.IsPublicAddress(nodeHost.GetAddress()) == nil || m.params.allowLocalIPs) &&
-					nodeHost.IsOnline()
+					isOnline
 
 				//build gateway host
 				gwID := nodeHost.GetId().DeepCopy()
@@ -416,9 +416,10 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), nil, params)
 
 				//ping the gateway
+				_, isOnline = gwHost.IsOnline()
 				gwPing = (err == nil) &&
 					(utils.IsPublicAddress(n.GetGatewayAddress()) == nil || m.params.allowLocalIPs) &&
-					gwHost.IsOnline()
+					isOnline
 			}
 
 			if nodePing && gwPing {
