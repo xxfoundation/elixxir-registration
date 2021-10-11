@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"crypto/x509"
+	"encoding/json"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -148,9 +149,26 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		jww.INFO.Printf("Loaded %d GeoBins from Primitives!", len(geoBins))
 	}
 
+	preApprovedIds := make([]string, 0)
+	if regImpl.params.PreApprovedIdsPath != "" {
+
+		// Load pre-approved ID file
+		preApprovedFile, err := utils.ReadFile(regImpl.params.PreApprovedIdsPath)
+		if err != nil {
+			return nil, errors.Errorf("Cannot read pre-approved IDs file (%s): %v",
+				regImpl.params.PreApprovedIdsPath, err)
+		}
+
+		// Unmarshal file (should be a JSON of list of IDs))
+		err = json.Unmarshal(preApprovedFile, &preApprovedIds)
+		if err != nil {
+			return nil, errors.Errorf("Could not unmarshal pre-approved IDs: %v", err)
+		}
+	}
+
 	// Initialize the state tracking object
 	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size),
-		params.NdfOutputPath, geoBins)
+		params.NdfOutputPath, geoBins, preApprovedIds)
 	if err != nil {
 		return nil, err
 	}
@@ -197,10 +215,11 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		CMIX: RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
-		Nodes:         make([]ndf.Node, 0),
-		Gateways:      make([]ndf.Gateway, 0),
-		AddressSpace:  addressSpaces,
-		ClientVersion: RegParams.minClientVersion.String(),
+		Nodes:          make([]ndf.Node, 0),
+		Gateways:       make([]ndf.Gateway, 0),
+		AddressSpace:   addressSpaces,
+		ClientVersion:  RegParams.minClientVersion.String(),
+		PreApprovedIds: preApprovedIds,
 	}
 
 	// Assemble notification server information if configured
