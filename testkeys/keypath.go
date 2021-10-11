@@ -59,6 +59,10 @@ func GetUdbCertPath() string {
 	return filepath.Join(getDirForFile(), "udb.crt")
 }
 
+func GetPreApprovedPath() string {
+	return filepath.Join(getDirForFile(), "preapproved.json")
+}
+
 func GetEllipticPrivateKey() string {
 	return filepath.Join(getDirForFile(), "cmix.rip.ec.key")
 }

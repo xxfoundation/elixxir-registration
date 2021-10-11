@@ -8,10 +8,12 @@
 package cmd
 
 import (
+	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/utils"
 	"time"
 )
 
@@ -35,12 +37,27 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 			return
 		// Wait for the ticker to fire
 		case <-nodeTicker.C:
+			var err error
+
+			preapprovedFile, err := utils.ReadFile(impl.params.PreApprovedIdsPath)
+			if err != nil {
+				jww.ERROR.Printf("Cannot read pre-approved IDs file (%s): %v",
+					impl.params.PreApprovedIdsPath, err)
+			}
+
+			preApprovedIds := make([]string, 0)
+			err = json.Unmarshal(preapprovedFile, &preApprovedIds)
+			if err != nil {
+				jww.ERROR.Printf("Could not unmarshal pre-approved IDs: %v", err)
+			}
+
+			impl.State.UpdatePreapprovedIds(preApprovedIds)
+
 			// Keep track of stale/pruned nodes
 			// Set to true if pruned, false if stale
 			toPrune := make(map[id.ID]bool)
 			// List of nodes to update activity in Storage
 			var toUpdate []*id.ID
-			var err error
 
 			// Obtain active nodes
 			var active map[id.ID]bool

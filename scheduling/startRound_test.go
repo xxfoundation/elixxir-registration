@@ -38,7 +38,7 @@ func TestStartRound(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -106,7 +106,7 @@ func TestStartRound_BadState(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -173,7 +173,7 @@ func TestStartRound_BadNode(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

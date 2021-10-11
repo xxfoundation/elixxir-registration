@@ -106,11 +106,12 @@ func TestEmptyDataBase(t *testing.T) {
 
 	// Start the registration server
 	testParams := Params{
-		CertPath:          testkeys.GetCACertPath(),
-		KeyPath:           testkeys.GetCAKeyPath(),
-		udbCertPath:       testkeys.GetUdbCertPath(),
-		NsCertPath:        testkeys.GetUdbCertPath(),
-		disableGeoBinning: true,
+		CertPath:           testkeys.GetCACertPath(),
+		KeyPath:            testkeys.GetCAKeyPath(),
+		udbCertPath:        testkeys.GetUdbCertPath(),
+		NsCertPath:         testkeys.GetUdbCertPath(),
+		disableGeoBinning:  true,
+		PreApprovedIdsPath: testkeys.GetPreApprovedPath(),
 	}
 	// Start registration server
 	impl, err := StartRegistration(testParams)

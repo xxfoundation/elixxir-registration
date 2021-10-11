@@ -19,6 +19,8 @@ logPath: "registration.log"
 # Path to the node topology permissioning info
 ndfOutputPath: "ndf.json"
 
+preApprovedIdsPath: "preapproved.json"
+
 # Minimum number of nodes to begin running rounds. This differs from the number
 # of members in a team because some scheduling algorithms may require multiple
 # teams worth of nodes at minimum.
