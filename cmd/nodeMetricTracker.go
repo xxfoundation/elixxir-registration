@@ -39,19 +39,21 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 		case <-nodeTicker.C:
 			var err error
 
-			preapprovedFile, err := utils.ReadFile(impl.params.PreApprovedIdsPath)
-			if err != nil {
-				jww.ERROR.Printf("Cannot read pre-approved IDs file (%s): %v",
-					impl.params.PreApprovedIdsPath, err)
-			}
+			if impl.params.PreApprovedIdsPath != "" {
+				preapprovedFile, err := utils.ReadFile(impl.params.PreApprovedIdsPath)
+				if err != nil {
+					jww.ERROR.Printf("Cannot read pre-approved IDs file (%s): %v",
+						impl.params.PreApprovedIdsPath, err)
+				}
 
-			preApprovedIds := make([]string, 0)
-			err = json.Unmarshal(preapprovedFile, &preApprovedIds)
-			if err != nil {
-				jww.ERROR.Printf("Could not unmarshal pre-approved IDs: %v", err)
-			}
+				preApprovedIds := make([]string, 0)
+				err = json.Unmarshal(preapprovedFile, &preApprovedIds)
+				if err != nil {
+					jww.ERROR.Printf("Could not unmarshal pre-approved IDs: %v", err)
+				}
 
-			impl.State.UpdatePreapprovedIds(preApprovedIds)
+				impl.State.UpdatePreapprovedIds(preApprovedIds)
+			}
 
 			// Keep track of stale/pruned nodes
 			// Set to true if pruned, false if stale

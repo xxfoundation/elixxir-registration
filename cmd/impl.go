@@ -149,18 +149,21 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		jww.INFO.Printf("Loaded %d GeoBins from Primitives!", len(geoBins))
 	}
 
-	// Load pre-approved ID file
-	preApprovedFile, err := utils.ReadFile(regImpl.params.PreApprovedIdsPath)
-	if err != nil {
-		return nil, errors.Errorf("Cannot read pre-approved IDs file (%s): %v",
-			regImpl.params.PreApprovedIdsPath, err)
-	}
-
-	// Unmarshal file (should be a JSON of list of IDs))
 	preApprovedIds := make([]string, 0)
-	err = json.Unmarshal(preApprovedFile, &preApprovedIds)
-	if err != nil {
-		return nil, errors.Errorf("Could not unmarshal pre-approved IDs: %v", err)
+	if regImpl.params.PreApprovedIdsPath != "" {
+
+		// Load pre-approved ID file
+		preApprovedFile, err := utils.ReadFile(regImpl.params.PreApprovedIdsPath)
+		if err != nil {
+			return nil, errors.Errorf("Cannot read pre-approved IDs file (%s): %v",
+				regImpl.params.PreApprovedIdsPath, err)
+		}
+
+		// Unmarshal file (should be a JSON of list of IDs))
+		err = json.Unmarshal(preApprovedFile, &preApprovedIds)
+		if err != nil {
+			return nil, errors.Errorf("Could not unmarshal pre-approved IDs: %v", err)
+		}
 	}
 
 	// Initialize the state tracking object
