@@ -14,6 +14,7 @@ import (
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/region"
+	mathRand "math/rand"
 	"testing"
 )
 
@@ -67,8 +68,9 @@ func TestStartRound(t *testing.T) {
 	if err != nil {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
+	prng := mathRand.New(mathRand.NewSource(42))
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -139,8 +141,9 @@ func TestStartRound_BadState(t *testing.T) {
 	// Manually set the state of the round
 	badState := round.NewState_Testing(roundID, states.COMPLETED, nil, t)
 	testState.GetRoundMap().AddRound_Testing(badState, t)
+	prng := mathRand.New(mathRand.NewSource(42))
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -203,8 +206,9 @@ func TestStartRound_BadNode(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 	badState := round.NewState_Testing(roundID, states.COMPLETED, nil, t)
+	prng := mathRand.New(mathRand.NewSource(42))
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}

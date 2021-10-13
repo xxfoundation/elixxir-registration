@@ -12,11 +12,15 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/fastRNG"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/signature"
+	"gitlab.com/xx_network/crypto/csprng"
 	"gitlab.com/xx_network/primitives/id"
+	"io"
+	"runtime"
 	"sync/atomic"
 	"time"
 )
@@ -33,7 +37,7 @@ const (
 )
 
 type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
-	state *storage.NetworkState) (protoRound, error)
+	state *storage.NetworkState, rng io.Reader) (protoRound, error)
 
 func ParseParams(serialParam []byte) *SafeParams {
 	// Parse params JSON
@@ -125,6 +129,9 @@ func UpdateParams(params *SafeParams, updateFreq time.Duration) {
 // Scheduler is a utility function which builds a round by handling a node's
 // state changes then creating a team from the nodes in the pool
 func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan chan struct{}) error {
+
+	rng := fastRNG.NewStreamGenerator(10000,
+		uint(runtime.NumCPU()), csprng.NewSystemRNG)
 
 	// Pool which tracks nodes which are not in a team
 	pool := NewWaitingPool()
@@ -249,11 +256,13 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 					return err
 				}
 
-				newRound, err := createRound(paramsCopy, pool, currentID, state)
+				stream := rng.GetStream()
+				defer stream.Close()
+
+				newRound, err := createRound(paramsCopy, pool, currentID, state, stream)
 				if err != nil {
 					return err
 				}
-
 				// Send the round to the new round channel to be created
 				newRoundChan <- newRound
 			} else {
