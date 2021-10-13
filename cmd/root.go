@@ -256,8 +256,6 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
-		impl.updateRateLimiting()
-
 		viper.OnConfigChange(impl.update)
 		viper.WatchConfig()
 
@@ -576,7 +574,14 @@ func (m *RegistrationImpl) updateRateLimiting() {
 	}
 	leakedDurations = leakedDurations * uint64(time.Millisecond)
 
-	m.State.UpdateRateLimiting(capacity, leakedTokens, leakedDurations)
+	m.NDFLock.Lock()
+	currentNdf := m.State.GetUnprunedNdf()
+	currentNdf.RateLimits.Capacity = uint(capacity)
+	currentNdf.RateLimits.LeakedTokens = uint(leakedTokens)
+	currentNdf.RateLimits.LeakDuration = leakedDurations
+
+	m.NDFLock.Unlock()
+
 }
 
 func (m *RegistrationImpl) updateVersions() {
