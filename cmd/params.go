@@ -63,7 +63,10 @@ type Params struct {
 	// NDF. Expects duration in"h". (Defaults to 1 week (168 hours)
 	pruneRetentionLimit time.Duration
 
-	//
+	// Specs on rate limiting clients
+	leakedCapacity uint32
+	leakedTokens   uint32
+	leakedDuration uint64
 }
 
 // toGroup takes a group represented by a map of string to string,

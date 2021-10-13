@@ -85,6 +85,12 @@ type NetworkState struct {
 	// round states
 	roundID  id.Round
 	updateID uint64
+
+	// Rate limiting specs
+	rateLimitingMux sync.Mutex
+	leakedCapacity  uint32
+	leakedTokens    uint32
+	leakedDuration  uint64
 }
 
 // NewState returns a new NetworkState object.
@@ -277,6 +283,15 @@ func (s *NetworkState) GetUpdates(id int) ([]*pb.RoundInfo, error) {
 	return s.roundUpdates.GetUpdates(id), nil
 }
 
+// UpdateRateLimiting updates the NetworkState's rate limiting specs on a change to the config file
+func (s *NetworkState) UpdateRateLimiting(leakedCapacity, leakedTokens uint32, leakedDuration uint64) {
+	s.rateLimitingMux.Lock()
+	defer s.rateLimitingMux.Unlock()
+	s.leakedCapacity = leakedCapacity
+	s.leakedTokens = leakedTokens
+	s.leakedDuration = leakedDuration
+}
+
 // AddRoundUpdate creates a copy of the round before inserting it into
 // roundUpdates.
 func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
@@ -358,12 +373,22 @@ func (s *NetworkState) RoundAdderRoutine() {
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
+	// Update whitelisted IP addresses
 	s.whitelistedIpAddressesMux.RLock()
-	s.whitelistedIdsMux.RLock()
-	newNdf.WhitelistedIds = s.whitelistedIds
 	newNdf.WhitelistedIpAddresses = s.whitelistedIpAddresses
 	s.whitelistedIpAddressesMux.RUnlock()
+
+	// Update whitelisted IDs
 	s.whitelistedIdsMux.RLock()
+	newNdf.WhitelistedIds = s.whitelistedIds
+	s.whitelistedIdsMux.RUnlock()
+
+	// Set rate limiting specs
+	s.rateLimitingMux.Lock()
+	newNdf.RateLimits.LeakedTokens = uint(s.leakedTokens)
+	newNdf.RateLimits.LeakDuration = s.leakedDuration
+	newNdf.RateLimits.Capacity = uint(s.leakedCapacity)
+	s.rateLimitingMux.Unlock()
 
 	ndfMarshalled, _ := newNdf.Marshal()
 	s.unprunedNdf, _ = ndf.Unmarshal(ndfMarshalled)

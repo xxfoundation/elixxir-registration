@@ -25,6 +25,14 @@ whitelistedIdsPath: "whitelistedIds.json"
 # Path to JSON containing list of IP addresses exempt from rate limiting
 whitelistedIpAddressesPath: "whitelistedIpAddresses.json"
 
+# Specs on how to rate limit clients
+RateLimiting:
+  Capacity: 1
+  LeakedTokens: 1
+  # Duration is in miliseconds
+  LeakDuration: 1
+
+
 # Minimum number of nodes to begin running rounds. This differs from the number
 # of members in a team because some scheduling algorithms may require multiple
 # teams worth of nodes at minimum.
