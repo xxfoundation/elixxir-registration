@@ -54,7 +54,7 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 	testString := "test"
 	// Start registration server
 	testParams.KeyPath = testkeys.GetCAKeyPath()
-	testParams.PreApprovedIdsPath = testkeys.GetPreApprovedPath()
+	testParams.WhitelistedIdsPath = testkeys.GetPreApprovedPath()
 	impl, err := StartRegistration(testParams)
 	if err != nil {
 		t.Errorf("Unable to start registration: %+v", err)
@@ -994,7 +994,7 @@ func TestVerifyError(t *testing.T) {
 	// Start registration server
 	ndfReady := uint32(0)
 
-	state, err := storage.NewState(pk, 8, "", region.GetCountryBins(), nil)
+	state, err := storage.NewState(pk, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}

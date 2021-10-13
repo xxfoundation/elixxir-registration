@@ -64,8 +64,12 @@ type NetworkState struct {
 	pruneList map[id.ID]bool
 
 	// rate limiting bypassing IDs (in string form)
-	preApprovedIds []string
-	preApprovedMux sync.RWMutex
+	whitelistedIds    []string
+	whitelistedIdsMux sync.RWMutex
+
+	// rate limiting bypassing IP Addresses (in string form)
+	whitelistedIpAddresses    []string
+	whitelistedIpAddressesMux sync.RWMutex
 
 	partialNdf *dataStructures.Ndf
 	fullNdf    *dataStructures.Ndf
@@ -85,7 +89,8 @@ type NetworkState struct {
 
 // NewState returns a new NetworkState object.
 func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
-	ndfOutputPath string, geoBins map[string]region.GeoBin, preApprovedIds []string) (*NetworkState, error) {
+	ndfOutputPath string, geoBins map[string]region.GeoBin,
+	whitelistedIds []string, whitelistedIpAddresses []string) (*NetworkState, error) {
 
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
@@ -97,20 +102,21 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 	}
 
 	state := &NetworkState{
-		rounds:              round.NewStateMap(),
-		roundUpdates:        dataStructures.NewUpdates(),
-		update:              make(chan node.UpdateNotification, updateBufferLength),
-		nodes:               node.NewStateMap(),
-		unprunedNdf:         &ndf.NetworkDefinition{},
-		fullNdf:             fullNdf,
-		partialNdf:          partialNdf,
-		rsaPrivateKey:       rsaPrivKey,
-		addressSpaceSize:    &addressSpaceSize,
-		pruneList:           make(map[id.ID]bool),
-		ndfOutputPath:       ndfOutputPath,
-		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
-		geoBins:             geoBins,
-		preApprovedIds:      preApprovedIds,
+		rounds:                 round.NewStateMap(),
+		roundUpdates:           dataStructures.NewUpdates(),
+		update:                 make(chan node.UpdateNotification, updateBufferLength),
+		nodes:                  node.NewStateMap(),
+		unprunedNdf:            &ndf.NetworkDefinition{},
+		fullNdf:                fullNdf,
+		partialNdf:             partialNdf,
+		rsaPrivateKey:          rsaPrivKey,
+		addressSpaceSize:       &addressSpaceSize,
+		pruneList:              make(map[id.ID]bool),
+		ndfOutputPath:          ndfOutputPath,
+		roundUpdatesToAddCh:    make(chan *dataStructures.Round, 500),
+		geoBins:                geoBins,
+		whitelistedIds:         whitelistedIds,
+		whitelistedIpAddresses: whitelistedIpAddresses,
 	}
 
 	//begin the thread that reads and adds round updates
@@ -190,10 +196,16 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 	return state, nil
 }
 
-func (s *NetworkState) UpdatePreapprovedIds(ids []string) {
-	s.preApprovedMux.Lock()
-	defer s.preApprovedMux.Unlock()
-	s.preApprovedIds = ids
+func (s *NetworkState) UpdateWhitelistedIds(ids []string) {
+	s.whitelistedIdsMux.Lock()
+	defer s.whitelistedIdsMux.Unlock()
+	s.whitelistedIds = ids
+}
+
+func (s *NetworkState) UpdateWhitelistedIpAddresses(addresses []string) {
+	s.whitelistedIpAddressesMux.Lock()
+	defer s.whitelistedIpAddressesMux.Unlock()
+	s.whitelistedIpAddresses = addresses
 }
 
 // Adds pruned nodes, used by disabledNodes
@@ -346,9 +358,12 @@ func (s *NetworkState) RoundAdderRoutine() {
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
-	s.preApprovedMux.Lock()
-	newNdf.PreApprovedIds = s.preApprovedIds
-	s.preApprovedMux.Unlock()
+	s.whitelistedIpAddressesMux.RLock()
+	s.whitelistedIdsMux.RLock()
+	newNdf.WhitelistedIds = s.whitelistedIds
+	newNdf.WhitelistedIpAddresses = s.whitelistedIpAddresses
+	s.whitelistedIpAddressesMux.RUnlock()
+	s.whitelistedIdsMux.RLock()
 
 	ndfMarshalled, _ := newNdf.Marshal()
 	s.unprunedNdf, _ = ndf.Unmarshal(ndfMarshalled)

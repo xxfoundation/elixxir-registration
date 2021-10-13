@@ -19,7 +19,11 @@ logPath: "registration.log"
 # Path to the node topology permissioning info
 ndfOutputPath: "ndf.json"
 
-preApprovedIdsPath: "preapproved.json"
+# Path to JSON containing list of IDs exempt from rate limiting
+whitelistedIdsPath: "whitelistedIds.json"
+
+# Path to JSON containing list of IP addresses exempt from rate limiting
+whitelistedIpAddressesPath: "whitelistedIpAddresses.json"
 
 # Minimum number of nodes to begin running rounds. This differs from the number
 # of members in a team because some scheduling algorithms may require multiple
