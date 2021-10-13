@@ -26,6 +26,7 @@ type Params struct {
 	NdfOutputPath         string
 	NsCertPath            string
 	NsAddress             string
+	PreApprovedIdsPath    string
 	cmix                  ndf.Group
 	e2e                   ndf.Group
 	publicAddress         string
@@ -59,6 +60,8 @@ type Params struct {
 	// offline past this duration the node is cleared from the
 	// NDF. Expects duration in"h". (Defaults to 1 week (168 hours)
 	pruneRetentionLimit time.Duration
+
+	//
 }
 
 // toGroup takes a group represented by a map of string to string,

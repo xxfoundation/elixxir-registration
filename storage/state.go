@@ -63,6 +63,10 @@ type NetworkState struct {
 	// Boolean determines whether Node is omitted from NDF
 	pruneList map[id.ID]bool
 
+	// rate limiting bypassing IDs (in string form)
+	preApprovedIds []string
+	preApprovedMux sync.RWMutex
+
 	partialNdf *dataStructures.Ndf
 	fullNdf    *dataStructures.Ndf
 
@@ -80,7 +84,8 @@ type NetworkState struct {
 }
 
 // NewState returns a new NetworkState object.
-func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string, geoBins map[string]region.GeoBin) (*NetworkState, error) {
+func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
+	ndfOutputPath string, geoBins map[string]region.GeoBin, preApprovedIds []string) (*NetworkState, error) {
 
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
@@ -105,6 +110,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 		ndfOutputPath:       ndfOutputPath,
 		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
 		geoBins:             geoBins,
+		preApprovedIds:      preApprovedIds,
 	}
 
 	//begin the thread that reads and adds round updates
@@ -182,6 +188,12 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 	}
 
 	return state, nil
+}
+
+func (s *NetworkState) UpdatePreapprovedIds(ids []string) {
+	s.preApprovedMux.Lock()
+	defer s.preApprovedMux.Unlock()
+	s.preApprovedIds = ids
 }
 
 // Adds pruned nodes, used by disabledNodes
@@ -334,6 +346,10 @@ func (s *NetworkState) RoundAdderRoutine() {
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
+	s.preApprovedMux.Lock()
+	newNdf.PreApprovedIds = s.preApprovedIds
+	s.preApprovedMux.Unlock()
+
 	ndfMarshalled, _ := newNdf.Marshal()
 	s.unprunedNdf, _ = ndf.Unmarshal(ndfMarshalled)
 
