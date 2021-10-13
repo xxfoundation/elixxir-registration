@@ -39,20 +39,44 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 		case <-nodeTicker.C:
 			var err error
 
-			if impl.params.PreApprovedIdsPath != "" {
-				preapprovedFile, err := utils.ReadFile(impl.params.PreApprovedIdsPath)
+			// Update whitelisted IDs
+			if impl.params.WhitelistedIdsPath != "" {
+				// Read file
+				whitelistedIdsFile, err := utils.ReadFile(impl.params.WhitelistedIdsPath)
 				if err != nil {
-					jww.ERROR.Printf("Cannot read pre-approved IDs file (%s): %v",
-						impl.params.PreApprovedIdsPath, err)
+					jww.ERROR.Printf("Cannot read whitelisted IDs file (%s): %v",
+						impl.params.WhitelistedIdsPath, err)
 				}
 
-				preApprovedIds := make([]string, 0)
-				err = json.Unmarshal(preapprovedFile, &preApprovedIds)
+				// Unmarshal JSON
+				whitelistedIds := make([]string, 0)
+				err = json.Unmarshal(whitelistedIdsFile, &whitelistedIds)
 				if err != nil {
-					jww.ERROR.Printf("Could not unmarshal pre-approved IDs: %v", err)
+					jww.ERROR.Printf("Could not unmarshal whitelisted IDs: %v", err)
 				}
 
-				impl.State.UpdatePreapprovedIds(preApprovedIds)
+				// Update state
+				impl.State.UpdateWhitelistedIds(whitelistedIds)
+			}
+
+			// Update whitelisted IP addresses
+			if impl.params.WhitelistedIpAddressPath != "" {
+				// Read file
+				whitelistedIpAddressesFile, err := utils.ReadFile(impl.params.WhitelistedIpAddressPath)
+				if err != nil {
+					jww.ERROR.Printf("Cannot read whitelisted IP addresses file (%s): %v",
+						impl.params.WhitelistedIpAddressPath, err)
+				}
+
+				// Unmarshal JSON
+				whitelistedIpAddresses := make([]string, 0)
+				err = json.Unmarshal(whitelistedIpAddressesFile, &whitelistedIpAddresses)
+				if err != nil {
+					jww.ERROR.Printf("Could not unmarshal whitelisted IP addresses: %v", err)
+				}
+
+				// Update state
+				impl.State.UpdateWhitelistedIpAddresses(whitelistedIpAddresses)
 			}
 
 			// Keep track of stale/pruned nodes

@@ -111,7 +111,7 @@ func TestEmptyDataBase(t *testing.T) {
 		udbCertPath:        testkeys.GetUdbCertPath(),
 		NsCertPath:         testkeys.GetUdbCertPath(),
 		disableGeoBinning:  true,
-		PreApprovedIdsPath: testkeys.GetPreApprovedPath(),
+		WhitelistedIdsPath: testkeys.GetPreApprovedPath(),
 	}
 	// Start registration server
 	impl, err := StartRegistration(testParams)

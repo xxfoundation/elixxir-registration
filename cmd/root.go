@@ -86,7 +86,9 @@ var rootCmd = &cobra.Command{
 
 		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 		ndfOutputPath := viper.GetString("ndfOutputPath")
-		preApprovedPath := viper.GetString("preApprovedIdsPath")
+		whitelistedIdsPath := viper.GetString("whitelistedIdsPath")
+		whitelistedIpAddressesPath := viper.GetString("whitelistedIpAddressesPath")
+
 		ipAddr := viper.GetString("publicAddress")
 		// Get Notification Server address and cert Path
 		nsCertPath := viper.GetString("nsCertPath")
@@ -191,7 +193,8 @@ var rootCmd = &cobra.Command{
 			CertPath:                  certPath,
 			KeyPath:                   keyPath,
 			NdfOutputPath:             ndfOutputPath,
-			PreApprovedIdsPath:        preApprovedPath,
+			WhitelistedIdsPath:        whitelistedIdsPath,
+			WhitelistedIpAddressPath:  whitelistedIpAddressesPath,
 			NsCertPath:                nsCertPath,
 			NsAddress:                 nsAddress,
 			cmix:                      *cmix,

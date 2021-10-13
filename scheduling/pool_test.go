@@ -200,7 +200,7 @@ func setupNodeMap(t *testing.T) *storage.NetworkState {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil)
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

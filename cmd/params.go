@@ -20,13 +20,15 @@ import (
 
 // Params object for reading in configuration data
 type Params struct {
-	Address               string
-	CertPath              string
-	KeyPath               string
-	NdfOutputPath         string
-	NsCertPath            string
-	NsAddress             string
-	PreApprovedIdsPath    string
+	Address                  string
+	CertPath                 string
+	KeyPath                  string
+	NdfOutputPath            string
+	NsCertPath               string
+	NsAddress                string
+	WhitelistedIdsPath       string
+	WhitelistedIpAddressPath string
+
 	cmix                  ndf.Group
 	e2e                   ndf.Group
 	publicAddress         string
