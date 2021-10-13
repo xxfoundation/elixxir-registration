@@ -187,6 +187,21 @@ var rootCmd = &cobra.Command{
 		viper.SetDefault("addressSpace", 5)
 		viper.SetDefault("pruneRetentionLimit", defaultPruneRetention)
 
+		// Get rate limiting values
+		capacity := viper.GetUint32("RateLimiting.Capacity")
+		if capacity == 0 {
+			capacity = 1
+		}
+		leakedTokens := viper.GetUint32("RateLimiting.LeakedTokens")
+		if leakedTokens == 0 {
+			leakedTokens = 1
+		}
+		leakedDurations := viper.GetUint64("RateLimiting.LeakDuration")
+		if leakedTokens == 0 {
+			leakedDurations = 2000
+		}
+		leakedDurations = leakedDurations * uint64(time.Millisecond)
+
 		// Populate params
 		RegParams = Params{
 			Address:                   localAddress,
@@ -223,6 +238,11 @@ var rootCmd = &cobra.Command{
 			pruneRetentionLimit: viper.GetDuration("pruneRetentionLimit"),
 
 			versionLock: sync.RWMutex{},
+
+			// Rate limiting specs
+			leakedCapacity: capacity,
+			leakedTokens:   leakedTokens,
+			leakedDuration: leakedDurations,
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -236,7 +256,7 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
-		viper.OnConfigChange(impl.updateVersions)
+		viper.OnConfigChange(impl.update)
 		viper.WatchConfig()
 
 		// Get disabled Nodes poll duration from config file or default to 1
@@ -532,7 +552,39 @@ func initConfig() {
 	}
 }
 
-func (m *RegistrationImpl) updateVersions(in fsnotify.Event) {
+func (m *RegistrationImpl) update(in fsnotify.Event) {
+	m.updateVersions()
+	m.updateRateLimiting()
+
+}
+
+func (m *RegistrationImpl) updateRateLimiting() {
+	// Get rate limiting values
+	capacity := viper.GetUint32("RateLimiting.Capacity")
+	if capacity == 0 {
+		capacity = 1
+	}
+	leakedTokens := viper.GetUint32("RateLimiting.LeakedTokens")
+	if leakedTokens == 0 {
+		leakedTokens = 1
+	}
+	leakedDurations := viper.GetUint64("RateLimiting.LeakDuration")
+	if leakedTokens == 0 {
+		leakedDurations = 2000
+	}
+	leakedDurations = leakedDurations * uint64(time.Millisecond)
+
+	m.NDFLock.Lock()
+	currentNdf := m.State.GetUnprunedNdf()
+	currentNdf.RateLimits.Capacity = uint(capacity)
+	currentNdf.RateLimits.LeakedTokens = uint(leakedTokens)
+	currentNdf.RateLimits.LeakDuration = leakedDurations
+
+	m.NDFLock.Unlock()
+
+}
+
+func (m *RegistrationImpl) updateVersions() {
 	// Parse version strings
 	clientVersion := viper.GetString("minClientVersion")
 	_, err := version.ParseVersion(clientVersion)

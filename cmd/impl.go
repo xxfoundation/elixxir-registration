@@ -238,6 +238,11 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		ClientVersion:          RegParams.minClientVersion.String(),
 		WhitelistedIds:         whitelistedIds,
 		WhitelistedIpAddresses: whitelistedIpAddresses,
+		RateLimits: ndf.RateLimiting{
+			Capacity:     uint(regImpl.params.leakedCapacity),
+			LeakedTokens: uint(regImpl.params.leakedTokens),
+			LeakDuration: regImpl.params.leakedDuration,
+		},
 	}
 
 	// Assemble notification server information if configured

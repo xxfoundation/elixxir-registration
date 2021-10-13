@@ -40,6 +40,7 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 			var err error
 
 			// Update whitelisted IDs
+			whitelistedIds := make([]string, 0)
 			if impl.params.WhitelistedIdsPath != "" {
 				// Read file
 				whitelistedIdsFile, err := utils.ReadFile(impl.params.WhitelistedIdsPath)
@@ -49,17 +50,15 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 				}
 
 				// Unmarshal JSON
-				whitelistedIds := make([]string, 0)
 				err = json.Unmarshal(whitelistedIdsFile, &whitelistedIds)
 				if err != nil {
 					jww.ERROR.Printf("Could not unmarshal whitelisted IDs: %v", err)
 				}
 
-				// Update state
-				impl.State.UpdateWhitelistedIds(whitelistedIds)
 			}
 
 			// Update whitelisted IP addresses
+			whitelistedIpAddresses := make([]string, 0)
 			if impl.params.WhitelistedIpAddressPath != "" {
 				// Read file
 				whitelistedIpAddressesFile, err := utils.ReadFile(impl.params.WhitelistedIpAddressPath)
@@ -69,14 +68,11 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 				}
 
 				// Unmarshal JSON
-				whitelistedIpAddresses := make([]string, 0)
 				err = json.Unmarshal(whitelistedIpAddressesFile, &whitelistedIpAddresses)
 				if err != nil {
 					jww.ERROR.Printf("Could not unmarshal whitelisted IP addresses: %v", err)
 				}
 
-				// Update state
-				impl.State.UpdateWhitelistedIpAddresses(whitelistedIpAddresses)
 			}
 
 			// Keep track of stale/pruned nodes
@@ -137,12 +133,17 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 			if !impl.params.disableNDFPruning {
 				// add disabled nodes to the prune list
 				jww.DEBUG.Printf("Setting %d pruned nodes", len(toPrune))
+				impl.NDFLock.Lock()
 				impl.State.SetPrunedNodes(toPrune)
-				err = impl.State.UpdateNdf(impl.State.GetUnprunedNdf())
+				currentNdf := impl.State.GetUnprunedNdf()
+				currentNdf.WhitelistedIds = whitelistedIds
+				currentNdf.WhitelistedIpAddresses = whitelistedIpAddresses
+				err = impl.State.UpdateNdf(currentNdf)
 				if err != nil {
 					jww.ERROR.Printf("Failed to regenerate the " +
 						"NDF after changing pruning")
 				}
+				impl.NDFLock.Unlock()
 			}
 		}
 	}
