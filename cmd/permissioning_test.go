@@ -76,13 +76,14 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 	// region Test code
 	// Create params for test registration server
 	testParams := Params{
-		CertPath:          testkeys.GetCACertPath(),
-		KeyPath:           testkeys.GetCAKeyPath(),
-		NdfOutputPath:     testkeys.GetNDFPath(),
-		udbCertPath:       testkeys.GetUdbCertPath(),
-		NsCertPath:        testkeys.GetUdbCertPath(),
-		disableNDFPruning: true,
-		disableGeoBinning: true,
+		CertPath:           testkeys.GetCACertPath(),
+		KeyPath:            testkeys.GetCAKeyPath(),
+		NdfOutputPath:      testkeys.GetNDFPath(),
+		udbCertPath:        testkeys.GetUdbCertPath(),
+		NsCertPath:         testkeys.GetUdbCertPath(),
+		WhitelistedIdsPath: testkeys.GetPreApprovedPath(),
+		disableNDFPruning:  true,
+		disableGeoBinning:  true,
 	}
 
 	// Start registration server

@@ -32,7 +32,7 @@ func TestCreateRound_Random(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -62,8 +62,8 @@ func TestCreateRound_Random(t *testing.T) {
 	if err != nil {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
-
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
+	prng := mathRand.New(mathRand.NewSource(42))
+	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -94,7 +94,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -121,7 +121,8 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 	}
 
 	// Invalid ordering will cause this to fail
-	_, err = createSimpleRound(testParams, testPool, roundID, testState)
+	prng := mathRand.New(mathRand.NewSource(42))
+	_, err = createSimpleRound(testParams, testPool, roundID, testState, prng)
 	if err != nil {
 		return
 	}
@@ -146,7 +147,7 @@ func TestCreateSimpleRound_SemiOptimal(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -189,8 +190,9 @@ func TestCreateSimpleRound_SemiOptimal(t *testing.T) {
 	if err != nil {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
+	prng := mathRand.New(mathRand.NewSource(42))
 
-	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -200,40 +202,6 @@ func TestCreateSimpleRound_SemiOptimal(t *testing.T) {
 	if reflect.DeepEqual(initialTopology, testProtoRound.Topology) {
 		t.Errorf("Highly unlikely initial topology identical to resulting after shuffling. " +
 			"Possile shuffling is broken")
-	}
-
-	// Parse the order of the regions
-	// one for testing and one for logging
-	var regionOrder []region.GeoBin
-	var regionOrderStr []string
-	for _, n := range testProtoRound.NodeStateList {
-		order, _ := region.GetCountryBin(n.GetOrdering())
-		regionOrder = append(regionOrder, order)
-		regionOrderStr = append(regionOrderStr, order.String())
-	}
-
-	// Output the teaming order to the log in human readable format
-	t.Log("Team order outputted by CreateRound: ", regionOrderStr)
-
-	// Measure the amount of longer than necessary jumps
-	validRegionTransitions := newTransitions()
-	longTransitions := uint32(0)
-	for i, thisRegion := range regionOrder {
-		// Get the next region to  see if it's a long distant jump
-		nextRegion := regionOrder[(i+1)%len(regionOrder)]
-		if !validRegionTransitions.isValidTransition(thisRegion, nextRegion) {
-			longTransitions++
-		}
-
-	}
-
-	t.Logf("Amount of long distant jumps: %v", longTransitions)
-
-	// Check that the long distant jumps do not exceed half the jumps
-	if longTransitions > testParams.TeamSize/2+1 {
-		t.Errorf("Number of long distant transitions beyond acceptable amount!"+
-			"\n\tAcceptable long distance transitions: %v"+
-			"\n\tReceived long distance transitions: %v", testParams.TeamSize/2+1, longTransitions)
 	}
 
 }
@@ -253,7 +221,7 @@ func TestCreateSimpleRound_SemiOptimal_BadRegion(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -290,8 +258,9 @@ func TestCreateSimpleRound_SemiOptimal_BadRegion(t *testing.T) {
 	if err != nil {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
+	prng := mathRand.New(mathRand.NewSource(42))
 
-	_, err = createSimpleRound(testParams, testPool, roundID, testState)
+	_, err = createSimpleRound(testParams, testPool, roundID, testState, prng)
 	if err != nil {
 		return
 	}

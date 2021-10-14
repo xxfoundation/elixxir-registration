@@ -10,6 +10,7 @@ package cmd
 
 import (
 	"crypto/x509"
+	"encoding/json"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
@@ -148,9 +149,43 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		jww.INFO.Printf("Loaded %d GeoBins from Primitives!", len(geoBins))
 	}
 
+	whitelistedIds := make([]string, 0)
+	if regImpl.params.WhitelistedIdsPath != "" {
+
+		// Load whitelisted ID file
+		preApprovedFile, err := utils.ReadFile(regImpl.params.WhitelistedIdsPath)
+		if err != nil {
+			return nil, errors.Errorf("Cannot read whitelisted IDs file (%s): %v",
+				regImpl.params.WhitelistedIdsPath, err)
+		}
+
+		// Unmarshal file (should be a JSON of list of IDs))
+		err = json.Unmarshal(preApprovedFile, &whitelistedIds)
+		if err != nil {
+			return nil, errors.Errorf("Could not unmarshal whitelisted IDs: %v", err)
+		}
+	}
+
+	whitelistedIpAddresses := make([]string, 0)
+	if regImpl.params.WhitelistedIpAddressPath != "" {
+
+		// Load whitelisted IP addresses file
+		whitelistFile, err := utils.ReadFile(regImpl.params.WhitelistedIpAddressPath)
+		if err != nil {
+			return nil, errors.Errorf("Cannot read whitelisted IP addresses file (%s): %v",
+				regImpl.params.WhitelistedIpAddressPath, err)
+		}
+
+		// Unmarshal file (should be a JSON of list of IDs))
+		err = json.Unmarshal(whitelistFile, &whitelistedIpAddresses)
+		if err != nil {
+			return nil, errors.Errorf("Could not unmarshal whitelisted IP addresses: %v", err)
+		}
+	}
+
 	// Initialize the state tracking object
 	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size),
-		params.NdfOutputPath, geoBins)
+		params.NdfOutputPath, geoBins, whitelistedIds, whitelistedIpAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -197,10 +232,17 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		CMIX: RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
-		Nodes:         make([]ndf.Node, 0),
-		Gateways:      make([]ndf.Gateway, 0),
-		AddressSpace:  addressSpaces,
-		ClientVersion: RegParams.minClientVersion.String(),
+		Nodes:                  make([]ndf.Node, 0),
+		Gateways:               make([]ndf.Gateway, 0),
+		AddressSpace:           addressSpaces,
+		ClientVersion:          RegParams.minClientVersion.String(),
+		WhitelistedIds:         whitelistedIds,
+		WhitelistedIpAddresses: whitelistedIpAddresses,
+		RateLimits: ndf.RateLimiting{
+			Capacity:     uint(regImpl.params.leakedCapacity),
+			LeakedTokens: uint(regImpl.params.leakedTokens),
+			LeakDuration: regImpl.params.leakedDuration,
+		},
 	}
 
 	// Assemble notification server information if configured

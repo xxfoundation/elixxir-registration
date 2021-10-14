@@ -20,12 +20,15 @@ import (
 
 // Params object for reading in configuration data
 type Params struct {
-	Address               string
-	CertPath              string
-	KeyPath               string
-	NdfOutputPath         string
-	NsCertPath            string
-	NsAddress             string
+	Address                  string
+	CertPath                 string
+	KeyPath                  string
+	NdfOutputPath            string
+	NsCertPath               string
+	NsAddress                string
+	WhitelistedIdsPath       string
+	WhitelistedIpAddressPath string
+
 	cmix                  ndf.Group
 	e2e                   ndf.Group
 	publicAddress         string
@@ -59,6 +62,11 @@ type Params struct {
 	// offline past this duration the node is cleared from the
 	// NDF. Expects duration in"h". (Defaults to 1 week (168 hours)
 	pruneRetentionLimit time.Duration
+
+	// Specs on rate limiting clients
+	leakedCapacity uint32
+	leakedTokens   uint32
+	leakedDuration uint64
 }
 
 // toGroup takes a group represented by a map of string to string,

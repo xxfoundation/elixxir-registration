@@ -8,10 +8,12 @@
 package cmd
 
 import (
+	"encoding/json"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/utils"
 	"time"
 )
 
@@ -35,12 +37,49 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 			return
 		// Wait for the ticker to fire
 		case <-nodeTicker.C:
+			var err error
+
+			// Update whitelisted IDs
+			whitelistedIds := make([]string, 0)
+			if impl.params.WhitelistedIdsPath != "" {
+				// Read file
+				whitelistedIdsFile, err := utils.ReadFile(impl.params.WhitelistedIdsPath)
+				if err != nil {
+					jww.ERROR.Printf("Cannot read whitelisted IDs file (%s): %v",
+						impl.params.WhitelistedIdsPath, err)
+				}
+
+				// Unmarshal JSON
+				err = json.Unmarshal(whitelistedIdsFile, &whitelistedIds)
+				if err != nil {
+					jww.ERROR.Printf("Could not unmarshal whitelisted IDs: %v", err)
+				}
+
+			}
+
+			// Update whitelisted IP addresses
+			whitelistedIpAddresses := make([]string, 0)
+			if impl.params.WhitelistedIpAddressPath != "" {
+				// Read file
+				whitelistedIpAddressesFile, err := utils.ReadFile(impl.params.WhitelistedIpAddressPath)
+				if err != nil {
+					jww.ERROR.Printf("Cannot read whitelisted IP addresses file (%s): %v",
+						impl.params.WhitelistedIpAddressPath, err)
+				}
+
+				// Unmarshal JSON
+				err = json.Unmarshal(whitelistedIpAddressesFile, &whitelistedIpAddresses)
+				if err != nil {
+					jww.ERROR.Printf("Could not unmarshal whitelisted IP addresses: %v", err)
+				}
+
+			}
+
 			// Keep track of stale/pruned nodes
 			// Set to true if pruned, false if stale
 			toPrune := make(map[id.ID]bool)
 			// List of nodes to update activity in Storage
 			var toUpdate []*id.ID
-			var err error
 
 			// Obtain active nodes
 			var active map[id.ID]bool
@@ -94,12 +133,17 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 			if !impl.params.disableNDFPruning {
 				// add disabled nodes to the prune list
 				jww.DEBUG.Printf("Setting %d pruned nodes", len(toPrune))
+				impl.NDFLock.Lock()
 				impl.State.SetPrunedNodes(toPrune)
-				err = impl.State.UpdateNdf(impl.State.GetUnprunedNdf())
+				currentNdf := impl.State.GetUnprunedNdf()
+				currentNdf.WhitelistedIds = whitelistedIds
+				currentNdf.WhitelistedIpAddresses = whitelistedIpAddresses
+				err = impl.State.UpdateNdf(currentNdf)
 				if err != nil {
 					jww.ERROR.Printf("Failed to regenerate the " +
 						"NDF after changing pruning")
 				}
+				impl.NDFLock.Unlock()
 			}
 		}
 	}
