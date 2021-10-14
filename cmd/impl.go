@@ -155,15 +155,15 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		// Load whitelisted ID file
 		preApprovedFile, err := utils.ReadFile(regImpl.params.WhitelistedIdsPath)
 		if err != nil {
-			return nil, errors.Errorf("Cannot read whitelisted IDs file (%s): %v",
-				regImpl.params.WhitelistedIdsPath, err)
+			jww.WARN.Printf("Error while parsing WhitelistedIds Path list: %v", err)
+		} else {
+			// Unmarshal file (should be a JSON of list of IDs))
+			err = json.Unmarshal(preApprovedFile, &whitelistedIds)
+			if err != nil {
+				jww.WARN.Printf("Could not unmarshal whitelisted IDs: %v", err)
+			}
 		}
 
-		// Unmarshal file (should be a JSON of list of IDs))
-		err = json.Unmarshal(preApprovedFile, &whitelistedIds)
-		if err != nil {
-			return nil, errors.Errorf("Could not unmarshal whitelisted IDs: %v", err)
-		}
 	}
 
 	whitelistedIpAddresses := make([]string, 0)
@@ -172,15 +172,16 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		// Load whitelisted IP addresses file
 		whitelistFile, err := utils.ReadFile(regImpl.params.WhitelistedIpAddressPath)
 		if err != nil {
-			return nil, errors.Errorf("Cannot read whitelisted IP addresses file (%s): %v",
+			jww.WARN.Printf("Cannot read whitelisted IP addresses file (%s): %v",
 				regImpl.params.WhitelistedIpAddressPath, err)
+		} else {
+			// Unmarshal file (should be a JSON of list of IDs))
+			err = json.Unmarshal(whitelistFile, &whitelistedIpAddresses)
+			if err != nil {
+				jww.WARN.Printf("Could not unmarshal whitelisted IP addresses: %v", err)
+			}
 		}
 
-		// Unmarshal file (should be a JSON of list of IDs))
-		err = json.Unmarshal(whitelistFile, &whitelistedIpAddresses)
-		if err != nil {
-			return nil, errors.Errorf("Could not unmarshal whitelisted IP addresses: %v", err)
-		}
 	}
 
 	// Initialize the state tracking object
