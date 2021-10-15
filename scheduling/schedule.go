@@ -21,6 +21,7 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"io"
 	"runtime"
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -102,12 +103,16 @@ func UpdateParams(params *SafeParams, updateFreq time.Duration) {
 			continue
 		}
 		newParams[storage.AdvertisementTimeout] = realtimeDelay
-		threshold, err := storage.PermissioningDb.GetStateInt(storage.PoolThreshold)
+		valueStr, err := storage.PermissioningDb.GetStateValue(storage.PoolThreshold)
 		if err != nil {
-			jww.ERROR.Printf(err.Error())
+			jww.ERROR.Printf("Unable to find %s: %+v", storage.PoolThreshold, err)
 			continue
 		}
-		newParams[storage.PoolThreshold] = threshold
+		threshold, err := strconv.ParseFloat(valueStr, 64)
+		if err != nil {
+			jww.ERROR.Printf("Unable to decode %s: %+v", valueStr, err)
+			continue
+		}
 
 		jww.INFO.Printf("Preparing to update scheduling params...")
 		params.Lock()
@@ -118,7 +123,7 @@ func UpdateParams(params *SafeParams, updateFreq time.Duration) {
 		params.RealtimeTimeout = time.Duration(realtimeTimeout)
 		params.MinimumDelay = time.Duration(minDelay)
 		params.RealtimeDelay = time.Duration(realtimeDelay)
-		params.Threshold = uint32(threshold)
+		params.Threshold = threshold
 		params.Unlock()
 
 		time.Sleep(updateFreq)
@@ -243,7 +248,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 			// Create a new round if the pool is full
 			var teamFormationThreshold uint32
 			if paramsCopy.Secure {
-				teamFormationThreshold = paramsCopy.Threshold
+				teamFormationThreshold = uint32(paramsCopy.Threshold * float64(numNodesInPool))
 			} else {
 				teamFormationThreshold = paramsCopy.TeamSize
 			}
