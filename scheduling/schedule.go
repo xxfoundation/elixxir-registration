@@ -116,7 +116,7 @@ func UpdateParams(params *SafeParams, updateFreq time.Duration) {
 
 		jww.INFO.Printf("Preparing to update scheduling params...")
 		params.Lock()
-		jww.INFO.Printf("Updating scheduling params: %+v", newParams)
+		jww.INFO.Printf("Updating scheduling params: %+v, %s: %f", newParams, storage.PoolThreshold, threshold)
 		params.TeamSize = uint32(teamSize)
 		params.BatchSize = uint32(batchSize)
 		params.PrecomputationTimeout = time.Duration(precompTimeout)
