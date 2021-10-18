@@ -391,6 +391,52 @@ func TestMapImpl_GetLatestEphemeralLengthErr(t *testing.T) {
 	}
 }
 
+func TestMapImpl_GetEarliestRound(t *testing.T) {
+	m := &MapImpl{roundMetrics: make(map[uint64]*RoundMetric)}
+
+	cutoff := 20 * time.Minute
+	roundId, err := m.GetEarliestRound(cutoff)
+	if err != nil || int(roundId) != 0 {
+		t.Errorf("Invalid return for empty roundMetrics: %+v", err)
+	}
+
+	metrics := []*RoundMetric{{
+		Id:            0,
+		PrecompStart:  time.Now(),
+		PrecompEnd:    time.Now(),
+		RealtimeStart: time.Now(),
+		RealtimeEnd:   time.Now().Add(-30 * time.Minute),
+		BatchSize:     420,
+	},
+		{
+			Id:            1,
+			PrecompStart:  time.Now(),
+			PrecompEnd:    time.Now(),
+			RealtimeStart: time.Now(),
+			RealtimeEnd:   time.Now().Add(-time.Minute),
+			BatchSize:     420,
+		},
+		{
+			Id:            2,
+			PrecompStart:  time.Now(),
+			PrecompEnd:    time.Now(),
+			RealtimeStart: time.Now(),
+			RealtimeEnd:   time.Now().Add(-10 * time.Minute),
+			BatchSize:     420,
+		},
+	}
+
+	// Insert dummy metrics
+	for _, metric := range metrics {
+		m.roundMetrics[metric.Id] = metric
+	}
+
+	roundId, err = m.GetEarliestRound(cutoff)
+	if err != nil || uint64(roundId) != 1 {
+		t.Errorf("Invalid return for GetEarliestRound: %d %+v", roundId, err)
+	}
+}
+
 // Test error path to ensure error message stays consistent
 func TestMapImpl_GetStateValue(t *testing.T) {
 	m := &MapImpl{states: make(map[string]string)}
