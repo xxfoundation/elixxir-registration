@@ -31,6 +31,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 	// Initialize the response
 	response := &pb.PermissionPollResponse{}
+	response.EarliestRound = atomic.LoadUint64(m.earliestTrackedRound)
 
 	//do edge check to ensure the message is not nil
 	if msg == nil {

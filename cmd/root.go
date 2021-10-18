@@ -51,6 +51,7 @@ var (
 // Default duration between polls of the disabled Node list for updates.
 const defaultDisabledNodesPollDuration = time.Minute
 const defaultPruneRetention = 24 * 7 * time.Hour
+const defaultMessageRetention = 24 * 7 * 2 * time.Hour
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -187,6 +188,8 @@ var rootCmd = &cobra.Command{
 		viper.SetDefault("addressSpace", 5)
 		viper.SetDefault("pruneRetentionLimit", defaultPruneRetention)
 
+		viper.SetDefault("messageRetentionLimit", defaultMessageRetention)
+
 		// Get rate limiting values
 		capacity := viper.GetUint32("RateLimiting.Capacity")
 		if capacity == 0 {
@@ -233,11 +236,11 @@ var rootCmd = &cobra.Command{
 			onlyScheduleActive:        viper.GetBool("onlyScheduleActive"),
 			enableBlockchain:          viper.GetBool("enableBlockchain"),
 
-			disableNDFPruning:   viper.GetBool("disableNDFPruning"),
-			geoIPDBFile:         viper.GetString("geoIPDBFile"),
-			pruneRetentionLimit: viper.GetDuration("pruneRetentionLimit"),
-
-			versionLock: sync.RWMutex{},
+			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
+			geoIPDBFile:           viper.GetString("geoIPDBFile"),
+			pruneRetentionLimit:   viper.GetDuration("pruneRetentionLimit"),
+			messageRetentionLimit: viper.GetDuration("messageRetentionLimit"),
+			versionLock:           sync.RWMutex{},
 
 			// Rate limiting specs
 			leakedCapacity: capacity,
