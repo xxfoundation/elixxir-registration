@@ -157,12 +157,9 @@ func (m *MapImpl) InsertEphemeralLength(length *EphemeralLength) error {
 // Get the first round that is timestamped after the given cutoff
 func (m *MapImpl) GetEarliestRound(cutoff time.Duration) (id.Round, error) {
 	cutoffTs := time.Now().Add(-cutoff)
-	minRound := &RoundMetric{
-		Id:          0,
-		RealtimeEnd: time.Now(),
-	}
+	minRound := &RoundMetric{}
 	for _, v := range m.roundMetrics {
-		if v.RealtimeEnd.After(cutoffTs) && v.RealtimeEnd.Before(minRound.RealtimeEnd) {
+		if v.RealtimeEnd.After(cutoffTs) && (v.Id < minRound.Id || minRound.Id == 0) {
 			minRound = v
 		}
 	}

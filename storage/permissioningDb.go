@@ -117,7 +117,7 @@ func (d *DatabaseImpl) InsertEphemeralLength(length *EphemeralLength) error {
 func (d *DatabaseImpl) GetEarliestRound(cutoff time.Duration) (id.Round, error) {
 	var result RoundMetric
 	cutoffTs := time.Now().Add(-cutoff)
-	err := d.db.Where("realtime_end >= ?", cutoffTs).Order("realtime_end ASC").Take(&result).Error
+	err := d.db.Where("realtime_end >= ?", cutoffTs).First(&result).Error
 	if err != nil {
 		return id.Round(0), err
 	}
