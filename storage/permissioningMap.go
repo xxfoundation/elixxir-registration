@@ -155,7 +155,7 @@ func (m *MapImpl) InsertEphemeralLength(length *EphemeralLength) error {
 }
 
 // Get the first round that is timestamped after the given cutoff
-func (m *MapImpl) GetEarliestRound(cutoff time.Duration) (id.Round, error) {
+func (m *MapImpl) GetEarliestRound(cutoff time.Duration) (id.Round, time.Time, error) {
 	cutoffTs := time.Now().Add(-cutoff)
 	minRound := &RoundMetric{}
 	for _, v := range m.roundMetrics {
@@ -163,7 +163,7 @@ func (m *MapImpl) GetEarliestRound(cutoff time.Duration) (id.Round, error) {
 			minRound = v
 		}
 	}
-	return id.Round(minRound.Id), nil
+	return id.Round(minRound.Id), minRound.PrecompEnd, nil
 }
 
 // Returns all GeoBin from Storage

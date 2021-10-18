@@ -114,16 +114,16 @@ func (d *DatabaseImpl) InsertEphemeralLength(length *EphemeralLength) error {
 }
 
 // Get the first round that is timestamped after the given cutoff
-func (d *DatabaseImpl) GetEarliestRound(cutoff time.Duration) (id.Round, error) {
+func (d *DatabaseImpl) GetEarliestRound(cutoff time.Duration) (id.Round, time.Time, error) {
 	var result RoundMetric
 	cutoffTs := time.Now().Add(-cutoff)
 	err := d.db.Where("realtime_end >= ?", cutoffTs).First(&result).Error
 	if err != nil {
-		return id.Round(0), err
+		return 0, time.Time{}, err
 	}
 	roundId := id.Round(result.Id)
 	jww.TRACE.Printf("Obtained EarliestRound: %d", roundId)
-	return roundId, nil
+	return roundId, result.RealtimeEnd, nil
 }
 
 // Returns all GeoBin from Storage

@@ -395,7 +395,7 @@ func TestMapImpl_GetEarliestRound(t *testing.T) {
 	m := &MapImpl{roundMetrics: make(map[uint64]*RoundMetric)}
 
 	cutoff := 20 * time.Minute
-	roundId, err := m.GetEarliestRound(cutoff)
+	roundId, _, err := m.GetEarliestRound(cutoff)
 	if err != nil || int(roundId) != 0 {
 		t.Errorf("Invalid return for empty roundMetrics: %+v", err)
 	}
@@ -431,7 +431,7 @@ func TestMapImpl_GetEarliestRound(t *testing.T) {
 		m.roundMetrics[metric.Id] = metric
 	}
 
-	roundId, err = m.GetEarliestRound(cutoff)
+	roundId, _, err = m.GetEarliestRound(cutoff)
 	if err != nil || uint64(roundId) != 1 {
 		t.Errorf("Invalid return for GetEarliestRound: %d %+v", roundId, err)
 	}
