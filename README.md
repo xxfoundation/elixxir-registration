@@ -73,7 +73,6 @@ disableNDFPruning: true
 # or reserved IPs. For use within local environment or integration testing. 
 permissiveIPChecking: false
 
-
 # Database connection information
 dbUsername: "cmix"
 dbPassword: ""
