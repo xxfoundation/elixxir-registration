@@ -27,7 +27,7 @@ type database interface {
 	GetLatestEphemeralLength() (*EphemeralLength, error)
 	GetEphemeralLengths() ([]*EphemeralLength, error)
 	InsertEphemeralLength(length *EphemeralLength) error
-	GetEarliestRound(period time.Duration) (id.Round, error)
+	GetEarliestRound(cutoff time.Duration) (id.Round, error)
 	getBins() ([]*GeoBin, error)
 
 	// Node methods
