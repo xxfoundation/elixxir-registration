@@ -25,7 +25,50 @@ import (
 //		return
 //	}
 //
-//	result, err := db.GetLatestEphemeralLength()
+//	err = db.InsertRoundMetric(&RoundMetric{
+//		Id:            5,
+//		PrecompStart:  time.Now(),
+//		PrecompEnd:    time.Now(),
+//		RealtimeStart: time.Now(),
+//		RealtimeEnd:   time.Now().Add(-59*time.Minute),
+//		BatchSize:     10,
+//	}, nil)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	err = db.InsertRoundMetric(&RoundMetric{
+//		Id:            6,
+//		PrecompStart:  time.Now(),
+//		PrecompEnd:    time.Now(),
+//		RealtimeStart: time.Now(),
+//		RealtimeEnd:   time.Now().Add(-time.Hour),
+//		BatchSize:     10,
+//	}, nil)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	err = db.InsertRoundMetric(&RoundMetric{
+//		Id:            7,
+//		PrecompStart:  time.Now(),
+//		PrecompEnd:    time.Now(),
+//		RealtimeStart: time.Now(),
+//		RealtimeEnd:   time.Now().Add(-(3*time.Hour)),
+//		BatchSize:     10,
+//	}, nil)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	result, err := db.GetEarliestRound(2*time.Hour)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	jww.FATAL.Printf("GetEarliestRound: %d", result)
+//
+//	result, err = db.GetLatestEphemeralLength()
 //	if err != nil {
 //		t.Errorf(err.Error())
 //	}

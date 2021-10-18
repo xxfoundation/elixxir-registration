@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/xx_network/primitives/id"
+	"time"
 )
 
 // Inserts the given State into Storage if it does not exist
@@ -151,6 +152,11 @@ func (m *MapImpl) InsertEphemeralLength(length *EphemeralLength) error {
 
 	m.ephemeralLengths[length.Length] = length
 	return nil
+}
+
+// Get the earliest round after the given period
+func (m *MapImpl) GetEarliestRound(period time.Duration) (id.Round, error) {
+	return id.Round(0), nil
 }
 
 // Returns all GeoBin from Storage
