@@ -63,6 +63,12 @@ type Params struct {
 	// NDF. Expects duration in"h". (Defaults to 1 week (168 hours)
 	pruneRetentionLimit time.Duration
 
+	// How long rounds will be tracked by gateways.
+	// Rounds (and messages as an extension)
+	// prior to this period are not guaranteed to be delivered to clients.
+	// Expects duration in"h". (Defaults to 2 weeks (336 hours)
+	messageRetentionLimit time.Duration
+
 	// Specs on rate limiting clients
 	leakedCapacity uint32
 	leakedTokens   uint32

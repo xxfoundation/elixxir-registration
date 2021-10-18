@@ -9,11 +9,13 @@ package cmd
 
 import (
 	"encoding/json"
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/utils"
+	"sync/atomic"
 	"time"
 )
 
@@ -113,6 +115,18 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 				}
 				if time.Since(nodeState.GetLastActive()) > impl.params.pruneRetentionLimit {
 					toPrune[*nodeState.GetID()] = true
+				}
+
+				earliestTrackedRound, err := storage.PermissioningDb.
+					GetEarliestRound(impl.params.messageRetentionLimit)
+
+				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+					jww.ERROR.Printf("GetEarliestRound returned no records: %v", err)
+				} else if err != nil {
+					jww.ERROR.Printf("GetEarliestRound returned an error: %v", err)
+				} else {
+					// If no errors, update impl
+					atomic.StoreUint64(impl.earliestTrackedRound, uint64(earliestTrackedRound))
 				}
 
 				// Store the NodeMetric
