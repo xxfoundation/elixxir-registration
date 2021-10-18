@@ -15,7 +15,6 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/utils"
-	"sync/atomic"
 	"time"
 )
 
@@ -117,7 +116,7 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 					toPrune[*nodeState.GetID()] = true
 				}
 
-				earliestTrackedRound, err := storage.PermissioningDb.
+				earliestTrackedRound, earliestTimestamp, err := storage.PermissioningDb.
 					GetEarliestRound(impl.params.messageRetentionLimit)
 
 				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -126,7 +125,7 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 					jww.ERROR.Printf("GetEarliestRound returned an error: %v", err)
 				} else {
 					// If no errors, update impl
-					atomic.StoreUint64(impl.earliestTrackedRound, uint64(earliestTrackedRound))
+					impl.UpdateEarliestRound(earliestTimestamp, earliestTrackedRound)
 				}
 
 				// Store the NodeMetric

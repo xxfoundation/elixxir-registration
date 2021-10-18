@@ -137,11 +137,9 @@ func TestTrackNodeMetrics(t *testing.T) {
 		t.Fatalf("Could not update ndf: %v", err)
 	}
 
-	earliestTracked := uint64(0)
 	impl := &RegistrationImpl{
-		params:               &testParams,
-		State:                state,
-		earliestTrackedRound: &earliestTracked,
+		params: &testParams,
+		State:  state,
 	}
 
 	go TrackNodeMetrics(impl, kill,

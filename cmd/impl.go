@@ -59,7 +59,9 @@ type RegistrationImpl struct {
 
 	NDFLock sync.Mutex
 
-	earliestTrackedRound *uint64
+	earliestTrackedRound          uint64
+	earliestTrackedRoundMux       sync.Mutex
+	earliestTrackedRoundTimestamp time.Time
 }
 
 // function used to schedule nodes
@@ -113,7 +115,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			"database: %v.", err)
 	}
 
-	earliestTrackedRound := uint64(0)
 	// Build default parameters
 	regImpl := &RegistrationImpl{
 		params:               &params,
@@ -123,7 +124,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		numRegistered:        0,
 		beginScheduling:      make(chan struct{}, 1),
 		registrationTimes:    make(map[id.ID]int64),
-		earliestTrackedRound: &earliestTrackedRound,
+		earliestTrackedRound: 0,
 	}
 
 	// If the the GeoIP2 database file is supplied, then use it to open the
@@ -451,4 +452,18 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	}
 
 	return impl
+}
+
+func (m *RegistrationImpl) UpdateEarliestRound(newEarliestTimestamp time.Time, newEarliestRound id.Round) {
+	m.earliestTrackedRoundMux.Lock()
+	defer m.earliestTrackedRoundMux.Unlock()
+	m.earliestTrackedRoundTimestamp = newEarliestTimestamp
+	m.earliestTrackedRound = uint64(newEarliestRound)
+
+}
+
+func (m *RegistrationImpl) GetEarliestRoundInfo() (uint64, time.Time) {
+	m.earliestTrackedRoundMux.Lock()
+	defer m.earliestTrackedRoundMux.Unlock()
+	return m.earliestTrackedRound, m.earliestTrackedRoundTimestamp
 }
