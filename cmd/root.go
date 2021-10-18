@@ -335,8 +335,7 @@ var rootCmd = &cobra.Command{
 
 			// Initialize param update if it is enabled
 			if impl.params.enableBlockchain {
-				// TODO: Set up frequency as a configuration option
-				go scheduling.UpdateParams(params, 5*time.Minute)
+				go scheduling.UpdateParams(params, nodeMetricInterval)
 			}
 
 			// Initialize scheduling
