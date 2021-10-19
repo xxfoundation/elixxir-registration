@@ -141,7 +141,7 @@ func TestTrackNodeMetrics(t *testing.T) {
 	impl := &RegistrationImpl{
 		params:        &testParams,
 		State:         state,
-		earliestRound: &atomic.Value{},
+		earliestRound: atomic.Value{},
 	}
 
 	go TrackNodeMetrics(impl, kill,

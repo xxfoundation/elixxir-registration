@@ -51,7 +51,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	}
 
 	// Check for correct version
-	err := checkVersion(m.params, msg)
+	err = checkVersion(m.params, msg)
 	if err != nil {
 		return response, err
 	}

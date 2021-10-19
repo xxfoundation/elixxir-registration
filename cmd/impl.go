@@ -60,7 +60,7 @@ type RegistrationImpl struct {
 
 	NDFLock sync.Mutex
 
-	earliestRound *atomic.Value
+	earliestRound atomic.Value
 }
 
 // function used to schedule nodes
@@ -119,8 +119,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			"database: %v.", err)
 	}
 
-	earliestRoundTracker := &atomic.Value{}
-
 	// Build default parameters
 	regImpl := &RegistrationImpl{
 		params:            &params,
@@ -130,7 +128,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		numRegistered:     0,
 		beginScheduling:   make(chan struct{}, 1),
 		registrationTimes: make(map[id.ID]int64),
-		earliestRound:     earliestRoundTracker,
+		earliestRound:     atomic.Value{},
 	}
 
 	// If the the GeoIP2 database file is supplied, then use it to open the
