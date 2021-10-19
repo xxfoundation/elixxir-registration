@@ -60,7 +60,7 @@ type RegistrationImpl struct {
 
 	NDFLock sync.Mutex
 
-	earliestRound atomic.Value
+	earliestRoundTracker atomic.Value
 }
 
 // function used to schedule nodes
@@ -121,14 +121,14 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		params:            &params,
-		ndfOutputPath:     params.NdfOutputPath,
-		NdfReady:          &ndfReady,
-		Stopped:           &roundCreationStopped,
-		numRegistered:     0,
-		beginScheduling:   make(chan struct{}, 1),
-		registrationTimes: make(map[id.ID]int64),
-		earliestRound:     atomic.Value{},
+		params:               &params,
+		ndfOutputPath:        params.NdfOutputPath,
+		NdfReady:             &ndfReady,
+		Stopped:              &roundCreationStopped,
+		numRegistered:        0,
+		beginScheduling:      make(chan struct{}, 1),
+		registrationTimes:    make(map[id.ID]int64),
+		earliestRoundTracker: atomic.Value{},
 	}
 
 	// If the the GeoIP2 database file is supplied, then use it to open the
@@ -464,12 +464,12 @@ func (m *RegistrationImpl) UpdateEarliestRound(newEarliestTimestamp time.Time, n
 		earliestTrackedRoundTimestamp: newEarliestTimestamp,
 	}
 
-	m.earliestRound.Store(newEarliestRound)
+	m.earliestRoundTracker.Store(newEarliestRound)
 
 }
 
 func (m *RegistrationImpl) GetEarliestRoundInfo() (uint64, time.Time, error) {
-	earliestRound, ok := m.earliestRound.Load().(*earliestRoundTracking)
+	earliestRound, ok := m.earliestRoundTracker.Load().(*earliestRoundTracking)
 	if !ok || earliestRound == nil {
 		return 0, time.Time{}, errors.New("Earliest round state does not exist, try again")
 	}
