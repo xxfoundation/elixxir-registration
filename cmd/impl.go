@@ -470,11 +470,11 @@ func (m *RegistrationImpl) UpdateEarliestRound(newEarliestTimestamp time.Time, n
 
 }
 
-func (m *RegistrationImpl) GetEarliestRoundInfo() (uint64, time.Time) {
+func (m *RegistrationImpl) GetEarliestRoundInfo() (uint64, time.Time, error) {
 	earliestRound, ok := m.earliestRound.Load().(*earliestRoundTracking)
 	if !ok || earliestRound == nil {
-		return 0, time.Time{}
+		return 0, time.Time{}, errors.New("Earliest round state does not exist, try again")
 	}
 
-	return earliestRound.earliestTrackedRound, earliestRound.earliestTrackedRoundTimestamp
+	return earliestRound.earliestTrackedRound, earliestRound.earliestTrackedRoundTimestamp, nil
 }

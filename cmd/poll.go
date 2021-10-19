@@ -31,10 +31,14 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 	// Initialize the response
 	response := &pb.PermissionPollResponse{}
-	earliestRound, earliestRoundTimestamp := m.GetEarliestRoundInfo()
+	earliestRound, earliestRoundTimestamp, err := m.GetEarliestRoundInfo()
+	if err != nil {
+		response.EarliestRoundErr = err.Error()
+	} else {
+		response.EarliestRound = earliestRound
+		response.EarliestRoundTimestamp = uint64(earliestRoundTimestamp.UnixNano())
+	}
 
-	response.EarliestRound = earliestRound
-	response.EarliestRoundTimestamp = uint64(earliestRoundTimestamp.UnixNano())
 	//do edge check to ensure the message is not nil
 	if msg == nil {
 		return nil, errors.Errorf("Message payload for unified poll " +
