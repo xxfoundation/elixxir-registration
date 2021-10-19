@@ -69,8 +69,8 @@ type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 var LoadAllRegNodes bool
 
 type earliestRoundTracking struct {
-	earliestTrackedRound          uint64
-	earliestTrackedRoundTimestamp time.Time
+	Id        uint64
+	Timestamp time.Time
 }
 
 // Configure and start the Permissioning Server
@@ -460,8 +460,8 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 
 func (m *RegistrationImpl) UpdateEarliestRound(newEarliestTimestamp time.Time, newEarliestRoundId id.Round) {
 	newEarliestRound := &earliestRoundTracking{
-		earliestTrackedRound:          uint64(newEarliestRoundId),
-		earliestTrackedRoundTimestamp: newEarliestTimestamp,
+		Id:        uint64(newEarliestRoundId),
+		Timestamp: newEarliestTimestamp,
 	}
 
 	m.earliestRoundTracker.Store(newEarliestRound)
@@ -474,5 +474,5 @@ func (m *RegistrationImpl) GetEarliestRoundInfo() (uint64, time.Time, error) {
 		return 0, time.Time{}, errors.New("Earliest round state does not exist, try again")
 	}
 
-	return earliestRound.earliestTrackedRound, earliestRound.earliestTrackedRoundTimestamp, nil
+	return earliestRound.Id, earliestRound.Timestamp, nil
 }
