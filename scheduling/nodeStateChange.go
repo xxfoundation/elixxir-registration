@@ -38,11 +38,12 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 	defer n.GetPollingLock().Unlock()
 	hasRound, r := n.GetCurrentRound()
 
-	// FIXME: This code can't be reached, as the same condition returns an error
-	// FIXME: in the node.Update function earlier in the Poll call
+	// Enforce that only error updates are allowed for a failed round
 	roundErrored := hasRound == true && r.GetRoundState() == states.FAILED && update.ToActivity != current.ERROR
 	if roundErrored {
-		return nil
+		jww.WARN.Printf("Round %d has failed, state for %s cannot be updated to %s, moving to %s",
+			r.GetRoundID(), update.Node.String(), update.ToActivity.String(), current.ERROR)
+		update.ToActivity = current.ERROR
 	}
 
 	if update.ClientErrors != nil && len(update.ClientErrors) > 0 {
@@ -58,7 +59,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			}
 			err := signature.SignRsa(banError, state.GetPrivateKey())
 			if err != nil {
-				jww.FATAL.Panicf("Failed to sign error message for banned node %s: %+v", update.Node, err)
+				return errors.Errorf("Failed to sign error message for banned node %s: %+v", update.Node, err)
 			}
 			n.ClearRound()
 			return killRound(state, r, banError, roundTracker)
@@ -195,7 +196,8 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			r.DenoteRoundCompleted()
 			roundTracker.RemoveActiveRound(r.GetRoundID())
 
-			go StoreRoundMetric(roundInfo)
+			// Store round metric in another thread for completed round
+			go StoreRoundMetric(roundInfo, states.COMPLETED)
 
 			// Commit metrics about the round to storage
 			return nil
@@ -217,13 +219,13 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 }
 
 // Insert metrics about the newly-completed round into storage
-func StoreRoundMetric(roundInfo *pb.RoundInfo) {
+func StoreRoundMetric(roundInfo *pb.RoundInfo, realtimeEnd states.Round) {
 	metric := &storage.RoundMetric{
 		Id:            roundInfo.ID,
 		PrecompStart:  time.Unix(0, int64(roundInfo.Timestamps[states.PRECOMPUTING])),
 		PrecompEnd:    time.Unix(0, int64(roundInfo.Timestamps[states.STANDBY])),
 		RealtimeStart: time.Unix(0, int64(roundInfo.Timestamps[states.REALTIME])),
-		RealtimeEnd:   time.Unix(0, int64(roundInfo.Timestamps[states.COMPLETED])),
+		RealtimeEnd:   time.Unix(0, int64(roundInfo.Timestamps[realtimeEnd])),
 		BatchSize:     roundInfo.BatchSize,
 	}
 
@@ -235,48 +237,39 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo) {
 
 	err := storage.PermissioningDb.InsertRoundMetric(metric, roundInfo.Topology)
 	if err != nil {
-		jww.ERROR.Printf("Failed to insert round metric from "+
-			"completed round: %+v", err)
+		jww.ERROR.Printf("Failed to insert metric for round %d: %+v",
+			roundInfo.GetRoundId(), err)
 	}
 }
 
 // killRound sets the round to failed and clears the node's round
 func killRound(state *storage.NetworkState, r *round.State,
 	roundError *pb.RoundError, roundTracker *RoundTracker) error {
+
+	roundId := r.GetRoundID()
 	r.AppendError(roundError)
 
 	err := r.Update(states.FAILED, time.Now())
-
 	if err == nil {
-		roundTracker.RemoveActiveRound(r.GetRoundID())
+		roundTracker.RemoveActiveRound(roundId)
 	}
 
-	roundId := r.GetRoundID()
 	roundInfo := r.BuildRoundInfo()
 
 	// Build the round info and update the network state
 	err = state.AddRoundUpdate(roundInfo)
 	if err != nil {
 		return errors.WithMessagef(err, "Could not issue "+
-			"update to kill round %v", r.GetRoundID())
+			"update to kill round %v", roundId)
 	}
 
 	go func() {
 		// Attempt to insert the RoundMetric for the failed round
-		metric := &storage.RoundMetric{
-			Id:            uint64(roundId),
-			PrecompStart:  time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.PRECOMPUTING])),
-			PrecompEnd:    time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.STANDBY])),
-			RealtimeStart: time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.REALTIME])),
-			RealtimeEnd:   time.Unix(0, int64(r.BuildRoundInfo().Timestamps[states.FAILED])),
-			BatchSize:     r.BuildRoundInfo().BatchSize,
-		}
+		StoreRoundMetric(roundInfo, states.FAILED)
 
-		errInsert := storage.PermissioningDb.InsertRoundMetric(metric,
-			roundInfo.Topology)
-		if errInsert != nil {
-			jww.WARN.Printf("Could not insert round metric: %+v", errInsert)
-			err = nil
+		// Return early if there is no roundError
+		if roundError == nil {
+			return
 		}
 
 		nid, err := id.Unmarshal(roundError.NodeId)
@@ -291,12 +284,11 @@ func killRound(state *storage.NetworkState, r *round.State,
 		jww.INFO.Print(formattedError)
 
 		// Next, attempt to insert the error for the failed round
-		errInsert = storage.PermissioningDb.InsertRoundError(roundId, formattedError)
+		err = storage.PermissioningDb.InsertRoundError(roundId, formattedError)
 		if err != nil {
-			jww.WARN.Printf("Could not insert round error: %+v", errInsert)
-			err = nil
+			jww.WARN.Printf("Could not insert round error: %+v", err)
 		}
 	}()
 
-	return err
+	return nil
 }

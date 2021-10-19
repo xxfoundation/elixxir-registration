@@ -19,6 +19,20 @@ logPath: "registration.log"
 # Path to the node topology permissioning info
 ndfOutputPath: "ndf.json"
 
+# Path to JSON containing list of IDs exempt from rate limiting
+whitelistedIdsPath: "whitelistedIds.json"
+
+# Path to JSON containing list of IP addresses exempt from rate limiting
+whitelistedIpAddressesPath: "whitelistedIpAddresses.json"
+
+# Specs on how to rate limit clients
+RateLimiting:
+  Capacity: 1
+  LeakedTokens: 1
+  # Duration is in miliseconds
+  LeakDuration: 1
+
+
 # Minimum number of nodes to begin running rounds. This differs from the number
 # of members in a team because some scheduling algorithms may require multiple
 # teams worth of nodes at minimum.
@@ -58,7 +72,6 @@ disableNDFPruning: true
 # disables the rejection of nodes and gateways with internal 
 # or reserved IPs. For use within local environment or integration testing. 
 permissiveIPChecking: false
-
 
 # Database connection information
 dbUsername: "cmix"
@@ -122,6 +135,9 @@ addressSpaceSizeUpdateInterval: 5m
 # Toggles use of only active nodes in node metric tracker
 onlyScheduleActive: false
 
+# Toggles blockchain integration functionality
+enableBlockchain: false
+
 # A MaxMind GeoLite2 database file to lookup IPs against for geobinning
 geoIPDBFile: "/GeoLite2-City.mmdb"
 
@@ -134,21 +150,29 @@ allowLocalIPs: false
 
 # Pulls geobin information from the blockchain instead of the hardcoded info
 blockchainGeoBinning: false
+
+# How long offline nodes remain in the NDF. If a node is offline past this duration
+# the node is pruned from the NDF. Expects duration in"h". (Defaults to 1 week (168 hours)
+pruneRetentionLimit: "168h"
 ```
 
 ### SchedulingConfig template:
+
+Note: All times in MS
+
 ```json
 {
-  "TeamSize": 4,
-  "BatchSize": 32,
-  "RandomOrdering": false,
-  "SemiOptimalOrdering": false,
+  "TeamSize": 3,
+  "BatchSize": 64,
   "MinimumDelay": 60,
   "RealtimeDelay": 3000,
-  "Threshold":     10,
-  "NodeCleanUpInterval": 3,  
-  "Secure": 		     true,
-  "RoundTimeout": 60
+  "Threshold": 10,
+  "NodeCleanUpInterval": 180000,  
+  "Secure": true,
+  "PrecomputationTimeout": 30000,
+  "RealtimeTimeout": 15000,
+  "ResourceQueueTimeout": 180000,
+  "DebugTrackRounds": true
 }
 ```
 

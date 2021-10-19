@@ -59,7 +59,7 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, 8, "", region.GetCountryBins())
+	state, err := NewState(privateKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("NewState() produced an unexpected error:\n%v", err)
 	}
@@ -446,7 +446,7 @@ func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 	}
 
 	// Generate new NetworkState using the private key
-	state, err := NewState(privKey, 8, "", region.GetCountryBins())
+	state, err := NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		return state, privKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
 	}
@@ -527,7 +527,7 @@ func TestNetworkState_GetRoundID(t *testing.T) {
 func TestNetworkState_CreateDisabledNodes(t *testing.T) {
 	// Get test data
 	testData, stateMap, expectedStateSet := generateIdLists(3, t)
-	state := &NetworkState{nodes: stateMap, pruneList: make(map[id.ID]interface{})}
+	state := &NetworkState{nodes: stateMap, pruneList: make(map[id.ID]bool)}
 	testData = "\n \n\n" + testData + "\n  "
 	testPath := "testDisabledNodesList.txt"
 

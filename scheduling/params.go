@@ -5,16 +5,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 package scheduling
 
-// Contains the scheduling params object and the internal protoround object
+// Contains the scheduling params object and the internal protoRound object
 
 import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/primitives/id"
+	"sync"
 	"time"
 )
 
-// JSONable structure which defines the parameters of the scheduler
+// This exists to provide thread-safe functionality to the Params object
+// and to allow making safe copies of the internal Params object
+type SafeParams struct {
+	// Need a mutex as params can be modified out of band
+	sync.RWMutex
+
+	// Hold a reference to the actual Params
+	*Params
+}
+
+// Allows for safe duplication of the current internal Params object
+func (s *SafeParams) safeCopy() Params {
+	s.RLock()
+	defer s.RUnlock()
+	return *s.Params
+}
+
+// JSONable structure which defines the parameters of the Scheduler
 type Params struct {
 	// selects if the secure or simple node selection algorithm is used
 	Secure bool
@@ -22,35 +40,26 @@ type Params struct {
 	TeamSize uint32
 	// number of slots in a batch
 	BatchSize uint32
-	// Resource queue timeout on nodes (ms)
-	ResourceQueueTimeout time.Duration
 
-	// Time in ms between assigning a round
+	// NOTE: All times in MS
+	// Resource queue timeout on nodes
+	ResourceQueueTimeout time.Duration
+	// Time between assigning a round
 	MinimumDelay time.Duration
-	// delay in ms for a realtime round to start
+	// Delay for a realtime round to start
 	RealtimeDelay time.Duration
-	// Time in seconds between cleaning up offline nodes
+	// Time between cleaning up offline nodes
 	NodeCleanUpInterval time.Duration
-	// Time in seconds until round precomputation times out
+	// Time until round precomputation times out
 	PrecomputationTimeout time.Duration
-	// Time in second until round realtime times out
+	// Time until round realtime times out
 	RealtimeTimeout time.Duration
 	//Debug flag used to cause regular prints about the state of the network
 	DebugTrackRounds bool
 
-	//SIMPLE ONLY//
-	// sets if simple teaming randomly orders nodes or orders based upon the
-	// number in the `order` string
-	// SemiOptimalOrdering is the ordering designed for secure teaming.
-	// Prefers RandomOrdering
-	// todo: remove this once deployment has been updated
-	RandomOrdering      bool
-	SemiOptimalOrdering bool
-
 	//SECURE ONLY
-	// sets the minimum number of nodes in the waiting pool before secure teaming
-	// wil create a team
-	Threshold uint32
+	// Minimum percentage of nodes in the waiting pool before secure teaming wil create a team
+	Threshold float64
 }
 
 //internal structure which describes a round to be created

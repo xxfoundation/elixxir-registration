@@ -44,6 +44,33 @@ func (d *DatabaseImpl) UpdateNodeSequence(id *id.ID, sequence string) error {
 	return d.db.Take(&newNode, "id = ?", id.Marshal()).Update("sequence", sequence).Error
 }
 
+// Update the given applicationId with the given GeoIP information
+func (d *DatabaseImpl) UpdateGeoIP(appId uint64, location, geoBin, gpsLocation string) error {
+	app := &Application{
+		Id: appId,
+	}
+	err := d.db.First(&app).Error
+	if err != nil {
+		return errors.WithMessagef(err, "Failed to find application with id %d", appId)
+	}
+
+	app.GeoBin = geoBin
+	app.GpsLocation = gpsLocation
+	app.Location = location
+
+	err = d.db.Save(&app).Error
+	if err != nil {
+		return errors.WithMessagef(err, "Failed to update geo info for app id %d", appId)
+	}
+	return nil
+}
+
+// Update LastActive field for all given Node IDs in Storage
+func (d *DatabaseImpl) updateLastActive(ids [][]byte, lastActive time.Time) error {
+	return d.db.Model(Node{}).Where("id IN (?)", ids).
+		Update("last_active", lastActive).Error
+}
+
 // If Node registration code is valid, add Node information
 func (d *DatabaseImpl) RegisterNode(id *id.ID, salt []byte, code, serverAddr, serverCert,
 	gatewayAddress, gatewayCert string) error {
@@ -68,6 +95,13 @@ func (d *DatabaseImpl) GetNode(code string) (*Node, error) {
 	return newNode, err
 }
 
+// Return all nodes in Storage
+func (d *DatabaseImpl) GetNodes() ([]*Node, error) {
+	var nodes []*Node
+	err := d.db.Find(&nodes).Error
+	return nodes, err
+}
+
 // Get Node information for the given Node ID
 func (d *DatabaseImpl) GetNodeById(id *id.ID) (*Node, error) {
 	newNode := &Node{}
@@ -89,24 +123,4 @@ func (d *DatabaseImpl) GetActiveNodes() ([]*ActiveNode, error) {
 	var activeNodes []*ActiveNode
 	err := d.db.Find(&activeNodes).Error
 	return activeNodes, err
-}
-
-func (d *DatabaseImpl) UpdateGeoIP(appId uint64, location, geo_bin, gps_location string) error {
-	app := &Application{
-		Id: appId,
-	}
-	err := d.db.First(&app).Error
-	if err != nil {
-		return errors.WithMessagef(err, "Failed to find application with id %d", appId)
-	}
-
-	app.GeoBin = geo_bin
-	app.GpsLocation = gps_location
-	app.Location = location
-
-	err = d.db.Save(&app).Error
-	if err != nil {
-		return errors.WithMessagef(err, "Failed to update geo info for app id %d", appId)
-	}
-	return nil
 }

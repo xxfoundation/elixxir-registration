@@ -50,6 +50,10 @@ type State struct {
 	// Timestamp of the last time this Node produced an update
 	lastUpdate time.Time
 
+	// Timestamp of the last time node has been updated internally
+	// within the node metric tracker
+	lastActive time.Time
+
 	// Number of polls made by the node during the current monitoring period
 	numPolls *uint64
 
@@ -96,6 +100,19 @@ func (n *State) IncrementNumPolls() {
 // Returns the current value of numPolls and then resets numPolls to zero
 func (n *State) GetAndResetNumPolls() uint64 {
 	return atomic.SwapUint64(n.numPolls, 0)
+}
+
+func (n *State) SetNumPollsTesting(num int, x interface{}) {
+	// Ensure that this function is only run in testing environments
+	switch x.(type) {
+	case *testing.T, *testing.M, *testing.B:
+		break
+	default:
+		panic("SetNumPollsTesting() can only be used for testing.")
+	}
+
+	atomic.SwapUint64(n.numPolls, uint64(num))
+
 }
 
 // Returns the current value of numPolls and then resets numPolls to zero
@@ -153,13 +170,9 @@ func (n *State) Update(newActivity current.Activity) (bool, UpdateNotification, 
 		return n.updateInactive(newActivity)
 	}
 
-	// Check the round error state
+	// If the Node's round has failed, force an error transition
 	if n.currentRound != nil && n.currentRound.GetRoundState() == states.FAILED && newActivity != current.ERROR {
-		rid := n.currentRound.GetRoundID()
-		// Clear the round to prevent looping on this error
-		n.currentRound = nil
-		return false, UpdateNotification{}, errors.Errorf("Round %d has failed, state cannot be updated",
-			rid)
+		newActivity = current.ERROR
 	}
 
 	//if the activity is the one that the Node is already in, do nothing
@@ -285,6 +298,30 @@ func (n *State) GetLastUpdate() time.Time {
 	n.mux.RLock()
 	defer n.mux.RUnlock()
 	return n.lastUpdate
+}
+
+func (n *State) GetLastActive() time.Time {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+	return n.lastActive
+}
+
+func (n *State) SetLastActive() {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+	n.lastActive = time.Now()
+}
+
+func (n *State) SetLastActiveTesting(tm time.Time, x interface{}) {
+	// Ensure that this function is only run in testing environments
+	switch x.(type) {
+	case *testing.T, *testing.M, *testing.B:
+		break
+	default:
+		panic("SetLastActiveTesting() can only be used for testing.")
+	}
+
+	n.lastActive = tm
 }
 
 // Returns the polling lock

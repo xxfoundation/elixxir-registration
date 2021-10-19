@@ -10,8 +10,12 @@
 package storage
 
 import (
+	"github.com/pkg/errors"
+	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/region"
+	"strconv"
 	"testing"
+	"time"
 )
 
 // Global variable for Database interaction
@@ -35,6 +39,30 @@ func (s *Storage) GetBins() (map[string]region.GeoBin, error) {
 		result[geoBin.Country] = region.GeoBin(geoBin.Bin)
 	}
 	return result, nil
+}
+
+// Set LastActive to now for all the given Nodes in storage
+func (s *Storage) UpdateLastActive(ids []*id.ID) error {
+	idsBytes := make([][]byte, len(ids))
+	for i, nodeId := range ids {
+		idsBytes[i] = nodeId.Marshal()
+	}
+	currentTime := time.Now()
+
+	return s.updateLastActive(idsBytes, currentTime)
+}
+
+// Helper for returning a uint64 from the State table
+func (s *Storage) GetStateInt(key string) (uint64, error) {
+	valueStr, err := s.GetStateValue(key)
+	if err != nil {
+		return 0, errors.Errorf("Unable to find %s: %+v", key, err)
+	}
+	value, err := strconv.ParseUint(valueStr, 10, 64)
+	if err != nil {
+		return 0, errors.Errorf("Unable to decode %s: %+v", valueStr, err)
+	}
+	return value, nil
 }
 
 // Test use only function for exposing MapImpl

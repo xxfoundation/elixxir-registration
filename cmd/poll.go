@@ -302,6 +302,12 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 	// Pull the addresses out of the message
 	gatewayAddress, nodeAddress := msg.GatewayAddress, msg.ServerAddress
 
+	// Prevent adding same address for both Node and Gateway
+	if nodeAddress == gatewayAddress && len(nodeAddress) > 0 {
+		return errors.Errorf("Cannot handle node which has the same "+
+			"gateway and node address of: %s and %s", nodeAddress, gatewayAddress)
+	}
+
 	// Update server and gateway addresses in state, if necessary
 	nodeUpdate, err := n.UpdateNodeAddresses(nodeAddress)
 	if err != nil {
@@ -397,10 +403,10 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 			} else {
 				//ping the node
 				nodeHost, exists := m.Comms.GetHost(n.GetID())
-
+				_, isOnline := nodeHost.IsOnline()
 				nodePing = exists &&
 					(utils.IsPublicAddress(nodeHost.GetAddress()) == nil || m.params.allowLocalIPs) &&
-					nodeHost.IsOnline()
+					isOnline
 
 				//build gateway host
 				gwID := nodeHost.GetId().DeepCopy()
@@ -410,9 +416,10 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), nil, params)
 
 				//ping the gateway
+				_, isOnline = gwHost.IsOnline()
 				gwPing = (err == nil) &&
 					(utils.IsPublicAddress(n.GetGatewayAddress()) == nil || m.params.allowLocalIPs) &&
-					gwHost.IsOnline()
+					isOnline
 			}
 
 			if nodePing && gwPing {

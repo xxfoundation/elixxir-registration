@@ -24,9 +24,8 @@ import (
 // Happy path for transitioning to waiting
 func TestHandleNodeStateChance_Waiting(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 	var err error
 	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
@@ -36,7 +35,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -86,14 +85,13 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 // pool.
 func TestHandleNodeStateChance_Waiting_SetNodeToOnline(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -150,14 +148,13 @@ func TestHandleNodeStateChance_Waiting_SetNodeToOnline(t *testing.T) {
 // Happy path
 func TestHandleNodeStateChance_Standby(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -231,14 +228,13 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -287,9 +283,8 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 // Happy path
 func TestHandleNodeUpdates_Completed(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 	var err error
 	storage.PermissioningDb, _, err = storage.NewDatabase("test", "password",
@@ -300,7 +295,7 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -373,14 +368,13 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 // Error path: attempt to handle a node transition when nodes never had rounds
 func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -423,9 +417,8 @@ func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 
 func TestHandleNodeUpdates_Error(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	var err error
@@ -436,7 +429,7 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -492,14 +485,13 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 // Happy path: Test that a node with a banned update status are removed from the pool
 func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -587,14 +579,13 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 // Happy path
 func TestKillRound(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -641,14 +632,13 @@ func TestKillRound(t *testing.T) {
 // error when there is no round.
 func TestHandleNodeUpdates_Precomputing_RoundError(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -692,14 +682,13 @@ func TestHandleNodeUpdates_Precomputing_RoundError(t *testing.T) {
 // Tests happy path of the Realtime case of HandleNodeUpdates.
 func TestHandleNodeUpdates_Realtime(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -748,14 +737,13 @@ func TestHandleNodeUpdates_Realtime(t *testing.T) {
 // error when there is no round.
 func TestHandleNodeUpdates_Realtime_RoundError(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -800,14 +788,13 @@ func TestHandleNodeUpdates_Realtime_RoundError(t *testing.T) {
 // round can't update.
 func TestHandleNodeUpdates_Realtime_UpdateError(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -857,17 +844,16 @@ func TestHandleNodeUpdates_Realtime_UpdateError(t *testing.T) {
 	}
 }
 
-// Tests that HandleNodeUpdates() returns nil when there is a round error.
+// Tests that HandleNodeUpdates() returns an error when there is a round error and node isn't transitioning to error
 func TestHandleNodeUpdates_RoundErrored(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -908,23 +894,20 @@ func TestHandleNodeUpdates_RoundErrored(t *testing.T) {
 	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
 		roundTracker, timeoutCh, 15*time.Second)
 	if err != nil {
-		t.Errorf("HandleNodeUpdates() recieved an unexpected error"+
-			"\n\texpected: %v\n\treceived: %v",
-			nil, err)
+		t.Errorf("Expected no error return!")
 	}
 }
 
 // Tests happy path of the NOT_STARTED case of HandleNodeUpdates.
 func TestHandleNodeUpdates_NOT_STARTED(t *testing.T) {
 	testParams := Params{
-		TeamSize:       5,
-		BatchSize:      32,
-		RandomOrdering: false,
+		TeamSize:  5,
+		BatchSize: 32,
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()

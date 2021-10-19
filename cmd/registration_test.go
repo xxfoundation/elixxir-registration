@@ -62,17 +62,18 @@ func TestMain(m *testing.M) {
 	}
 
 	testParams = Params{
-		Address:           permAddr,
-		CertPath:          testkeys.GetCACertPath(),
-		KeyPath:           testkeys.GetCAKeyPath(),
-		NdfOutputPath:     testkeys.GetNDFPath(),
-		publicAddress:     permAddr,
-		udbCertPath:       testkeys.GetUdbCertPath(),
-		NsCertPath:        testkeys.GetUdbCertPath(),
-		minimumNodes:      3,
-		minGatewayVersion: minGatewayVersion,
-		minServerVersion:  minServerVersion,
-		disableGeoBinning: true,
+		Address:             permAddr,
+		CertPath:            testkeys.GetCACertPath(),
+		KeyPath:             testkeys.GetCAKeyPath(),
+		NdfOutputPath:       testkeys.GetNDFPath(),
+		publicAddress:       permAddr,
+		udbCertPath:         testkeys.GetUdbCertPath(),
+		NsCertPath:          testkeys.GetUdbCertPath(),
+		minimumNodes:        3,
+		minGatewayVersion:   minGatewayVersion,
+		minServerVersion:    minServerVersion,
+		disableGeoBinning:   true,
+		pruneRetentionLimit: 500 * time.Millisecond,
 	}
 	nodeComm = nodeComms.StartNode(&id.TempGateway, nodeAddr, 0, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
@@ -105,11 +106,12 @@ func TestEmptyDataBase(t *testing.T) {
 
 	// Start the registration server
 	testParams := Params{
-		CertPath:          testkeys.GetCACertPath(),
-		KeyPath:           testkeys.GetCAKeyPath(),
-		udbCertPath:       testkeys.GetUdbCertPath(),
-		NsCertPath:        testkeys.GetUdbCertPath(),
-		disableGeoBinning: true,
+		CertPath:           testkeys.GetCACertPath(),
+		KeyPath:            testkeys.GetCAKeyPath(),
+		udbCertPath:        testkeys.GetUdbCertPath(),
+		NsCertPath:         testkeys.GetUdbCertPath(),
+		disableGeoBinning:  true,
+		WhitelistedIdsPath: testkeys.GetPreApprovedPath(),
 	}
 	// Start registration server
 	impl, err := StartRegistration(testParams)
