@@ -27,6 +27,7 @@ import (
 	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -59,15 +60,19 @@ type RegistrationImpl struct {
 
 	NDFLock sync.Mutex
 
-	earliestTrackedRound          uint64
-	earliestTrackedRoundMux       sync.Mutex
-	earliestTrackedRoundTimestamp time.Time
+	earliestRound *atomic.Value
+
 }
 
 // function used to schedule nodes
 type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 
 var LoadAllRegNodes bool
+
+type EarliestRoundTracking struct {
+	earliestTrackedRound          uint64
+	earliestTrackedRoundTimestamp time.Time
+}
 
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) (*RegistrationImpl, error) {
@@ -115,6 +120,8 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			"database: %v.", err)
 	}
 
+	earliestRoundTracker :=  &atomic.Value{}
+
 	// Build default parameters
 	regImpl := &RegistrationImpl{
 		params:               &params,
@@ -124,7 +131,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		numRegistered:        0,
 		beginScheduling:      make(chan struct{}, 1),
 		registrationTimes:    make(map[id.ID]int64),
-		earliestTrackedRound: 0,
+		earliestRound: earliestRoundTracker,
 	}
 
 	// If the the GeoIP2 database file is supplied, then use it to open the
@@ -454,16 +461,21 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	return impl
 }
 
-func (m *RegistrationImpl) UpdateEarliestRound(newEarliestTimestamp time.Time, newEarliestRound id.Round) {
-	m.earliestTrackedRoundMux.Lock()
-	defer m.earliestTrackedRoundMux.Unlock()
-	m.earliestTrackedRoundTimestamp = newEarliestTimestamp
-	m.earliestTrackedRound = uint64(newEarliestRound)
+func (m *RegistrationImpl) UpdateEarliestRound(newEarliestTimestamp time.Time, newEarliestRoundId id.Round) {
+	newEarliestRound := &EarliestRoundTracking{
+		earliestTrackedRound: uint64(newEarliestRoundId),
+		earliestTrackedRoundTimestamp: newEarliestTimestamp,
+	}
+
+	m.earliestRound.Store(newEarliestRound)
 
 }
 
 func (m *RegistrationImpl) GetEarliestRoundInfo() (uint64, time.Time) {
-	m.earliestTrackedRoundMux.Lock()
-	defer m.earliestTrackedRoundMux.Unlock()
-	return m.earliestTrackedRound, m.earliestTrackedRoundTimestamp
+	earliestRound := m.earliestRound.Load().(*EarliestRoundTracking)
+	if earliestRound == nil {
+		return 0, time.Time{}
+	}
+
+	return earliestRound.earliestTrackedRound, earliestRound.earliestTrackedRoundTimestamp
 }
