@@ -15,6 +15,7 @@ import (
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/region"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -140,6 +141,7 @@ func TestTrackNodeMetrics(t *testing.T) {
 	impl := &RegistrationImpl{
 		params: &testParams,
 		State:  state,
+		earliestRound: &atomic.Value{},
 	}
 
 	go TrackNodeMetrics(impl, kill,

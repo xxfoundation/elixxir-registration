@@ -472,8 +472,8 @@ func (m *RegistrationImpl) UpdateEarliestRound(newEarliestTimestamp time.Time, n
 }
 
 func (m *RegistrationImpl) GetEarliestRoundInfo() (uint64, time.Time) {
-	earliestRound := m.earliestRound.Load().(*EarliestRoundTracking)
-	if earliestRound == nil {
+	earliestRound, ok := m.earliestRound.Load().(*EarliestRoundTracking)
+	if !ok || earliestRound == nil  {
 		return 0, time.Time{}
 	}
 

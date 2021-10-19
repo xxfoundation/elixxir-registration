@@ -51,7 +51,7 @@ var (
 // Default duration between polls of the disabled Node list for updates.
 const defaultDisabledNodesPollDuration = time.Minute
 const defaultPruneRetention = 24 * 7 * time.Hour
-const defaultMessageRetention = 24 * 7 * 2 * time.Hour
+const defaultMessageRetention = 24 * 7 * time.Hour
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
