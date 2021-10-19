@@ -117,7 +117,7 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 				}
 
 				earliestTrackedRound, earliestTimestamp, err := storage.PermissioningDb.
-					GetEarliestRound(impl.params.messageRetentionLimit)
+					GetEarliestRound(impl.params.GetMessageRetention())
 
 				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 					jww.ERROR.Printf("GetEarliestRound returned no records: %v", err)

@@ -61,7 +61,6 @@ type RegistrationImpl struct {
 	NDFLock sync.Mutex
 
 	earliestRound *atomic.Value
-
 }
 
 // function used to schedule nodes
@@ -69,7 +68,7 @@ type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 
 var LoadAllRegNodes bool
 
-type EarliestRoundTracking struct {
+type earliestRoundTracking struct {
 	earliestTrackedRound          uint64
 	earliestTrackedRoundTimestamp time.Time
 }
@@ -120,18 +119,18 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			"database: %v.", err)
 	}
 
-	earliestRoundTracker :=  &atomic.Value{}
+	earliestRoundTracker := &atomic.Value{}
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		params:               &params,
-		ndfOutputPath:        params.NdfOutputPath,
-		NdfReady:             &ndfReady,
-		Stopped:              &roundCreationStopped,
-		numRegistered:        0,
-		beginScheduling:      make(chan struct{}, 1),
-		registrationTimes:    make(map[id.ID]int64),
-		earliestRound: earliestRoundTracker,
+		params:            &params,
+		ndfOutputPath:     params.NdfOutputPath,
+		NdfReady:          &ndfReady,
+		Stopped:           &roundCreationStopped,
+		numRegistered:     0,
+		beginScheduling:   make(chan struct{}, 1),
+		registrationTimes: make(map[id.ID]int64),
+		earliestRound:     earliestRoundTracker,
 	}
 
 	// If the the GeoIP2 database file is supplied, then use it to open the
@@ -462,8 +461,8 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 }
 
 func (m *RegistrationImpl) UpdateEarliestRound(newEarliestTimestamp time.Time, newEarliestRoundId id.Round) {
-	newEarliestRound := &EarliestRoundTracking{
-		earliestTrackedRound: uint64(newEarliestRoundId),
+	newEarliestRound := &earliestRoundTracking{
+		earliestTrackedRound:          uint64(newEarliestRoundId),
 		earliestTrackedRoundTimestamp: newEarliestTimestamp,
 	}
 
@@ -472,8 +471,8 @@ func (m *RegistrationImpl) UpdateEarliestRound(newEarliestTimestamp time.Time, n
 }
 
 func (m *RegistrationImpl) GetEarliestRoundInfo() (uint64, time.Time) {
-	earliestRound, ok := m.earliestRound.Load().(*EarliestRoundTracking)
-	if !ok || earliestRound == nil  {
+	earliestRound, ok := m.earliestRound.Load().(*earliestRoundTracking)
+	if !ok || earliestRound == nil {
 		return 0, time.Time{}
 	}
 

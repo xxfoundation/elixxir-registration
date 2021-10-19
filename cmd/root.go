@@ -557,6 +557,19 @@ func initConfig() {
 func (m *RegistrationImpl) update(in fsnotify.Event) {
 	m.updateVersions()
 	m.updateRateLimiting()
+	m.updateEarliestRound()
+
+}
+
+func (m *RegistrationImpl) updateEarliestRound() {
+	msgRetention := viper.GetDuration("messageRetentionLimit")
+	if msgRetention.Seconds() == 0 {
+		msgRetention = defaultMessageRetention
+	}
+
+	m.params.messageRetentionLimitMux.Lock()
+	m.params.messageRetentionLimit = msgRetention
+	m.params.messageRetentionLimitMux.Unlock()
 
 }
 
