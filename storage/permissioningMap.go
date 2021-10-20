@@ -159,7 +159,7 @@ func (m *MapImpl) GetEarliestRound(cutoff time.Duration) (id.Round, time.Time, e
 	cutoffTs := time.Now().Add(-cutoff)
 	minRound := &RoundMetric{}
 	for _, v := range m.roundMetrics {
-		if v.RealtimeEnd.After(cutoffTs) && (v.Id < minRound.Id || minRound.Id == 0) {
+		if v.RealtimeEnd.After(cutoffTs) && (v.RealtimeEnd.Before(minRound.RealtimeEnd) || minRound.Id == 0) {
 			minRound = v
 		}
 	}

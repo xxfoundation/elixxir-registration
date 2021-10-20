@@ -117,13 +117,13 @@ func (d *DatabaseImpl) InsertEphemeralLength(length *EphemeralLength) error {
 func (d *DatabaseImpl) GetEarliestRound(cutoff time.Duration) (id.Round, time.Time, error) {
 	var result RoundMetric
 	cutoffTs := time.Now().Add(-cutoff)
-	err := d.db.Where("realtime_end >= ?", cutoffTs).First(&result).Error
+	err := d.db.Where("? <= realtime_end", cutoffTs).Order("realtime_end ASC").Take(&result).Error
 	if err != nil {
 		return 0, time.Time{}, err
 	}
 	roundId := id.Round(result.Id)
 	jww.TRACE.Printf("Obtained EarliestRound: %d", roundId)
-	return roundId, result.RealtimeEnd, nil
+	return roundId, result.RealtimeStart, nil
 }
 
 // Returns all GeoBin from Storage
