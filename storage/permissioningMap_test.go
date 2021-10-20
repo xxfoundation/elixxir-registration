@@ -61,12 +61,12 @@ import (
 //		t.Errorf(err.Error())
 //		return
 //	}
-//	result, err := db.GetEarliestRound(2*time.Hour)
+//	result, result2, err := db.GetEarliestRound(2*time.Hour)
 //	if err != nil {
 //		t.Errorf(err.Error())
 //		return
 //	}
-//	jww.FATAL.Printf("GetEarliestRound: %d", result)
+//	jww.FATAL.Printf("GetEarliestRound: %d %v", result, result2)
 //
 //	result, err = db.GetLatestEphemeralLength()
 //	if err != nil {
@@ -432,7 +432,7 @@ func TestMapImpl_GetEarliestRound(t *testing.T) {
 	}
 
 	roundId, _, err = m.GetEarliestRound(cutoff)
-	if err != nil || uint64(roundId) != 1 {
+	if err != nil || uint64(roundId) != 2 {
 		t.Errorf("Invalid return for GetEarliestRound: %d %+v", roundId, err)
 	}
 }
