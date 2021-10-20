@@ -31,12 +31,13 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 	// Initialize the response
 	response := &pb.PermissionPollResponse{}
-	earliestRound, earliestRoundTimestamp, err := m.GetEarliestRoundInfo()
+	earliestClientRound, earliestGwRound, earliestGwRoundTs, err := m.GetEarliestRoundInfo()
 	if err != nil {
 		response.EarliestRoundErr = err.Error()
 	} else {
-		response.EarliestRound = earliestRound
-		response.EarliestRoundTimestamp = uint64(earliestRoundTimestamp.UnixNano())
+		response.EarliestClientRound = earliestClientRound
+		response.EarliestGatewayRound = earliestGwRound
+		response.EarliestRoundTimestamp = earliestGwRoundTs
 	}
 
 	//do edge check to ensure the message is not nil

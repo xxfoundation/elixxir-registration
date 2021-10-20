@@ -116,18 +116,6 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 					toPrune[*nodeState.GetID()] = true
 				}
 
-				earliestTrackedRound, earliestTimestamp, err := storage.PermissioningDb.
-					GetEarliestRound(impl.params.GetMessageRetention())
-
-				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-					jww.ERROR.Printf("GetEarliestRound returned no records: %v", err)
-				} else if err != nil {
-					jww.ERROR.Printf("GetEarliestRound returned an error: %v", err)
-				} else {
-					// If no errors, update impl
-					impl.UpdateEarliestRound(earliestTimestamp, earliestTrackedRound)
-				}
-
 				// Store the NodeMetric
 				if !onlyScheduleActive || active[*nodeState.GetID()] {
 					err = storage.PermissioningDb.InsertNodeMetric(metric)
@@ -158,6 +146,38 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 				}
 				impl.NDFLock.Unlock()
 			}
+
+			paramsCopy := impl.schedulingParams.SafeCopy()
+
+			clientCutoff := impl.params.messageRetentionLimit + paramsCopy.RealtimeTimeout
+			gatewayCutoff := impl.params.messageRetentionLimit + paramsCopy.RealtimeTimeout +
+				2*(paramsCopy.PrecomputationTimeout+paramsCopy.RealtimeDelay+paramsCopy.RealtimeTimeout)
+
+			earliestClientRound, _, clientErr := storage.PermissioningDb.
+				GetEarliestRound(clientCutoff)
+
+			earliestGwRound, earliestGwRoundTs, gatewayErr := storage.PermissioningDb.
+				GetEarliestRound(gatewayCutoff)
+
+			if clientErr != nil || gatewayErr != nil {
+				if clientErr != nil && !errors.Is(clientErr, gorm.ErrRecordNotFound) {
+					jww.ERROR.Printf("GetEarliestRound returned no records for client cutoff")
+				} else if clientErr != nil {
+					jww.ERROR.Printf("GetEarliestRound returned an error "+
+						"for client cutoff: %v", clientErr)
+				}
+
+				if gatewayErr != nil && !errors.Is(gatewayErr, gorm.ErrRecordNotFound) {
+					jww.ERROR.Printf("GetEarliestRound returned no records for gateway cutoff")
+				} else if gatewayErr != nil {
+					jww.ERROR.Printf("GetEarliestRound returned an error "+
+						"for gateway cutoff: %v", gatewayErr)
+				}
+			} else {
+				// If no errors, update impl
+				impl.UpdateEarliestRound(earliestClientRound, earliestGwRound, earliestGwRoundTs)
+			}
+
 		}
 	}
 }

@@ -9,12 +9,14 @@ package cmd
 import (
 	"bytes"
 	"crypto/rand"
+	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/region"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -142,6 +144,11 @@ func TestTrackNodeMetrics(t *testing.T) {
 		params:               &testParams,
 		State:                state,
 		earliestRoundTracker: atomic.Value{},
+	}
+
+	impl.schedulingParams = &scheduling.SafeParams{
+		RWMutex: sync.RWMutex{},
+		Params:  &scheduling.Params{},
 	}
 
 	go TrackNodeMetrics(impl, kill,

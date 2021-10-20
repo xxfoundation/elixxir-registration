@@ -288,6 +288,16 @@ var rootCmd = &cobra.Command{
 		nodeMetricInterval := time.Duration(
 			viper.GetInt64("nodeMetricInterval")) * time.Second
 
+		// Parse params JSON
+		params := scheduling.ParseParams(SchedulingConfig)
+
+		// Initialize param update if it is enabled
+		if impl.params.enableBlockchain {
+			go scheduling.UpdateParams(params, nodeMetricInterval)
+		}
+
+		impl.schedulingParams = params
+
 		// Run the Node metric tracker forever in another thread
 		metricTrackerQuitChan := make(chan struct{})
 		go TrackNodeMetrics(impl, metricTrackerQuitChan, nodeMetricInterval)
@@ -333,13 +343,6 @@ var rootCmd = &cobra.Command{
 
 		// Begin scheduling algorithm
 		go func() {
-			// Parse params JSON
-			params := scheduling.ParseParams(SchedulingConfig)
-
-			// Initialize param update if it is enabled
-			if impl.params.enableBlockchain {
-				go scheduling.UpdateParams(params, nodeMetricInterval)
-			}
 
 			// Initialize scheduling
 			err = scheduling.Scheduler(params, impl.State, roundCreationQuitChan)

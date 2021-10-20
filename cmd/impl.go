@@ -16,6 +16,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
+	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
@@ -35,6 +36,7 @@ import (
 type RegistrationImpl struct {
 	Comms             *registration.Comms
 	params            *Params
+	schedulingParams  *scheduling.SafeParams
 	State             *storage.NetworkState
 	Stopped           *uint32
 	permissioningCert *x509.Certificate
@@ -69,8 +71,9 @@ type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 var LoadAllRegNodes bool
 
 type earliestRoundTracking struct {
-	Id        uint64
-	Timestamp time.Time
+	ClientRoundId    uint64
+	GatewayRoundId   uint64
+	GatewayTimestamp int64
 }
 
 // Configure and start the Permissioning Server
@@ -458,21 +461,23 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	return impl
 }
 
-func (m *RegistrationImpl) UpdateEarliestRound(newEarliestTimestamp time.Time, newEarliestRoundId id.Round) {
+func (m *RegistrationImpl) UpdateEarliestRound(clientEarliestRoundId,
+	gatewayEarliestRound id.Round, gatewayEarliestTimestamp time.Time) {
 	newEarliestRound := &earliestRoundTracking{
-		Id:        uint64(newEarliestRoundId),
-		Timestamp: newEarliestTimestamp,
+		ClientRoundId:    uint64(clientEarliestRoundId),
+		GatewayRoundId:   uint64(gatewayEarliestRound),
+		GatewayTimestamp: gatewayEarliestTimestamp.UnixNano(),
 	}
 
 	m.earliestRoundTracker.Store(newEarliestRound)
-
 }
 
-func (m *RegistrationImpl) GetEarliestRoundInfo() (uint64, time.Time, error) {
+func (m *RegistrationImpl) GetEarliestRoundInfo() (uint64, uint64, int64, error) {
 	earliestRound, ok := m.earliestRoundTracker.Load().(*earliestRoundTracking)
 	if !ok || earliestRound == nil {
-		return 0, time.Time{}, errors.New("Earliest round state does not exist, try again")
+		return 0, 0, 0, errors.New("Earliest round state does not exist, try again")
 	}
 
-	return earliestRound.Id, earliestRound.Timestamp, nil
+	return earliestRound.ClientRoundId,
+		earliestRound.GatewayRoundId, earliestRound.GatewayTimestamp, nil
 }

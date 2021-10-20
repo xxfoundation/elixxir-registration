@@ -26,7 +26,7 @@ type SafeParams struct {
 }
 
 // Allows for safe duplication of the current internal Params object
-func (s *SafeParams) safeCopy() Params {
+func (s *SafeParams) SafeCopy() Params {
 	s.RLock()
 	defer s.RUnlock()
 	return *s.Params
