@@ -162,8 +162,8 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 		n.ClearRound()
 
 		// Keep track of when the first node reached the completed state
-		if isFirstToComplete := r.GetFirstCompletedTs() == 0; isFirstToComplete {
-			r.SetFirstCompletedTs(time.Now().UnixNano())
+		if r.GetTopology().IsLastNode(n.GetID()) {
+			r.SetRealtimeCompletedTs(time.Now().UnixNano())
 		}
 
 		// Check if the round is ready for all the nodes
@@ -193,7 +193,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			roundTracker.RemoveActiveRound(r.GetRoundID())
 
 			// Store round metric in another thread for completed round
-			go StoreRoundMetric(roundInfo, r.GetRoundState(), r.GetFirstCompletedTs())
+			go StoreRoundMetric(roundInfo, r.GetRoundState(), r.GetRealtimeCompletedTs())
 
 			// Commit metrics about the round to storage
 			return nil
@@ -215,14 +215,14 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 }
 
 // Insert metrics about the newly-completed round into storage
-func StoreRoundMetric(roundInfo *pb.RoundInfo, realtimeEnd states.Round, completedTs int64) {
+func StoreRoundMetric(roundInfo *pb.RoundInfo, roundEnd states.Round, realtimeTs int64) {
 	metric := &storage.RoundMetric{
 		Id:            roundInfo.ID,
 		PrecompStart:  time.Unix(0, int64(roundInfo.Timestamps[states.PRECOMPUTING])),
 		PrecompEnd:    time.Unix(0, int64(roundInfo.Timestamps[states.STANDBY])),
 		RealtimeStart: time.Unix(0, int64(roundInfo.Timestamps[states.REALTIME])),
-		RealtimeEnd:   time.Unix(0, int64(roundInfo.Timestamps[realtimeEnd])),
-		RoundEnd:      time.Unix(0, completedTs),
+		RealtimeEnd:   time.Unix(0, realtimeTs),
+		RoundEnd:      time.Unix(0, int64(roundInfo.Timestamps[roundEnd])),
 		BatchSize:     roundInfo.BatchSize,
 	}
 

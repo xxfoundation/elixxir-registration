@@ -43,9 +43,9 @@ type State struct {
 
 	lastUpdate time.Time
 
-	// Keep track of the ns timestamp when the first node in the round reported completed
-	// in order to get better granularity for when rounds finished
-	firstCompletedTs int64
+	// Keep track of the ns timestamp when the last node in the round reported completed
+	// in order to get better granularity for when realtime finished
+	realtimeCompletedTs int64
 
 	mux sync.RWMutex
 }
@@ -180,13 +180,13 @@ func (s *State) GetRoundID() id.Round {
 }
 
 // Return firstCompletedTs
-func (s *State) GetFirstCompletedTs() int64 {
-	return s.firstCompletedTs
+func (s *State) GetRealtimeCompletedTs() int64 {
+	return s.realtimeCompletedTs
 }
 
 // Set firstCompletedTs
-func (s *State) SetFirstCompletedTs(ts int64) {
-	s.firstCompletedTs = ts
+func (s *State) SetRealtimeCompletedTs(ts int64) {
+	s.realtimeCompletedTs = ts
 }
 
 // Append a round error to our list of stored rounderrors
