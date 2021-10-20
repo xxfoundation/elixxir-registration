@@ -43,6 +43,10 @@ type State struct {
 
 	lastUpdate time.Time
 
+	// Keep track of the ns timestamp when the first node in the round reported completed
+	// in order to get better granularity for when rounds finished
+	firstCompletedTs int64
+
 	mux sync.RWMutex
 }
 
@@ -173,6 +177,16 @@ func (s *State) GetTopology() *connect.Circuit {
 func (s *State) GetRoundID() id.Round {
 	rid := id.Round(s.base.ID)
 	return rid
+}
+
+// Return firstCompletedTs
+func (s *State) GetFirstCompletedTs() int64 {
+	return s.firstCompletedTs
+}
+
+// Set firstCompletedTs
+func (s *State) SetFirstCompletedTs(ts int64) {
+	s.firstCompletedTs = ts
 }
 
 // Append a round error to our list of stored rounderrors

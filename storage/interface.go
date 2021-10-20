@@ -200,7 +200,8 @@ type RoundMetric struct {
 	PrecompStart  time.Time `gorm:"NOT NULL"`
 	PrecompEnd    time.Time `gorm:"NOT NULL;INDEX;"`
 	RealtimeStart time.Time `gorm:"NOT NULL"`
-	RealtimeEnd   time.Time `gorm:"NOT NULL;INDEX;"` // Index for TPS calc
+	RealtimeEnd   time.Time `gorm:"NOT NULL;INDEX;"`                        // Index for TPS calc
+	RoundEnd      time.Time `gorm:"NOT NULL;INDEX;default:to_timestamp(0)"` // Index for TPS calc
 	BatchSize     uint32    `gorm:"NOT NULL"`
 
 	// Each RoundMetric has many Nodes participating in each Round
