@@ -25,7 +25,50 @@ import (
 //		return
 //	}
 //
-//	result, err := db.GetLatestEphemeralLength()
+//	err = db.InsertRoundMetric(&RoundMetric{
+//		Id:            5,
+//		PrecompStart:  time.Now(),
+//		PrecompEnd:    time.Now(),
+//		RealtimeStart: time.Now(),
+//		RealtimeEnd:   time.Now().Add(-59*time.Minute),
+//		BatchSize:     10,
+//	}, nil)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	err = db.InsertRoundMetric(&RoundMetric{
+//		Id:            6,
+//		PrecompStart:  time.Now(),
+//		PrecompEnd:    time.Now(),
+//		RealtimeStart: time.Now(),
+//		RealtimeEnd:   time.Now().Add(-time.Hour),
+//		BatchSize:     10,
+//	}, nil)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	err = db.InsertRoundMetric(&RoundMetric{
+//		Id:            7,
+//		PrecompStart:  time.Now(),
+//		PrecompEnd:    time.Now(),
+//		RealtimeStart: time.Now(),
+//		RealtimeEnd:   time.Now().Add(-(3*time.Hour)),
+//		BatchSize:     10,
+//	}, nil)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	result, result2, err := db.GetEarliestRound(2*time.Hour)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	jww.FATAL.Printf("GetEarliestRound: %d %v", result, result2)
+//
+//	result, err = db.GetLatestEphemeralLength()
 //	if err != nil {
 //		t.Errorf(err.Error())
 //	}
@@ -345,6 +388,52 @@ func TestMapImpl_GetLatestEphemeralLengthErr(t *testing.T) {
 	result, err := m.GetLatestEphemeralLength()
 	if result != nil || err == nil {
 		t.Errorf("Expected error getting bad latest EphLen!")
+	}
+}
+
+func TestMapImpl_GetEarliestRound(t *testing.T) {
+	m := &MapImpl{roundMetrics: make(map[uint64]*RoundMetric)}
+
+	cutoff := 20 * time.Minute
+	roundId, _, err := m.GetEarliestRound(cutoff)
+	if err != nil || int(roundId) != 0 {
+		t.Errorf("Invalid return for empty roundMetrics: %+v", err)
+	}
+
+	metrics := []*RoundMetric{{
+		Id:            0,
+		PrecompStart:  time.Now(),
+		PrecompEnd:    time.Now(),
+		RealtimeStart: time.Now(),
+		RealtimeEnd:   time.Now().Add(-30 * time.Minute),
+		BatchSize:     420,
+	},
+		{
+			Id:            1,
+			PrecompStart:  time.Now(),
+			PrecompEnd:    time.Now(),
+			RealtimeStart: time.Now(),
+			RealtimeEnd:   time.Now().Add(-time.Minute),
+			BatchSize:     420,
+		},
+		{
+			Id:            2,
+			PrecompStart:  time.Now(),
+			PrecompEnd:    time.Now(),
+			RealtimeStart: time.Now(),
+			RealtimeEnd:   time.Now().Add(-10 * time.Minute),
+			BatchSize:     420,
+		},
+	}
+
+	// Insert dummy metrics
+	for _, metric := range metrics {
+		m.roundMetrics[metric.Id] = metric
+	}
+
+	roundId, _, err = m.GetEarliestRound(cutoff)
+	if err != nil || uint64(roundId) != 2 {
+		t.Errorf("Invalid return for GetEarliestRound: %d %+v", roundId, err)
 	}
 }
 

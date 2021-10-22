@@ -31,6 +31,14 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 
 	// Initialize the response
 	response := &pb.PermissionPollResponse{}
+	earliestClientRound, earliestGwRound, earliestGwRoundTs, err := m.GetEarliestRoundInfo()
+	if err != nil {
+		response.EarliestRoundErr = err.Error()
+	} else {
+		response.EarliestClientRound = earliestClientRound
+		response.EarliestGatewayRound = earliestGwRound
+		response.EarliestRoundTimestamp = earliestGwRoundTs
+	}
 
 	//do edge check to ensure the message is not nil
 	if msg == nil {
@@ -44,7 +52,7 @@ func (m *RegistrationImpl) Poll(msg *pb.PermissioningPoll, auth *connect.Auth) (
 	}
 
 	// Check for correct version
-	err := checkVersion(m.params, msg)
+	err = checkVersion(m.params, msg)
 	if err != nil {
 		return response, err
 	}

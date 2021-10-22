@@ -154,6 +154,11 @@ blockchainGeoBinning: false
 # How long offline nodes remain in the NDF. If a node is offline past this duration
 # the node is pruned from the NDF. Expects duration in"h". (Defaults to 1 week (168 hours)
 pruneRetentionLimit: "168h"
+
+# How long rounds will be tracked by gateways. Rounds (and messages as an extension) 
+# prior to this period are not guaranteed to be delivered to clients. 
+# Expects duration in"h". (Defaults to 1 weeks (168 hours)
+messageRetentionLimit: "168h"
 ```
 
 ### SchedulingConfig template:

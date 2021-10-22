@@ -63,6 +63,13 @@ type Params struct {
 	// NDF. Expects duration in"h". (Defaults to 1 week (168 hours)
 	pruneRetentionLimit time.Duration
 
+	// How long rounds will be tracked by gateways.
+	// Rounds (and messages as an extension)
+	// prior to this period are not guaranteed to be delivered to clients.
+	// Expects duration in"h". (Defaults to 1 weeks (168 hours)
+	messageRetentionLimit    time.Duration
+	messageRetentionLimitMux sync.Mutex
+
 	// Specs on rate limiting clients
 	leakedCapacity uint32
 	leakedTokens   uint32
@@ -81,4 +88,10 @@ func toGroup(grp map[string]string) (*ndf.Group, error) {
 			"(prime: %v, generator: %v", pOk, gOk)
 	}
 	return &ndf.Group{Prime: pStr, Generator: gStr}, nil
+}
+
+func (p *Params) GetMessageRetention() time.Duration {
+	p.messageRetentionLimitMux.Lock()
+	defer p.messageRetentionLimitMux.Unlock()
+	return p.messageRetentionLimit
 }
