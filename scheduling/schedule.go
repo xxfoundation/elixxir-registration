@@ -248,7 +248,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 			// Create a new round if the pool is full
 			var teamFormationThreshold uint32
 			if paramsCopy.Secure {
-				teamFormationThreshold = uint32(paramsCopy.Threshold * float64(numNodesInPool))
+				teamFormationThreshold = uint32(paramsCopy.Threshold * float64(state.CountActiveNodes()))
 			} else {
 				teamFormationThreshold = paramsCopy.TeamSize
 			}
