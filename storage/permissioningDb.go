@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/xx_network/primitives/id"
+	"time"
 )
 
 // Inserts the given State into Storage if it does not exist
@@ -110,6 +111,19 @@ func (d *DatabaseImpl) GetEphemeralLengths() ([]*EphemeralLength, error) {
 func (d *DatabaseImpl) InsertEphemeralLength(length *EphemeralLength) error {
 	jww.TRACE.Printf("Attempting to insert EphemeralLength into DB: %+v", length)
 	return d.db.Create(length).Error
+}
+
+// Get the first round that is timestamped after the given cutoff
+func (d *DatabaseImpl) GetEarliestRound(cutoff time.Duration) (id.Round, time.Time, error) {
+	var result RoundMetric
+	cutoffTs := time.Now().Add(-cutoff)
+	err := d.db.Where("? <= realtime_end", cutoffTs).Order("realtime_end ASC").Take(&result).Error
+	if err != nil {
+		return 0, time.Time{}, err
+	}
+	roundId := id.Round(result.Id)
+	jww.TRACE.Printf("Obtained EarliestRound: %d", roundId)
+	return roundId, result.RealtimeStart, nil
 }
 
 // Returns all GeoBin from Storage

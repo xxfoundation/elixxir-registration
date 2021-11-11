@@ -163,7 +163,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 
 	//begin the thread that starts rounds
 	go func() {
-		paramsCopy := params.safeCopy()
+		paramsCopy := params.SafeCopy()
 
 		lastRound := time.Now()
 		var err error
@@ -201,7 +201,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 
 	// Start receiving updates from nodes
 	for true {
-		paramsCopy := params.safeCopy()
+		paramsCopy := params.SafeCopy()
 
 		isRoundTimeout := false
 		var update node.UpdateNotification
@@ -248,7 +248,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 			// Create a new round if the pool is full
 			var teamFormationThreshold uint32
 			if paramsCopy.Secure {
-				teamFormationThreshold = uint32(paramsCopy.Threshold * float64(numNodesInPool))
+				teamFormationThreshold = uint32(paramsCopy.Threshold * float64(state.CountActiveNodes()))
 			} else {
 				teamFormationThreshold = paramsCopy.TeamSize
 			}

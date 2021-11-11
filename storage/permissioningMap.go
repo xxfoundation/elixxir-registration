@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/xx_network/primitives/id"
+	"time"
 )
 
 // Inserts the given State into Storage if it does not exist
@@ -151,6 +152,18 @@ func (m *MapImpl) InsertEphemeralLength(length *EphemeralLength) error {
 
 	m.ephemeralLengths[length.Length] = length
 	return nil
+}
+
+// Get the first round that is timestamped after the given cutoff
+func (m *MapImpl) GetEarliestRound(cutoff time.Duration) (id.Round, time.Time, error) {
+	cutoffTs := time.Now().Add(-cutoff)
+	minRound := &RoundMetric{}
+	for _, v := range m.roundMetrics {
+		if v.RealtimeEnd.After(cutoffTs) && (v.RealtimeEnd.Before(minRound.RealtimeEnd) || minRound.Id == 0) {
+			minRound = v
+		}
+	}
+	return id.Round(minRound.Id), minRound.PrecompEnd, nil
 }
 
 // Returns all GeoBin from Storage
