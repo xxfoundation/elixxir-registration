@@ -90,16 +90,6 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 				"not be moving to the %s state", update.Node, states.PRECOMPUTING)
 		}
 
-		// fixme: nodes selected from pool are assigned to precomp in start round, inherently are synced
-		//stateComplete := r.NodeIsReadyForTransition()
-		//if stateComplete {
-		//	err := r.Update(states.PRECOMPUTING, time.Now())
-		//	if err != nil {
-		//		return errors.WithMessagef(err,
-		//			"Could not move round %v from %s to %s",
-		//			r.GetRoundID(), states.PENDING, states.PRECOMPUTING)
-		//	}
-		//}
 	case current.STANDBY:
 		// Check that node in standby actually does have a round
 		if !hasRound {
@@ -170,6 +160,12 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 
 		// Clear the round
 		n.ClearRound()
+
+		// Keep track of when the first node reached the completed state
+		if r.GetTopology().IsLastNode(n.GetID()) {
+			r.SetRealtimeCompletedTs(time.Now().UnixNano())
+		}
+
 		// Check if the round is ready for all the nodes
 		// in order to transition
 		stateComplete := r.NodeIsReadyForTransition()
@@ -197,7 +193,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			roundTracker.RemoveActiveRound(r.GetRoundID())
 
 			// Store round metric in another thread for completed round
-			go StoreRoundMetric(roundInfo, states.COMPLETED)
+			go StoreRoundMetric(roundInfo, r.GetRoundState(), r.GetRealtimeCompletedTs())
 
 			// Commit metrics about the round to storage
 			return nil
@@ -219,13 +215,14 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 }
 
 // Insert metrics about the newly-completed round into storage
-func StoreRoundMetric(roundInfo *pb.RoundInfo, realtimeEnd states.Round) {
+func StoreRoundMetric(roundInfo *pb.RoundInfo, roundEnd states.Round, realtimeTs int64) {
 	metric := &storage.RoundMetric{
 		Id:            roundInfo.ID,
 		PrecompStart:  time.Unix(0, int64(roundInfo.Timestamps[states.PRECOMPUTING])),
 		PrecompEnd:    time.Unix(0, int64(roundInfo.Timestamps[states.STANDBY])),
 		RealtimeStart: time.Unix(0, int64(roundInfo.Timestamps[states.REALTIME])),
-		RealtimeEnd:   time.Unix(0, int64(roundInfo.Timestamps[realtimeEnd])),
+		RealtimeEnd:   time.Unix(0, realtimeTs),
+		RoundEnd:      time.Unix(0, int64(roundInfo.Timestamps[roundEnd])),
 		BatchSize:     roundInfo.BatchSize,
 	}
 
@@ -265,7 +262,7 @@ func killRound(state *storage.NetworkState, r *round.State,
 
 	go func() {
 		// Attempt to insert the RoundMetric for the failed round
-		StoreRoundMetric(roundInfo, states.FAILED)
+		StoreRoundMetric(roundInfo, r.GetRoundState(), 0)
 
 		// Return early if there is no roundError
 		if roundError == nil {
