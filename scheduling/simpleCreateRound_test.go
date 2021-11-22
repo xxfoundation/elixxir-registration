@@ -63,7 +63,7 @@ func TestCreateRound_Random(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 	prng := mathRand.New(mathRand.NewSource(42))
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState, prng)
+	testProtoRound, err := createSecureRound(testParams, testPool, int(testParams.TeamSize), roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -122,7 +122,7 @@ func TestCreateRound_BadOrdering(t *testing.T) {
 
 	// Invalid ordering will cause this to fail
 	prng := mathRand.New(mathRand.NewSource(42))
-	_, err = createSimpleRound(testParams, testPool, roundID, testState, prng)
+	_, err = createSimpleRound(testParams, testPool, int(testParams.TeamSize), roundID, testState, prng)
 	if err != nil {
 		return
 	}
@@ -192,7 +192,7 @@ func TestCreateSimpleRound_SemiOptimal(t *testing.T) {
 	}
 	prng := mathRand.New(mathRand.NewSource(42))
 
-	testProtoRound, err := createSimpleRound(testParams, testPool, roundID, testState, prng)
+	testProtoRound, err := createSimpleRound(testParams, testPool, int(testParams.TeamSize), roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -260,7 +260,7 @@ func TestCreateSimpleRound_SemiOptimal_BadRegion(t *testing.T) {
 	}
 	prng := mathRand.New(mathRand.NewSource(42))
 
-	_, err = createSimpleRound(testParams, testPool, roundID, testState, prng)
+	_, err = createSimpleRound(testParams, testPool, int(testParams.TeamSize), roundID, testState, prng)
 	if err != nil {
 		return
 	}

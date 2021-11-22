@@ -37,7 +37,7 @@ const (
 	timeToInactive = 3 * time.Minute
 )
 
-type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
+type roundCreator func(params Params, pool *waitingPool, threshold int, roundID id.Round,
 	state *storage.NetworkState, rng io.Reader) (protoRound, error)
 
 func ParseParams(serialParam []byte) *SafeParams {
@@ -246,13 +246,14 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 			numNodesInPool := pool.Len()
 
 			// Create a new round if the pool is full
-			var teamFormationThreshold uint32
+			var teamFormationThreshold int
+			teamSize := int(paramsCopy.TeamSize)
 			if paramsCopy.Secure {
-				teamFormationThreshold = uint32(paramsCopy.Threshold * float64(state.CountActiveNodes()))
+				teamFormationThreshold = int(paramsCopy.Threshold * float64(state.CountActiveNodes()))
 			} else {
-				teamFormationThreshold = paramsCopy.TeamSize
+				teamFormationThreshold = teamSize
 			}
-			if numNodesInPool >= int(teamFormationThreshold) && killed == nil {
+			if numNodesInPool >= teamFormationThreshold && numNodesInPool >= teamSize && killed == nil {
 
 				// Increment round ID
 				currentID, err := state.IncrementRoundID()
@@ -262,9 +263,8 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 				}
 
 				stream := rng.GetStream()
-				defer stream.Close()
-
-				newRound, err := createRound(paramsCopy, pool, currentID, state, stream)
+				newRound, err := createRound(paramsCopy, pool, teamFormationThreshold, currentID, state, stream)
+				stream.Close()
 				if err != nil {
 					return err
 				}
