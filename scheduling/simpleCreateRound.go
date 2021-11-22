@@ -22,16 +22,13 @@ import (
 
 // createSimpleRound.go builds a team for a round out of a pool and round id and places
 // this round into the network state
-func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
+func createSimpleRound(params Params, pool *waitingPool, threshold int, roundID id.Round,
 	state *storage.NetworkState, rng io.Reader) (protoRound, error) {
 
-	nodes, err := pool.PickNRandAtThreshold(int(params.TeamSize), int(params.TeamSize))
-
+	nodes, err := pool.PickNRandAtThreshold(threshold, int(params.TeamSize))
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)
 	}
-
-	var newRound protoRound
 
 	//build the topology
 
@@ -57,11 +54,13 @@ func createSimpleRound(params Params, pool *waitingPool, roundID id.Round,
 	}
 
 	// Construct the proto-round object
-	newRound.Topology = connect.NewCircuit(bestOrder)
-	newRound.ID = roundID
-	newRound.BatchSize = params.BatchSize
-	newRound.NodeStateList = nodeStateList
-	newRound.ResourceQueueTimeout = params.ResourceQueueTimeout * time.Millisecond
+	newRound := protoRound{
+		Topology:             connect.NewCircuit(bestOrder),
+		ID:                   roundID,
+		NodeStateList:        nodeStateList,
+		BatchSize:            params.BatchSize,
+		ResourceQueueTimeout: params.ResourceQueueTimeout * time.Millisecond,
+	}
 	return newRound, nil
 
 }
