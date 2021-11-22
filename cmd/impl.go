@@ -34,15 +34,16 @@ import (
 
 // The main registration instance object
 type RegistrationImpl struct {
-	Comms             *registration.Comms
-	params            *Params
-	schedulingParams  *scheduling.SafeParams
-	State             *storage.NetworkState
-	Stopped           *uint32
-	permissioningCert *x509.Certificate
-	ndfOutputPath     string
-	NdfReady          *uint32
-	certFromFile      string
+	Comms                      *registration.Comms
+	params                     *Params
+	schedulingParams           *scheduling.SafeParams
+	State                      *storage.NetworkState
+	Stopped                    *uint32
+	permissioningCert          *x509.Certificate
+	fullNdfOutputPath          string
+	signedPartialNdfOutputPath string
+	NdfReady                   *uint32
+	certFromFile               string
 
 	// registration status trackers
 	numRegistered int
@@ -125,7 +126,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	// Build default parameters
 	regImpl := &RegistrationImpl{
 		params:               &params,
-		ndfOutputPath:        params.NdfOutputPath,
+		fullNdfOutputPath:    params.FullNdfOutputPath,
 		NdfReady:             &ndfReady,
 		Stopped:              &roundCreationStopped,
 		numRegistered:        0,
@@ -197,8 +198,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// Initialize the state tracking object
-	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size),
-		params.NdfOutputPath, geoBins, whitelistedIds, whitelistedIpAddresses)
+	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size), params.FullNdfOutputPath, "", geoBins, whitelistedIds, whitelistedIpAddresses)
 	if err != nil {
 		return nil, err
 	}

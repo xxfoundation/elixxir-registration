@@ -65,7 +65,7 @@ func TestMain(m *testing.M) {
 		Address:             permAddr,
 		CertPath:            testkeys.GetCACertPath(),
 		KeyPath:             testkeys.GetCAKeyPath(),
-		NdfOutputPath:       testkeys.GetNDFPath(),
+		FullNdfOutputPath:   testkeys.GetNDFPath(),
 		publicAddress:       permAddr,
 		udbCertPath:         testkeys.GetUdbCertPath(),
 		NsCertPath:          testkeys.GetUdbCertPath(),
