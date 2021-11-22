@@ -247,12 +247,13 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 
 			// Create a new round if the pool is full
 			var teamFormationThreshold int
+			teamSize := int(paramsCopy.TeamSize)
 			if paramsCopy.Secure {
 				teamFormationThreshold = int(paramsCopy.Threshold * float64(state.CountActiveNodes()))
 			} else {
-				teamFormationThreshold = int(paramsCopy.TeamSize)
+				teamFormationThreshold = teamSize
 			}
-			if numNodesInPool >= teamFormationThreshold && killed == nil {
+			if numNodesInPool >= teamFormationThreshold && numNodesInPool >= teamSize && killed == nil {
 
 				// Increment round ID
 				currentID, err := state.IncrementRoundID()
