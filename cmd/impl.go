@@ -198,7 +198,9 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// Initialize the state tracking object
-	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size), params.FullNdfOutputPath, "", geoBins, whitelistedIds, whitelistedIpAddresses)
+	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size),
+		params.FullNdfOutputPath, params.SignedPartialNdfOutputPath,
+		geoBins, whitelistedIds, whitelistedIpAddresses)
 	if err != nil {
 		return nil, err
 	}
