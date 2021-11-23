@@ -147,14 +147,9 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 	// Select the correct round creator
 	var createRound roundCreator
 
-	// Identify which teaming algorithm we will be using
-	if params.Secure {
-		jww.INFO.Printf("Using Secure Teaming Algorithm")
-		createRound = createSecureRound
-	} else {
-		jww.INFO.Printf("Using Simple Teaming Algorithm")
-		createRound = createSimpleRound
-	}
+	// Set teaming algorithm
+	jww.INFO.Printf("Using Secure Teaming Algorithm")
+	createRound = createSecureRound
 
 	// Channel to communicate that a round has timed out
 	roundTimeoutTracker := make(chan id.Round, 1000)
@@ -248,11 +243,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 			// Create a new round if the pool is full
 			var teamFormationThreshold int
 			teamSize := int(paramsCopy.TeamSize)
-			if paramsCopy.Secure {
-				teamFormationThreshold = int(paramsCopy.Threshold * float64(state.CountActiveNodes()))
-			} else {
-				teamFormationThreshold = teamSize
-			}
+			teamFormationThreshold = int(paramsCopy.Threshold * float64(state.CountActiveNodes()))
 			if numNodesInPool >= teamFormationThreshold && numNodesInPool >= teamSize && killed == nil {
 
 				// Increment round ID

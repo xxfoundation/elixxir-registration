@@ -26,7 +26,6 @@ func TestStartRound(t *testing.T) {
 		TeamSize:            8,
 		BatchSize:           32,
 		Threshold:           0.3,
-		Secure:              false,
 		NodeCleanUpInterval: 3,
 	}
 
@@ -95,7 +94,6 @@ func TestStartRound_BadState(t *testing.T) {
 		TeamSize:            8,
 		BatchSize:           32,
 		Threshold:           0.3,
-		Secure:              false,
 		NodeCleanUpInterval: 3,
 	}
 
@@ -168,7 +166,6 @@ func TestStartRound_BadNode(t *testing.T) {
 		TeamSize:            8,
 		BatchSize:           32,
 		Threshold:           0.3,
-		Secure:              false,
 		NodeCleanUpInterval: 3,
 	}
 

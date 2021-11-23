@@ -173,7 +173,6 @@ Note: All times in MS
   "RealtimeDelay": 3000,
   "Threshold": 10,
   "NodeCleanUpInterval": 180000,  
-  "Secure": true,
   "PrecomputationTimeout": 30000,
   "RealtimeTimeout": 15000,
   "ResourceQueueTimeout": 180000,
