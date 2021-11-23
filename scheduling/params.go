@@ -34,8 +34,6 @@ func (s *SafeParams) safeCopy() Params {
 
 // JSONable structure which defines the parameters of the Scheduler
 type Params struct {
-	// selects if the secure or simple node selection algorithm is used
-	Secure bool
 	// number of nodes in a team
 	TeamSize uint32
 	// number of slots in a batch
