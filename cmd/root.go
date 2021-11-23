@@ -51,6 +51,7 @@ var (
 // Default duration between polls of the disabled Node list for updates.
 const defaultDisabledNodesPollDuration = time.Minute
 const defaultPruneRetention = 24 * 7 * time.Hour
+const defaultMessageRetention = 24 * 7 * time.Hour
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -86,6 +87,9 @@ var rootCmd = &cobra.Command{
 
 		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
 		ndfOutputPath := viper.GetString("ndfOutputPath")
+		whitelistedIdsPath := viper.GetString("whitelistedIdsPath")
+		whitelistedIpAddressesPath := viper.GetString("whitelistedIpAddressesPath")
+
 		ipAddr := viper.GetString("publicAddress")
 		// Get Notification Server address and cert Path
 		nsCertPath := viper.GetString("nsCertPath")
@@ -184,12 +188,31 @@ var rootCmd = &cobra.Command{
 		viper.SetDefault("addressSpace", 5)
 		viper.SetDefault("pruneRetentionLimit", defaultPruneRetention)
 
+		viper.SetDefault("messageRetentionLimit", defaultMessageRetention)
+
+		// Get rate limiting values
+		capacity := viper.GetUint32("RateLimiting.Capacity")
+		if capacity == 0 {
+			capacity = 1
+		}
+		leakedTokens := viper.GetUint32("RateLimiting.LeakedTokens")
+		if leakedTokens == 0 {
+			leakedTokens = 1
+		}
+		leakedDurations := viper.GetUint64("RateLimiting.LeakDuration")
+		if leakedTokens == 0 {
+			leakedDurations = 2000
+		}
+		leakedDurations = leakedDurations * uint64(time.Millisecond)
+
 		// Populate params
 		RegParams = Params{
 			Address:                   localAddress,
 			CertPath:                  certPath,
 			KeyPath:                   keyPath,
 			NdfOutputPath:             ndfOutputPath,
+			WhitelistedIdsPath:        whitelistedIdsPath,
+			WhitelistedIpAddressPath:  whitelistedIpAddressesPath,
 			NsCertPath:                nsCertPath,
 			NsAddress:                 nsAddress,
 			cmix:                      *cmix,
@@ -213,11 +236,16 @@ var rootCmd = &cobra.Command{
 			onlyScheduleActive:        viper.GetBool("onlyScheduleActive"),
 			enableBlockchain:          viper.GetBool("enableBlockchain"),
 
-			disableNDFPruning:   viper.GetBool("disableNDFPruning"),
-			geoIPDBFile:         viper.GetString("geoIPDBFile"),
-			pruneRetentionLimit: viper.GetDuration("pruneRetentionLimit"),
+			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
+			geoIPDBFile:           viper.GetString("geoIPDBFile"),
+			pruneRetentionLimit:   viper.GetDuration("pruneRetentionLimit"),
+			messageRetentionLimit: viper.GetDuration("messageRetentionLimit"),
+			versionLock:           sync.RWMutex{},
 
-			versionLock: sync.RWMutex{},
+			// Rate limiting specs
+			leakedCapacity: capacity,
+			leakedTokens:   leakedTokens,
+			leakedDuration: leakedDurations,
 		}
 
 		jww.INFO.Println("Starting Permissioning Server...")
@@ -231,7 +259,7 @@ var rootCmd = &cobra.Command{
 			jww.FATAL.Panicf(err.Error())
 		}
 
-		viper.OnConfigChange(impl.updateVersions)
+		viper.OnConfigChange(impl.update)
 		viper.WatchConfig()
 
 		// Get disabled Nodes poll duration from config file or default to 1
@@ -259,6 +287,16 @@ var rootCmd = &cobra.Command{
 		// Determine how long between storing Node metrics
 		nodeMetricInterval := time.Duration(
 			viper.GetInt64("nodeMetricInterval")) * time.Second
+
+		// Parse params JSON
+		params := scheduling.ParseParams(SchedulingConfig)
+
+		// Initialize param update if it is enabled
+		if impl.params.enableBlockchain {
+			go scheduling.UpdateParams(params, nodeMetricInterval)
+		}
+
+		impl.schedulingParams = params
 
 		// Run the Node metric tracker forever in another thread
 		metricTrackerQuitChan := make(chan struct{})
@@ -305,14 +343,6 @@ var rootCmd = &cobra.Command{
 
 		// Begin scheduling algorithm
 		go func() {
-			// Parse params JSON
-			params := scheduling.ParseParams(SchedulingConfig)
-
-			// Initialize param update if it is enabled
-			if impl.params.enableBlockchain {
-				// TODO: Set up frequency as a configuration option
-				go scheduling.UpdateParams(params, 5*time.Minute)
-			}
 
 			// Initialize scheduling
 			err = scheduling.Scheduler(params, impl.State, roundCreationQuitChan)
@@ -527,7 +557,52 @@ func initConfig() {
 	}
 }
 
-func (m *RegistrationImpl) updateVersions(in fsnotify.Event) {
+func (m *RegistrationImpl) update(in fsnotify.Event) {
+	m.updateVersions()
+	m.updateRateLimiting()
+	m.updateEarliestRound()
+
+}
+
+func (m *RegistrationImpl) updateEarliestRound() {
+	msgRetention := viper.GetDuration("messageRetentionLimit")
+	if msgRetention.Seconds() == 0 {
+		msgRetention = defaultMessageRetention
+	}
+
+	m.params.messageRetentionLimitMux.Lock()
+	m.params.messageRetentionLimit = msgRetention
+	m.params.messageRetentionLimitMux.Unlock()
+
+}
+
+func (m *RegistrationImpl) updateRateLimiting() {
+	// Get rate limiting values
+	capacity := viper.GetUint32("RateLimiting.Capacity")
+	if capacity == 0 {
+		capacity = 1
+	}
+	leakedTokens := viper.GetUint32("RateLimiting.LeakedTokens")
+	if leakedTokens == 0 {
+		leakedTokens = 1
+	}
+	leakedDurations := viper.GetUint64("RateLimiting.LeakDuration")
+	if leakedTokens == 0 {
+		leakedDurations = 2000
+	}
+	leakedDurations = leakedDurations * uint64(time.Millisecond)
+
+	m.NDFLock.Lock()
+	currentNdf := m.State.GetUnprunedNdf()
+	currentNdf.RateLimits.Capacity = uint(capacity)
+	currentNdf.RateLimits.LeakedTokens = uint(leakedTokens)
+	currentNdf.RateLimits.LeakDuration = leakedDurations
+
+	m.NDFLock.Unlock()
+
+}
+
+func (m *RegistrationImpl) updateVersions() {
 	// Parse version strings
 	clientVersion := viper.GetString("minClientVersion")
 	_, err := version.ParseVersion(clientVersion)

@@ -9,12 +9,15 @@ package cmd
 import (
 	"bytes"
 	"crypto/rand"
+	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/region"
 	"strconv"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -33,7 +36,7 @@ func TestTrackNodeMetrics(t *testing.T) {
 	testParams.pruneRetentionLimit = 24 * time.Hour
 	testParams.disableNDFPruning = false
 	// Create a new state
-	state, err := storage.NewState(getTestKey(), 8, "", region.GetCountryBins())
+	state, err := storage.NewState(getTestKey(), 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -138,8 +141,14 @@ func TestTrackNodeMetrics(t *testing.T) {
 	}
 
 	impl := &RegistrationImpl{
-		params: &testParams,
-		State:  state,
+		params:               &testParams,
+		State:                state,
+		earliestRoundTracker: atomic.Value{},
+	}
+
+	impl.schedulingParams = &scheduling.SafeParams{
+		RWMutex: sync.RWMutex{},
+		Params:  &scheduling.Params{},
 	}
 
 	go TrackNodeMetrics(impl, kill,

@@ -80,7 +80,9 @@ type NetworkState struct {
 }
 
 // NewState returns a new NetworkState object.
-func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath string, geoBins map[string]region.GeoBin) (*NetworkState, error) {
+func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
+	ndfOutputPath string, geoBins map[string]region.GeoBin,
+	whitelistedIds []string, whitelistedIpAddresses []string) (*NetworkState, error) {
 
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
@@ -182,6 +184,12 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32, ndfOutputPath
 	}
 
 	return state, nil
+}
+
+// CountActiveNodes returns a count of active nodes in the state
+// NOTE: Accounts for pruned, but not stale nodes
+func (s *NetworkState) CountActiveNodes() int {
+	return len(s.GetFullNdf().Get().Nodes)
 }
 
 // Adds pruned nodes, used by disabledNodes

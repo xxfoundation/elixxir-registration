@@ -7,6 +7,8 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/primitives/id"
+	"gitlab.com/xx_network/primitives/region"
+	"io"
 	"time"
 )
 
@@ -27,11 +29,11 @@ import (
 // We shall assume geographical distance causes latency in a naive
 //  manner, as delineated here:
 //  https://docs.google.com/document/d/1oyjIDlqC54u_eoFzQP9SVNU2IqjnQOjpUYd9aqbg5X0/edit#
-func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
-	state *storage.NetworkState) (protoRound, error) {
+func createSecureRound(params Params, pool *waitingPool, threshold int, roundID id.Round,
+	state *storage.NetworkState, rng io.Reader) (protoRound, error) {
 
 	// Pick nodes from the pool
-	nodes, err := pool.PickNRandAtThreshold(int(params.Threshold), int(params.TeamSize))
+	nodes, err := pool.PickNRandAtThreshold(threshold, int(params.TeamSize))
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)
 	}
@@ -39,7 +41,15 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 	jww.TRACE.Printf("Beginning permutations")
 	start := time.Now()
 
-	optimalTeam, err := generateSemiOptimalOrdering(nodes, state)
+	countries := make(map[id.ID]string)
+	nodeIds := make([]*id.ID, 0, len(nodes))
+	for _, n := range nodes {
+		countries[*n.GetID()] = n.GetOrdering()
+		nodeIds = append(nodeIds, n.GetID())
+	}
+
+	optimalTeam, _, err := region.OrderNodeTeam(nodeIds, countries, region.GetCountryBins(),
+		region.CreateSetLatencyTableWeights(region.CreateLinkTable()), rng)
 	if err != nil {
 		return protoRound{}, errors.WithMessage(err,
 			"Failed to generate optimal ordering")
@@ -56,24 +66,16 @@ func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
 
 // CreateProtoRound is a helper function which creates a protoround object
 func createProtoRound(params Params, state *storage.NetworkState,
-	bestOrder []*node.State, roundID id.Round) (newRound protoRound) {
+	bestOrder []*id.ID, roundID id.Round) (newRound protoRound) {
 
 	// Pull information from the best order into a nodeStateList
-	nodeIds := make([]*id.ID, params.TeamSize)
-	nodeStateList := make([]*node.State, params.TeamSize)
-	nodeMap := state.GetNodeMap()
-
-	// Pull node id's out of the bestOrder list in order to make
-	// a topology for the round
-	for i := range bestOrder {
-		nid := bestOrder[i].GetID()
-		nodeIds[i] = nid
-		n := nodeMap.GetNode(nid)
-		nodeStateList[i] = n
+	nodeStateList := make([]*node.State, 0, params.TeamSize)
+	for _, nid := range bestOrder {
+		nodeStateList = append(nodeStateList, state.GetNodeMap().GetNode(nid))
 	}
 
 	// Build the protoRound
-	newRound.Topology = connect.NewCircuit(nodeIds)
+	newRound.Topology = connect.NewCircuit(bestOrder)
 	newRound.ID = roundID
 	newRound.BatchSize = params.BatchSize
 	newRound.NodeStateList = nodeStateList

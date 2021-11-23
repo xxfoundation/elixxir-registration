@@ -14,6 +14,7 @@ import (
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/region"
+	mathRand "math/rand"
 	"testing"
 )
 
@@ -24,7 +25,7 @@ func TestStartRound(t *testing.T) {
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		Threshold:           1,
+		Threshold:           0.3,
 		NodeCleanUpInterval: 3,
 	}
 
@@ -37,7 +38,7 @@ func TestStartRound(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -66,8 +67,9 @@ func TestStartRound(t *testing.T) {
 	if err != nil {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
+	prng := mathRand.New(mathRand.NewSource(42))
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, int(testParams.Threshold*float64(testParams.TeamSize)), roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -91,7 +93,7 @@ func TestStartRound_BadState(t *testing.T) {
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		Threshold:           1,
+		Threshold:           0.3,
 		NodeCleanUpInterval: 3,
 	}
 
@@ -104,7 +106,7 @@ func TestStartRound_BadState(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -137,8 +139,9 @@ func TestStartRound_BadState(t *testing.T) {
 	// Manually set the state of the round
 	badState := round.NewState_Testing(roundID, states.COMPLETED, nil, t)
 	testState.GetRoundMap().AddRound_Testing(badState, t)
+	prng := mathRand.New(mathRand.NewSource(42))
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, int(testParams.Threshold*float64(testParams.TeamSize)), roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -159,18 +162,17 @@ func TestStartRound_BadState(t *testing.T) {
 // Error path
 func TestStartRound_BadNode(t *testing.T) {
 	// Build params for scheduling
-	// Build params for scheduling
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		Threshold:           1,
+		Threshold:           0.3,
 		NodeCleanUpInterval: 3,
 	}
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins())
+	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -200,8 +202,9 @@ func TestStartRound_BadNode(t *testing.T) {
 		t.Errorf("IncrementRoundID() failed: %+v", err)
 	}
 	badState := round.NewState_Testing(roundID, states.COMPLETED, nil, t)
+	prng := mathRand.New(mathRand.NewSource(42))
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState)
+	testProtoRound, err := createSecureRound(testParams, testPool, int(testParams.Threshold*float64(testParams.TeamSize)), roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}

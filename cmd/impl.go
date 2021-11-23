@@ -10,11 +10,13 @@ package cmd
 
 import (
 	"crypto/x509"
+	"encoding/json"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/registration"
+	"gitlab.com/elixxir/registration/scheduling"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/connect"
@@ -26,6 +28,7 @@ import (
 	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -33,6 +36,7 @@ import (
 type RegistrationImpl struct {
 	Comms             *registration.Comms
 	params            *Params
+	schedulingParams  *scheduling.SafeParams
 	State             *storage.NetworkState
 	Stopped           *uint32
 	permissioningCert *x509.Certificate
@@ -57,12 +61,20 @@ type RegistrationImpl struct {
 	geoIPDBStatus geoipStatus
 
 	NDFLock sync.Mutex
+
+	earliestRoundTracker atomic.Value
 }
 
 // function used to schedule nodes
 type SchedulingAlgorithm func(params []byte, state *storage.NetworkState) error
 
 var LoadAllRegNodes bool
+
+type earliestRoundTracking struct {
+	ClientRoundId    uint64
+	GatewayRoundId   uint64
+	GatewayTimestamp int64
+}
 
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) (*RegistrationImpl, error) {
@@ -112,13 +124,14 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Build default parameters
 	regImpl := &RegistrationImpl{
-		params:            &params,
-		ndfOutputPath:     params.NdfOutputPath,
-		NdfReady:          &ndfReady,
-		Stopped:           &roundCreationStopped,
-		numRegistered:     0,
-		beginScheduling:   make(chan struct{}, 1),
-		registrationTimes: make(map[id.ID]int64),
+		params:               &params,
+		ndfOutputPath:        params.NdfOutputPath,
+		NdfReady:             &ndfReady,
+		Stopped:              &roundCreationStopped,
+		numRegistered:        0,
+		beginScheduling:      make(chan struct{}, 1),
+		registrationTimes:    make(map[id.ID]int64),
+		earliestRoundTracker: atomic.Value{},
 	}
 
 	// If the the GeoIP2 database file is supplied, then use it to open the
@@ -148,9 +161,44 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		jww.INFO.Printf("Loaded %d GeoBins from Primitives!", len(geoBins))
 	}
 
+	whitelistedIds := make([]string, 0)
+	if regImpl.params.WhitelistedIdsPath != "" {
+
+		// Load whitelisted ID file
+		preApprovedFile, err := utils.ReadFile(regImpl.params.WhitelistedIdsPath)
+		if err != nil {
+			jww.WARN.Printf("Error while parsing WhitelistedIds Path list: %v", err)
+		} else {
+			// Unmarshal file (should be a JSON of list of IDs))
+			err = json.Unmarshal(preApprovedFile, &whitelistedIds)
+			if err != nil {
+				jww.WARN.Printf("Could not unmarshal whitelisted IDs: %v", err)
+			}
+		}
+
+	}
+
+	whitelistedIpAddresses := make([]string, 0)
+	if regImpl.params.WhitelistedIpAddressPath != "" {
+
+		// Load whitelisted IP addresses file
+		whitelistFile, err := utils.ReadFile(regImpl.params.WhitelistedIpAddressPath)
+		if err != nil {
+			jww.WARN.Printf("Cannot read whitelisted IP addresses file (%s): %v",
+				regImpl.params.WhitelistedIpAddressPath, err)
+		} else {
+			// Unmarshal file (should be a JSON of list of IDs))
+			err = json.Unmarshal(whitelistFile, &whitelistedIpAddresses)
+			if err != nil {
+				jww.WARN.Printf("Could not unmarshal whitelisted IP addresses: %v", err)
+			}
+		}
+
+	}
+
 	// Initialize the state tracking object
 	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size),
-		params.NdfOutputPath, geoBins)
+		params.NdfOutputPath, geoBins, whitelistedIds, whitelistedIpAddresses)
 	if err != nil {
 		return nil, err
 	}
@@ -197,10 +245,17 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		CMIX: RegParams.cmix,
 		// fixme: consider removing. this allows clients to remain agnostic of teaming order
 		//  by forcing team order == ndf order for simple non-random
-		Nodes:         make([]ndf.Node, 0),
-		Gateways:      make([]ndf.Gateway, 0),
-		AddressSpace:  addressSpaces,
-		ClientVersion: RegParams.minClientVersion.String(),
+		Nodes:                  make([]ndf.Node, 0),
+		Gateways:               make([]ndf.Gateway, 0),
+		AddressSpace:           addressSpaces,
+		ClientVersion:          RegParams.minClientVersion.String(),
+		WhitelistedIds:         whitelistedIds,
+		WhitelistedIpAddresses: whitelistedIpAddresses,
+		RateLimits: ndf.RateLimiting{
+			Capacity:     uint(regImpl.params.leakedCapacity),
+			LeakedTokens: uint(regImpl.params.leakedTokens),
+			LeakDuration: regImpl.params.leakedDuration,
+		},
 	}
 
 	// Assemble notification server information if configured
@@ -404,4 +459,25 @@ func NewImplementation(instance *RegistrationImpl) *registration.Implementation 
 	}
 
 	return impl
+}
+
+func (m *RegistrationImpl) UpdateEarliestRound(clientEarliestRoundId,
+	gatewayEarliestRound id.Round, gatewayEarliestTimestamp time.Time) {
+	newEarliestRound := &earliestRoundTracking{
+		ClientRoundId:    uint64(clientEarliestRoundId),
+		GatewayRoundId:   uint64(gatewayEarliestRound),
+		GatewayTimestamp: gatewayEarliestTimestamp.UnixNano(),
+	}
+
+	m.earliestRoundTracker.Store(newEarliestRound)
+}
+
+func (m *RegistrationImpl) GetEarliestRoundInfo() (uint64, uint64, int64, error) {
+	earliestRound, ok := m.earliestRoundTracker.Load().(*earliestRoundTracking)
+	if !ok || earliestRound == nil {
+		return 0, 0, 0, errors.New("Earliest round state does not exist, try again")
+	}
+
+	return earliestRound.ClientRoundId,
+		earliestRound.GatewayRoundId, earliestRound.GatewayTimestamp, nil
 }

@@ -26,7 +26,7 @@ type SafeParams struct {
 }
 
 // Allows for safe duplication of the current internal Params object
-func (s *SafeParams) safeCopy() Params {
+func (s *SafeParams) SafeCopy() Params {
 	s.RLock()
 	defer s.RUnlock()
 	return *s.Params
@@ -56,9 +56,8 @@ type Params struct {
 	DebugTrackRounds bool
 
 	//SECURE ONLY
-	// sets the minimum number of nodes in the waiting pool before secure teaming
-	// wil create a team
-	Threshold uint32
+	// Minimum percentage of nodes in the waiting pool before secure teaming wil create a team
+	Threshold float64
 }
 
 //internal structure which describes a round to be created

@@ -12,11 +12,16 @@ import (
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
+	"gitlab.com/elixxir/crypto/fastRNG"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/comms/signature"
+	"gitlab.com/xx_network/crypto/csprng"
 	"gitlab.com/xx_network/primitives/id"
+	"io"
+	"runtime"
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -32,8 +37,8 @@ const (
 	timeToInactive = 3 * time.Minute
 )
 
-type roundCreator func(params Params, pool *waitingPool, roundID id.Round,
-	state *storage.NetworkState) (protoRound, error)
+type roundCreator func(params Params, pool *waitingPool, threshold int, roundID id.Round,
+	state *storage.NetworkState, rng io.Reader) (protoRound, error)
 
 func ParseParams(serialParam []byte) *SafeParams {
 	// Parse params JSON
@@ -98,23 +103,27 @@ func UpdateParams(params *SafeParams, updateFreq time.Duration) {
 			continue
 		}
 		newParams[storage.AdvertisementTimeout] = realtimeDelay
-		threshold, err := storage.PermissioningDb.GetStateInt(storage.PoolThreshold)
+		valueStr, err := storage.PermissioningDb.GetStateValue(storage.PoolThreshold)
 		if err != nil {
-			jww.ERROR.Printf(err.Error())
+			jww.ERROR.Printf("Unable to find %s: %+v", storage.PoolThreshold, err)
 			continue
 		}
-		newParams[storage.PoolThreshold] = threshold
+		threshold, err := strconv.ParseFloat(valueStr, 64)
+		if err != nil {
+			jww.ERROR.Printf("Unable to decode %s: %+v", valueStr, err)
+			continue
+		}
 
 		jww.INFO.Printf("Preparing to update scheduling params...")
 		params.Lock()
-		jww.INFO.Printf("Updating scheduling params: %+v", newParams)
+		jww.INFO.Printf("Updating scheduling params: %+v, %s: %f", newParams, storage.PoolThreshold, threshold)
 		params.TeamSize = uint32(teamSize)
 		params.BatchSize = uint32(batchSize)
 		params.PrecomputationTimeout = time.Duration(precompTimeout)
 		params.RealtimeTimeout = time.Duration(realtimeTimeout)
 		params.MinimumDelay = time.Duration(minDelay)
 		params.RealtimeDelay = time.Duration(realtimeDelay)
-		params.Threshold = uint32(threshold)
+		params.Threshold = threshold
 		params.Unlock()
 
 		time.Sleep(updateFreq)
@@ -125,6 +134,9 @@ func UpdateParams(params *SafeParams, updateFreq time.Duration) {
 // Scheduler is a utility function which builds a round by handling a node's
 // state changes then creating a team from the nodes in the pool
 func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan chan struct{}) error {
+
+	rng := fastRNG.NewStreamGenerator(10000,
+		uint(runtime.NumCPU()), csprng.NewSystemRNG)
 
 	// Pool which tracks nodes which are not in a team
 	pool := NewWaitingPool()
@@ -146,7 +158,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 
 	//begin the thread that starts rounds
 	go func() {
-		paramsCopy := params.safeCopy()
+		paramsCopy := params.SafeCopy()
 
 		lastRound := time.Now()
 		var err error
@@ -184,7 +196,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 
 	// Start receiving updates from nodes
 	for true {
-		paramsCopy := params.safeCopy()
+		paramsCopy := params.SafeCopy()
 
 		isRoundTimeout := false
 		var update node.UpdateNotification
@@ -229,10 +241,10 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 			numNodesInPool := pool.Len()
 
 			// Create a new round if the pool is full
-			var teamFormationThreshold uint32
-			teamFormationThreshold = paramsCopy.Threshold
-
-			if numNodesInPool >= int(teamFormationThreshold) && killed == nil {
+			var teamFormationThreshold int
+			teamSize := int(paramsCopy.TeamSize)
+			teamFormationThreshold = int(paramsCopy.Threshold * float64(state.CountActiveNodes()))
+			if numNodesInPool >= teamFormationThreshold && numNodesInPool >= teamSize && killed == nil {
 
 				// Increment round ID
 				currentID, err := state.IncrementRoundID()
@@ -241,11 +253,12 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 					return err
 				}
 
-				newRound, err := createRound(paramsCopy, pool, currentID, state)
+				stream := rng.GetStream()
+				newRound, err := createRound(paramsCopy, pool, teamFormationThreshold, currentID, state, stream)
+				stream.Close()
 				if err != nil {
 					return err
 				}
-
 				// Send the round to the new round channel to be created
 				newRoundChan <- newRound
 			} else {

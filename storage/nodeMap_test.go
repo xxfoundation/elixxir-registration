@@ -24,7 +24,7 @@ func TestMapImpl_InsertApplication(t *testing.T) {
 	applicationId := uint64(10)
 	newNode := &Node{
 		Code:          "TEST",
-		Sequence:      region.Americas.String(),
+		Sequence:      region.NorthAmerica.String(),
 		ApplicationId: applicationId,
 	}
 	newApplication := &Application{Id: applicationId}
@@ -259,7 +259,7 @@ func TestMapImpl_UpdateSequence(t *testing.T) {
 		nodes: make(map[string]*Node),
 	}
 
-	testString := region.Americas.String()
+	testString := region.NorthAmerica.String()
 	testId := id.NewIdFromString(testString, id.Node, t)
 	testResult := "newAddr"
 	m.nodes[testString] = &Node{

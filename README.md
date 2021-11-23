@@ -19,6 +19,20 @@ logPath: "registration.log"
 # Path to the node topology permissioning info
 ndfOutputPath: "ndf.json"
 
+# Path to JSON containing list of IDs exempt from rate limiting
+whitelistedIdsPath: "whitelistedIds.json"
+
+# Path to JSON containing list of IP addresses exempt from rate limiting
+whitelistedIpAddressesPath: "whitelistedIpAddresses.json"
+
+# Specs on how to rate limit clients
+RateLimiting:
+  Capacity: 1
+  LeakedTokens: 1
+  # Duration is in miliseconds
+  LeakDuration: 1
+
+
 # Minimum number of nodes to begin running rounds. This differs from the number
 # of members in a team because some scheduling algorithms may require multiple
 # teams worth of nodes at minimum.
@@ -58,7 +72,6 @@ disableNDFPruning: true
 # disables the rejection of nodes and gateways with internal 
 # or reserved IPs. For use within local environment or integration testing. 
 permissiveIPChecking: false
-
 
 # Database connection information
 dbUsername: "cmix"
@@ -141,6 +154,11 @@ blockchainGeoBinning: false
 # How long offline nodes remain in the NDF. If a node is offline past this duration
 # the node is pruned from the NDF. Expects duration in"h". (Defaults to 1 week (168 hours)
 pruneRetentionLimit: "168h"
+
+# How long rounds will be tracked by gateways. Rounds (and messages as an extension) 
+# prior to this period are not guaranteed to be delivered to clients. 
+# Expects duration in"h". (Defaults to 1 weeks (168 hours)
+messageRetentionLimit: "168h"
 ```
 
 ### SchedulingConfig template:

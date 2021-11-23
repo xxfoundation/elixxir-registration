@@ -75,7 +75,14 @@ func (m *RegistrationImpl) setNodeSequence(n *node.State, nodeIpAddr string) err
 		return errors.Errorf(setDbSequenceErr, n.GetID(), countryCode)
 	}
 
-	err = storage.PermissioningDb.UpdateGeoIP(n.GetAppID(), fmt.Sprintf("%s, %s", city, countryName), geobin.String(), gps)
+	// Generate the location string (exclude city if none is found)
+	location := countryName
+	if city != "" {
+		location = city + ", " + location
+	}
+
+	err = storage.PermissioningDb.UpdateGeoIP(
+		n.GetAppID(), location, geobin.String(), gps)
 
 	// Set the state ordering
 	n.SetOrdering(countryCode)

@@ -60,7 +60,7 @@ func (s *Storage) GetStateInt(key string) (uint64, error) {
 	}
 	value, err := strconv.ParseUint(valueStr, 10, 64)
 	if err != nil {
-		return 0, errors.Errorf("Unable to decode %s: %+v", key, err)
+		return 0, errors.Errorf("Unable to decode %s: %+v", valueStr, err)
 	}
 	return value, nil
 }
