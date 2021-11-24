@@ -171,7 +171,7 @@ Note: All times in MS
   "BatchSize": 64,
   "MinimumDelay": 60,
   "RealtimeDelay": 3000,
-  "Threshold": 10,
+  "Threshold": 0.3,
   "NodeCleanUpInterval": 180000,  
   "PrecomputationTimeout": 30000,
   "RealtimeTimeout": 15000,
