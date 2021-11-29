@@ -32,7 +32,7 @@ func TestRegistrationImpl_updateAddressSpace(t *testing.T) {
 	}
 
 	// Create a new state
-	state, err := storage.NewState(getTestKey(), 8, "", region.GetCountryBins(), nil, nil)
+	state, err := storage.NewState(getTestKey(), 8, "", "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -94,7 +94,7 @@ func TestRegistrationImpl_updateAddressSpace_NoUpdates(t *testing.T) {
 	}
 
 	// Create a new state
-	state, err := storage.NewState(getTestKey(), 8, "", region.GetCountryBins(), nil, nil)
+	state, err := storage.NewState(getTestKey(), 8, "", "", region.GetCountryBins(), nil, nil)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}

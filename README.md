@@ -16,8 +16,12 @@ logLevel: 1
 # Path to log file
 logPath: "registration.log"
 
-# Path to the node topology permissioning info
-ndfOutputPath: "ndf.json"
+# Path to the node topology permissioning info. Contains the full NDF.
+fullNdfOutputPath: "ndf.json"
+
+# Path to the signed partial ndf uploaded to the Internet for clients
+# to pull from.
+signedPartialNDFOutputPath: "signedPartial.txt"
 
 # Path to JSON containing list of IDs exempt from rate limiting
 whitelistedIdsPath: "whitelistedIds.json"
