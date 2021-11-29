@@ -25,8 +25,7 @@ func TestStartRound(t *testing.T) {
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		Threshold:           1,
-		Secure:              false,
+		Threshold:           0.3,
 		NodeCleanUpInterval: 3,
 	}
 
@@ -70,7 +69,7 @@ func TestStartRound(t *testing.T) {
 	}
 	prng := mathRand.New(mathRand.NewSource(42))
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState, prng)
+	testProtoRound, err := createSecureRound(testParams, testPool, int(testParams.Threshold*float64(testParams.TeamSize)), roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -94,8 +93,7 @@ func TestStartRound_BadState(t *testing.T) {
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		Threshold:           1,
-		Secure:              false,
+		Threshold:           0.3,
 		NodeCleanUpInterval: 3,
 	}
 
@@ -143,7 +141,7 @@ func TestStartRound_BadState(t *testing.T) {
 	testState.GetRoundMap().AddRound_Testing(badState, t)
 	prng := mathRand.New(mathRand.NewSource(42))
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState, prng)
+	testProtoRound, err := createSecureRound(testParams, testPool, int(testParams.Threshold*float64(testParams.TeamSize)), roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}
@@ -164,12 +162,10 @@ func TestStartRound_BadState(t *testing.T) {
 // Error path
 func TestStartRound_BadNode(t *testing.T) {
 	// Build params for scheduling
-	// Build params for scheduling
 	testParams := Params{
 		TeamSize:            8,
 		BatchSize:           32,
-		Threshold:           1,
-		Secure:              false,
+		Threshold:           0.3,
 		NodeCleanUpInterval: 3,
 	}
 
@@ -208,7 +204,7 @@ func TestStartRound_BadNode(t *testing.T) {
 	badState := round.NewState_Testing(roundID, states.COMPLETED, nil, t)
 	prng := mathRand.New(mathRand.NewSource(42))
 
-	testProtoRound, err := createSecureRound(testParams, testPool, roundID, testState, prng)
+	testProtoRound, err := createSecureRound(testParams, testPool, int(testParams.Threshold*float64(testParams.TeamSize)), roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Happy path of createSimpleRound failed: %v", err)
 	}

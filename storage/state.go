@@ -195,9 +195,11 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 }
 
 // CountActiveNodes returns a count of active nodes in the state
-// NOTE: Accounts for pruned, but not stale nodes
 func (s *NetworkState) CountActiveNodes() int {
-	return len(s.GetFullNdf().Get().Nodes)
+	s.pruneListMux.Lock()
+	defer s.pruneListMux.Unlock()
+
+	return len(s.unprunedNdf.Nodes) - len(s.pruneList)
 }
 
 // Adds pruned nodes, used by disabledNodes

@@ -409,10 +409,11 @@ var rootCmd = &cobra.Command{
 			}
 			stopOnce.Do(stopRounds)
 			stopForKillOnce.Do(stopForKill)
+			impl.Comms.Shutdown()
 		}
 		ReceiveUSR2Signal(stopEverything)
 
-		// Block forever on Signal Handler for safe program exit
+		// Open Signal Handler for safe program exit
 		stopCh := ReceiveExitSignal()
 
 		// Block forever to prevent the program ending
