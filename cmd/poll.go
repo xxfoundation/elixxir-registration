@@ -422,7 +422,8 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 				params := connect.GetDefaultHostParams()
 				params.AuthEnabled = false
 				jww.INFO.Printf("Checking connectivity, adding empty gateway...")
-				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), nil, params)
+				nDb, err := storage.PermissioningDb.GetNodeById(n.GetID())
+				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), []byte(nDb.GatewayCertificate), params)
 				jww.INFO.Printf("Checking connectivity successful")
 				//ping the gateway
 				_, isOnline = gwHost.IsOnline()
