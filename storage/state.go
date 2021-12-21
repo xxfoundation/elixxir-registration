@@ -88,8 +88,7 @@ type NetworkState struct {
 // NewState returns a new NetworkState object.
 func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 	fullNdfOutputPath string, signedPartialNdfOutputPath string,
-	geoBins map[string]region.GeoBin,
-	whitelistedIds []string, whitelistedIpAddresses []string) (*NetworkState, error) {
+	geoBins map[string]region.GeoBin) (*NetworkState, error) {
 
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {

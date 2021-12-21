@@ -72,8 +72,9 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 				err = json.Unmarshal(whitelistedIpAddressesFile, &whitelistedIpAddresses)
 				if err != nil {
 					jww.ERROR.Printf("Could not unmarshal whitelisted IP addresses: %v", err)
+				} else {
+					jww.INFO.Printf("Added whitelisted IPs: %+v", whitelistedIpAddresses)
 				}
-
 			}
 
 			// Keep track of stale/pruned nodes

@@ -181,7 +181,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	whitelistedIpAddresses := make([]string, 0)
 	if regImpl.params.WhitelistedIpAddressPath != "" {
-
 		// Load whitelisted IP addresses file
 		whitelistFile, err := utils.ReadFile(regImpl.params.WhitelistedIpAddressPath)
 		if err != nil {
@@ -192,6 +191,8 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 			err = json.Unmarshal(whitelistFile, &whitelistedIpAddresses)
 			if err != nil {
 				jww.WARN.Printf("Could not unmarshal whitelisted IP addresses: %v", err)
+			} else {
+				jww.INFO.Printf("Added whitelisted IPs: %+v", whitelistedIpAddresses)
 			}
 		}
 
@@ -199,8 +200,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Initialize the state tracking object
 	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size),
-		params.FullNdfOutputPath, params.SignedPartialNdfOutputPath,
-		geoBins, whitelistedIds, whitelistedIpAddresses)
+		params.FullNdfOutputPath, params.SignedPartialNdfOutputPath, geoBins)
 	if err != nil {
 		return nil, err
 	}
