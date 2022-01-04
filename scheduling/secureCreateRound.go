@@ -29,11 +29,11 @@ import (
 // We shall assume geographical distance causes latency in a naive
 //  manner, as delineated here:
 //  https://docs.google.com/document/d/1oyjIDlqC54u_eoFzQP9SVNU2IqjnQOjpUYd9aqbg5X0/edit#
-func createSecureRound(params Params, pool *waitingPool, roundID id.Round,
+func createSecureRound(params Params, pool *waitingPool, threshold int, roundID id.Round,
 	state *storage.NetworkState, rng io.Reader) (protoRound, error) {
 
 	// Pick nodes from the pool
-	nodes, err := pool.PickNRandAtThreshold(int(params.Threshold), int(params.TeamSize))
+	nodes, err := pool.PickNRandAtThreshold(threshold, int(params.TeamSize))
 	if err != nil {
 		return protoRound{}, errors.Errorf("Failed to pick random node group: %v", err)
 	}

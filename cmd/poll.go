@@ -421,7 +421,8 @@ func (m *RegistrationImpl) checkConnectivity(n *node.State, nodeIpAddr string,
 				gwID.SetType(id.Gateway)
 				params := connect.GetDefaultHostParams()
 				params.AuthEnabled = false
-				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), nil, params)
+				nDb, err := storage.PermissioningDb.GetNodeById(n.GetID())
+				gwHost, err := connect.NewHost(gwID, n.GetGatewayAddress(), []byte(nDb.GatewayCertificate), params)
 
 				//ping the gateway
 				_, isOnline = gwHost.IsOnline()

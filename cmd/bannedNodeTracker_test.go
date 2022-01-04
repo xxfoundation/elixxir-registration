@@ -29,7 +29,7 @@ func TestBannedNodeTracker(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
+	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins())
 	impl := &RegistrationImpl{
 		State:   testState,
 		NDFLock: sync.Mutex{},

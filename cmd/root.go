@@ -86,7 +86,8 @@ var rootCmd = &cobra.Command{
 		keyPath := viper.GetString("keyPath")
 
 		localAddress := fmt.Sprintf("0.0.0.0:%d", viper.GetInt("port"))
-		ndfOutputPath := viper.GetString("ndfOutputPath")
+		fullNdfOutputPath := viper.GetString("fullNdfOutputPath")
+		signedPartialNdfOutputPath := viper.GetString("signedPartialNDFOutputPath")
 		whitelistedIdsPath := viper.GetString("whitelistedIdsPath")
 		whitelistedIpAddressesPath := viper.GetString("whitelistedIpAddressesPath")
 
@@ -207,34 +208,35 @@ var rootCmd = &cobra.Command{
 
 		// Populate params
 		RegParams = Params{
-			Address:                   localAddress,
-			CertPath:                  certPath,
-			KeyPath:                   keyPath,
-			NdfOutputPath:             ndfOutputPath,
-			WhitelistedIdsPath:        whitelistedIdsPath,
-			WhitelistedIpAddressPath:  whitelistedIpAddressesPath,
-			NsCertPath:                nsCertPath,
-			NsAddress:                 nsAddress,
-			cmix:                      *cmix,
-			e2e:                       *e2e,
-			publicAddress:             publicAddress,
-			clientRegistrationAddress: clientRegistration,
-			schedulingKillTimeout:     schedulingKillTimeout,
-			closeTimeout:              closeTimeout,
-			minimumNodes:              viper.GetUint32("minimumNodes"),
-			udbId:                     udbId,
-			udbDhPubKey:               udbDhPubKey,
-			udbCertPath:               udbCertPath,
-			udbAddress:                udbAddress,
-			minGatewayVersion:         minGatewayVersion,
-			minServerVersion:          minServerVersion,
-			minClientVersion:          minClientVersion,
-			addressSpaceSize:          uint8(viper.GetUint("addressSpace")),
-			allowLocalIPs:             viper.GetBool("allowLocalIPs"),
-			disableGeoBinning:         viper.GetBool("disableGeoBinning"),
-			blockchainGeoBinning:      viper.GetBool("blockchainGeoBinning"),
-			onlyScheduleActive:        viper.GetBool("onlyScheduleActive"),
-			enableBlockchain:          viper.GetBool("enableBlockchain"),
+			Address:                    localAddress,
+			CertPath:                   certPath,
+			KeyPath:                    keyPath,
+			FullNdfOutputPath:          fullNdfOutputPath,
+			SignedPartialNdfOutputPath: signedPartialNdfOutputPath,
+			WhitelistedIdsPath:         whitelistedIdsPath,
+			WhitelistedIpAddressPath:   whitelistedIpAddressesPath,
+			NsCertPath:                 nsCertPath,
+			NsAddress:                  nsAddress,
+			cmix:                       *cmix,
+			e2e:                        *e2e,
+			publicAddress:              publicAddress,
+			clientRegistrationAddress:  clientRegistration,
+			schedulingKillTimeout:      schedulingKillTimeout,
+			closeTimeout:               closeTimeout,
+			minimumNodes:               viper.GetUint32("minimumNodes"),
+			udbId:                      udbId,
+			udbDhPubKey:                udbDhPubKey,
+			udbCertPath:                udbCertPath,
+			udbAddress:                 udbAddress,
+			minGatewayVersion:          minGatewayVersion,
+			minServerVersion:           minServerVersion,
+			minClientVersion:           minClientVersion,
+			addressSpaceSize:           uint8(viper.GetUint("addressSpace")),
+			allowLocalIPs:              viper.GetBool("allowLocalIPs"),
+			disableGeoBinning:          viper.GetBool("disableGeoBinning"),
+			blockchainGeoBinning:       viper.GetBool("blockchainGeoBinning"),
+			onlyScheduleActive:         viper.GetBool("onlyScheduleActive"),
+			enableBlockchain:           viper.GetBool("enableBlockchain"),
 
 			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
 			geoIPDBFile:           viper.GetString("geoIPDBFile"),
@@ -407,10 +409,11 @@ var rootCmd = &cobra.Command{
 			}
 			stopOnce.Do(stopRounds)
 			stopForKillOnce.Do(stopForKill)
+			impl.Comms.Shutdown()
 		}
 		ReceiveUSR2Signal(stopEverything)
 
-		// Block forever on Signal Handler for safe program exit
+		// Open Signal Handler for safe program exit
 		stopCh := ReceiveExitSignal()
 
 		// Block forever to prevent the program ending

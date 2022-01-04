@@ -6,12 +6,6 @@ cache:
   paths:
     - vendor/
 
-variables:
-  REPO_DIR: gitlab.com/elixxir
-  REPO_NAME: registration
-  DOCKER_IMAGE: elixxirlabs/cuda-go:go1.16-cuda11.1
-  MIN_CODE_COVERAGE: "0.0"
-
 before_script:
   - go version || echo "Go executable not found."
   - echo $CI_BUILD_REF

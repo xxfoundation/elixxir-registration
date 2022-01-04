@@ -26,6 +26,7 @@ import (
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
+	"google.golang.org/protobuf/proto"
 	"strconv"
 	"strings"
 	"sync"
@@ -69,7 +70,12 @@ type NetworkState struct {
 	// Address space size
 	addressSpaceSize *uint32
 
-	ndfOutputPath string
+	// Output path to the full ndf
+	fullNdfOutputPath string
+
+	// Output path to the signed partial ndf provided to client
+	// by uploading the file
+	signedPartialNdfOutputPath string
 
 	// round adder buffer channel
 	roundUpdatesToAddCh chan *dataStructures.Round
@@ -81,8 +87,8 @@ type NetworkState struct {
 
 // NewState returns a new NetworkState object.
 func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
-	ndfOutputPath string, geoBins map[string]region.GeoBin,
-	whitelistedIds []string, whitelistedIpAddresses []string) (*NetworkState, error) {
+	fullNdfOutputPath string, signedPartialNdfOutputPath string,
+	geoBins map[string]region.GeoBin) (*NetworkState, error) {
 
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
@@ -94,19 +100,20 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 	}
 
 	state := &NetworkState{
-		rounds:              round.NewStateMap(),
-		roundUpdates:        dataStructures.NewUpdates(),
-		update:              make(chan node.UpdateNotification, updateBufferLength),
-		nodes:               node.NewStateMap(),
-		unprunedNdf:         &ndf.NetworkDefinition{},
-		fullNdf:             fullNdf,
-		partialNdf:          partialNdf,
-		rsaPrivateKey:       rsaPrivKey,
-		addressSpaceSize:    &addressSpaceSize,
-		pruneList:           make(map[id.ID]bool),
-		ndfOutputPath:       ndfOutputPath,
-		roundUpdatesToAddCh: make(chan *dataStructures.Round, 500),
-		geoBins:             geoBins,
+		rounds:                     round.NewStateMap(),
+		roundUpdates:               dataStructures.NewUpdates(),
+		update:                     make(chan node.UpdateNotification, updateBufferLength),
+		nodes:                      node.NewStateMap(),
+		unprunedNdf:                &ndf.NetworkDefinition{},
+		fullNdf:                    fullNdf,
+		partialNdf:                 partialNdf,
+		rsaPrivateKey:              rsaPrivKey,
+		addressSpaceSize:           &addressSpaceSize,
+		pruneList:                  make(map[id.ID]bool),
+		fullNdfOutputPath:          fullNdfOutputPath,
+		signedPartialNdfOutputPath: signedPartialNdfOutputPath,
+		roundUpdatesToAddCh:        make(chan *dataStructures.Round, 500),
+		geoBins:                    geoBins,
 	}
 
 	//begin the thread that reads and adds round updates
@@ -187,9 +194,11 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 }
 
 // CountActiveNodes returns a count of active nodes in the state
-// NOTE: Accounts for pruned, but not stale nodes
 func (s *NetworkState) CountActiveNodes() int {
-	return len(s.GetFullNdf().Get().Nodes)
+	s.pruneListMux.Lock()
+	defer s.pruneListMux.Unlock()
+
+	return len(s.unprunedNdf.Nodes) - len(s.pruneList)
 }
 
 // Adds pruned nodes, used by disabledNodes
@@ -399,9 +408,26 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 		return err
 	}
 
-	err = outputToJSON(newNdf, s.ndfOutputPath)
+	// Output full NDF to file
+	err = outputToJSON(newNdf, s.fullNdfOutputPath)
 	if err != nil {
-		jww.ERROR.Printf("unable to output NDF JSON file: %+v", err)
+		jww.ERROR.Printf("unable to output full NDF JSON file: %+v", err)
+	}
+
+	// Marshal signed partial NDF
+	signedPartialNdfMarshal, err := proto.Marshal(s.partialNdf.GetPb())
+	if err != nil {
+		jww.ERROR.Printf("unable to marshal partial ndf")
+	}
+
+	// Base64 encode the signed marshaled NDF
+	signedPartialEncoded := base64.StdEncoding.EncodeToString(signedPartialNdfMarshal)
+
+	// Output signed partial ndf to file
+	err = utils.WriteFile(s.signedPartialNdfOutputPath,
+		[]byte(signedPartialEncoded), utils.FilePerms, utils.DirPerms)
+	if err != nil {
+		jww.ERROR.Printf("unable to output signed partial NDF to file: %+v", err)
 	}
 
 	jww.INFO.Printf("Full NDF updated to: %s", base64.StdEncoding.EncodeToString(s.fullNdf.GetHash()))

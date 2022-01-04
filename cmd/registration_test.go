@@ -14,6 +14,7 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/testkeys"
+	"gitlab.com/xx_network/comms/connect"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/utils"
 	"os"
@@ -35,6 +36,9 @@ var dblck sync.Mutex
 
 func TestMain(m *testing.M) {
 	jww.SetStdoutThreshold(jww.LevelDebug)
+
+	connect.TestingOnlyDisableTLS = true
+
 	var err error
 	nodeCert, err = utils.ReadFile(testkeys.GetNodeCertPath())
 	if err != nil {
@@ -65,7 +69,7 @@ func TestMain(m *testing.M) {
 		Address:             permAddr,
 		CertPath:            testkeys.GetCACertPath(),
 		KeyPath:             testkeys.GetCAKeyPath(),
-		NdfOutputPath:       testkeys.GetNDFPath(),
+		FullNdfOutputPath:   testkeys.GetNDFPath(),
 		publicAddress:       permAddr,
 		udbCertPath:         testkeys.GetUdbCertPath(),
 		NsCertPath:          testkeys.GetUdbCertPath(),

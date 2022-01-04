@@ -21,14 +21,14 @@ func TestCreateRound(t *testing.T) {
 	testParams := Params{
 		TeamSize:            9,
 		BatchSize:           32,
-		Threshold:           1,
+		Threshold:           0.3,
 		NodeCleanUpInterval: 3,
 	}
 
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
+	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -58,7 +58,7 @@ func TestCreateRound(t *testing.T) {
 
 	prng := mathRand.New(mathRand.NewSource(42))
 
-	_, err = createSecureRound(testParams, testpool, roundID, testState, prng)
+	_, err = createSecureRound(testParams, testpool, int(testParams.Threshold*float64(testParams.TeamSize)), roundID, testState, prng)
 	if err != nil {
 		t.Errorf("Error in happy path: %v", err)
 	}
@@ -78,7 +78,7 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
+	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -108,7 +108,7 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 	}
 	prng := mathRand.New(mathRand.NewSource(42))
 
-	_, err = createSecureRound(testParams, testpool, roundID, testState, prng)
+	_, err = createSecureRound(testParams, testpool, int(testParams.Threshold*float64(testParams.TeamSize)), roundID, testState, prng)
 	if err != nil {
 		return
 	}
@@ -132,7 +132,7 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", region.GetCountryBins(), nil, nil)
+	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -162,7 +162,7 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 	}
 	prng := mathRand.New(mathRand.NewSource(42))
 
-	_, err = createSecureRound(testParams, testpool, roundID, testState, prng)
+	_, err = createSecureRound(testParams, testpool, int(testParams.Threshold*float64(testParams.TeamSize)), roundID, testState, prng)
 	if err != nil {
 		return
 	}
