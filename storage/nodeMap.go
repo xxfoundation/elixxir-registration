@@ -43,6 +43,12 @@ func (m *MapImpl) InsertApplication(application *Application, unregisteredNode *
 	return nil
 }
 
+// Get Application information for the given Node ID
+func (m *MapImpl) GetApplication(id *id.ID) (*Application, error) {
+	// TODO
+	return nil, nil
+}
+
 // Update the given applicationId with the given GeoIP information
 func (m *MapImpl) UpdateGeoIP(appId uint64, location, geoBin, gpsLocation string) error {
 	if app, ok := m.applications[appId]; ok {

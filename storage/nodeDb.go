@@ -5,11 +5,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Handles the DatabaseImpl for node-related functionality
-//+build !stateless
+//go:build !stateless
+// +build !stateless
 
 package storage
 
 import (
+	"github.com/jinzhu/gorm"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage/node"
@@ -21,6 +23,28 @@ import (
 func (d *DatabaseImpl) InsertApplication(application *Application, unregisteredNode *Node) error {
 	application.Node = *unregisteredNode
 	return d.db.Create(application).Error
+}
+
+// Get Application information for the given Node ID
+func (d *DatabaseImpl) GetApplication(id *id.ID) (*Application, error) {
+	result := &Application{}
+
+	// Build a transaction to prevent race conditions
+	return result, d.db.Transaction(func(tx *gorm.DB) error {
+		newNode := &Node{}
+		err := d.db.Take(&newNode, "id = ?", id.Marshal()).Error
+		if err != nil {
+			return err
+		}
+
+		err = d.db.Take(&result, "id = ?", newNode.ApplicationId).Error
+		if err != nil {
+			return err
+		}
+
+		// Commit
+		return nil
+	})
 }
 
 // Update the address fields for the Node with the given id

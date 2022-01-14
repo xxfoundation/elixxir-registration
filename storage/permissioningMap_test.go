@@ -131,15 +131,17 @@ import (
 //	testId2 := id.NewIdFromString(testCode2, id.Node, t)
 //	testAppId := uint64(10010)
 //	newApp := &Application{
-//		Id:          testAppId,
-//		Node:        Node{},
-//		Name:        testCode,
+//		Id:       testAppId,
+//		Node:     Node{},
+//		Name:     testCode,
+//		Location: "zimbabwe",
 //	}
 //	newNode := &Node{
-//		Code:               testCode,
-//		Sequence:           testCode,
-//		Status:             0,
-//		ApplicationId:      testAppId,
+//		Code:          testCode,
+//		Id:            testId.Bytes(),
+//		Sequence:      testCode,
+//		Status:        0,
+//		ApplicationId: testAppId,
 //	}
 //
 //	err = db.InsertApplication(newApp, newNode)
@@ -147,6 +149,13 @@ import (
 //		t.Errorf(err.Error())
 //		return
 //	}
+//
+//	result, err := db.GetApplication(testId)
+//	if err != nil {
+//		t.Errorf(err.Error())
+//		return
+//	}
+//	jww.INFO.Printf("%+v", result)
 //	err = db.RegisterNode(testId, nil,
 //		testCode, "5.5.5.5", "test", "5.6.7.7", "test")
 //	if err != nil {
