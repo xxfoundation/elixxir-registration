@@ -10,6 +10,7 @@ import (
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/region"
+	"reflect"
 	"testing"
 )
 
@@ -39,6 +40,71 @@ func TestMapImpl_InsertApplication(t *testing.T) {
 		t.Errorf("Order string incorret; Expected: %s, Recieved: %s",
 			newNode.Sequence, m.nodes[newNode.Code].Sequence)
 	}
+}
+
+// Happy path
+func TestMapImpl_GetApplication(t *testing.T) {
+	// Construct map impl
+	m := &MapImpl{
+		nodes:        make(map[string]*Node),
+		applications: make(map[uint64]*Application),
+	}
+
+	// Generate application
+	appId := uint64(24)
+
+	testApp := &Application{
+		Id:    appId,
+		Node:  Node{},
+		Name:  "josh",
+		Url:   "elixxir.io",
+		Blurb: "wow",
+	}
+
+	// Create node
+	testId := id.NewIdFromString("josh", id.Node, t)
+	newNode := &Node{
+		Code:          "TEST",
+		Sequence:      region.MiddleEast.String(),
+		ApplicationId: appId,
+		Id:            testId.Bytes(),
+	}
+
+	// Insert application and node into map impl
+	err := m.InsertApplication(testApp, newNode)
+	if err != nil {
+		t.Fatalf("Failed to insert application: %v", err)
+	}
+
+	// Pull application from map
+	received, err := m.GetApplication(testId)
+	if err != nil {
+		t.Fatalf("Could not pull application from map: %v", err)
+	}
+
+	// Ensure consistency between application pulled from map
+	if !reflect.DeepEqual(received, testApp) {
+		t.Fatalf("Unexpected")
+	}
+
+}
+
+// Error path
+func TestMapImpl_GetApplication_Invalid(t *testing.T) {
+	// Construct map impl
+	m := &MapImpl{
+		nodes:        make(map[string]*Node),
+		applications: make(map[uint64]*Application),
+	}
+
+	testId := id.NewIdFromString("doesNotExist", id.Node, t)
+
+	// Pull application not inserted in map
+	_, err := m.GetApplication(testId)
+	if err == nil {
+		t.Fatalf("Could not pull application from map: %v", err)
+	}
+
 }
 
 // Error Path: Duplicate node registration code and application

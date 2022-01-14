@@ -45,8 +45,19 @@ func (m *MapImpl) InsertApplication(application *Application, unregisteredNode *
 
 // Get Application information for the given Node ID
 func (m *MapImpl) GetApplication(id *id.ID) (*Application, error) {
-	// TODO
-	return nil, nil
+	m.mut.Lock()
+	defer m.mut.Unlock()
+
+	n, err := m.getNodeById(id)
+	if err != nil {
+		return nil, err
+	}
+
+	app, exists := m.applications[n.ApplicationId]
+	if !exists {
+		return nil, errors.New(fmt.Sprintf("Unable to find application associated with node ID %s", id))
+	}
+	return app, nil
 }
 
 // Update the given applicationId with the given GeoIP information
@@ -158,6 +169,10 @@ func (m *MapImpl) GetNodeById(id *id.ID) (*Node, error) {
 	m.mut.Lock()
 	defer m.mut.Unlock()
 
+	return m.getNodeById(id)
+}
+
+func (m *MapImpl) getNodeById(id *id.ID) (*Node, error) {
 	for _, v := range m.nodes {
 		if bytes.Compare(v.Id, id.Marshal()) == 0 {
 			return v, nil
