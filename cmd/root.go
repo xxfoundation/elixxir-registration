@@ -135,8 +135,14 @@ var rootCmd = &cobra.Command{
 				"normal in live deployments")
 		}
 
+		contactPath := viper.GetString("udContactPath")
+		contactFile, err := utils.ReadFile(contactPath)
+		if err != nil {
+			jww.FATAL.Panicf("Failed to read contact file at %q: %+v", contactPath, err)
+		}
+
 		// Get user discovery ID and DH public key from contact file
-		udbId, udbDhPubKey := readUdContact(viper.GetString("udContactPath"))
+		udbId, udbDhPubKey := contact.ReadContactFromFile(contactFile)
 
 		// Get UDB cert path and address
 		udbCertPath := viper.GetString("udbCertPath")
@@ -690,30 +696,3 @@ func initLog() {
 		}
 	}
 }
-
-// readUdContact reads and unmarshal the contact from file and returns the
-// marshaled ID and DH public key.
-func readUdContact(filePath string) ([]byte, []byte) {
-	if filePath == "" {
-		return nil, nil
-	}
-
-	data, err := utils.ReadFile(filePath)
-	if err != nil {
-		jww.FATAL.Panicf("Failed to read contact file: %+v", err)
-	}
-
-	c, err := contact.Unmarshal(data)
-	if err != nil {
-		jww.FATAL.Panicf("Failed to unmarshal contact: %+v", err)
-	}
-
-	dhPubKeyJson, err := c.DhPubKey.MarshalJSON()
-	if err != nil {
-		jww.FATAL.Panicf("Failed to marshal contact DH public key: %+v", err)
-	}
-
-	return c.ID.Marshal(), dhPubKeyJson
-}
-
-//
