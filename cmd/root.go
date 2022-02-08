@@ -138,11 +138,14 @@ var rootCmd = &cobra.Command{
 		contactPath := viper.GetString("udContactPath")
 		contactFile, err := utils.ReadFile(contactPath)
 		if err != nil {
-			jww.FATAL.Panicf("Failed to read contact file at %q: %+v", contactPath, err)
+			jww.FATAL.Panicf("Failed to read contact file path at %q: %+v", contactPath, err)
 		}
 
 		// Get user discovery ID and DH public key from contact file
-		udbId, udbDhPubKey := contact.ReadContactFromFile(contactFile)
+		udbId, udbDhPubKey, err := contact.ReadContactFromFile(contactFile)
+		if err != nil {
+			jww.FATAL.Panicf("Failed to read contact file: %+v", contactPath, err)
+		}
 
 		// Get UDB cert path and address
 		udbCertPath := viper.GetString("udbCertPath")
