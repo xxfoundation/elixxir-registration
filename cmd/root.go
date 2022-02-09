@@ -144,7 +144,7 @@ var rootCmd = &cobra.Command{
 		// Get user discovery ID and DH public key from contact file
 		udbId, udbDhPubKey, err := contact.ReadContactFromFile(contactFile)
 		if err != nil {
-			jww.FATAL.Panicf("Failed to read contact file: %+v", contactPath, err)
+			jww.FATAL.Panicf("Failed to read contact file path %q: %+v", contactPath, err)
 		}
 
 		// Get UDB cert path and address
