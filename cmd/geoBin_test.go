@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2022 xx foundation                                             //
+// Copyright © 2020 xx network SEZC                                           //
 //                                                                            //
 // Use of this source code is governed by a license that can be found in the  //
-// LICENSE file.                                                              //
+// LICENSE file                                                               //
 ////////////////////////////////////////////////////////////////////////////////
 
 package cmd
 
 import (
+	"github.com/oschwald/geoip2-golang"
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"

@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2022 xx foundation                                             //
+// Copyright © 2020 xx network SEZC                                           //
 //                                                                            //
 // Use of this source code is governed by a license that can be found in the  //
-// LICENSE file.                                                              //
+// LICENSE file                                                               //
 ////////////////////////////////////////////////////////////////////////////////
 
 package cmd
@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"sync/atomic"
 
+	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage"

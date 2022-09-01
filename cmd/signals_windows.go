@@ -1,11 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2022 xx foundation                                             //
-//                                                                            //
-// Use of this source code is governed by a license that can be found in the  //
-// LICENSE file.                                                              //
+// Copyright © 2018 Privategrity Corporation                                   /
+//                                                                             /
+// All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
-//go:build windows
 // +build windows
 
 // signals.go handles signals specific to the permissioning server:

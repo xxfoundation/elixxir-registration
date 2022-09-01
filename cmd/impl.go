@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2022 xx foundation                                             //
-//                                                                            //
-// Use of this source code is governed by a license that can be found in the  //
-// LICENSE file.                                                              //
+// Copyright © 2020 Privategrity Corporation                                   /
+//                                                                             /
+// All rights reserved.                                                        /
 ////////////////////////////////////////////////////////////////////////////////
 
 // Handles creating the impl and params objects for the server
@@ -12,6 +11,7 @@ package cmd
 import (
 	"crypto/x509"
 	"encoding/json"
+	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	pb "gitlab.com/elixxir/comms/mixmessages"
