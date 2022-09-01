@@ -12,6 +12,7 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
+	"testing"
 )
 
 // Tests that RegistrationImpl.setNodeSequence assigns the correct geographic bin for
