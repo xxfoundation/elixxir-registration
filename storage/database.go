@@ -1,11 +1,13 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2018 Privategrity Corporation                                   /
-//                                                                             /
-// All rights reserved.                                                        /
+// Copyright © 2022 xx foundation                                             //
+//                                                                            //
+// Use of this source code is governed by a license that can be found in the  //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
 // Handles Database backend functionality
-//+build !stateless
+//go:build !stateless
+// +build !stateless
 
 package storage
 
