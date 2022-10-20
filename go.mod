@@ -17,7 +17,7 @@ require (
 	gitlab.com/elixxir/primitives v0.0.3-0.20220222212109-d412a6e46623
 	gitlab.com/xx_network/comms v0.0.4-0.20220223205228-7c4974139569
 	gitlab.com/xx_network/crypto v0.0.5-0.20220222212031-750f7e8a01f4
-	gitlab.com/xx_network/primitives v0.0.4-0.20221020182835-0a942267659d
+	gitlab.com/xx_network/primitives v0.0.4-0.20221020212333-71142ae6e940
 	google.golang.org/protobuf v1.27.1
 )
 
