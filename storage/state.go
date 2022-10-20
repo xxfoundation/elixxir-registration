@@ -25,7 +25,6 @@ import (
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
-	"gitlab.com/xx_network/primitives/netTime"
 	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"google.golang.org/protobuf/proto"
@@ -353,7 +352,7 @@ func (s *NetworkState) RoundAdderRoutine() {
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
-	newNdf.Timestamp = netTime.Now()
+	newNdf.Timestamp = time.Now()
 	s.unprunedNdf = newNdf.DeepCopy()
 
 	s.pruneListMux.RLock()
