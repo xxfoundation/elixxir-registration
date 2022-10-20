@@ -354,7 +354,7 @@ func (s *NetworkState) RoundAdderRoutine() {
 // UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	newNdf.Timestamp = netTime.Now()
-	s.unprunedNdf = newNdf
+	s.unprunedNdf = newNdf.DeepCopy()
 
 	s.pruneListMux.RLock()
 	//prune the NDF
