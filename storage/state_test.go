@@ -252,8 +252,6 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 
 // Tests that UpdateNdf() updates fullNdf and partialNdf correctly.
 func TestNetworkState_UpdateNdf(t *testing.T) {
-	var err error
-
 	// Expected values
 	testNDF := &ndf.NetworkDefinition{}
 
