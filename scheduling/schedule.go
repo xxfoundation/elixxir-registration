@@ -160,16 +160,8 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 	go func() {
 		paramsCopy := params.SafeCopy()
 
-		lastRound := time.Now()
 		var err error
-		minRoundDelay := paramsCopy.MinimumDelay * time.Millisecond
 		for newRound := range newRoundChan {
-
-			// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
-			if timeDiff := time.Now().Sub(lastRound); timeDiff < minRoundDelay {
-				time.Sleep(minRoundDelay - timeDiff)
-			}
-			lastRound = time.Now()
 
 			ourRound, err := startRound(newRound, state, roundTracker)
 			if err != nil {
@@ -193,6 +185,8 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 	if params.DebugTrackRounds {
 		go trackRounds(state, pool, roundTracker, &iterationsCount)
 	}
+
+	var lastRealtime *time.Time
 
 	// Start receiving updates from nodes
 	for true {
@@ -229,7 +223,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 			// Handle the node's state change
 			err = HandleNodeUpdates(update, pool, state,
 				paramsCopy.RealtimeDelay*time.Millisecond, roundTracker, roundTimeoutTracker,
-				paramsCopy.RealtimeTimeout*time.Millisecond)
+				paramsCopy.RealtimeTimeout*time.Millisecond, lastRealtime)
 			if err != nil {
 				return err
 			}

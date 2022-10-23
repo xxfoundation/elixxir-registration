@@ -29,7 +29,7 @@ import (
 //   before the round is updated.
 func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state *storage.NetworkState,
 	realtimeDelay time.Duration, roundTracker *RoundTracker, roundTimeoutChan chan id.Round,
-	realtimeTimeout time.Duration) error {
+	realtimeTimeout time.Duration, lastRealtime *time.Time) error {
 	// Check the round's error state
 	n := state.GetNodeMap().GetNode(update.Node)
 	// when a node poll is received, the nodes polling lock is taken.  If there
@@ -114,8 +114,15 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			go waitForRoundTimeout(roundTimeoutChan, state, r,
 				realtimeTimeout, "realtime")
 
+			startTime := time.Now()
+			if (*lastRealtime).Sub(startTime) < realtimeDelay {
+				startTime = (*lastRealtime).Add(realtimeDelay)
+			}
+
+			lastRealtime = &startTime
+
 			// Update the round for realtime transition
-			err = r.Update(states.QUEUED, time.Now().Add(realtimeDelay))
+			err = r.Update(states.QUEUED, startTime)
 
 			if err != nil {
 				return errors.WithMessagef(err,
