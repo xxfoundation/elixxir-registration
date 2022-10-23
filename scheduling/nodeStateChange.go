@@ -28,7 +28,7 @@ import (
 //  A node in completed waits for all other nodes in the team to transition
 //   before the round is updated.
 func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state *storage.NetworkState,
-	realtimeDelay time.Duration, roundTracker *RoundTracker, roundTimeoutChan chan id.Round,
+	realtimeDelay, realtimeDelta time.Duration, roundTracker *RoundTracker, roundTimeoutChan chan id.Round,
 	realtimeTimeout time.Duration, lastRealtime *time.Time) error {
 	// Check the round's error state
 	n := state.GetNodeMap().GetNode(update.Node)
@@ -114,9 +114,9 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			go waitForRoundTimeout(roundTimeoutChan, state, r,
 				realtimeTimeout, "realtime")
 
-			startTime := time.Now()
-			if (*lastRealtime).Sub(startTime) < realtimeDelay {
-				startTime = (*lastRealtime).Add(realtimeDelay)
+			startTime := time.Now().Add(realtimeDelay)
+			if (*lastRealtime).Sub(startTime) < realtimeDelta {
+				startTime = (*lastRealtime).Add(realtimeDelta)
 			}
 
 			lastRealtime = &startTime
