@@ -186,14 +186,21 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 		go trackRounds(state, pool, roundTracker, &iterationsCount)
 	}
 
-	var lastRealtime *time.Time
+	paramsCopy := params.SafeCopy()
+
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    paramsCopy.MinimumDelay * time.Millisecond,
+		realtimeDelta:    paramsCopy.RealtimeDelay * time.Millisecond,
+		realtimeTimeout:  paramsCopy.RealtimeTimeout * time.Millisecond,
+		pool:             pool,
+		state:            state,
+		roundTracker:     roundTracker,
+		roundTimeoutChan: roundTimeoutTracker,
+	}
 
 	// Start receiving updates from nodes
 	for true {
-		paramsCopy := params.SafeCopy()
-		minRoundDelay := paramsCopy.MinimumDelay * time.Millisecond
-		realtimeDelay := paramsCopy.RealtimeDelay * time.Millisecond
-		realtimeTimeout := paramsCopy.RealtimeTimeout * time.Millisecond
 
 		isRoundTimeout := false
 		var update node.UpdateNotification
@@ -224,9 +231,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 			var err error
 
 			// Handle the node's state change
-			err = HandleNodeUpdates(update, pool, state, realtimeDelay,
-				minRoundDelay, roundTracker, roundTimeoutTracker,
-				realtimeTimeout, lastRealtime)
+			err = sc.HandleNodeUpdates(update)
 			if err != nil {
 				return err
 			}
