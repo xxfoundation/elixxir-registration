@@ -115,8 +115,9 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 				realtimeTimeout, "realtime")
 
 			startTime := time.Now().Add(realtimeDelay)
-			if (*lastRealtime).Sub(startTime) < realtimeDelta {
-				startTime = (*lastRealtime).Add(realtimeDelta)
+			nextRoundMinimum := (*lastRealtime).Add(realtimeDelta)
+			if nextRoundMinimum.Before(startTime) {
+				startTime = nextRoundMinimum
 			}
 
 			lastRealtime = &startTime

@@ -191,6 +191,9 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 	// Start receiving updates from nodes
 	for true {
 		paramsCopy := params.SafeCopy()
+		minRoundDelay := paramsCopy.MinimumDelay * time.Millisecond
+		realtimeDelay := paramsCopy.RealtimeDelay * time.Millisecond
+		realtimeTimeout := paramsCopy.RealtimeTimeout * time.Millisecond
 
 		isRoundTimeout := false
 		var update node.UpdateNotification
@@ -221,9 +224,9 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 			var err error
 
 			// Handle the node's state change
-			err = HandleNodeUpdates(update, pool, state,
-				paramsCopy.RealtimeDelay*time.Millisecond, roundTracker, roundTimeoutTracker,
-				paramsCopy.RealtimeTimeout*time.Millisecond, lastRealtime)
+			err = HandleNodeUpdates(update, pool, state, realtimeDelay,
+				minRoundDelay, roundTracker, roundTimeoutTracker,
+				realtimeTimeout, lastRealtime)
 			if err != nil {
 				return err
 			}
