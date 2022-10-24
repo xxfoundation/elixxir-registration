@@ -158,10 +158,19 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 
 	//begin the thread that starts rounds
 	go func() {
-		paramsCopy := params.SafeCopy()
 
+		lastRound := time.Now()
+
+		paramsCopy := params.SafeCopy()
+		minRoundDelay := paramsCopy.MinimumDelay * time.Millisecond
 		var err error
 		for newRound := range newRoundChan {
+
+			// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
+			if timeDiff := time.Now().Sub(lastRound); timeDiff < minRoundDelay {
+				time.Sleep(minRoundDelay - timeDiff)
+			}
+			lastRound = time.Now()
 
 			ourRound, err := startRound(newRound, state, roundTracker)
 			if err != nil {
