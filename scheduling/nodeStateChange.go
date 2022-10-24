@@ -131,7 +131,7 @@ func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error 
 
 			startTime := time.Now().Add(sc.realtimeDelay)
 			nextRoundMinimum := sc.lastRealtime.Add(sc.realtimeDelta)
-			if nextRoundMinimum.Before(startTime) {
+			if nextRoundMinimum.After(startTime) {
 				startTime = nextRoundMinimum
 			}
 
