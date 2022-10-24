@@ -162,7 +162,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 		lastRound := time.Now()
 
 		paramsCopy := params.SafeCopy()
-		minRoundDelay := paramsCopy.MinimumDelay * time.Millisecond
+		minRoundDelay := (paramsCopy.MinimumDelay * time.Millisecond)/3
 		var err error
 		for newRound := range newRoundChan {
 
@@ -199,8 +199,8 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 
 	sc := &stateChanger{
 		lastRealtime:     time.Unix(0, 0),
-		realtimeDelay:    paramsCopy.MinimumDelay * time.Millisecond,
-		realtimeDelta:    paramsCopy.RealtimeDelay * time.Millisecond,
+		realtimeDelay:    paramsCopy.RealtimeDelay * time.Millisecond,
+		realtimeDelta:    paramsCopy.MinimumDelay * time.Millisecond,
 		realtimeTimeout:  paramsCopy.RealtimeTimeout * time.Millisecond,
 		pool:             pool,
 		state:            state,
