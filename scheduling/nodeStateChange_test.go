@@ -73,8 +73,18 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 	roundTracker := NewRoundTracker()
 	timeoutCh := make(chan id.Round, 1)
 
-	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-		roundTracker, timeoutCh, 15*time.Second)
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    0,
+		realtimeDelta:    0,
+		realtimeTimeout:  15 * time.Second,
+		pool:             testPool,
+		state:            testState,
+		roundTracker:     roundTracker,
+		roundTimeoutChan: timeoutCh,
+	}
+
+	err = sc.HandleNodeUpdates(testUpdate)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
@@ -132,8 +142,18 @@ func TestHandleNodeStateChance_Waiting_SetNodeToOnline(t *testing.T) {
 	roundTracker := NewRoundTracker()
 	timeoutCh := make(chan id.Round, 1)
 
-	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-		roundTracker, timeoutCh, 15*time.Second)
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    0,
+		realtimeDelta:    0,
+		realtimeTimeout:  15 * time.Second,
+		pool:             testPool,
+		state:            testState,
+		roundTracker:     roundTracker,
+		roundTimeoutChan: timeoutCh,
+	}
+
+	err = sc.HandleNodeUpdates(testUpdate)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
@@ -196,8 +216,19 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 
 		timeoutCh := make(chan id.Round, 1)
 
-		err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-			testTracker, timeoutCh, 15*time.Second)
+		sc := &stateChanger{
+			lastRealtime:     time.Unix(0, 0),
+			realtimeDelay:    0,
+			realtimeDelta:    0,
+			realtimeTimeout:  15 * time.Second,
+			pool:             testPool,
+			state:            testState,
+			roundTracker:     testTracker,
+			roundTimeoutChan: timeoutCh,
+		}
+
+		err = sc.HandleNodeUpdates(testUpdate)
+
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
 		}
@@ -214,8 +245,18 @@ func TestHandleNodeStateChance_Standby(t *testing.T) {
 
 		testState.GetNodeMap().GetNode(nodeList[i]).GetPollingLock().Lock()
 		timeoutCh := make(chan id.Round, 1)
-		err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-			nil, timeoutCh, 15*time.Second)
+		sc := &stateChanger{
+			lastRealtime:     time.Unix(0, 0),
+			realtimeDelay:    0,
+			realtimeDelta:    0,
+			realtimeTimeout:  15 * time.Second,
+			pool:             testPool,
+			state:            testState,
+			roundTracker:     nil,
+			roundTimeoutChan: timeoutCh,
+		}
+
+		err = sc.HandleNodeUpdates(testUpdate)
 		if err != nil {
 			t.Errorf("Error in standby happy path: %v", err)
 		}
@@ -270,8 +311,18 @@ func TestHandleNodeStateChance_Standby_NoRound(t *testing.T) {
 		testTracker := NewRoundTracker()
 		timeoutCh := make(chan id.Round, 1)
 
-		err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-			testTracker, timeoutCh, 15*time.Second)
+		sc := &stateChanger{
+			lastRealtime:     time.Unix(0, 0),
+			realtimeDelay:    0,
+			realtimeDelta:    0,
+			realtimeTimeout:  15 * time.Second,
+			pool:             testPool,
+			state:            testState,
+			roundTracker:     testTracker,
+			roundTimeoutChan: timeoutCh,
+		}
+
+		err = sc.HandleNodeUpdates(testUpdate)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
 		}
@@ -337,8 +388,18 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 
 		timeoutCh := make(chan id.Round, 1)
 
-		err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-			testTracker, timeoutCh, 15*time.Second)
+		sc := &stateChanger{
+			lastRealtime:     time.Unix(0, 0),
+			realtimeDelay:    0,
+			realtimeDelta:    0,
+			realtimeTimeout:  15 * time.Second,
+			pool:             testPool,
+			state:            testState,
+			roundTracker:     testTracker,
+			roundTimeoutChan: timeoutCh,
+		}
+
+		err = sc.HandleNodeUpdates(testUpdate)
 		if err != nil {
 			t.Errorf("Waiting pool is full for %d: %v", i, err)
 		}
@@ -357,8 +418,18 @@ func TestHandleNodeUpdates_Completed(t *testing.T) {
 
 		timeoutCh := make(chan id.Round, 1)
 
-		err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-			testTracker, timeoutCh, 15*time.Second)
+		sc := &stateChanger{
+			lastRealtime:     time.Unix(0, 0),
+			realtimeDelay:    0,
+			realtimeDelta:    0,
+			realtimeTimeout:  15 * time.Second,
+			pool:             testPool,
+			state:            testState,
+			roundTracker:     testTracker,
+			roundTimeoutChan: timeoutCh,
+		}
+
+		err = sc.HandleNodeUpdates(testUpdate)
 		if err != nil {
 			t.Errorf("Expected happy path for completed: %v", err)
 		}
@@ -407,8 +478,18 @@ func TestHandleNodeUpdates_Completed_NoRound(t *testing.T) {
 
 		timeoutCh := make(chan id.Round, 1)
 
-		err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-			testTracker, timeoutCh, 15*time.Second)
+		sc := &stateChanger{
+			lastRealtime:     time.Unix(0, 0),
+			realtimeDelay:    0,
+			realtimeDelta:    0,
+			realtimeTimeout:  15 * time.Second,
+			pool:             testPool,
+			state:            testState,
+			roundTracker:     testTracker,
+			roundTimeoutChan: timeoutCh,
+		}
+
+		err = sc.HandleNodeUpdates(testUpdate)
 		if err == nil {
 			t.Errorf("Expected error for %d was not received. Node should not have round", i)
 		}
@@ -475,8 +556,18 @@ func TestHandleNodeUpdates_Error(t *testing.T) {
 
 	timeoutCh := make(chan id.Round, 1)
 
-	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-		testTracker, timeoutCh, 15*time.Second)
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    0,
+		realtimeDelta:    0,
+		realtimeTimeout:  15 * time.Second,
+		pool:             testPool,
+		state:            testState,
+		roundTracker:     testTracker,
+		roundTimeoutChan: timeoutCh,
+	}
+
+	err = sc.HandleNodeUpdates(testUpdate)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
@@ -521,15 +612,24 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 		Node:     nodeList[0],
 		ToStatus: node.Banned,
 	}
-	testTracker := NewRoundTracker()
 
 	// Ban the first node in the state map
 	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
 	roundTracker := NewRoundTracker()
 	timeoutCh := make(chan id.Round, 1)
 
-	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-		roundTracker, timeoutCh, 15*time.Second)
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    0,
+		realtimeDelta:    0,
+		realtimeTimeout:  15 * time.Second,
+		pool:             testPool,
+		state:            testState,
+		roundTracker:     roundTracker,
+		roundTimeoutChan: timeoutCh,
+	}
+
+	err = sc.HandleNodeUpdates(testUpdate)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
@@ -560,8 +660,7 @@ func TestHandleNodeUpdates_BannedNode(t *testing.T) {
 	// Ban the the second node in the state map
 	testState.GetNodeMap().GetNode(nodeList[1]).GetPollingLock().Lock()
 
-	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-		testTracker, timeoutCh, 15*time.Second)
+	err = sc.HandleNodeUpdates(testUpdate)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
@@ -670,8 +769,18 @@ func TestHandleNodeUpdates_Precomputing_RoundError(t *testing.T) {
 	roundTracker := NewRoundTracker()
 	timeoutCh := make(chan id.Round, 1)
 
-	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-		roundTracker, timeoutCh, 15*time.Second)
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    0,
+		realtimeDelta:    0,
+		realtimeTimeout:  15 * time.Second,
+		pool:             testPool,
+		state:            testState,
+		roundTracker:     roundTracker,
+		roundTimeoutChan: timeoutCh,
+	}
+
+	err = sc.HandleNodeUpdates(testUpdate)
 	if err == nil {
 		t.Errorf("HandleNodeUpdates() did not produce the expected error when"+
 			"there is no round.\n\texpected: %v\n\treceived: %v",
@@ -726,8 +835,18 @@ func TestHandleNodeUpdates_Realtime(t *testing.T) {
 	roundTracker := NewRoundTracker()
 	timeoutCh := make(chan id.Round, 1)
 
-	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-		roundTracker, timeoutCh, 15*time.Second)
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    0,
+		realtimeDelta:    0,
+		realtimeTimeout:  15 * time.Second,
+		pool:             testPool,
+		state:            testState,
+		roundTracker:     roundTracker,
+		roundTimeoutChan: timeoutCh,
+	}
+
+	err = sc.HandleNodeUpdates(testUpdate)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}
@@ -775,8 +894,18 @@ func TestHandleNodeUpdates_Realtime_RoundError(t *testing.T) {
 	roundTracker := NewRoundTracker()
 	timeoutCh := make(chan id.Round, 1)
 
-	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-		roundTracker, timeoutCh, 15*time.Second)
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    0,
+		realtimeDelta:    0,
+		realtimeTimeout:  15 * time.Second,
+		pool:             testPool,
+		state:            testState,
+		roundTracker:     roundTracker,
+		roundTimeoutChan: timeoutCh,
+	}
+
+	err = sc.HandleNodeUpdates(testUpdate)
 	if err == nil {
 		t.Errorf("HandleNodeUpdates() did not produce the expected error when"+
 			"there is no round.\n\texpected: %v\n\treceived: %v",
@@ -835,8 +964,18 @@ func TestHandleNodeUpdates_Realtime_UpdateError(t *testing.T) {
 	roundTracker := NewRoundTracker()
 	timeoutCh := make(chan id.Round, 1)
 
-	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-		roundTracker, timeoutCh, 15*time.Second)
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    0,
+		realtimeDelta:    0,
+		realtimeTimeout:  15 * time.Second,
+		pool:             testPool,
+		state:            testState,
+		roundTracker:     roundTracker,
+		roundTimeoutChan: timeoutCh,
+	}
+
+	err = sc.HandleNodeUpdates(testUpdate)
 	if err == nil {
 		t.Errorf("HandleNodeUpdates() did not produce the expected error."+
 			"\n\texpected: %v\n\treceived: %v",
@@ -891,8 +1030,18 @@ func TestHandleNodeUpdates_RoundErrored(t *testing.T) {
 	roundTracker := NewRoundTracker()
 	timeoutCh := make(chan id.Round, 1)
 
-	err = HandleNodeUpdates(testUpdate, testPool, testState, 0,
-		roundTracker, timeoutCh, 15*time.Second)
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    0,
+		realtimeDelta:    0,
+		realtimeTimeout:  15 * time.Second,
+		pool:             testPool,
+		state:            testState,
+		roundTracker:     roundTracker,
+		roundTimeoutChan: timeoutCh,
+	}
+
+	err = sc.HandleNodeUpdates(testUpdate)
 	if err != nil {
 		t.Errorf("Expected no error return!")
 	}
@@ -930,9 +1079,18 @@ func TestHandleNodeUpdates_NOT_STARTED(t *testing.T) {
 
 	testState.GetNodeMap().GetNode(nodeList[0]).GetPollingLock().Lock()
 	timeoutCh := make(chan id.Round, 1)
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    0,
+		realtimeDelta:    0,
+		realtimeTimeout:  15 * time.Second,
+		pool:             nil,
+		state:            testState,
+		roundTracker:     nil,
+		roundTimeoutChan: timeoutCh,
+	}
 
-	err = HandleNodeUpdates(testUpdate, nil, testState, 0,
-		nil, timeoutCh, 15*time.Second)
+	err = sc.HandleNodeUpdates(testUpdate)
 	if err != nil {
 		t.Errorf("Happy path received error: %v", err)
 	}

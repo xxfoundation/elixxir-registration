@@ -22,16 +22,31 @@ import (
 	"time"
 )
 
+type stateChanger struct {
+	lastRealtime time.Time
+
+	realtimeDelay time.Duration
+	realtimeDelta time.Duration
+
+	realtimeTimeout time.Duration
+
+	pool *waitingPool
+
+	state *storage.NetworkState
+
+	roundTracker *RoundTracker
+
+	roundTimeoutChan chan id.Round
+}
+
 // HandleNodeUpdates handles the node state changes.
 //  A node in waiting is added to the pool in preparation for precomputing.
 //  A node in standby is added to a round in preparation for realtime.
 //  A node in completed waits for all other nodes in the team to transition
 //   before the round is updated.
-func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state *storage.NetworkState,
-	realtimeDelay time.Duration, roundTracker *RoundTracker, roundTimeoutChan chan id.Round,
-	realtimeTimeout time.Duration) error {
+func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error {
 	// Check the round's error state
-	n := state.GetNodeMap().GetNode(update.Node)
+	n := sc.state.GetNodeMap().GetNode(update.Node)
 	// when a node poll is received, the nodes polling lock is taken.  If there
 	// is no update, it is released in the endpoint, otherwise it is released
 	// here which blocks all future polls until processing completes
@@ -57,14 +72,14 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 				NodeId: id.Permissioning.Marshal(),
 				Error:  fmt.Sprintf("Round killed due to particiption of banned node %s", update.Node),
 			}
-			err := signature.SignRsa(banError, state.GetPrivateKey())
+			err := signature.SignRsa(banError, sc.state.GetPrivateKey())
 			if err != nil {
 				return errors.Errorf("Failed to sign error message for banned node %s: %+v", update.Node, err)
 			}
 			n.ClearRound()
-			return killRound(state, r, banError, roundTracker)
+			return killRound(sc.state, r, banError, sc.roundTracker)
 		} else {
-			pool.Ban(n)
+			sc.pool.Ban(n)
 			return nil
 		}
 	}
@@ -77,10 +92,10 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 		// If the node was in the offline pool, set it to online
 		//  (which also adds it to the online pool)
 		if update.FromStatus == node.Inactive && update.ToStatus == node.Active {
-			pool.SetNodeToOnline(n)
+			sc.pool.SetNodeToOnline(n)
 		} else {
 			// Otherwise, add it to the online pool normally
-			pool.Add(n)
+			sc.pool.Add(n)
 		}
 
 	case current.PRECOMPUTING:
@@ -111,11 +126,19 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 
 			// kill the precomp timeout and start a realtime timeout
 			r.DenoteRoundCompleted()
-			go waitForRoundTimeout(roundTimeoutChan, state, r,
-				realtimeTimeout, "realtime")
+			go waitForRoundTimeout(sc.roundTimeoutChan, sc.state, r,
+				sc.realtimeTimeout, "realtime")
+
+			startTime := time.Now().Add(sc.realtimeDelay)
+			nextRoundMinimum := sc.lastRealtime.Add(sc.realtimeDelta)
+			if nextRoundMinimum.After(startTime) {
+				startTime = nextRoundMinimum
+			}
+
+			sc.lastRealtime = startTime
 
 			// Update the round for realtime transition
-			err = r.Update(states.QUEUED, time.Now().Add(realtimeDelay))
+			err = r.Update(states.QUEUED, startTime)
 
 			if err != nil {
 				return errors.WithMessagef(err,
@@ -124,7 +147,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			}
 
 			// Build the round info and add to the networkState
-			err = state.AddRoundUpdate(r.BuildRoundInfo())
+			err = sc.state.AddRoundUpdate(r.BuildRoundInfo())
 			if err != nil {
 				return errors.WithMessagef(err, "Could not issue "+
 					"update for round %v transitioning from %s to %s",
@@ -181,7 +204,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 
 			// Build the round info and add to the networkState
 			roundInfo := r.BuildRoundInfo()
-			err = state.AddRoundUpdate(roundInfo)
+			err = sc.state.AddRoundUpdate(roundInfo)
 			if err != nil {
 				return errors.WithMessagef(err, "Could not issue "+
 					"update for round %v transitioning from %s to %s",
@@ -190,7 +213,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 
 			//send the signal that the round is complete
 			r.DenoteRoundCompleted()
-			roundTracker.RemoveActiveRound(r.GetRoundID())
+			sc.roundTracker.RemoveActiveRound(r.GetRoundID())
 
 			// Store round metric in another thread for completed round
 			go StoreRoundMetric(roundInfo, r.GetRoundState(), r.GetRealtimeCompletedTs())
@@ -206,7 +229,7 @@ func HandleNodeUpdates(update node.UpdateNotification, pool *waitingPool, state 
 			//send the signal that the round is complete
 			r.DenoteRoundCompleted()
 			n.ClearRound()
-			err = killRound(state, r, update.Error, roundTracker)
+			err = killRound(sc.state, r, update.Error, sc.roundTracker)
 		}
 		return err
 	}
