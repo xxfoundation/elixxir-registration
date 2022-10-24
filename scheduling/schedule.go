@@ -208,6 +208,12 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 		roundTimeoutChan: roundTimeoutTracker,
 	}
 
+	jww.INFO.Printf("Initialized state changer with: " +
+		"\n\t realtimeDelay: %s, " +
+		"\n\t realtimeDelta: %s" +
+		"\n\t realtimeTimeout: %s", sc.realtimeDelay,
+		sc.realtimeDelta, sc.realtimeTimeout)
+
 	// Start receiving updates from nodes
 	for true {
 

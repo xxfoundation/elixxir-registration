@@ -129,8 +129,8 @@ func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error 
 			go waitForRoundTimeout(sc.roundTimeoutChan, sc.state, r,
 				sc.realtimeTimeout, "realtime")
 
-			startTime := time.Now().Add(sc.realtimeDelay)
-			nextRoundMinimum := sc.lastRealtime.Add(sc.realtimeDelta)
+			startTime := time.Now().Add(3*time.Second)
+			nextRoundMinimum := sc.lastRealtime.Add(300*time.Millisecond)
 			if nextRoundMinimum.After(startTime) {
 				startTime = nextRoundMinimum
 			}
