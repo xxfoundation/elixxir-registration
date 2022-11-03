@@ -47,10 +47,11 @@ func (rsm *StateMap) AddRound(id id.Round, batchsize, addressSpaceSize uint32, r
 }
 
 // Gets rounds from the state structure
-func (rsm *StateMap) GetRound(id id.Round) *State {
+func (rsm *StateMap) GetRound(id id.Round) (*State, bool) {
 	rsm.mux.RLock()
 	defer rsm.mux.RUnlock()
-	return rsm.rounds[id]
+	s, exists := rsm.rounds[id]
+	return s, exists
 }
 
 // add a schedule to delete timestamp
