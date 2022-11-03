@@ -304,9 +304,10 @@ func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 	// On a timeout, check if the round is completed. If not, kill it
 	ourRound, exists := state.GetRoundMap().GetRound(timeoutRoundID)
 	if !exists {
-		jww.ERROR.Printf("Failed to timeout round - round not found. " +
-			"This is a rare race condition, if seen extremely rarely this " +
-			"is not a problem")
+		jww.ERROR.Printf("Failed to timeout round - round %d not found. "+
+			"This is a rare race condition, if seen extremely rarely this "+
+			"is not a problem", timeoutRoundID)
+		return nil
 	}
 	roundState := ourRound.GetRoundState()
 
