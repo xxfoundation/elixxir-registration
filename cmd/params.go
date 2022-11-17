@@ -54,6 +54,7 @@ type Params struct {
 	disableNDFPruning bool
 
 	geoIPDBFile string
+	geoIPDBUrl  string
 
 	clientRegistrationAddress string
 

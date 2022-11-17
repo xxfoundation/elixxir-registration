@@ -25,7 +25,6 @@ import (
 	"gitlab.com/xx_network/crypto/signature/rsa"
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
-	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"sync"
 	"sync/atomic"
@@ -251,7 +250,7 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	}
 }*/
 
-//Happy path
+// Happy path
 func TestRegistrationImpl_PollNdf(t *testing.T) {
 	//Create database
 	var err error
@@ -351,7 +350,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	}
 }
 
-//Error  path
+// Error  path
 func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Create database
 	var err error
@@ -998,7 +997,7 @@ func TestVerifyError(t *testing.T) {
 	// Start registration server
 	ndfReady := uint32(0)
 
-	state, err := storage.NewState(pk, 8, "", "", region.GetCountryBins())
+	state, err := storage.NewState(pk, 8, "", "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}

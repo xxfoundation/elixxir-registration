@@ -26,7 +26,6 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/netTime"
-	"gitlab.com/xx_network/primitives/region"
 	"gitlab.com/xx_network/primitives/utils"
 	"sync"
 	"sync/atomic"
@@ -57,10 +56,12 @@ type RegistrationImpl struct {
 	registrationTimes map[id.ID]int64
 
 	// GeoLite2 database reader instance for getting info about an IP address
-	geoIPDB *geoip2.Reader
+	geoIPDB           *geoip2.Reader
+	geoIPLastModified time.Time
 
 	// Status of the geoip2.Reader; signals if the reader is running or stopped
-	geoIPDBStatus geoipStatus
+	geoIPDBStatus      geoipStatus
+	geoIPThreadStopper chan bool
 
 	NDFLock sync.Mutex
 
@@ -80,7 +81,6 @@ type earliestRoundTracking struct {
 
 // Configure and start the Permissioning Server
 func StartRegistration(params Params) (*RegistrationImpl, error) {
-
 	// Initialize variables
 	ndfReady := uint32(0)
 	roundCreationStopped := uint32(0)
@@ -136,33 +136,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		earliestRoundTracker: atomic.Value{},
 	}
 
-	// If the the GeoIP2 database file is supplied, then use it to open the
-	// GeoIP2 reader; otherwise, error if randomGeoBinning is not set
-	var geoBins map[string]region.GeoBin
-	if params.geoIPDBFile != "" {
-		regImpl.geoIPDB, err = geoip2.Open(params.geoIPDBFile)
-		if err != nil {
-			return nil,
-				errors.Errorf("failed to load GeoIP2 database file: %+v", err)
-		}
-
-		// Set the GeoIP2 reader to running
-		regImpl.geoIPDBStatus.ToRunning()
-
-	}
-
-	// Determine which type of GeoBinning we're using
-	if regImpl.params.blockchainGeoBinning {
-		geoBins, err = storage.PermissioningDb.GetBins()
-		if err != nil {
-			return nil, err
-		}
-		jww.INFO.Printf("Loaded %d GeoBins from Storage!", len(geoBins))
-	} else {
-		geoBins = region.GetCountryBins()
-		jww.INFO.Printf("Loaded %d GeoBins from Primitives!", len(geoBins))
-	}
-
 	whitelistedIds := make([]string, 0)
 	if regImpl.params.WhitelistedIdsPath != "" {
 
@@ -201,7 +174,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Initialize the state tracking object
 	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size),
-		params.FullNdfOutputPath, params.SignedPartialNdfOutputPath, geoBins)
+		params.FullNdfOutputPath, params.SignedPartialNdfOutputPath)
 	if err != nil {
 		return nil, err
 	}
@@ -275,11 +248,17 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		jww.WARN.Printf("Configured to run without notifications bot!")
 	}
 
-	// If the the GeoIP2 database file is supplied, then use it to open the
-	// GeoIP2 reader; otherwise, error if randomGeoBinning is not set
+	// If the GeoIP2 database file is supplied, then use it to open the
+	// GeoIP2 reader; otherwise, error if disableGeoBinning is not set
 	if params.disableGeoBinning {
 		jww.WARN.Printf("Running with geobinning disabled. Nodes are expected to " +
 			"have proper country codes in their inserted sequence. This feature should be used for testing only")
+	} else if params.geoIPDBUrl != "" {
+		stop, err := regImpl.startUpdateGeoIPDB()
+		if err != nil {
+			return nil, errors.WithMessage(err, "Failed to update geoIPDB")
+		}
+		regImpl.geoIPThreadStopper = stop
 	} else if params.geoIPDBFile != "" {
 		regImpl.geoIPDB, err = geoip2.Open(params.geoIPDBFile)
 		if err != nil {
@@ -291,7 +270,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		regImpl.geoIPDBStatus.ToRunning()
 	} else {
 		jww.FATAL.Panic("Must provide either a MaxMind GeoLite2 compatible " +
-			"database file or set the 'randomGeoBinning' flag.")
+			"database file or set the 'disableGeoBinning' flag.")
 	}
 
 	// update the internal state with the newly-formed NDF

@@ -10,7 +10,6 @@ package cmd
 import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/xx_network/primitives/ndf"
-	"gitlab.com/xx_network/primitives/region"
 	"reflect"
 	"testing"
 	"time"
@@ -39,7 +38,7 @@ func TestRegistrationImpl_updateAddressSpace(t *testing.T) {
 	}
 
 	// Create a new state
-	state, err := storage.NewState(getTestKey(), 8, "", "", region.GetCountryBins())
+	state, err := storage.NewState(getTestKey(), 8, "", "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
@@ -101,7 +100,7 @@ func TestRegistrationImpl_updateAddressSpace_NoUpdates(t *testing.T) {
 	}
 
 	// Create a new state
-	state, err := storage.NewState(getTestKey(), 8, "", "", region.GetCountryBins())
+	state, err := storage.NewState(getTestKey(), 8, "", "")
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}

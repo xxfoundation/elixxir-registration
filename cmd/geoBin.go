@@ -8,10 +8,14 @@
 package cmd
 
 import (
+	"compress/gzip"
 	"fmt"
 	"gitlab.com/xx_network/primitives/region"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 	"sync/atomic"
+	"time"
 
 	"github.com/oschwald/geoip2-golang"
 	"github.com/pkg/errors"
@@ -30,7 +34,108 @@ const (
 	setDbSequenceErr  = "failed to set bin of node %s to %s"
 	invalidFlagsErr   = "no GeoIP2 database provided and randomGeoBinning is " +
 		"not set"
+
+	geoIPUpdateInterval = 7 * 24 * time.Hour
 )
+
+// startUpdateGeoIPDB initializes a thread which updates the held geoIP database
+// on a regular interval (currently 7 days)
+func (m *RegistrationImpl) startUpdateGeoIPDB() (chan bool, error) {
+	err := m.updateGeoIPDB()
+	if err != nil {
+		return nil, err
+	}
+
+	stop := make(chan bool)
+	go func() {
+		interval := time.NewTimer(geoIPUpdateInterval)
+		for {
+			select {
+			case <-interval.C:
+				err = m.updateGeoIPDB()
+				if err != nil {
+					jww.ERROR.Printf("Regular update of GeoIP database failed: %+v", err)
+				}
+			case <-stop:
+				jww.INFO.Println("GeoIP update thread received stop signal")
+				m.geoIPDBStatus.ToStopped()
+				err = m.geoIPDB.Close()
+				if err != nil {
+					jww.ERROR.Printf("Failed to close GeoIPDB when stop signal received: %+v", err)
+				}
+				return
+			}
+		}
+	}()
+	return stop, err
+}
+
+// updateGeoIPDB handles the logic for updating the geoIPDB held by registration
+// It first checks the latest headers, and if the server's file is more recent
+// than ours, downloads and replaces the current geoIP database
+func (m *RegistrationImpl) updateGeoIPDB() error {
+	timestamp, _, err := getLatestHeaders(m.params.geoIPDBUrl)
+	if err != nil {
+		return err
+	}
+
+	serverLastModified, err := time.Parse(time.RFC1123, timestamp)
+	if !serverLastModified.After(m.geoIPLastModified) {
+		return nil
+	}
+
+	newGeoIPDB, err := getGeoIPDB(m.params.geoIPDBUrl)
+	if err != nil {
+		return err
+	}
+
+	if m.geoIPDB != nil {
+		m.geoIPDBStatus.ToStopped()
+		err = m.geoIPDB.Close()
+		if err != nil {
+			return errors.WithMessage(err, "Failed to close geoIPDB")
+		}
+		m.geoIPDB = nil
+	}
+
+	m.geoIPDB, err = geoip2.FromBytes(newGeoIPDB)
+	if err != nil {
+		return errors.WithMessage(err, "Failed to update geoIPDB")
+	}
+	m.geoIPDBStatus.ToRunning()
+	m.geoIPLastModified = serverLastModified
+
+	return nil
+}
+
+// getLatestHeaders gets the latest lastModified and contentDisposition headers from the passed in maxmind permalink
+// These should be used to ensure we only download a new database when it has updates
+func getLatestHeaders(url string) (string, string, error) {
+	resp, err := http.Head(url)
+	if err != nil {
+		return "", "", errors.WithMessage(err, "Failed to get GeoIPDB headers")
+	}
+	lastModified := resp.Header.Get("last-modified")
+	contentDisposition := resp.Header.Get("content-disposition")
+	return lastModified, contentDisposition, nil
+}
+
+// getGeoIPDB retrieves the latest compressed maxmind geoIP database from the passed in permalink
+func getGeoIPDB(url string) ([]byte, error) {
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, errors.WithMessage(err, "Failed to get GeoIPDB from permalink")
+	}
+	decompresser, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return nil, errors.WithMessage(err, "Failed to create gzip reader for response body")
+	}
+	decompressed, err := ioutil.ReadAll(decompresser)
+	if err != nil {
+		return nil, errors.WithMessage(err, "Failed to decompress GeoIPDB file")
+	}
+	return decompressed, nil
+}
 
 func (m *RegistrationImpl) setNodeGeos(n *node.State, location, geo_bin, gps_location string) error {
 

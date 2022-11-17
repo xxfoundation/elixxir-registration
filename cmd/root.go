@@ -250,6 +250,7 @@ var rootCmd = &cobra.Command{
 
 			disableNDFPruning:     viper.GetBool("disableNDFPruning"),
 			geoIPDBFile:           viper.GetString("geoIPDBFile"),
+			geoIPDBUrl:            viper.GetString("geoIPDBUrl"),
 			pruneRetentionLimit:   viper.GetDuration("pruneRetentionLimit"),
 			messageRetentionLimit: viper.GetDuration("messageRetentionLimit"),
 			versionLock:           sync.RWMutex{},
@@ -401,10 +402,19 @@ var rootCmd = &cobra.Command{
 			addressSpaceTrackerQuitChan <- struct{}{}
 
 			// Close GeoIP2 reader
-			impl.geoIPDBStatus.ToStopped()
-			err := impl.geoIPDB.Close()
-			if err != nil {
-				jww.ERROR.Printf("Error closing GeoIP2 database reader: %+v", err)
+			if impl.geoIPThreadStopper == nil {
+				impl.geoIPDBStatus.ToStopped()
+				err := impl.geoIPDB.Close()
+				if err != nil {
+					jww.ERROR.Printf("Error closing GeoIP2 database reader: %+v", err)
+				}
+			} else {
+				t := time.NewTimer(5 * time.Second)
+				select {
+				case impl.geoIPThreadStopper <- true:
+				case <-t.C:
+					jww.ERROR.Printf("Timed out attempting to close geoIP update thread")
+				}
 			}
 
 			// Close connection to the database
