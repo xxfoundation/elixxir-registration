@@ -142,10 +142,13 @@ onlyScheduleActive: false
 # Toggles blockchain integration functionality
 enableBlockchain: false
 
+# GeoIP options: one of geoIPDBFile, geoIPDBUrl or disableGeoBinning must be set
+# disableGeoBinning should only be used for testing purposes
+
 # A MaxMind GeoLite2 database file to lookup IPs against for geobinning
 geoIPDBFile: "/GeoLite2-City.mmdb"
-
-
+# A MaxMind GeoLite2 database file download link to use when initially downloading or updating the geoIP database
+geoIPDBUrl: "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-ASN-CSV&license_key=YOUR_LICENSE_KEY&suffix=zip"
 # For testing, use the sequence as the country code. Do not use the geobinning database
 disableGeoBinning: false
 
