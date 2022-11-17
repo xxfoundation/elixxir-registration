@@ -11,7 +11,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"gitlab.com/xx_network/primitives/region"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"sync/atomic"
@@ -130,7 +130,7 @@ func getGeoIPDB(url string) ([]byte, error) {
 	if err != nil {
 		return nil, errors.WithMessage(err, "Failed to create gzip reader for response body")
 	}
-	decompressed, err := ioutil.ReadAll(decompresser)
+	decompressed, err := io.ReadAll(decompresser)
 	if err != nil {
 		return nil, errors.WithMessage(err, "Failed to decompress GeoIPDB file")
 	}
