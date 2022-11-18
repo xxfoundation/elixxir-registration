@@ -10,10 +10,13 @@ package cmd
 import (
 	"compress/gzip"
 	"fmt"
+	"github.com/jinzhu/gorm"
 	"gitlab.com/xx_network/primitives/region"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -35,17 +38,34 @@ const (
 	invalidFlagsErr   = "no GeoIP2 database provided and randomGeoBinning is " +
 		"not set"
 
-	geoIPUpdateInterval = 7 * 24 * time.Hour
+	geoIPUpdateInterval       = 7 * 24 * time.Hour
+	geoIPLastModifiedStateKey = "geoIPDBLastModified"
 )
 
 // startUpdateGeoIPDB initializes a thread which updates the held geoIP database
 // on a regular interval (currently 7 days)
 func (m *RegistrationImpl) startUpdateGeoIPDB() (chan bool, error) {
-	err := m.updateGeoIPDB()
+	// Load last modified from storage if it exists
+	lastModified, err := storage.PermissioningDb.GetStateValue(geoIPLastModifiedStateKey)
+	if err != nil {
+		if !strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
+			!strings.Contains(err.Error(), "Unable to locate state for key") {
+			jww.ERROR.Printf("Failed to load state: %+v", err)
+		}
+	} else {
+		err = m.geoIPLastModified.UnmarshalText([]byte(lastModified))
+		if err != nil {
+			jww.ERROR.Printf("Failed to unmarshal last modified from storage")
+		}
+	}
+
+	// Perform initial update pass for geoIPDB
+	err = m.updateGeoIPDB()
 	if err != nil {
 		return nil, err
 	}
 
+	// Start update thread
 	stop := make(chan bool)
 	go func() {
 		interval := time.NewTimer(geoIPUpdateInterval)
@@ -74,21 +94,45 @@ func (m *RegistrationImpl) startUpdateGeoIPDB() (chan bool, error) {
 // It first checks the latest headers, and if the server's file is more recent
 // than ours, downloads and replaces the current geoIP database
 func (m *RegistrationImpl) updateGeoIPDB() error {
+	// Get latest timestamp for geoIPDB on server
 	timestamp, _, err := getLatestHeaders(m.params.geoIPDBUrl)
 	if err != nil {
 		return err
 	}
-
 	serverLastModified, err := time.Parse(time.RFC1123, timestamp)
+	// If last modified on server is not later than ours, return now
 	if !serverLastModified.After(m.geoIPLastModified) {
 		return nil
 	}
 
+	// Get latest GeoIPDB from permalink
 	newGeoIPDB, err := getGeoIPDB(m.params.geoIPDBUrl)
 	if err != nil {
 		return err
 	}
 
+	// Write to file, use a suffix for now rather than immdeiately replacing
+	newFilePath := m.params.geoIPDBFile + ".new"
+	err = os.WriteFile(newFilePath, newGeoIPDB, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	// Attempt to open the newly downloaded database
+	newDB, err := geoip2.Open(newFilePath)
+	if err != nil {
+		return errors.WithMessage(err, "Failed to update geoIPDB")
+	}
+	jww.TRACE.Printf("Successfully downloaded new GeoIP database at version %d.%d", newDB.Metadata().BinaryFormatMajorVersion, newDB.Metadata().BinaryFormatMinorVersion)
+	err = newDB.Close()
+	if err != nil {
+		return err
+	}
+
+	// Now we take the lock and swap the databases
+	m.geoIPDBLock.Lock()
+	defer m.geoIPDBLock.Unlock()
+	// Close out the currently open db
 	if m.geoIPDB != nil {
 		m.geoIPDBStatus.ToStopped()
 		err = m.geoIPDB.Close()
@@ -98,11 +142,58 @@ func (m *RegistrationImpl) updateGeoIPDB() error {
 		m.geoIPDB = nil
 	}
 
-	m.geoIPDB, err = geoip2.FromBytes(newGeoIPDB)
+	// Swap old file for new, keeping the old one around until we're sure the replace worked
+	oldFilePath := m.params.geoIPDBFile + ".old"
+	err = os.Rename(m.params.geoIPDBFile, oldFilePath)
 	if err != nil {
-		return errors.WithMessage(err, "Failed to update geoIPDB")
+		return err
 	}
+	err = os.Rename(newFilePath, m.params.geoIPDBFile)
+	if err != nil {
+		// If we fail to move the new DB into place, try to restore the old one
+		err2 := os.Rename(oldFilePath, m.params.geoIPDBFile)
+		if err2 != nil {
+			jww.ERROR.Printf("Failed to restore old geoIPDB file after error: %+v", err)
+		}
+		m.geoIPDB, err2 = geoip2.Open(m.params.geoIPDBFile)
+		if err2 != nil {
+			jww.FATAL.Panicf("Failed to restore previous geoIPDB after error: %+v", err)
+		}
+		return err
+	}
+
+	m.geoIPDB, err = geoip2.Open(m.params.geoIPDBFile)
+	if err != nil {
+		// If we fail to open the new database, try to restore the old one
+		err2 := os.Rename(oldFilePath, m.params.geoIPDBFile)
+		if err2 != nil {
+			jww.ERROR.Printf("Failed to replace old geoIPDB file after error: %+v", err)
+		}
+		m.geoIPDB, err2 = geoip2.Open(m.params.geoIPDBFile)
+		if err2 != nil {
+			jww.FATAL.Panicf("Failed to restore previous geoIPDB after error: %+v", err)
+		}
+		return err
+	}
+
+	// Finally, remove the old db file
+	err = os.Remove(oldFilePath)
+	if err != nil {
+		return err
+	}
+
 	m.geoIPDBStatus.ToRunning()
+	lastModifiedBytes, err := serverLastModified.MarshalText()
+	if err != nil {
+		return err
+	}
+	err = storage.PermissioningDb.UpsertState(&storage.State{
+		Key:   geoIPLastModifiedStateKey,
+		Value: string(lastModifiedBytes),
+	})
+	if err != nil {
+		jww.ERROR.Printf("Failed to update geoIP last modified state")
+	}
 	m.geoIPLastModified = serverLastModified
 
 	return nil

@@ -60,6 +60,7 @@ type RegistrationImpl struct {
 	geoIPLastModified time.Time
 
 	// Status of the geoip2.Reader; signals if the reader is running or stopped
+	geoIPDBLock        *sync.RWMutex
 	geoIPDBStatus      geoipStatus
 	geoIPThreadStopper chan bool
 
@@ -134,6 +135,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		beginScheduling:      make(chan struct{}, 1),
 		registrationTimes:    make(map[id.ID]int64),
 		earliestRoundTracker: atomic.Value{},
+		geoIPDBLock:          &sync.RWMutex{},
 	}
 
 	whitelistedIds := make([]string, 0)
@@ -253,12 +255,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	if params.disableGeoBinning {
 		jww.WARN.Printf("Running with geobinning disabled. Nodes are expected to " +
 			"have proper country codes in their inserted sequence. This feature should be used for testing only")
-	} else if params.geoIPDBUrl != "" {
-		stop, err := regImpl.startUpdateGeoIPDB()
-		if err != nil {
-			return nil, errors.WithMessage(err, "Failed to update geoIPDB")
-		}
-		regImpl.geoIPThreadStopper = stop
 	} else if params.geoIPDBFile != "" {
 		regImpl.geoIPDB, err = geoip2.Open(params.geoIPDBFile)
 		if err != nil {
@@ -268,6 +264,16 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 		// Set the GeoIP2 reader to running
 		regImpl.geoIPDBStatus.ToRunning()
+
+		// If the geoIPDBUrl is set, start the update thread
+		if params.geoIPDBUrl != "" {
+			stop, err := regImpl.startUpdateGeoIPDB()
+			if err != nil {
+				return nil, errors.WithMessage(err, "Failed to update geoIPDB")
+			}
+			regImpl.geoIPThreadStopper = stop
+		}
+
 	} else {
 		jww.FATAL.Panic("Must provide either a MaxMind GeoLite2 compatible " +
 			"database file or set the 'disableGeoBinning' flag.")
