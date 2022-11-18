@@ -403,8 +403,10 @@ var rootCmd = &cobra.Command{
 
 			// Close GeoIP2 reader
 			if impl.geoIPThreadStopper == nil {
+				impl.geoIPDBLock.Lock()
 				impl.geoIPDBStatus.ToStopped()
 				err := impl.geoIPDB.Close()
+				impl.geoIPDBLock.Unlock()
 				if err != nil {
 					jww.ERROR.Printf("Error closing GeoIP2 database reader: %+v", err)
 				}

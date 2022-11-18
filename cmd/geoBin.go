@@ -78,8 +78,10 @@ func (m *RegistrationImpl) startUpdateGeoIPDB() (chan bool, error) {
 				}
 			case <-stop:
 				jww.INFO.Println("GeoIP update thread received stop signal")
+				m.geoIPDBLock.Lock()
 				m.geoIPDBStatus.ToStopped()
 				err = m.geoIPDB.Close()
+				m.geoIPDBLock.Unlock()
 				if err != nil {
 					jww.ERROR.Printf("Failed to close GeoIPDB when stop signal received: %+v", err)
 				}
@@ -243,26 +245,33 @@ func (m *RegistrationImpl) setNodeSequence(n *node.State, nodeIpAddr string) err
 	if m.params.disableGeoBinning {
 		countryCode = n.GetOrdering()
 	} else {
+		m.geoIPDBLock.RLock()
 		countryCode, err = getAddressCountry(nodeIpAddr, m.geoIPDB, &m.geoIPDBStatus)
 		if err != nil {
+			m.geoIPDBLock.RUnlock()
 			return errors.WithMessage(err, "Failed to get country for address")
 		}
 		city, err = getAddressCity(nodeIpAddr, m.geoIPDB, &m.geoIPDBStatus)
 		if err != nil {
+			m.geoIPDBLock.RUnlock()
 			return errors.WithMessage(err, "Failed to get city for address")
 		}
 		gps, err = getAddressCoords(nodeIpAddr, m.geoIPDB, &m.geoIPDBStatus)
 		if err != nil {
+			m.geoIPDBLock.RUnlock()
 			return errors.WithMessage(err, "Failed to get gps for address")
 		}
 		geobin, ok = region.GetCountryBin(countryCode)
 		if !ok {
+			m.geoIPDBLock.RUnlock()
 			return errors.WithMessage(err, "Could not get bin for country code")
 		}
 		countryName, err = lookupCountryName(nodeIpAddr, m.geoIPDB)
 		if err != nil {
+			m.geoIPDBLock.RUnlock()
 			return errors.WithMessage(err, "Could not get country name")
 		}
+		m.geoIPDBLock.RUnlock()
 	}
 
 	// Update sequence for the node in the database
