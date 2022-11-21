@@ -12,8 +12,29 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
+	"sync"
 	"testing"
 )
+
+//
+//func TestUpdateGeoIPDB(t *testing.T) {
+//	var err error
+//	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	impl := &RegistrationImpl{params: &Params{
+//		geoIPDBFile: "/tmp/testgeoip",
+//		geoIPDBUrl:  "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=HvWIsHHDNa67HwtQ&suffix=tar.gz",
+//	}, geoIPDBLock: &sync.RWMutex{}}
+//	ok, err := impl.updateGeoIPDB()
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	if !ok {
+//		t.Fatalf("Failed to update")
+//	}
+//}
 
 // Tests that RegistrationImpl.setNodeSequence assigns the correct geographic bin for
 // the IP address.
@@ -21,7 +42,7 @@ func TestRegistrationImpl_setNodeBin_GeoIP2DB(t *testing.T) {
 	var err error
 
 	// Create registration impl
-	impl := &RegistrationImpl{params: &Params{}}
+	impl := &RegistrationImpl{params: &Params{}, geoIPDBLock: &sync.RWMutex{}}
 
 	// Setup a reader with the testing database
 	impl.geoIPDB, err = geoip2.Open("../testkeys/GeoIP2-City-Test.mmdb")

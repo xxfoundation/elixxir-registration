@@ -50,7 +50,7 @@ func (m *RegistrationImpl) startUpdateGeoIPDB() (chan bool, error) {
 	if err != nil {
 		if !strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
 			!strings.Contains(err.Error(), "Unable to locate state for key") {
-			jww.ERROR.Printf("Failed to load state: %+v", err)
+			jww.WARN.Printf("Could not find state value for geoIP last modified timestamp: %+v", err)
 		}
 	} else {
 		err = m.geoIPLastModified.UnmarshalText([]byte(lastModified))
@@ -60,9 +60,16 @@ func (m *RegistrationImpl) startUpdateGeoIPDB() (chan bool, error) {
 	}
 
 	// Perform initial update pass for geoIPDB
-	err = m.updateGeoIPDB()
+	updated, err := m.updateGeoIPDB()
 	if err != nil {
 		return nil, err
+	}
+
+	if updated {
+		err = m.updateAllNodeGeos()
+		if err != nil {
+			return nil, errors.WithMessage(err, "Failed to update all node geo bins after initial geoIPDB update")
+		}
 	}
 
 	// Start update thread
@@ -72,9 +79,16 @@ func (m *RegistrationImpl) startUpdateGeoIPDB() (chan bool, error) {
 		for {
 			select {
 			case <-interval.C:
-				err = m.updateGeoIPDB()
+				updated, err := m.updateGeoIPDB()
 				if err != nil {
 					jww.ERROR.Printf("Regular update of GeoIP database failed: %+v", err)
+				}
+
+				if updated {
+					err = m.updateAllNodeGeos()
+					if err != nil {
+						jww.ERROR.Printf("Failed to update all node geo bins after initial geoIPDB update: %+v", err)
+					}
 				}
 			case <-stop:
 				jww.INFO.Println("GeoIP update thread received stop signal")
@@ -95,40 +109,44 @@ func (m *RegistrationImpl) startUpdateGeoIPDB() (chan bool, error) {
 // updateGeoIPDB handles the logic for updating the geoIPDB held by registration
 // It first checks the latest headers, and if the server's file is more recent
 // than ours, downloads and replaces the current geoIP database
-func (m *RegistrationImpl) updateGeoIPDB() error {
+func (m *RegistrationImpl) updateGeoIPDB() (bool, error) {
+	if m.params.geoIPDBFile == "" || m.params.geoIPDBUrl == "" {
+		return false, errors.Errorf("Cannot update geoIPDB without both geoIPDBFile and geoIPDBUrl set")
+	}
 	// Get latest timestamp for geoIPDB on server
 	timestamp, _, err := getLatestHeaders(m.params.geoIPDBUrl)
 	if err != nil {
-		return err
+		return false, err
 	}
 	serverLastModified, err := time.Parse(time.RFC1123, timestamp)
 	// If last modified on server is not later than ours, return now
 	if !serverLastModified.After(m.geoIPLastModified) {
-		return nil
+		fmt.Println("hi")
+		return false, nil
 	}
 
 	// Get latest GeoIPDB from permalink
 	newGeoIPDB, err := getGeoIPDB(m.params.geoIPDBUrl)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Write to file, use a suffix for now rather than immdeiately replacing
 	newFilePath := m.params.geoIPDBFile + ".new"
 	err = os.WriteFile(newFilePath, newGeoIPDB, os.ModePerm)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Attempt to open the newly downloaded database
 	newDB, err := geoip2.Open(newFilePath)
 	if err != nil {
-		return errors.WithMessage(err, "Failed to update geoIPDB")
+		return false, errors.WithMessage(err, "Failed to update geoIPDB")
 	}
-	jww.TRACE.Printf("Successfully downloaded new GeoIP database at version %d.%d", newDB.Metadata().BinaryFormatMajorVersion, newDB.Metadata().BinaryFormatMinorVersion)
+	jww.TRACE.Printf("Successfully downloaded new GeoIP database version %d.%d", newDB.Metadata().BinaryFormatMajorVersion, newDB.Metadata().BinaryFormatMinorVersion)
 	err = newDB.Close()
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	// Now we take the lock and swap the databases
@@ -139,7 +157,7 @@ func (m *RegistrationImpl) updateGeoIPDB() error {
 		m.geoIPDBStatus.ToStopped()
 		err = m.geoIPDB.Close()
 		if err != nil {
-			return errors.WithMessage(err, "Failed to close geoIPDB")
+			return false, errors.WithMessage(err, "Failed to close geoIPDB")
 		}
 		m.geoIPDB = nil
 	}
@@ -148,7 +166,7 @@ func (m *RegistrationImpl) updateGeoIPDB() error {
 	oldFilePath := m.params.geoIPDBFile + ".old"
 	err = os.Rename(m.params.geoIPDBFile, oldFilePath)
 	if err != nil {
-		return err
+		return false, err
 	}
 	err = os.Rename(newFilePath, m.params.geoIPDBFile)
 	if err != nil {
@@ -161,7 +179,7 @@ func (m *RegistrationImpl) updateGeoIPDB() error {
 		if err2 != nil {
 			jww.FATAL.Panicf("Failed to restore previous geoIPDB after error: %+v", err)
 		}
-		return err
+		return false, err
 	}
 
 	m.geoIPDB, err = geoip2.Open(m.params.geoIPDBFile)
@@ -175,30 +193,30 @@ func (m *RegistrationImpl) updateGeoIPDB() error {
 		if err2 != nil {
 			jww.FATAL.Panicf("Failed to restore previous geoIPDB after error: %+v", err)
 		}
-		return err
+		return false, err
 	}
 
 	// Finally, remove the old db file
 	err = os.Remove(oldFilePath)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	m.geoIPDBStatus.ToRunning()
 	lastModifiedBytes, err := serverLastModified.MarshalText()
 	if err != nil {
-		return err
+		return true, err
 	}
 	err = storage.PermissioningDb.UpsertState(&storage.State{
 		Key:   geoIPLastModifiedStateKey,
 		Value: string(lastModifiedBytes),
 	})
 	if err != nil {
-		jww.ERROR.Printf("Failed to update geoIP last modified state")
+		return true, errors.WithMessage(err, "Failed to update geoIP last modified state")
 	}
 	m.geoIPLastModified = serverLastModified
 
-	return nil
+	return true, nil
 }
 
 // getLatestHeaders gets the latest lastModified and contentDisposition headers from the passed in maxmind permalink
@@ -228,6 +246,24 @@ func getGeoIPDB(url string) ([]byte, error) {
 		return nil, errors.WithMessage(err, "Failed to decompress GeoIPDB file")
 	}
 	return decompressed, nil
+}
+
+// updateAllNodeGeos calls setNodeSequence on all nodes in the state node map
+func (m *RegistrationImpl) updateAllNodeGeos() error {
+	var errs []error
+	curStates := m.State.GetNodeMap().GetNodeStates()
+	for _, n := range curStates {
+		err := m.setNodeSequence(n, n.GetNodeAddresses())
+		if err != nil {
+			err = errors.Errorf("Error updating ip of node %s: %+v", n.GetID().String(), err)
+			jww.ERROR.Println(err)
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Errorf("Failed to register with %d nodes", len(errs))
+	}
+	return nil
 }
 
 func (m *RegistrationImpl) setNodeGeos(n *node.State, location, geo_bin, gps_location string) error {

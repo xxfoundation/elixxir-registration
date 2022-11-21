@@ -269,7 +269,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		if params.geoIPDBUrl != "" {
 			stop, err := regImpl.startUpdateGeoIPDB()
 			if err != nil {
-				return nil, errors.WithMessage(err, "Failed to update geoIPDB")
+				jww.FATAL.Printf("Failed to start GeoIPDB update thread: %+v", err)
 			}
 			regImpl.geoIPThreadStopper = stop
 		}
