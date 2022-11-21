@@ -121,7 +121,6 @@ func (m *RegistrationImpl) updateGeoIPDB() (bool, error) {
 	serverLastModified, err := time.Parse(time.RFC1123, timestamp)
 	// If last modified on server is not later than ours, return now
 	if !serverLastModified.After(m.geoIPLastModified) {
-		fmt.Println("hi")
 		return false, nil
 	}
 
