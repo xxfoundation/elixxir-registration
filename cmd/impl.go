@@ -262,6 +262,8 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 				errors.Errorf("failed to load GeoIP2 database file: %+v", err)
 		}
 
+		jww.INFO.Printf("Loaded MaxMind GeoIP2 database file version %d.%d", regImpl.geoIPDB.Metadata().BinaryFormatMajorVersion, regImpl.geoIPDB.Metadata().BinaryFormatMinorVersion)
+
 		// Set the GeoIP2 reader to running
 		regImpl.geoIPDBStatus.ToRunning()
 

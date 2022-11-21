@@ -16,46 +16,46 @@ import (
 	"testing"
 )
 
-func TestUpdateGeoIPDB(t *testing.T) {
-	var err error
-	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-	impl := &RegistrationImpl{params: &Params{
-		geoIPDBFile: "/tmp/testgeoip",
-		geoIPDBUrl:  "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=HvWIsHHDNa67HwtQ&suffix=tar.gz",
-	}, geoIPDBLock: &sync.RWMutex{}}
-	updated, err := impl.updateGeoIPDB()
-	if err != nil {
-		t.Fatalf("Failed to update GeoIPDB: %+v", err)
-	}
-	if !updated {
-		t.Fatalf("GeoIPDB was not updated properly")
-	}
-
-	updated, err = impl.updateGeoIPDB()
-	if err != nil {
-		t.Fatalf("Failed to update geoIPDB second pass: %+v", err)
-	}
-	if updated {
-		t.Fatalf("Should not have performed update second time")
-	}
-
-	impl.params.geoIPDBUrl = ""
-	updated, err = impl.updateGeoIPDB()
-	if err == nil || updated {
-		t.Fatal("Did not receive expected response from updateGeoIPDB")
-	}
-
-	if impl.geoIPDB == nil {
-		t.Fatalf("geoIPDB not set")
-	}
-
-	if impl.geoIPDB.Metadata().DatabaseType == "" {
-		t.Fatalf("GeoIPDB not initialized properly")
-	}
-}
+//func TestUpdateGeoIPDB(t *testing.T) {
+//	var err error
+//	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	impl := &RegistrationImpl{params: &Params{
+//		geoIPDBFile: "/tmp/testgeoip",
+//		geoIPDBUrl:  "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key=HvWIsHHDNa67HwtQ&suffix=tar.gz",
+//	}, geoIPDBLock: &sync.RWMutex{}}
+//	updated, err := impl.updateGeoIPDB()
+//	if err != nil {
+//		t.Fatalf("Failed to update GeoIPDB: %+v", err)
+//	}
+//	if !updated {
+//		t.Fatalf("GeoIPDB was not updated properly")
+//	}
+//
+//	updated, err = impl.updateGeoIPDB()
+//	if err != nil {
+//		t.Fatalf("Failed to update geoIPDB second pass: %+v", err)
+//	}
+//	if updated {
+//		t.Fatalf("Should not have performed update second time")
+//	}
+//
+//	impl.params.geoIPDBUrl = ""
+//	updated, err = impl.updateGeoIPDB()
+//	if err == nil || updated {
+//		t.Fatal("Did not receive expected response from updateGeoIPDB")
+//	}
+//
+//	if impl.geoIPDB == nil {
+//		t.Fatalf("geoIPDB not set")
+//	}
+//
+//	if impl.geoIPDB.Metadata().DatabaseType == "" {
+//		t.Fatalf("GeoIPDB not initialized properly")
+//	}
+//}
 
 // Tests that RegistrationImpl.setNodeSequence assigns the correct geographic bin for
 // the IP address.

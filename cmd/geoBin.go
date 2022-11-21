@@ -214,6 +214,7 @@ func (m *RegistrationImpl) updateGeoIPDB() (bool, error) {
 		return true, errors.WithMessage(err, "Failed to update geoIP last modified state")
 	}
 	m.geoIPLastModified = serverLastModified
+	jww.INFO.Printf("Successfully updated GeoIP database to version %d.%d", newDB.Metadata().BinaryFormatMajorVersion, newDB.Metadata().BinaryFormatMinorVersion)
 
 	return true, nil
 }
