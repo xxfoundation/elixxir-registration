@@ -16,6 +16,9 @@ import (
 	"testing"
 )
 
+// TestUpdateGeoIPDB tests downloading a geoIPDB file from MaxMind & updating
+// the instance with the new data.  This is commented out since it relies on
+// external resources & requires an active license key from MaxMind
 //func TestUpdateGeoIPDB(t *testing.T) {
 //	var err error
 //	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")

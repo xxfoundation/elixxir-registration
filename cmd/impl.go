@@ -267,7 +267,10 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		// Set the GeoIP2 reader to running
 		regImpl.geoIPDBStatus.ToRunning()
 
-		// If the geoIPDBUrl is set, start the update thread
+		// If the geoIPDBUrl is set, start the update thread.  This has to
+		// occur after initially opening the file - we can guarantee the update
+		// won't destroy extant data, but not that it will successfully retrieve
+		// a valid database file
 		if params.geoIPDBUrl != "" {
 			stop, err := regImpl.startUpdateGeoIPDB()
 			if err != nil {

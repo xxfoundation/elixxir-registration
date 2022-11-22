@@ -44,6 +44,9 @@ const (
 
 // startUpdateGeoIPDB initializes a thread which updates the held geoIP database
 // on a regular interval (currently 7 days)
+// note that this assumes there is already an open geoIP database - if this
+// function returns an error, it is not guarunteed to set a database.
+// However, if one is set, an error will not prevent its continued use
 func (m *RegistrationImpl) startUpdateGeoIPDB() (chan bool, error) {
 	// Load last modified from storage if it exists
 	lastModified, err := storage.PermissioningDb.GetStateValue(geoIPLastModifiedStateKey)
@@ -60,6 +63,8 @@ func (m *RegistrationImpl) startUpdateGeoIPDB() (chan bool, error) {
 	}
 
 	// Perform initial update pass for geoIPDB
+	// This code is duplicated from the loop below so that it runs in
+	// sync with the main thread for the first update
 	updated, err := m.updateGeoIPDB()
 	if err != nil {
 		return nil, err
@@ -113,12 +118,12 @@ func (m *RegistrationImpl) updateGeoIPDB() (bool, error) {
 	if m.params.geoIPDBFile == "" || m.params.geoIPDBUrl == "" {
 		return false, errors.Errorf("Cannot update geoIPDB without both geoIPDBFile and geoIPDBUrl set")
 	}
-	// Get latest timestamp for geoIPDB on server
-	timestamp, _, err := getLatestHeaders(m.params.geoIPDBUrl)
+	// Get latest lastModified timestamp for geoIPDB on server
+	lastModified, _, err := getLatestHeaders(m.params.geoIPDBUrl)
 	if err != nil {
 		return false, err
 	}
-	serverLastModified, err := time.Parse(time.RFC1123, timestamp)
+	serverLastModified, err := time.Parse(time.RFC1123, lastModified)
 	// If last modified on server is not later than ours, return now
 	if !serverLastModified.After(m.geoIPLastModified) {
 		return false, nil
@@ -250,6 +255,8 @@ func getGeoIPDB(url string) ([]byte, error) {
 
 // updateAllNodeGeos calls setNodeSequence on all nodes in the state node map
 func (m *RegistrationImpl) updateAllNodeGeos() error {
+	// Note: no need to lock this operation - all data modified by
+	// setNodeSequence handles their own locks & the database is thread-safe
 	var errs []error
 	curStates := m.State.GetNodeMap().GetNodeStates()
 	for _, n := range curStates {
