@@ -13,10 +13,10 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/spf13/viper v1.7.1
 	gitlab.com/elixxir/comms v0.0.4-0.20221110181420-84bca6216fe4
-	gitlab.com/elixxir/crypto v0.0.7-0.20221110181326-dd7e5293feb0
-	gitlab.com/elixxir/primitives v0.0.3-0.20221110181119-e83320a48b13
-	gitlab.com/xx_network/comms v0.0.4-0.20221110181111-4f0694876936
-	gitlab.com/xx_network/crypto v0.0.5-0.20221110181048-76f0c556fe95
+	gitlab.com/elixxir/crypto v0.0.7-0.20221202020255-46eeab272a7f
+	gitlab.com/elixxir/primitives v0.0.3-0.20221114231218-cc461261a6af
+	gitlab.com/xx_network/comms v0.0.4-0.20221207203143-462f82d6ec01
+	gitlab.com/xx_network/crypto v0.0.5-0.20221121220724-8eefdbb0eb46
 	gitlab.com/xx_network/primitives v0.0.4-0.20221110180011-fd6ea3058225
 	google.golang.org/protobuf v1.28.1
 )
@@ -43,6 +43,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/oschwald/maxminddb-golang v1.8.0 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/smartystreets/assertions v1.1.0 // indirect
