@@ -270,6 +270,24 @@ func TestNetworkState_UpdateNdf(t *testing.T) {
 		t.Errorf("UpdateNdf() unexpectedly produced an error:\n%+v", err)
 	}
 
+	// DeepEqual does not handle time well, compare these separately and then
+	// set to empty structs so deepequal will work
+	if testNDF.Timestamp.Equal(state.fullNdf.Get().Timestamp) {
+		state.fullNdf.Get().Timestamp = time.Time{}
+	} else {
+		t.Errorf("Expected & received full ndf timestamps are different."+
+			"\n\tExpected: %+v\n\tReceived: %+v", testNDF.Timestamp,
+			state.fullNdf.Get().Timestamp)
+	}
+	if testNDF.Timestamp.Equal(state.partialNdf.Get().Timestamp) {
+		testNDF.Timestamp = time.Time{}
+		state.partialNdf.Get().Timestamp = time.Time{}
+	} else {
+		t.Errorf("Expected & received partial ndf timestamps are different."+
+			"\n\tExpected: %+v\n\tReceived: %+v", testNDF.Timestamp,
+			state.fullNdf.Get().Timestamp)
+	}
+
 	if !reflect.DeepEqual(*state.fullNdf.Get(), *testNDF) {
 		t.Errorf("UpdateNdf() saved the wrong NDF fullNdf."+
 			"\n\texpected: %#v\n\treceived: %#v", *testNDF, *state.fullNdf.Get())
