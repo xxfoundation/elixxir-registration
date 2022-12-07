@@ -16,6 +16,7 @@ import (
 	"gitlab.com/elixxir/comms/testkeys"
 	"gitlab.com/elixxir/comms/testutils"
 	"gitlab.com/elixxir/primitives/current"
+	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/xx_network/comms/signature"
@@ -164,8 +165,9 @@ func TestNetworkState_GetUpdates(t *testing.T) {
 	var expectedRoundInfo []*pb.RoundInfo
 	for i := 0; i < 3; i++ {
 		roundInfo := &pb.RoundInfo{
-			ID:       0,
-			UpdateID: uint64(3 + i),
+			ID:         0,
+			UpdateID:   uint64(3 + i),
+			Timestamps: make([]uint64, states.FAILED),
 		}
 		err = testutils.SignRoundInfoRsa(roundInfo, t)
 		if err != nil {
@@ -200,8 +202,9 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 	// Expected Values
 	testUpdateID := uint64(1)
 	testRoundInfo := &pb.RoundInfo{
-		ID:       0,
-		UpdateID: 5,
+		ID:         0,
+		UpdateID:   5,
+		Timestamps: make([]uint64, states.FAILED),
 	}
 	expectedRoundInfo := *testRoundInfo
 	expectedRoundInfo.UpdateID = testUpdateID

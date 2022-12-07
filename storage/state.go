@@ -174,7 +174,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 			return nil, err
 		}
 		// Then insert a dummy and increment to 1
-		err = state.AddRoundUpdate(&pb.RoundInfo{})
+		err = state.AddRoundUpdate(&pb.RoundInfo{Timestamps: make([]uint64, states.FAILED)})
 		if err != nil {
 			return nil, err
 		}

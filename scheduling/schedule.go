@@ -159,11 +159,12 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 
 	//begin the thread that starts rounds
 	go func() {
-		paramsCopy := params.SafeCopy()
 
 		lastRound := time.Now()
+
+		paramsCopy := params.SafeCopy()
+		minRoundDelay := (paramsCopy.MinimumDelay * time.Millisecond) / 3
 		var err error
-		minRoundDelay := paramsCopy.MinimumDelay * time.Millisecond
 		for newRound := range newRoundChan {
 
 			// To avoid back-to-back teaming, we make sure to sleep until the minimum delay
@@ -195,9 +196,27 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 		go trackRounds(state, pool, roundTracker, &iterationsCount)
 	}
 
+	paramsCopy := params.SafeCopy()
+
+	sc := &stateChanger{
+		lastRealtime:     time.Unix(0, 0),
+		realtimeDelay:    paramsCopy.RealtimeDelay * time.Millisecond,
+		realtimeDelta:    paramsCopy.MinimumDelay * time.Millisecond,
+		realtimeTimeout:  paramsCopy.RealtimeTimeout * time.Millisecond,
+		pool:             pool,
+		state:            state,
+		roundTracker:     roundTracker,
+		roundTimeoutChan: roundTimeoutTracker,
+	}
+
+	jww.INFO.Printf("Initialized state changer with: "+
+		"\n\t realtimeDelay: %s, "+
+		"\n\t realtimeDelta: %s"+
+		"\n\t realtimeTimeout: %s", sc.realtimeDelay,
+		sc.realtimeDelta, sc.realtimeTimeout)
+
 	// Start receiving updates from nodes
 	for true {
-		paramsCopy := params.SafeCopy()
 
 		isRoundTimeout := false
 		var update node.UpdateNotification
@@ -228,9 +247,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 			var err error
 
 			// Handle the node's state change
-			err = HandleNodeUpdates(update, pool, state,
-				paramsCopy.RealtimeDelay*time.Millisecond, roundTracker, roundTimeoutTracker,
-				paramsCopy.RealtimeTimeout*time.Millisecond)
+			err = sc.HandleNodeUpdates(update)
 			if err != nil {
 				return err
 			}
@@ -285,7 +302,13 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 	roundTracker *RoundTracker) error {
 	// On a timeout, check if the round is completed. If not, kill it
-	ourRound := state.GetRoundMap().GetRound(timeoutRoundID)
+	ourRound, exists := state.GetRoundMap().GetRound(timeoutRoundID)
+	if !exists {
+		jww.ERROR.Printf("Failed to timeout round - round %d not found. "+
+			"This is a rare race condition, if seen extremely rarely this "+
+			"is not a problem", timeoutRoundID)
+		return nil
+	}
 	roundState := ourRound.GetRoundState()
 
 	// If the round is neither in completed or failed
