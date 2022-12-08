@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2018 Privategrity Corporation                                   /
-//                                                                             /
-// All rights reserved.                                                        /
+// Copyright © 2022 xx foundation                                             //
+//                                                                            //
+// Use of this source code is governed by a license that can be found in the  //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
 package round
@@ -92,7 +93,7 @@ func TestStateMap_GetRound_Valid(t *testing.T) {
 	rid := id.Round(2)
 	sm.rounds[rid] = &State{}
 
-	r := sm.GetRound(rid)
+	r, _ := sm.GetRound(rid)
 
 	if r == nil {
 		t.Errorf("Round not retrieved when valid")
@@ -107,7 +108,7 @@ func TestStateMap_GetNode_invalid(t *testing.T) {
 	}
 	rid := id.Round(2)
 
-	r := sm.GetRound(rid)
+	r, _ := sm.GetRound(rid)
 
 	if r != nil {
 		t.Errorf("Round retrieved when invalid")
@@ -125,7 +126,7 @@ func TestStateMap_DeleteRound(t *testing.T) {
 	sm.DeleteRound(rid)
 
 	// Check that the round is empty upon deletion
-	r := sm.GetRound(rid)
+	r, _ := sm.GetRound(rid)
 	if r != nil {
 		t.Errorf("Round retrieved after deletion from map")
 	}

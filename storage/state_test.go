@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2020 Privategrity Corporation                                   /
-//                                                                             /
-// All rights reserved.                                                        /
+// Copyright © 2022 xx foundation                                             //
+//                                                                            //
+// Use of this source code is governed by a license that can be found in the  //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
 package storage
@@ -15,6 +16,7 @@ import (
 	"gitlab.com/elixxir/comms/testkeys"
 	"gitlab.com/elixxir/comms/testutils"
 	"gitlab.com/elixxir/primitives/current"
+	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/elixxir/registration/storage/round"
 	"gitlab.com/xx_network/comms/signature"
@@ -163,8 +165,9 @@ func TestNetworkState_GetUpdates(t *testing.T) {
 	var expectedRoundInfo []*pb.RoundInfo
 	for i := 0; i < 3; i++ {
 		roundInfo := &pb.RoundInfo{
-			ID:       0,
-			UpdateID: uint64(3 + i),
+			ID:         0,
+			UpdateID:   uint64(3 + i),
+			Timestamps: make([]uint64, states.FAILED),
 		}
 		err = testutils.SignRoundInfoRsa(roundInfo, t)
 		if err != nil {
@@ -199,8 +202,9 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 	// Expected Values
 	testUpdateID := uint64(1)
 	testRoundInfo := &pb.RoundInfo{
-		ID:       0,
-		UpdateID: 5,
+		ID:         0,
+		UpdateID:   5,
+		Timestamps: make([]uint64, states.FAILED),
 	}
 	expectedRoundInfo := *testRoundInfo
 	expectedRoundInfo.UpdateID = testUpdateID
@@ -264,6 +268,24 @@ func TestNetworkState_UpdateNdf(t *testing.T) {
 	err = state.UpdateNdf(testNDF)
 	if err != nil {
 		t.Errorf("UpdateNdf() unexpectedly produced an error:\n%+v", err)
+	}
+
+	// DeepEqual does not handle time well, compare these separately and then
+	// set to empty structs so deepequal will work
+	if testNDF.Timestamp.Equal(state.fullNdf.Get().Timestamp) {
+		state.fullNdf.Get().Timestamp = time.Time{}
+	} else {
+		t.Errorf("Expected & received full ndf timestamps are different."+
+			"\n\tExpected: %+v\n\tReceived: %+v", testNDF.Timestamp,
+			state.fullNdf.Get().Timestamp)
+	}
+	if testNDF.Timestamp.Equal(state.partialNdf.Get().Timestamp) {
+		testNDF.Timestamp = time.Time{}
+		state.partialNdf.Get().Timestamp = time.Time{}
+	} else {
+		t.Errorf("Expected & received partial ndf timestamps are different."+
+			"\n\tExpected: %+v\n\tReceived: %+v", testNDF.Timestamp,
+			state.fullNdf.Get().Timestamp)
 	}
 
 	if !reflect.DeepEqual(*state.fullNdf.Get(), *testNDF) {

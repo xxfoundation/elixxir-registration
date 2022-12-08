@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2020 Privategrity Corporation                                   /
-//                                                                             /
-// All rights reserved.                                                        /
+// Copyright © 2022 xx foundation                                             //
+//                                                                            //
+// Use of this source code is governed by a license that can be found in the  //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
 package cmd
@@ -97,8 +98,9 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 	}
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
-			ID:    1,
-			State: uint32(states.PRECOMPUTING),
+			ID:         1,
+			State:      uint32(states.PRECOMPUTING),
+			Timestamps: make([]uint64, states.FAILED),
 		})
 
 	if err != nil {
@@ -178,8 +180,9 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 	}
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
-			ID:    1,
-			State: uint32(states.PRECOMPUTING),
+			ID:         1,
+			State:      uint32(states.PRECOMPUTING),
+			Timestamps: make([]uint64, states.FAILED),
 		})
 	time.Sleep(100 * time.Millisecond)
 
@@ -460,8 +463,9 @@ func TestPoll_BannedNode(t *testing.T) {
 	}
 	err = impl.State.AddRoundUpdate(
 		&pb.RoundInfo{
-			ID:    1,
-			State: uint32(states.PRECOMPUTING),
+			ID:         1,
+			State:      uint32(states.PRECOMPUTING),
+			Timestamps: make([]uint64, states.FAILED),
 		})
 
 	if err != nil {

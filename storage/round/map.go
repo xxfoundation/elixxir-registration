@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2018 Privategrity Corporation                                   /
-//                                                                             /
-// All rights reserved.                                                        /
+// Copyright © 2022 xx foundation                                             //
+//                                                                            //
+// Use of this source code is governed by a license that can be found in the  //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
 package round
@@ -46,10 +47,11 @@ func (rsm *StateMap) AddRound(id id.Round, batchsize, addressSpaceSize uint32, r
 }
 
 // Gets rounds from the state structure
-func (rsm *StateMap) GetRound(id id.Round) *State {
+func (rsm *StateMap) GetRound(id id.Round) (*State, bool) {
 	rsm.mux.RLock()
 	defer rsm.mux.RUnlock()
-	return rsm.rounds[id]
+	s, exists := rsm.rounds[id]
+	return s, exists
 }
 
 // add a schedule to delete timestamp

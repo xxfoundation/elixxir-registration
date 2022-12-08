@@ -1,8 +1,10 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2020 Privategrity Corporation                                   /
-//                                                                             /
-// All rights reserved.                                                        /
+// Copyright © 2022 xx foundation                                             //
+//                                                                            //
+// Use of this source code is governed by a license that can be found in the  //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
+
 package scheduling
 
 import (
@@ -81,9 +83,14 @@ func TestStartRound(t *testing.T) {
 		t.Errorf("Received error from startRound(): %v", err)
 	}
 
-	if testState.GetRoundMap().GetRound(1).GetRoundState() != states.PRECOMPUTING {
+	r, exists := testState.GetRoundMap().GetRound(1)
+	if !exists {
+		t.Errorf("Created round does not exist when it should")
+	}
+
+	if r.GetRoundState() != states.PRECOMPUTING {
 		t.Errorf("In unexpected state after round creation: %v",
-			testState.GetRoundMap().GetRound(0).GetRoundState())
+			r.GetRoundState())
 	}
 }
 
@@ -154,7 +161,12 @@ func TestStartRound_BadState(t *testing.T) {
 			"should make starting precomputing impossible")
 	}
 
-	if testState.GetRoundMap().GetRound(1).GetRoundState() == states.PRECOMPUTING {
+	r, exists := testState.GetRoundMap().GetRound(1)
+	if !exists {
+		t.Errorf("round should exist")
+	}
+
+	if r.GetRoundState() == states.PRECOMPUTING {
 		t.Errorf("Should not be in precomputing after artificially incrementign round")
 	}
 }

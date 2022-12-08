@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2020 Privategrity Corporation                                   /
-//                                                                             /
-// All rights reserved.                                                        /
+// Copyright © 2022 xx foundation                                             //
+//                                                                            //
+// Use of this source code is governed by a license that can be found in the  //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
 // Handles network state tracking and control
@@ -173,7 +174,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 			return nil, err
 		}
 		// Then insert a dummy and increment to 1
-		err = state.AddRoundUpdate(&pb.RoundInfo{})
+		err = state.AddRoundUpdate(&pb.RoundInfo{Timestamps: make([]uint64, states.FAILED)})
 		if err != nil {
 			return nil, err
 		}
@@ -351,8 +352,8 @@ func (s *NetworkState) RoundAdderRoutine() {
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
-	ndfMarshalled, _ := newNdf.Marshal()
-	s.unprunedNdf, _ = ndf.Unmarshal(ndfMarshalled)
+	newNdf.Timestamp = time.Now()
+	s.unprunedNdf = newNdf.DeepCopy()
 
 	s.pruneListMux.RLock()
 	//prune the NDF

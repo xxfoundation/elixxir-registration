@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-// Copyright © 2020 Privategrity Corporation                                   /
-//                                                                             /
-// All rights reserved.                                                        /
+// Copyright © 2022 xx foundation                                             //
+//                                                                            //
+// Use of this source code is governed by a license that can be found in the  //
+// LICENSE file.                                                              //
 ////////////////////////////////////////////////////////////////////////////////
 
 package scheduling
@@ -162,7 +163,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 		lastRound := time.Now()
 
 		paramsCopy := params.SafeCopy()
-		minRoundDelay := (paramsCopy.MinimumDelay * time.Millisecond)/3
+		minRoundDelay := (paramsCopy.MinimumDelay * time.Millisecond) / 3
 		var err error
 		for newRound := range newRoundChan {
 
@@ -208,9 +209,9 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 		roundTimeoutChan: roundTimeoutTracker,
 	}
 
-	jww.INFO.Printf("Initialized state changer with: " +
-		"\n\t realtimeDelay: %s, " +
-		"\n\t realtimeDelta: %s" +
+	jww.INFO.Printf("Initialized state changer with: "+
+		"\n\t realtimeDelay: %s, "+
+		"\n\t realtimeDelta: %s"+
 		"\n\t realtimeTimeout: %s", sc.realtimeDelay,
 		sc.realtimeDelta, sc.realtimeTimeout)
 
@@ -301,7 +302,13 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 func timeoutRound(state *storage.NetworkState, timeoutRoundID id.Round,
 	roundTracker *RoundTracker) error {
 	// On a timeout, check if the round is completed. If not, kill it
-	ourRound := state.GetRoundMap().GetRound(timeoutRoundID)
+	ourRound, exists := state.GetRoundMap().GetRound(timeoutRoundID)
+	if !exists {
+		jww.ERROR.Printf("Failed to timeout round - round %d not found. "+
+			"This is a rare race condition, if seen extremely rarely this "+
+			"is not a problem", timeoutRoundID)
+		return nil
+	}
 	roundState := ourRound.GetRoundState()
 
 	// If the round is neither in completed or failed
