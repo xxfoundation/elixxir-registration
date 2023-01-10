@@ -65,8 +65,9 @@ type NetworkState struct {
 	// Boolean determines whether Node is omitted from NDF
 	pruneList map[id.ID]bool
 
-	partialNdf *dataStructures.Ndf
-	fullNdf    *dataStructures.Ndf
+	ndfUpdateChan chan *ndf.NetworkDefinition
+	partialNdf    *dataStructures.Ndf
+	fullNdf       *dataStructures.Ndf
 
 	// Address space size
 	addressSpaceSize *uint32
@@ -89,7 +90,7 @@ type NetworkState struct {
 // NewState returns a new NetworkState object.
 func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 	fullNdfOutputPath string, signedPartialNdfOutputPath string,
-	geoBins map[string]region.GeoBin) (*NetworkState, error) {
+	geoBins map[string]region.GeoBin, nodeMetricInterval time.Duration) (*NetworkState, error) {
 
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
@@ -115,6 +116,7 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 		signedPartialNdfOutputPath: signedPartialNdfOutputPath,
 		roundUpdatesToAddCh:        make(chan *dataStructures.Round, 500),
 		geoBins:                    geoBins,
+		ndfUpdateChan:              make(chan *ndf.NetworkDefinition, 500),
 	}
 
 	//begin the thread that reads and adds round updates
@@ -190,6 +192,8 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 			return nil, err
 		}
 	}
+
+	go state.startUpdatingNdf(nodeMetricInterval)
 
 	return state, nil
 }
@@ -351,7 +355,47 @@ func (s *NetworkState) RoundAdderRoutine() {
 }
 
 // UpdateNdf updates internal NDF structures with the specified new NDF.
-func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
+func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) error {
+	select {
+	case s.ndfUpdateChan <- newNdf:
+		jww.TRACE.Printf("Sent NDF with timestamp %s to update chan (nodes: %d)", newNdf.Timestamp.String(), len(newNdf.Nodes))
+	default:
+		err := errors.Errorf("Could not send NDF with timestamp %s to update chan", newNdf.Timestamp)
+		jww.WARN.Println(err)
+		return err
+	}
+	return nil
+}
+
+func (s *NetworkState) startUpdatingNdf(interval time.Duration) {
+	t := time.NewTicker(interval)
+	for {
+		select {
+		case <-t.C:
+			var ndfs []*ndf.NetworkDefinition
+			for done := false; !done; {
+				select {
+				case receivedNdf := <-s.ndfUpdateChan:
+					ndfs = append(ndfs, receivedNdf)
+				default:
+					done = true
+				}
+			}
+
+			if len(ndfs) > 0 {
+				mostRecent := ndfs[len(ndfs)-1]
+				err := s.DoNdfUpdate(mostRecent)
+				if err != nil {
+					jww.ERROR.Printf("Failed to update NDF: %+v", err)
+				} else {
+					jww.INFO.Printf("Successfully updated NDF using new NDF with timestamp %s (nodes: %d)", mostRecent.Timestamp, len(mostRecent.Nodes))
+				}
+			}
+		}
+	}
+}
+
+func (s *NetworkState) DoNdfUpdate(newNdf *ndf.NetworkDefinition) (err error) {
 	newNdf.Timestamp = time.Now()
 	s.unprunedNdf = newNdf.DeepCopy()
 

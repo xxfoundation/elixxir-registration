@@ -91,6 +91,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		WhitelistedIdsPath: testkeys.GetPreApprovedPath(),
 		disableNDFPruning:  true,
 		disableGeoBinning:  true,
+		nodeMetricInterval: time.Millisecond,
 	}
 
 	// Start registration server

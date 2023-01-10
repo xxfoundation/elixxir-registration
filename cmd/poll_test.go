@@ -118,11 +118,12 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 
 	impl.params.disablePing = true
 
+	time.Sleep(time.Second)
+
 	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
-	time.Sleep(100 * time.Millisecond)
 
 	if response.FullNDF == nil {
 		t.Errorf("No NDF provided")
@@ -251,7 +252,7 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	}
 }*/
 
-//Happy path
+// Happy path
 func TestRegistrationImpl_PollNdf(t *testing.T) {
 	//Create database
 	var err error
@@ -328,6 +329,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	}
 
 	l.Lock()
+	time.Sleep(100 * time.Millisecond)
 	observedNDFBytes, err := impl.PollNdf(nil)
 	l.Unlock()
 	if err != nil {
@@ -349,9 +351,13 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("Failed to set registration address. Expected: %v \n Recieved: %v",
 			permAddr, observedNDF.Registration.Address)
 	}
+
+	if len(observedNDF.Nodes) != 3 {
+		t.Errorf("Did not receive expected node count.\n\tExpected: %d\n\tReceived: %d\n", 3, len(observedNDF.Nodes))
+	}
 }
 
-//Error  path
+// Error  path
 func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Create database
 	var err error
@@ -998,7 +1004,7 @@ func TestVerifyError(t *testing.T) {
 	// Start registration server
 	ndfReady := uint32(0)
 
-	state, err := storage.NewState(pk, 8, "", "", region.GetCountryBins())
+	state, err := storage.NewState(pk, 8, "", "", region.GetCountryBins(), time.Millisecond)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}

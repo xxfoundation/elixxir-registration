@@ -37,7 +37,7 @@ func TestTrackNodeMetrics(t *testing.T) {
 	testParams.pruneRetentionLimit = 24 * time.Hour
 	testParams.disableNDFPruning = false
 	// Create a new state
-	state, err := storage.NewState(getTestKey(), 8, "", "", region.GetCountryBins())
+	state, err := storage.NewState(getTestKey(), 8, "", "", region.GetCountryBins(), time.Millisecond)
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}

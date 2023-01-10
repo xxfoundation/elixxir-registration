@@ -201,7 +201,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Initialize the state tracking object
 	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size),
-		params.FullNdfOutputPath, params.SignedPartialNdfOutputPath, geoBins)
+		params.FullNdfOutputPath, params.SignedPartialNdfOutputPath, geoBins, params.nodeMetricInterval)
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +295,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// update the internal state with the newly-formed NDF
-	err = regImpl.State.UpdateNdf(networkDef)
+	err = regImpl.State.DoNdfUpdate(networkDef)
 	if err != nil {
 		return nil, err
 	}

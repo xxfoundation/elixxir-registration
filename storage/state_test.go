@@ -61,7 +61,7 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, 8, "", "", region.GetCountryBins())
+	state, err := NewState(privateKey, 8, "", "", region.GetCountryBins(), time.Millisecond)
 	if err != nil {
 		t.Errorf("NewState() produced an unexpected error:\n%v", err)
 	}
@@ -253,8 +253,8 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 	}
 }
 
-// Tests that UpdateNdf() updates fullNdf and partialNdf correctly.
-func TestNetworkState_UpdateNdf(t *testing.T) {
+// Tests that doNdfUpdate() updates fullNdf and partialNdf correctly.
+func TestNetworkState_doNdfUpdate(t *testing.T) {
 	// Expected values
 	testNDF := &ndf.NetworkDefinition{}
 
@@ -265,9 +265,9 @@ func TestNetworkState_UpdateNdf(t *testing.T) {
 	}
 
 	// Update NDF
-	err = state.UpdateNdf(testNDF)
+	err = state.DoNdfUpdate(testNDF)
 	if err != nil {
-		t.Errorf("UpdateNdf() unexpectedly produced an error:\n%+v", err)
+		t.Errorf("doNdfUpdate() unexpectedly produced an error:\n%+v", err)
 	}
 
 	// DeepEqual does not handle time well, compare these separately and then
@@ -289,19 +289,19 @@ func TestNetworkState_UpdateNdf(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(*state.fullNdf.Get(), *testNDF) {
-		t.Errorf("UpdateNdf() saved the wrong NDF fullNdf."+
+		t.Errorf("doNdfUpdate() saved the wrong NDF fullNdf."+
 			"\n\texpected: %#v\n\treceived: %#v", *testNDF, *state.fullNdf.Get())
 	}
 
 	if !reflect.DeepEqual(*state.partialNdf.Get(), *testNDF) {
-		t.Errorf("UpdateNdf() saved the wrong NDF partialNdf."+
+		t.Errorf("doNdfUpdate() saved the wrong NDF partialNdf."+
 			"\n\texpected: %#v\n\treceived: %#v", *testNDF, *state.partialNdf.Get())
 	}
 }
 
-// Tests that UpdateNdf() generates an error when injected with invalid private
+// Tests that doNdfUpdate() generates an error when injected with invalid private
 // key.
-func TestNetworkState_UpdateNdf_SignError(t *testing.T) {
+func TestNetworkState_doNdfUpdate_SignError(t *testing.T) {
 	// Expected values
 	testNDF := &ndf.NetworkDefinition{}
 	expectedErr := "Unable to sign message: crypto/rsa: key size too small " +
@@ -321,10 +321,10 @@ func TestNetworkState_UpdateNdf_SignError(t *testing.T) {
 	state.rsaPrivateKey = brokenPrivateKey
 
 	// Update NDF
-	err = state.UpdateNdf(testNDF)
+	err = state.DoNdfUpdate(testNDF)
 
 	if err == nil || err.Error() != expectedErr {
-		t.Errorf("UpdateNdf() did not produce an error when expected."+
+		t.Errorf("doNdfUpdate() did not produce an error when expected."+
 			"\n\texpected: %+v\n\treceived: %+v", expectedErr, err)
 	}
 }
@@ -468,7 +468,7 @@ func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 	}
 
 	// Generate new NetworkState using the private key
-	state, err := NewState(privKey, 8, "", "", region.GetCountryBins())
+	state, err := NewState(privKey, 8, "", "", region.GetCountryBins(), time.Millisecond)
 	if err != nil {
 		return state, privKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
 	}
