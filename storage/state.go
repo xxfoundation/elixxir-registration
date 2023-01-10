@@ -354,7 +354,7 @@ func (s *NetworkState) RoundAdderRoutine() {
 	}
 }
 
-// UpdateNdf updates internal NDF structures with the specified new NDF.
+// UpdateNdf sends a new Ndf into the update channel for processing in the next batch
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) error {
 	select {
 	case s.ndfUpdateChan <- newNdf:
@@ -367,6 +367,7 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) error {
 	return nil
 }
 
+// startUpdatingNdf starts the ndf update thread with a passed in interval
 func (s *NetworkState) startUpdatingNdf(interval time.Duration) {
 	t := time.NewTicker(interval)
 	for {
@@ -395,6 +396,7 @@ func (s *NetworkState) startUpdatingNdf(interval time.Duration) {
 	}
 }
 
+// DoNdfUpdate updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) DoNdfUpdate(newNdf *ndf.NetworkDefinition) (err error) {
 	newNdf.Timestamp = time.Now()
 	s.unprunedNdf = newNdf.DeepCopy()
