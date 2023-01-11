@@ -394,6 +394,7 @@ func (s *NetworkState) StartUpdatingNdf(interval time.Duration) {
 	}
 }
 
+// ForceUpdateNdf updates internal NDF structures with the specified new NDF.
 func (s *NetworkState) ForceUpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	newNdf.Timestamp = time.Now()
 	s.unprunedNdf = newNdf.DeepCopy()
