@@ -90,7 +90,7 @@ type NetworkState struct {
 // NewState returns a new NetworkState object.
 func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 	fullNdfOutputPath string, signedPartialNdfOutputPath string,
-	geoBins map[string]region.GeoBin, nodeMetricInterval time.Duration) (*NetworkState, error) {
+	geoBins map[string]region.GeoBin) (*NetworkState, error) {
 
 	fullNdf, err := dataStructures.NewNdf(&ndf.NetworkDefinition{})
 	if err != nil {
@@ -192,8 +192,6 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 			return nil, err
 		}
 	}
-
-	go state.startUpdatingNdf(nodeMetricInterval)
 
 	return state, nil
 }
@@ -367,8 +365,13 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) error {
 	return nil
 }
 
-// startUpdatingNdf starts the ndf update thread with a passed in interval
-func (s *NetworkState) startUpdatingNdf(interval time.Duration) {
+// ForceUpdateNdf updates internal NDF structures with the specified new NDF.
+func (s *NetworkState) ForceUpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
+	return s.updateNdf(newNdf)
+}
+
+// StartUpdatingNdf starts the ndf update thread with a passed in interval
+func (s *NetworkState) StartUpdatingNdf(interval time.Duration) {
 	t := time.NewTicker(interval)
 	for {
 		select {
@@ -385,7 +388,7 @@ func (s *NetworkState) startUpdatingNdf(interval time.Duration) {
 
 			if len(ndfs) > 0 {
 				mostRecent := ndfs[len(ndfs)-1]
-				err := s.DoNdfUpdate(mostRecent)
+				err := s.updateNdf(mostRecent)
 				if err != nil {
 					jww.ERROR.Printf("Failed to update NDF: %+v", err)
 				} else {
@@ -396,8 +399,7 @@ func (s *NetworkState) startUpdatingNdf(interval time.Duration) {
 	}
 }
 
-// DoNdfUpdate updates internal NDF structures with the specified new NDF.
-func (s *NetworkState) DoNdfUpdate(newNdf *ndf.NetworkDefinition) (err error) {
+func (s *NetworkState) updateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	newNdf.Timestamp = time.Now()
 	s.unprunedNdf = newNdf.DeepCopy()
 

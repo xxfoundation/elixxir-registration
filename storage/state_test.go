@@ -61,7 +61,7 @@ func TestNewState(t *testing.T) {
 	}
 
 	// Generate new NetworkState
-	state, err := NewState(privateKey, 8, "", "", region.GetCountryBins(), time.Millisecond)
+	state, err := NewState(privateKey, 8, "", "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("NewState() produced an unexpected error:\n%v", err)
 	}
@@ -265,7 +265,7 @@ func TestNetworkState_doNdfUpdate(t *testing.T) {
 	}
 
 	// Update NDF
-	err = state.DoNdfUpdate(testNDF)
+	err = state.ForceUpdateNdf(testNDF)
 	if err != nil {
 		t.Errorf("doNdfUpdate() unexpectedly produced an error:\n%+v", err)
 	}
@@ -321,7 +321,7 @@ func TestNetworkState_doNdfUpdate_SignError(t *testing.T) {
 	state.rsaPrivateKey = brokenPrivateKey
 
 	// Update NDF
-	err = state.DoNdfUpdate(testNDF)
+	err = state.ForceUpdateNdf(testNDF)
 
 	if err == nil || err.Error() != expectedErr {
 		t.Errorf("doNdfUpdate() did not produce an error when expected."+
@@ -468,7 +468,7 @@ func generateTestNetworkState() (*NetworkState, *rsa.PrivateKey, error) {
 	}
 
 	// Generate new NetworkState using the private key
-	state, err := NewState(privKey, 8, "", "", region.GetCountryBins(), time.Millisecond)
+	state, err := NewState(privKey, 8, "", "", region.GetCountryBins())
 	if err != nil {
 		return state, privKey, fmt.Errorf("NewState() produced an unexpected error:\n+%v", err)
 	}

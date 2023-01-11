@@ -37,10 +37,11 @@ func TestTrackNodeMetrics(t *testing.T) {
 	testParams.pruneRetentionLimit = 24 * time.Hour
 	testParams.disableNDFPruning = false
 	// Create a new state
-	state, err := storage.NewState(getTestKey(), 8, "", "", region.GetCountryBins(), time.Millisecond)
+	state, err := storage.NewState(getTestKey(), 8, "", "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
+	go state.StartUpdatingNdf(time.Second)
 
 	// Construct an active node
 	activeNodeID := id.NewIdFromString("active", id.Node, t)
@@ -136,7 +137,7 @@ func TestTrackNodeMetrics(t *testing.T) {
 		},
 	}
 
-	err = state.UpdateNdf(testNdf)
+	err = state.ForceUpdateNdf(testNdf)
 	if err != nil {
 		t.Fatalf("Could not update ndf: %v", err)
 	}

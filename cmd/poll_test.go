@@ -1004,7 +1004,7 @@ func TestVerifyError(t *testing.T) {
 	// Start registration server
 	ndfReady := uint32(0)
 
-	state, err := storage.NewState(pk, 8, "", "", region.GetCountryBins(), time.Millisecond)
+	state, err := storage.NewState(pk, 8, "", "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}

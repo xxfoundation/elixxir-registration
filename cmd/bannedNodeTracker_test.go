@@ -17,7 +17,6 @@ import (
 	"gitlab.com/xx_network/primitives/region"
 	"sync"
 	"testing"
-	"time"
 )
 
 func TestBannedNodeTracker(t *testing.T) {
@@ -32,7 +31,7 @@ func TestBannedNodeTracker(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins(), time.Millisecond)
+	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins())
 	impl := &RegistrationImpl{
 		State:   testState,
 		NDFLock: sync.Mutex{},

@@ -201,10 +201,12 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 
 	// Initialize the state tracking object
 	regImpl.State, err = storage.NewState(rsaPrivateKey, uint32(newestAddressSpace.Size),
-		params.FullNdfOutputPath, params.SignedPartialNdfOutputPath, geoBins, params.nodeMetricInterval)
+		params.FullNdfOutputPath, params.SignedPartialNdfOutputPath, geoBins)
 	if err != nil {
 		return nil, err
 	}
+
+	go regImpl.State.StartUpdatingNdf(params.nodeMetricInterval)
 
 	if !noTLS {
 		// Read in TLS keys from files
@@ -295,7 +297,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// update the internal state with the newly-formed NDF
-	err = regImpl.State.DoNdfUpdate(networkDef)
+	err = regImpl.State.ForceUpdateNdf(networkDef)
 	if err != nil {
 		return nil, err
 	}

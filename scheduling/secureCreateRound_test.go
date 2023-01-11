@@ -15,8 +15,6 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/region"
 	mathRand "math/rand"
-	"time"
-
 	"strconv"
 	"testing"
 )
@@ -36,7 +34,7 @@ func TestCreateRound(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins(), time.Millisecond)
+	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -86,7 +84,7 @@ func TestCreateRound_Error_NotEnoughForTeam(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins(), time.Millisecond)
+	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
@@ -140,7 +138,7 @@ func TestCreateRound_Error_NotEnoughForThreshold(t *testing.T) {
 	// Build network state
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 
-	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins(), time.Millisecond)
+	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins())
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
 		t.FailNow()
