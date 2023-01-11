@@ -365,11 +365,6 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) error {
 	return nil
 }
 
-// ForceUpdateNdf updates internal NDF structures with the specified new NDF.
-func (s *NetworkState) ForceUpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
-	return s.updateNdf(newNdf)
-}
-
 // StartUpdatingNdf starts the ndf update thread with a passed in interval
 func (s *NetworkState) StartUpdatingNdf(interval time.Duration) {
 	t := time.NewTicker(interval)
@@ -388,7 +383,7 @@ func (s *NetworkState) StartUpdatingNdf(interval time.Duration) {
 
 			if len(ndfs) > 0 {
 				mostRecent := ndfs[len(ndfs)-1]
-				err := s.updateNdf(mostRecent)
+				err := s.ForceUpdateNdf(mostRecent)
 				if err != nil {
 					jww.ERROR.Printf("Failed to update NDF: %+v", err)
 				} else {
@@ -399,7 +394,7 @@ func (s *NetworkState) StartUpdatingNdf(interval time.Duration) {
 	}
 }
 
-func (s *NetworkState) updateNdf(newNdf *ndf.NetworkDefinition) (err error) {
+func (s *NetworkState) ForceUpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	newNdf.Timestamp = time.Now()
 	s.unprunedNdf = newNdf.DeepCopy()
 
