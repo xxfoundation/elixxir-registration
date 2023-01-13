@@ -206,8 +206,6 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 		return nil, err
 	}
 
-	go regImpl.State.StartUpdatingNdf(params.nodeMetricInterval)
-
 	if !noTLS {
 		// Read in TLS keys from files
 		cert, err := utils.ReadFile(params.CertPath)
@@ -297,6 +295,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// update the internal state with the newly-formed NDF
+	go regImpl.State.StartUpdatingNdf(params.nodeMetricInterval)
 	err = regImpl.State.ForceUpdateNdf(networkDef)
 	if err != nil {
 		return nil, err

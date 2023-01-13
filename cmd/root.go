@@ -260,6 +260,11 @@ var rootCmd = &cobra.Command{
 			leakedDuration: leakedDurations,
 		}
 
+		// Determine how long between storing Node metrics
+		nodeMetricInterval := time.Duration(
+			viper.GetInt64("nodeMetricInterval")) * time.Second
+		RegParams.nodeMetricInterval = nodeMetricInterval
+
 		jww.INFO.Println("Starting Permissioning Server...")
 		jww.INFO.Printf("Params: %+v", RegParams)
 
@@ -295,10 +300,6 @@ var rootCmd = &cobra.Command{
 			jww.DEBUG.Printf("No disabled Node list path provided. Skipping " +
 				"disabled Node list polling.")
 		}
-
-		// Determine how long between storing Node metrics
-		nodeMetricInterval := time.Duration(
-			viper.GetInt64("nodeMetricInterval")) * time.Second
 
 		// Parse params JSON
 		params := scheduling.ParseParams(SchedulingConfig)

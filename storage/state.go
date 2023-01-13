@@ -367,6 +367,7 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) error {
 
 // StartUpdatingNdf starts the ndf update thread with a passed in interval
 func (s *NetworkState) StartUpdatingNdf(interval time.Duration) {
+	jww.INFO.Printf("Starting NDF Update thread with interval %s...", interval.String())
 	t := time.NewTicker(interval)
 	for {
 		select {
