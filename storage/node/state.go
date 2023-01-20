@@ -8,6 +8,8 @@
 package node
 
 import (
+	"bytes"
+	"crypto/ed25519"
 	"github.com/pkg/errors"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
@@ -91,6 +93,8 @@ type State struct {
 	// Status of node's connectivity, i.e. whether the node
 	// has port forwarding
 	connectivity *uint32
+
+	ed25519 ed25519.PublicKey
 }
 
 // Increment function for numPolls
@@ -375,6 +379,19 @@ func (n *State) UpdateGatewayAddresses(gateway string) (bool, error) {
 	n.gatewayAddress = gateway
 	n.lastGatewayUpdateTS = time.Now()
 
+	return true, nil
+}
+
+func (n *State) UpdateEd25519Key(ed []byte) (bool, error) {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+
+	if ed == nil || bytes.Compare(n.ed25519[:], ed) == 0 {
+		return false, nil
+	}
+
+	n.ed25519 = ed25519.PublicKey{}
+	copy(ed, n.ed25519[:])
 	return true, nil
 }
 
