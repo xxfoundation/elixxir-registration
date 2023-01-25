@@ -236,10 +236,8 @@ func checkVersion(p *Params, msg *pb.PermissioningPoll) error {
 }
 
 func updateNdfEd25519(nid *id.ID, ed []byte, ndf *ndf.NetworkDefinition) error {
-	jww.INFO.Printf("Attempting to update ed for %s", nid.String())
 	for i, n := range ndf.Nodes {
 		if bytes.Equal(n.ID, nid[:]) {
-			jww.INFO.Printf("Updating ed for %s to %+v", nid.String(), ed)
 			ndf.Nodes[i].Ed25519 = ed
 			return nil
 

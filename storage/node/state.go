@@ -10,7 +10,6 @@ package node
 import (
 	"bytes"
 	"github.com/pkg/errors"
-	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/crypto/nike"
 	"gitlab.com/elixxir/crypto/nike/ecdh"
 	"gitlab.com/elixxir/primitives/current"
@@ -391,10 +390,8 @@ func (n *State) UpdateEd25519Key(ed []byte) (bool, error) {
 	if ed == nil || (n.ed25519 != nil && bytes.Compare(n.ed25519.Bytes(), ed) == 0) {
 		return false, nil
 	}
-	jww.INFO.Printf("Received ED key %+v for node %s", ed, n.id.String())
 	newEd, err := ecdh.ECDHNIKE.UnmarshalBinaryPublicKey(ed)
 	if err != nil {
-		jww.INFO.Printf("Failed to unmarshal ED")
 		return false, nil
 	}
 	n.ed25519 = newEd

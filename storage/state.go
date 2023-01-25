@@ -388,11 +388,6 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
 		return
 	}
 
-	jww.INFO.Printf("Updating NDF to %s", fullNdfMsg.Ndf)
-	for i, n := range newNdf.Nodes {
-		jww.INFO.Printf("Nodes[%d] ed: %+v", i, n.Ed25519)
-	}
-
 	// Sign NDF comms messages
 	err = signature.SignRsa(fullNdfMsg, s.rsaPrivateKey)
 	if err != nil {
