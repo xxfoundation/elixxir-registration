@@ -12,16 +12,17 @@ require (
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/jwalterweatherman v1.1.0
 	github.com/spf13/viper v1.7.1
-	gitlab.com/elixxir/comms v0.0.4-0.20230118204847-33965e7fdb6b
-	gitlab.com/elixxir/crypto v0.0.7-0.20230113231934-c833bffda448
+	gitlab.com/elixxir/comms v0.0.4-0.20230125155939-d94858d69e3a
+	gitlab.com/elixxir/crypto v0.0.7-0.20230120181912-b9c6cae57f5b
 	gitlab.com/elixxir/primitives v0.0.3-0.20230109222259-f62b2a90b62c
 	gitlab.com/xx_network/comms v0.0.4-0.20230113193654-a3a18c6bbb90
 	gitlab.com/xx_network/crypto v0.0.5-0.20230113190331-06f2eb12b97f
-	gitlab.com/xx_network/primitives v0.0.4-0.20230118204433-73d674acd833
+	gitlab.com/xx_network/primitives v0.0.4-0.20230120192639-f457e2ff15d7
 	google.golang.org/protobuf v1.28.1
 )
 
 require (
+	filippo.io/edwards25519 v1.0.0 // indirect
 	git.xx.network/elixxir/grpc-web-go-client v0.0.0-20221221204132-2ed1fec765f1 // indirect
 	github.com/badoux/checkmail v1.2.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
@@ -43,7 +44,6 @@ require (
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/oschwald/maxminddb-golang v1.8.0 // indirect
 	github.com/pelletier/go-toml v1.2.0 // indirect
-	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/rs/cors v1.8.2 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/smartystreets/assertions v1.1.0 // indirect

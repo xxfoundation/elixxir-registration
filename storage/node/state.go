@@ -9,8 +9,10 @@ package node
 
 import (
 	"bytes"
-	"crypto/ed25519"
 	"github.com/pkg/errors"
+	jww "github.com/spf13/jwalterweatherman"
+	"gitlab.com/elixxir/crypto/nike"
+	"gitlab.com/elixxir/crypto/nike/ecdh"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
@@ -94,7 +96,7 @@ type State struct {
 	// has port forwarding
 	connectivity *uint32
 
-	ed25519 ed25519.PublicKey
+	ed25519 nike.PublicKey
 }
 
 // Increment function for numPolls
@@ -386,12 +388,16 @@ func (n *State) UpdateEd25519Key(ed []byte) (bool, error) {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 
-	if ed == nil || bytes.Compare(n.ed25519[:], ed) == 0 {
+	if ed == nil || (n.ed25519 != nil && bytes.Compare(n.ed25519.Bytes(), ed) == 0) {
 		return false, nil
 	}
-
-	n.ed25519 = ed25519.PublicKey{}
-	copy(ed, n.ed25519[:])
+	jww.INFO.Printf("Received ED key %+v for node %s", ed, n.id.String())
+	newEd, err := ecdh.ECDHNIKE.UnmarshalBinaryPublicKey(ed)
+	if err != nil {
+		jww.INFO.Printf("Failed to unmarshal ED")
+		return false, nil
+	}
+	n.ed25519 = newEd
 	return true, nil
 }
 
