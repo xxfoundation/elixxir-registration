@@ -28,7 +28,8 @@ import (
 )
 
 // Handle registration check attempt by node. We assume
-//  the code being searched for is the node's.
+//
+//	the code being searched for is the node's.
 func (m *RegistrationImpl) CheckNodeRegistration(msg *mixmessages.RegisteredNodeCheck) (bool, error) {
 	//do edge check to ensure the message is not nil
 	if msg == nil {
@@ -197,7 +198,8 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() ([]*connect.Host, error) {
 
 // Handles including new registrations in the network
 // fixme: we should split this function into what is relevant to registering a  node and what is relevant
-//  to permissioning
+//
+//	to permissioning
 func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 	m.registrationLock.Lock()
@@ -238,7 +240,7 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	}
 
 	// update the internal state with the newly-updated ndf
-	err = m.State.UpdateNdf(networkDef)
+	err = m.State.ForceUpdateNdf(networkDef)
 	m.NDFLock.Unlock()
 	if err != nil {
 		return err

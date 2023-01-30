@@ -387,7 +387,7 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 		}
 
 		if update {
-			err = state.UpdateNdf(def)
+			err = state.ForceUpdateNdf(def)
 			if err != nil {
 				return errors.WithMessage(err, "Failed to update NDF after bans")
 			}
