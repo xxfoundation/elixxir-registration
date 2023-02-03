@@ -643,7 +643,7 @@ func (m *RegistrationImpl) updateVersions() {
 	updateNDF := m.State.GetUnprunedNdf()
 	jww.DEBUG.Printf("Updating client version from %s to %s", updateNDF.ClientVersion, clientVersion)
 	updateNDF.ClientVersion = clientVersion
-	err = m.State.ForceUpdateNdf(updateNDF)
+	err = m.State.UpdateNdf(updateNDF)
 	if err != nil {
 		jww.FATAL.Panicf("Failed to update client version in NDF: %v", err)
 	}

@@ -253,7 +253,7 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 	}
 }
 
-// Tests that ForceUpdateNdf() updates fullNdf and partialNdf correctly.
+// Tests that UpdateNdf() updates fullNdf and partialNdf correctly.
 func TestNetworkState_ForceUpdateNdf(t *testing.T) {
 	// Expected values
 	testNDF := &ndf.NetworkDefinition{}
@@ -265,9 +265,9 @@ func TestNetworkState_ForceUpdateNdf(t *testing.T) {
 	}
 
 	// Update NDF
-	err = state.ForceUpdateNdf(testNDF)
+	err = state.UpdateNdf(testNDF)
 	if err != nil {
-		t.Errorf("ForceUpdateNdf() unexpectedly produced an error:\n%+v", err)
+		t.Errorf("UpdateNdf() unexpectedly produced an error:\n%+v", err)
 	}
 
 	// DeepEqual does not handle time well, compare these separately and then
@@ -289,17 +289,17 @@ func TestNetworkState_ForceUpdateNdf(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(*state.fullNdf.Get(), *testNDF) {
-		t.Errorf("ForceUpdateNdf() saved the wrong NDF fullNdf."+
+		t.Errorf("UpdateNdf() saved the wrong NDF fullNdf."+
 			"\n\texpected: %#v\n\treceived: %#v", *testNDF, *state.fullNdf.Get())
 	}
 
 	if !reflect.DeepEqual(*state.partialNdf.Get(), *testNDF) {
-		t.Errorf("ForceUpdateNdf() saved the wrong NDF partialNdf."+
+		t.Errorf("UpdateNdf() saved the wrong NDF partialNdf."+
 			"\n\texpected: %#v\n\treceived: %#v", *testNDF, *state.partialNdf.Get())
 	}
 }
 
-// Tests that ForceUpdateNdf() generates an error when injected with invalid private
+// Tests that UpdateNdf() generates an error when injected with invalid private
 // key.
 func TestNetworkState_ForceUpdateNdf_SignError(t *testing.T) {
 	// Expected values
@@ -321,10 +321,10 @@ func TestNetworkState_ForceUpdateNdf_SignError(t *testing.T) {
 	state.rsaPrivateKey = brokenPrivateKey
 
 	// Update NDF
-	err = state.ForceUpdateNdf(testNDF)
+	err = state.UpdateNdf(testNDF)
 
 	if err == nil || err.Error() != expectedErr {
-		t.Errorf("ForceUpdateNdf() did not produce an error when expected."+
+		t.Errorf("UpdateNdf() did not produce an error when expected."+
 			"\n\texpected: %+v\n\treceived: %+v", expectedErr, err)
 	}
 }

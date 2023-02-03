@@ -240,7 +240,7 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	}
 
 	// update the internal state with the newly-updated ndf
-	err = m.State.ForceUpdateNdf(networkDef)
+	err = m.State.UpdateNdf(networkDef)
 	m.NDFLock.Unlock()
 	if err != nil {
 		return err

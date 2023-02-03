@@ -179,6 +179,10 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 				impl.UpdateEarliestRound(earliestClientRound, earliestGwRound, earliestGwRoundTs)
 			}
 
+			err = impl.State.TriggerOutputNdf()
+			if err != nil {
+				jww.ERROR.Printf("Failed to trigger NDF output: %+v", err)
+			}
 		}
 	}
 }

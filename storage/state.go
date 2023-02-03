@@ -65,9 +65,10 @@ type NetworkState struct {
 	// Boolean determines whether Node is omitted from NDF
 	pruneList map[id.ID]bool
 
-	ndfUpdateChan chan *ndf.NetworkDefinition
-	partialNdf    *dataStructures.Ndf
-	fullNdf       *dataStructures.Ndf
+	ndfOutputChan    chan *ndf.NetworkDefinition
+	outputNdfTrigger chan bool
+	partialNdf       *dataStructures.Ndf
+	fullNdf          *dataStructures.Ndf
 
 	// Address space size
 	addressSpaceSize *uint32
@@ -116,7 +117,8 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 		signedPartialNdfOutputPath: signedPartialNdfOutputPath,
 		roundUpdatesToAddCh:        make(chan *dataStructures.Round, 500),
 		geoBins:                    geoBins,
-		ndfUpdateChan:              make(chan *ndf.NetworkDefinition, 500),
+		ndfOutputChan:              make(chan *ndf.NetworkDefinition, 500),
+		outputNdfTrigger:           make(chan bool, 1),
 	}
 
 	//begin the thread that reads and adds round updates
@@ -352,11 +354,17 @@ func (s *NetworkState) RoundAdderRoutine() {
 	}
 }
 
-// UpdateNdf sends a new Ndf into the update channel for processing in the next batch
+// UpdateNdf triggers internal state updates & sends a new Ndf into the output
+// channel for processing after the next node metric interval
 func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) error {
+	err := s.updateInternalNdf(newNdf)
+	if err != nil {
+		return err
+	}
+
 	select {
-	case s.ndfUpdateChan <- newNdf:
-		jww.TRACE.Printf("Sent NDF with timestamp %s to update chan (nodes: %d)", newNdf.Timestamp.String(), len(newNdf.Nodes))
+	case s.ndfOutputChan <- newNdf:
+		jww.TRACE.Printf("Sent NDF with timestamp %s to output chan (nodes: %d)", newNdf.Timestamp.String(), len(newNdf.Nodes))
 	default:
 		err := errors.Errorf("Could not send NDF with timestamp %s to update chan", newNdf.Timestamp)
 		jww.WARN.Println(err)
@@ -365,38 +373,8 @@ func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) error {
 	return nil
 }
 
-// StartUpdatingNdf starts the ndf update thread with a passed in interval
-func (s *NetworkState) StartUpdatingNdf(interval time.Duration) {
-	jww.INFO.Printf("Starting NDF Update thread with interval %s...", interval.String())
-	t := time.NewTicker(interval)
-	for {
-		select {
-		case <-t.C:
-			var ndfs []*ndf.NetworkDefinition
-			for done := false; !done; {
-				select {
-				case receivedNdf := <-s.ndfUpdateChan:
-					ndfs = append(ndfs, receivedNdf)
-				default:
-					done = true
-				}
-			}
-
-			if len(ndfs) > 0 {
-				mostRecent := ndfs[len(ndfs)-1]
-				err := s.ForceUpdateNdf(mostRecent)
-				if err != nil {
-					jww.ERROR.Printf("Failed to update NDF: %+v", err)
-				} else {
-					jww.INFO.Printf("Successfully updated NDF using new NDF with timestamp %s (nodes: %d)", mostRecent.Timestamp, len(mostRecent.Nodes))
-				}
-			}
-		}
-	}
-}
-
-// ForceUpdateNdf updates internal NDF structures with the specified new NDF.
-func (s *NetworkState) ForceUpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
+// updateInternalNdf updates internal NDF structures with the specified new NDF.
+func (s *NetworkState) updateInternalNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	newNdf.Timestamp = time.Now()
 	s.unprunedNdf = newNdf.DeepCopy()
 
@@ -453,7 +431,51 @@ func (s *NetworkState) ForceUpdateNdf(newNdf *ndf.NetworkDefinition) (err error)
 	if err != nil {
 		return err
 	}
+	return nil
+}
 
+// TriggerOutputNdf instructs the NDF output thread to process all new NDFs
+// pending in the output channel, and write the most recent to disk
+func (s *NetworkState) TriggerOutputNdf() error {
+	select {
+	case s.outputNdfTrigger <- true:
+		return nil
+	default:
+		return errors.New("Failed to trigger NDF output")
+	}
+}
+
+// StartOutputtingNdf starts the ndf output thread, to write the most recent
+// NDF to disk when triggered.
+func (s *NetworkState) StartOutputtingNdf() {
+	jww.INFO.Print("Starting NDF output thread...")
+	for {
+		select {
+		case <-s.outputNdfTrigger:
+			var ndfs []*ndf.NetworkDefinition
+			for done := false; !done; {
+				select {
+				case receivedNdf := <-s.ndfOutputChan:
+					ndfs = append(ndfs, receivedNdf)
+				default:
+					done = true
+				}
+			}
+
+			if len(ndfs) > 0 {
+				mostRecent := ndfs[len(ndfs)-1]
+				err := s.outputNdf(mostRecent)
+				if err != nil {
+					jww.ERROR.Printf("Failed to output NDF: %+v", err)
+				} else {
+					jww.INFO.Printf("Successfully updated NDF using new NDF with timestamp %s (nodes: %d)", mostRecent.Timestamp, len(mostRecent.Nodes))
+				}
+			}
+		}
+	}
+}
+
+func (s *NetworkState) outputNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	// Output full NDF to file
 	err = outputToJSON(newNdf, s.fullNdfOutputPath)
 	if err != nil {
