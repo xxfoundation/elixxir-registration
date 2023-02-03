@@ -118,12 +118,11 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 
 	impl.params.disablePing = true
 
-	time.Sleep(time.Second)
-
 	response, err := impl.Poll(testMsg, testAuth)
 	if err != nil {
 		t.Errorf("Unexpected error polling: %+v", err)
 	}
+	time.Sleep(100 * time.Millisecond)
 
 	if response.FullNDF == nil {
 		t.Errorf("No NDF provided")
@@ -329,7 +328,6 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	}
 
 	l.Lock()
-	time.Sleep(100 * time.Millisecond)
 	observedNDFBytes, err := impl.PollNdf(nil)
 	l.Unlock()
 	if err != nil {
