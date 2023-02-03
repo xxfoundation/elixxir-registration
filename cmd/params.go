@@ -75,9 +75,6 @@ type Params struct {
 	leakedCapacity uint32
 	leakedTokens   uint32
 	leakedDuration uint64
-
-	// node metric interval, to be passed to the ndf creation thread
-	nodeMetricInterval time.Duration
 }
 
 // toGroup takes a group represented by a map of string to string,

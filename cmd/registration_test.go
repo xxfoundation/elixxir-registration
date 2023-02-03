@@ -80,7 +80,6 @@ func TestMain(m *testing.M) {
 		minServerVersion:    minServerVersion,
 		disableGeoBinning:   true,
 		pruneRetentionLimit: 500 * time.Millisecond,
-		nodeMetricInterval:  time.Millisecond,
 	}
 	nodeComm = nodeComms.StartNode(&id.TempGateway, nodeAddr, 0, nodeComms.NewImplementation(), nodeCert, nodeKey)
 
@@ -119,7 +118,6 @@ func TestEmptyDataBase(t *testing.T) {
 		NsCertPath:         testkeys.GetUdbCertPath(),
 		disableGeoBinning:  true,
 		WhitelistedIdsPath: testkeys.GetPreApprovedPath(),
-		nodeMetricInterval: time.Millisecond,
 	}
 	// Start registration server
 	impl, err := StartRegistration(testParams)

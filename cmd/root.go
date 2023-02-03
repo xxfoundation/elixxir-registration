@@ -263,7 +263,6 @@ var rootCmd = &cobra.Command{
 		// Determine how long between storing Node metrics
 		nodeMetricInterval := time.Duration(
 			viper.GetInt64("nodeMetricInterval")) * time.Second
-		RegParams.nodeMetricInterval = nodeMetricInterval
 
 		jww.INFO.Println("Starting Permissioning Server...")
 		jww.INFO.Printf("Params: %+v", RegParams)
