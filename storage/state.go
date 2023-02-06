@@ -361,14 +361,16 @@ func (s *NetworkState) RoundAdderRoutine() {
 	}
 }
 
-// UpdateInternalNdf triggers internal state updates & sends a new Ndf into the output
-// channel for processing after the next node metric interval
+// UpdateInternalNdf updates the unpruned internal NDF to the passed in NDF.
+// This will be used for the output NDF next time it is updated.  Note that
+// callers of this function should take s.InternalNdfLock as appropriate.
 func (s *NetworkState) UpdateInternalNdf(newNdf *ndf.NetworkDefinition) {
 	newNdf.Timestamp = time.Now()
 	s.unprunedNdf = newNdf.DeepCopy()
 }
 
-// UpdateOutputNdf
+// UpdateOutputNdf takes the current unprunedNdf and signs and outputs
+// it to the full & partial ndf fields, along with writing it to disk.
 func (s *NetworkState) UpdateOutputNdf() (err error) {
 	s.outputNdfLock.Lock()
 	defer s.outputNdfLock.Unlock()
