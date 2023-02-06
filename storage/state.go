@@ -201,6 +201,9 @@ func (s *NetworkState) CountActiveNodes() int {
 	s.pruneListMux.Lock()
 	defer s.pruneListMux.Unlock()
 
+	s.InternalNdfLock.RLock()
+	defer s.InternalNdfLock.RUnlock()
+
 	unpruned := s.GetUnprunedNdf()
 
 	return len(unpruned.Nodes) - len(s.pruneList)
