@@ -350,12 +350,16 @@ var rootCmd = &cobra.Command{
 		<-impl.beginScheduling
 		jww.INFO.Printf("Minimum number of nodes %v have registered, "+
 			"beginning scheduling and round creation", RegParams.minimumNodes)
+		err = impl.State.UpdateOutputNdf()
+		if err != nil {
+			jww.FATAL.Panicf("Failed to update output NDF with "+
+				"registered nodes for scheduling: %+v", err)
+		}
 
 		roundCreationQuitChan := make(chan chan struct{})
 
 		// Begin scheduling algorithm
 		go func() {
-
 			// Initialize scheduling
 			err = scheduling.Scheduler(params, impl.State, roundCreationQuitChan)
 			if err == nil {

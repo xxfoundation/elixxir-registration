@@ -64,7 +64,7 @@ func TestBannedNodeTracker(t *testing.T) {
 	testState.UpdateInternalNdf(curDef)
 	err = testState.UpdateOutputNdf()
 	if err != nil {
-		t.Error("Failed to update test state ndf")
+		t.Error("Failed to output test state ndf")
 	}
 
 	// Clean out banned nodes

@@ -363,17 +363,10 @@ func (s *NetworkState) RoundAdderRoutine() {
 
 // UpdateInternalNdf triggers internal state updates & sends a new Ndf into the output
 // channel for processing after the next node metric interval
-func (s *NetworkState) UpdateInternalNdf(newNdf *ndf.NetworkDefinition) bool {
+func (s *NetworkState) UpdateInternalNdf(newNdf *ndf.NetworkDefinition) {
 	newNdf.Timestamp = time.Now()
 	toStore := newNdf.DeepCopy()
-	old := s.unprunedNdf.Swap(toStore)
-	// Sanity check that the stored NDF is more recent than the one swapped out
-	if old != nil && old.(*ndf.NetworkDefinition).Timestamp.After(toStore.Timestamp) {
-		jww.WARN.Printf("Swapped NDF is more recent than stored, undoing UpdateInternalNdf")
-		s.unprunedNdf.Store(old)
-		return false
-	}
-	return true
+	s.unprunedNdf.Store(toStore)
 }
 
 // UpdateOutputNdf
