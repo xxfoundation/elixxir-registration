@@ -365,9 +365,10 @@ func (s *NetworkState) RoundAdderRoutine() {
 // channel for processing after the next node metric interval
 func (s *NetworkState) UpdateInternalNdf(newNdf *ndf.NetworkDefinition) bool {
 	newNdf.Timestamp = time.Now()
-	old := s.unprunedNdf.Swap(newNdf)
+	toStore := newNdf.DeepCopy()
+	old := s.unprunedNdf.Swap(toStore)
 	// Sanity check that the stored NDF is more recent than the one swapped out
-	if old != nil && old.(*ndf.NetworkDefinition).Timestamp.After(newNdf.Timestamp) {
+	if old != nil && old.(*ndf.NetworkDefinition).Timestamp.After(toStore.Timestamp) {
 		jww.WARN.Printf("Swapped NDF is more recent than stored, undoing UpdateInternalNdf")
 		s.unprunedNdf.Store(old)
 		return false
@@ -380,12 +381,20 @@ func (s *NetworkState) UpdateOutputNdf() (err error) {
 	s.outputNdfLock.Lock()
 	defer s.outputNdfLock.Unlock()
 
-	loaded := s.unprunedNdf.Load()
-	if loaded == nil {
-		return errors.New("Cannot output nil ndf")
+	loadedNdf := s.GetUnprunedNdf()
+	// Sanity checks on loaded ndf data
+	if loadedNdf == nil {
+		jww.WARN.Printf("No unpruned NDF stored to output, skipping update")
+		return nil
+	} else if s.fullNdf != nil && s.fullNdf.Get() != nil &&
+		!loadedNdf.Timestamp.After(s.fullNdf.Get().Timestamp) {
+		jww.WARN.Printf("Skipping update: Loaded unpruned NDF timestamp"+
+			" %s is not later than current output NDF timestamp %s",
+			loadedNdf.Timestamp.String(), s.fullNdf.Get().Timestamp.String())
+		return nil
 	}
 
-	newNdf := loaded.(*ndf.NetworkDefinition).DeepCopy()
+	newNdf := loadedNdf.DeepCopy()
 
 	s.pruneListMux.RLock()
 	//prune the NDF

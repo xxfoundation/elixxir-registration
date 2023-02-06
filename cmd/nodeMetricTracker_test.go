@@ -137,10 +137,6 @@ func TestTrackNodeMetrics(t *testing.T) {
 	}
 
 	state.UpdateInternalNdf(testNdf)
-	err = state.UpdateOutputNdf()
-	if err != nil {
-		t.Fatalf("Could not update ndf: %v", err)
-	}
 
 	impl := &RegistrationImpl{
 		params:               &testParams,
