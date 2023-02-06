@@ -135,13 +135,13 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 			if !impl.params.disableNDFPruning {
 				// add disabled nodes to the prune list
 				jww.DEBUG.Printf("Setting %d pruned nodes", len(toPrune))
-				impl.NDFLock.Lock()
+				impl.State.InternalNdfLock.Lock()
 				impl.State.SetPrunedNodes(toPrune)
 				currentNdf := impl.State.GetUnprunedNdf()
 				currentNdf.WhitelistedIds = whitelistedIds
 				currentNdf.WhitelistedIpAddresses = whitelistedIpAddresses
 				impl.State.UpdateInternalNdf(currentNdf)
-				impl.NDFLock.Unlock()
+				impl.State.InternalNdfLock.Unlock()
 			}
 
 			err = impl.State.UpdateOutputNdf()

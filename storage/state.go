@@ -60,8 +60,9 @@ type NetworkState struct {
 	geoBins map[string]region.GeoBin
 
 	// NDF state
-	unprunedNdf  atomic.Value
-	pruneListMux sync.RWMutex
+	InternalNdfLock sync.RWMutex
+	unprunedNdf     *ndf.NetworkDefinition
+	pruneListMux    sync.RWMutex
 	// Boolean determines whether Node is omitted from NDF
 	pruneList map[id.ID]bool
 
@@ -110,13 +111,13 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 		partialNdf:                 partialNdf,
 		rsaPrivateKey:              rsaPrivKey,
 		addressSpaceSize:           &addressSpaceSize,
+		unprunedNdf:                &ndf.NetworkDefinition{},
 		pruneList:                  make(map[id.ID]bool),
 		fullNdfOutputPath:          fullNdfOutputPath,
 		signedPartialNdfOutputPath: signedPartialNdfOutputPath,
 		roundUpdatesToAddCh:        make(chan *dataStructures.Round, 500),
 		geoBins:                    geoBins,
 	}
-	state.unprunedNdf.Store(&ndf.NetworkDefinition{})
 
 	//begin the thread that reads and adds round updates
 	go state.RoundAdderRoutine()
@@ -251,11 +252,7 @@ func (s *NetworkState) IsPruned(node *id.ID) bool {
 }
 
 func (s *NetworkState) GetUnprunedNdf() *ndf.NetworkDefinition {
-	loaded := s.unprunedNdf.Load()
-	if loaded != nil {
-		return loaded.(*ndf.NetworkDefinition)
-	}
-	return nil
+	return s.unprunedNdf
 }
 
 // GetFullNdf returns the full NDF.
@@ -365,8 +362,7 @@ func (s *NetworkState) RoundAdderRoutine() {
 // channel for processing after the next node metric interval
 func (s *NetworkState) UpdateInternalNdf(newNdf *ndf.NetworkDefinition) {
 	newNdf.Timestamp = time.Now()
-	toStore := newNdf.DeepCopy()
-	s.unprunedNdf.Store(toStore)
+	s.unprunedNdf = newNdf.DeepCopy()
 }
 
 // UpdateOutputNdf
@@ -374,7 +370,9 @@ func (s *NetworkState) UpdateOutputNdf() (err error) {
 	s.outputNdfLock.Lock()
 	defer s.outputNdfLock.Unlock()
 
-	loadedNdf := s.GetUnprunedNdf()
+	s.InternalNdfLock.RLock()
+	loadedNdf := s.unprunedNdf.DeepCopy()
+	s.InternalNdfLock.RUnlock()
 	// Sanity checks on loaded ndf data
 	if loadedNdf == nil {
 		jww.WARN.Printf("No unpruned NDF stored to output, skipping update")

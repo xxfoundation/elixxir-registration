@@ -353,11 +353,11 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 			return err
 		}
 
-		m.NDFLock.Lock()
+		m.State.InternalNdfLock.Lock()
 		currentNDF := m.State.GetUnprunedNdf()
 
 		if currentNDF == nil {
-			m.NDFLock.Unlock()
+			m.State.InternalNdfLock.Unlock()
 			return errors.New("Received nil ndf from" +
 				" m.State.GetUnprunedNdf")
 		}
@@ -367,21 +367,21 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		if nodeUpdate {
 			nodeHost.UpdateAddress(nodeAddress)
 			if err := updateNdfNodeAddr(n.GetID(), nodeAddress, currentNDF); err != nil {
-				m.NDFLock.Unlock()
+				m.State.InternalNdfLock.Unlock()
 				return err
 			}
 		}
 
 		if gatewayUpdate {
 			if err := updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
-				m.NDFLock.Unlock()
+				m.State.InternalNdfLock.Unlock()
 				return err
 			}
 		}
 
 		// Update the internal state with the newly-updated ndf
 		m.State.UpdateInternalNdf(currentNDF)
-		m.NDFLock.Unlock()
+		m.State.InternalNdfLock.Unlock()
 	}
 
 	return nil

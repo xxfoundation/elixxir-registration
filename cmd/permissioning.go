@@ -210,11 +210,11 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	jww.INFO.Printf("Registered %d node(s)!", m.numRegistered)
 
 	// Add the new node to the topology
-	m.NDFLock.Lock()
+	m.State.InternalNdfLock.Lock()
 	networkDef := m.State.GetUnprunedNdf()
 	gateway, n, regTime, err := assembleNdf(regCode)
 	if err != nil {
-		m.NDFLock.Unlock()
+		m.State.InternalNdfLock.Unlock()
 		err := errors.Errorf("unable to assemble topology: %+v", err)
 		jww.ERROR.Print(err.Error())
 		return errors.Errorf("Could not complete registration: %+v", err)
@@ -222,14 +222,14 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 	nodeID, err := id.Unmarshal(n.ID)
 	if err != nil {
-		m.NDFLock.Unlock()
+		m.State.InternalNdfLock.Unlock()
 		return errors.WithMessage(err, "Error parsing node ID")
 	}
 
 	m.registrationTimes[*nodeID] = regTime
 	err = m.insertNdf(networkDef, gateway, n, regTime)
 	if err != nil {
-		m.NDFLock.Unlock()
+		m.State.InternalNdfLock.Unlock()
 		return errors.WithMessage(err, "Failed to insert nodes in definition")
 	}
 
@@ -241,7 +241,7 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 	// update the internal state with the newly-updated ndf
 	m.State.UpdateInternalNdf(networkDef)
-	m.NDFLock.Unlock()
+	m.State.InternalNdfLock.Unlock()
 
 	// Kick off the network if the minimum number of nodes has been met
 	if uint32(m.numRegistered) == m.params.minimumNodes {

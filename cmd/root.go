@@ -609,13 +609,13 @@ func (m *RegistrationImpl) updateRateLimiting() {
 	}
 	leakedDurations = leakedDurations * uint64(time.Millisecond)
 
-	m.NDFLock.Lock()
+	m.State.InternalNdfLock.Lock()
 	currentNdf := m.State.GetUnprunedNdf()
 	currentNdf.RateLimits.Capacity = uint(capacity)
 	currentNdf.RateLimits.LeakedTokens = uint(leakedTokens)
 	currentNdf.RateLimits.LeakDuration = leakedDurations
 
-	m.NDFLock.Unlock()
+	m.State.InternalNdfLock.Unlock()
 
 }
 
@@ -642,12 +642,12 @@ func (m *RegistrationImpl) updateVersions() {
 	}
 
 	// Modify the client version
-	m.NDFLock.Lock()
+	m.State.InternalNdfLock.Lock()
 	updateNDF := m.State.GetUnprunedNdf()
 	jww.DEBUG.Printf("Updating client version from %s to %s", updateNDF.ClientVersion, clientVersion)
 	updateNDF.ClientVersion = clientVersion
 	m.State.UpdateInternalNdf(updateNDF)
-	m.NDFLock.Unlock()
+	m.State.InternalNdfLock.Unlock()
 
 	// Modify server and gateway versions
 	m.params.versionLock.Lock()
