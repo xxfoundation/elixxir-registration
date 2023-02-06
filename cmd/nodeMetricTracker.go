@@ -140,12 +140,13 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 				currentNdf := impl.State.GetUnprunedNdf()
 				currentNdf.WhitelistedIds = whitelistedIds
 				currentNdf.WhitelistedIpAddresses = whitelistedIpAddresses
-				err = impl.State.UpdateNdf(currentNdf)
-				if err != nil {
-					jww.ERROR.Printf("Failed to regenerate the " +
-						"NDF after changing pruning")
-				}
+				impl.State.UpdateInternalNdf(currentNdf)
 				impl.NDFLock.Unlock()
+			}
+
+			err = impl.State.UpdateOutputNdf()
+			if err != nil {
+				jww.ERROR.Printf("Failed to trigger NDF output: %+v", err)
 			}
 
 			paramsCopy := impl.schedulingParams.SafeCopy()
@@ -177,11 +178,6 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 			} else {
 				// If no errors, update impl
 				impl.UpdateEarliestRound(earliestClientRound, earliestGwRound, earliestGwRoundTs)
-			}
-
-			err = impl.State.TriggerOutputNdf()
-			if err != nil {
-				jww.ERROR.Printf("Failed to trigger NDF output: %+v", err)
 			}
 		}
 	}

@@ -61,7 +61,8 @@ func TestBannedNodeTracker(t *testing.T) {
 		Address:        "",
 		TlsCertificate: "",
 	})
-	err = testState.UpdateNdf(curDef)
+	testState.UpdateInternalNdf(curDef)
+	err = testState.UpdateOutputNdf()
 	if err != nil {
 		t.Error("Failed to update test state ndf")
 	}

@@ -41,7 +41,6 @@ func TestTrackNodeMetrics(t *testing.T) {
 	if err != nil {
 		t.Errorf("Unable to create state: %+v", err)
 	}
-	go state.StartOutputtingNdf()
 
 	// Construct an active node
 	activeNodeID := id.NewIdFromString("active", id.Node, t)
@@ -137,7 +136,8 @@ func TestTrackNodeMetrics(t *testing.T) {
 		},
 	}
 
-	err = state.UpdateNdf(testNdf)
+	state.UpdateInternalNdf(testNdf)
+	err = state.UpdateOutputNdf()
 	if err != nil {
 		t.Fatalf("Could not update ndf: %v", err)
 	}

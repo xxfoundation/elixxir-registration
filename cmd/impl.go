@@ -295,11 +295,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// update the internal state with the newly-formed NDF
-	go regImpl.State.StartOutputtingNdf()
-	err = regImpl.State.UpdateNdf(networkDef)
-	if err != nil {
-		return nil, err
-	}
+	regImpl.State.UpdateInternalNdf(networkDef)
 
 	var hosts []*connect.Host
 
@@ -387,10 +383,7 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 		}
 
 		if update {
-			err = state.UpdateNdf(def)
-			if err != nil {
-				return errors.WithMessage(err, "Failed to update NDF after bans")
-			}
+			state.UpdateInternalNdf(def)
 		}
 
 		// Get the node from the nodeMap

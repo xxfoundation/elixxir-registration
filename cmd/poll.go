@@ -380,10 +380,7 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		}
 
 		// Update the internal state with the newly-updated ndf
-		if err := m.State.UpdateNdf(currentNDF); err != nil {
-			m.NDFLock.Unlock()
-			return err
-		}
+		m.State.UpdateInternalNdf(currentNDF)
 		m.NDFLock.Unlock()
 	}
 

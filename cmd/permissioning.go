@@ -240,11 +240,8 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	}
 
 	// update the internal state with the newly-updated ndf
-	err = m.State.UpdateNdf(networkDef)
+	m.State.UpdateInternalNdf(networkDef)
 	m.NDFLock.Unlock()
-	if err != nil {
-		return err
-	}
 
 	// Kick off the network if the minimum number of nodes has been met
 	if uint32(m.numRegistered) == m.params.minimumNodes {

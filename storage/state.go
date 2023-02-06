@@ -60,15 +60,14 @@ type NetworkState struct {
 	geoBins map[string]region.GeoBin
 
 	// NDF state
-	unprunedNdf  *ndf.NetworkDefinition
+	unprunedNdf  atomic.Value
 	pruneListMux sync.RWMutex
 	// Boolean determines whether Node is omitted from NDF
 	pruneList map[id.ID]bool
 
-	ndfOutputChan    chan *ndf.NetworkDefinition
-	outputNdfTrigger chan bool
-	partialNdf       *dataStructures.Ndf
-	fullNdf          *dataStructures.Ndf
+	outputNdfLock sync.RWMutex
+	partialNdf    *dataStructures.Ndf
+	fullNdf       *dataStructures.Ndf
 
 	// Address space size
 	addressSpaceSize *uint32
@@ -107,7 +106,6 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 		roundUpdates:               dataStructures.NewUpdates(),
 		update:                     make(chan node.UpdateNotification, updateBufferLength),
 		nodes:                      node.NewStateMap(),
-		unprunedNdf:                &ndf.NetworkDefinition{},
 		fullNdf:                    fullNdf,
 		partialNdf:                 partialNdf,
 		rsaPrivateKey:              rsaPrivKey,
@@ -117,9 +115,8 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 		signedPartialNdfOutputPath: signedPartialNdfOutputPath,
 		roundUpdatesToAddCh:        make(chan *dataStructures.Round, 500),
 		geoBins:                    geoBins,
-		ndfOutputChan:              make(chan *ndf.NetworkDefinition, 500),
-		outputNdfTrigger:           make(chan bool, 1),
 	}
+	state.unprunedNdf.Store(&ndf.NetworkDefinition{})
 
 	//begin the thread that reads and adds round updates
 	go state.RoundAdderRoutine()
@@ -203,7 +200,9 @@ func (s *NetworkState) CountActiveNodes() int {
 	s.pruneListMux.Lock()
 	defer s.pruneListMux.Unlock()
 
-	return len(s.unprunedNdf.Nodes) - len(s.pruneList)
+	unpruned := s.GetUnprunedNdf()
+
+	return len(unpruned.Nodes) - len(s.pruneList)
 }
 
 // Adds pruned nodes, used by disabledNodes
@@ -252,16 +251,24 @@ func (s *NetworkState) IsPruned(node *id.ID) bool {
 }
 
 func (s *NetworkState) GetUnprunedNdf() *ndf.NetworkDefinition {
-	return s.unprunedNdf
+	loaded := s.unprunedNdf.Load()
+	if loaded != nil {
+		return loaded.(*ndf.NetworkDefinition)
+	}
+	return nil
 }
 
 // GetFullNdf returns the full NDF.
 func (s *NetworkState) GetFullNdf() *dataStructures.Ndf {
+	s.outputNdfLock.RLock()
+	defer s.outputNdfLock.RUnlock()
 	return s.fullNdf
 }
 
 // GetPartialNdf returns the partial NDF.
 func (s *NetworkState) GetPartialNdf() *dataStructures.Ndf {
+	s.outputNdfLock.RLock()
+	defer s.outputNdfLock.RUnlock()
 	return s.partialNdf
 }
 
@@ -354,29 +361,31 @@ func (s *NetworkState) RoundAdderRoutine() {
 	}
 }
 
-// UpdateNdf triggers internal state updates & sends a new Ndf into the output
+// UpdateInternalNdf triggers internal state updates & sends a new Ndf into the output
 // channel for processing after the next node metric interval
-func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) error {
-	err := s.updateInternalNdf(newNdf)
-	if err != nil {
-		return err
+func (s *NetworkState) UpdateInternalNdf(newNdf *ndf.NetworkDefinition) bool {
+	newNdf.Timestamp = time.Now()
+	old := s.unprunedNdf.Swap(newNdf)
+	// Sanity check that the stored NDF is more recent than the one swapped out
+	if old != nil && old.(*ndf.NetworkDefinition).Timestamp.After(newNdf.Timestamp) {
+		jww.WARN.Printf("Swapped NDF is more recent than stored, undoing UpdateInternalNdf")
+		s.unprunedNdf.Store(old)
+		return false
 	}
-
-	select {
-	case s.ndfOutputChan <- newNdf:
-		jww.TRACE.Printf("Sent NDF with timestamp %s to output chan (nodes: %d)", newNdf.Timestamp.String(), len(newNdf.Nodes))
-	default:
-		err := errors.Errorf("Could not send NDF with timestamp %s to update chan", newNdf.Timestamp)
-		jww.WARN.Println(err)
-		return err
-	}
-	return nil
+	return true
 }
 
-// updateInternalNdf updates internal NDF structures with the specified new NDF.
-func (s *NetworkState) updateInternalNdf(newNdf *ndf.NetworkDefinition) (err error) {
-	newNdf.Timestamp = time.Now()
-	s.unprunedNdf = newNdf.DeepCopy()
+// UpdateOutputNdf
+func (s *NetworkState) UpdateOutputNdf() (err error) {
+	s.outputNdfLock.Lock()
+	defer s.outputNdfLock.Unlock()
+
+	loaded := s.unprunedNdf.Load()
+	if loaded == nil {
+		return errors.New("Cannot output nil ndf")
+	}
+
+	newNdf := loaded.(*ndf.NetworkDefinition).DeepCopy()
 
 	s.pruneListMux.RLock()
 	//prune the NDF
@@ -431,51 +440,7 @@ func (s *NetworkState) updateInternalNdf(newNdf *ndf.NetworkDefinition) (err err
 	if err != nil {
 		return err
 	}
-	return nil
-}
 
-// TriggerOutputNdf instructs the NDF output thread to process all new NDFs
-// pending in the output channel, and write the most recent to disk
-func (s *NetworkState) TriggerOutputNdf() error {
-	select {
-	case s.outputNdfTrigger <- true:
-		return nil
-	default:
-		return errors.New("Failed to trigger NDF output")
-	}
-}
-
-// StartOutputtingNdf starts the ndf output thread, to write the most recent
-// NDF to disk when triggered.
-func (s *NetworkState) StartOutputtingNdf() {
-	jww.INFO.Print("Starting NDF output thread...")
-	for {
-		select {
-		case <-s.outputNdfTrigger:
-			var ndfs []*ndf.NetworkDefinition
-			for done := false; !done; {
-				select {
-				case receivedNdf := <-s.ndfOutputChan:
-					ndfs = append(ndfs, receivedNdf)
-				default:
-					done = true
-				}
-			}
-
-			if len(ndfs) > 0 {
-				mostRecent := ndfs[len(ndfs)-1]
-				err := s.outputNdf(mostRecent)
-				if err != nil {
-					jww.ERROR.Printf("Failed to output NDF: %+v", err)
-				} else {
-					jww.INFO.Printf("Successfully updated NDF using new NDF with timestamp %s (nodes: %d)", mostRecent.Timestamp, len(mostRecent.Nodes))
-				}
-			}
-		}
-	}
-}
-
-func (s *NetworkState) outputNdf(newNdf *ndf.NetworkDefinition) (err error) {
 	// Output full NDF to file
 	err = outputToJSON(newNdf, s.fullNdfOutputPath)
 	if err != nil {

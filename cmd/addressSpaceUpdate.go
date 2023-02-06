@@ -74,12 +74,8 @@ func (m *RegistrationImpl) updateAddressSpace(latest ndf.AddressSpace,
 		m.NDFLock.Lock()
 		updateNDF := m.State.GetUnprunedNdf()
 		updateNDF.AddressSpace = addressSpaces
-		err = m.State.UpdateNdf(updateNDF)
+		m.State.UpdateInternalNdf(updateNDF)
 		m.NDFLock.Unlock()
-		if err != nil {
-			return ndf.AddressSpace{},
-				errors.Errorf("failed to update NDF AddressSpace: %+v", err)
-		}
 	}
 
 	return latest, nil

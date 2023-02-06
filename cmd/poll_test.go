@@ -62,7 +62,7 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 	}
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
-	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+	impl.State.UpdateInternalNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
 			TlsCertificate: "",
@@ -74,6 +74,10 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 			{ID: id.NewIdFromUInt(0, id.Node, t).Bytes()},
 		},
 	})
+	err = impl.State.UpdateOutputNdf()
+	if err != nil {
+		t.Fatalf("Failed to update ndf: %+v", err)
+	}
 
 	// Make a simple auth object that will pass the checks
 	testHost, _ := impl.Comms.AddHost(testID, testString,
@@ -143,7 +147,7 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 	}
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
-	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+	impl.State.UpdateInternalNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
 			TlsCertificate: "",
@@ -155,6 +159,10 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 			{ID: id.NewIdFromUInt(0, id.Node, t).Bytes()},
 		},
 	})
+	err = impl.State.UpdateOutputNdf()
+	if err != nil {
+		t.Fatalf("Failed to update output ndf: %+v", err)
+	}
 
 	// Make a simple auth object that will pass the checks
 	testHost, _ := impl.Comms.AddHost(testID, testString,
@@ -327,6 +335,11 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	case <-impl.beginScheduling:
 	}
 
+	err = impl.State.UpdateOutputNdf()
+	if err != nil {
+		t.Fatalf("Failed to update output ndf: %+v", err)
+	}
+
 	l.Lock()
 	observedNDFBytes, err := impl.PollNdf(nil)
 	l.Unlock()
@@ -441,12 +454,16 @@ func TestPoll_BannedNode(t *testing.T) {
 	defer impl.Comms.Shutdown()
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
-	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+	impl.State.UpdateInternalNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
 			TlsCertificate: "",
 		},
 	})
+	err = impl.State.UpdateOutputNdf()
+	if err != nil {
+		t.Fatalf("Failed to update output ndf: %+v", err)
+	}
 
 	// Make a simple auth object that will pass the checks
 	testHost, _ := connect.NewHost(testID, testString,
@@ -506,7 +523,7 @@ func TestPoll_BannedNode(t *testing.T) {
 //	}
 //	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 //
-//	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+//	err = impl.State.UpdateInternalNdf(&ndf.NetworkDefinition{
 //		Registration: ndf.Registration{
 //			Address:        "420",
 //			TlsCertificate: "",
@@ -786,7 +803,7 @@ func TestCheckVersion_InvalidVersionGatewayAndServer(t *testing.T) {
 	}
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
-	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+	err = impl.State.UpdateInternalNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
 			TlsCertificate: "",
