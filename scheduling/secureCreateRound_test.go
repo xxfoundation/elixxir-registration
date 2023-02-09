@@ -15,7 +15,6 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/region"
 	mathRand "math/rand"
-
 	"strconv"
 	"testing"
 )

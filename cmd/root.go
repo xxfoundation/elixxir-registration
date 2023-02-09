@@ -260,6 +260,10 @@ var rootCmd = &cobra.Command{
 			leakedDuration: leakedDurations,
 		}
 
+		// Determine how long between storing Node metrics
+		nodeMetricInterval := time.Duration(
+			viper.GetInt64("nodeMetricInterval")) * time.Second
+
 		jww.INFO.Println("Starting Permissioning Server...")
 		jww.INFO.Printf("Params: %+v", RegParams)
 
@@ -295,10 +299,6 @@ var rootCmd = &cobra.Command{
 			jww.DEBUG.Printf("No disabled Node list path provided. Skipping " +
 				"disabled Node list polling.")
 		}
-
-		// Determine how long between storing Node metrics
-		nodeMetricInterval := time.Duration(
-			viper.GetInt64("nodeMetricInterval")) * time.Second
 
 		// Parse params JSON
 		params := scheduling.ParseParams(SchedulingConfig)
@@ -350,12 +350,16 @@ var rootCmd = &cobra.Command{
 		<-impl.beginScheduling
 		jww.INFO.Printf("Minimum number of nodes %v have registered, "+
 			"beginning scheduling and round creation", RegParams.minimumNodes)
+		err = impl.State.UpdateOutputNdf()
+		if err != nil {
+			jww.FATAL.Panicf("Failed to update output NDF with "+
+				"registered nodes for scheduling: %+v", err)
+		}
 
 		roundCreationQuitChan := make(chan chan struct{})
 
 		// Begin scheduling algorithm
 		go func() {
-
 			// Initialize scheduling
 			err = scheduling.Scheduler(params, impl.State, roundCreationQuitChan)
 			if err == nil {
@@ -605,13 +609,13 @@ func (m *RegistrationImpl) updateRateLimiting() {
 	}
 	leakedDurations = leakedDurations * uint64(time.Millisecond)
 
-	m.NDFLock.Lock()
+	m.State.InternalNdfLock.Lock()
 	currentNdf := m.State.GetUnprunedNdf()
 	currentNdf.RateLimits.Capacity = uint(capacity)
 	currentNdf.RateLimits.LeakedTokens = uint(leakedTokens)
 	currentNdf.RateLimits.LeakDuration = leakedDurations
 
-	m.NDFLock.Unlock()
+	m.State.InternalNdfLock.Unlock()
 
 }
 
@@ -638,15 +642,12 @@ func (m *RegistrationImpl) updateVersions() {
 	}
 
 	// Modify the client version
-	m.NDFLock.Lock()
+	m.State.InternalNdfLock.Lock()
 	updateNDF := m.State.GetUnprunedNdf()
 	jww.DEBUG.Printf("Updating client version from %s to %s", updateNDF.ClientVersion, clientVersion)
 	updateNDF.ClientVersion = clientVersion
-	err = m.State.UpdateNdf(updateNDF)
-	if err != nil {
-		jww.FATAL.Panicf("Failed to update client version in NDF: %v", err)
-	}
-	m.NDFLock.Unlock()
+	m.State.UpdateInternalNdf(updateNDF)
+	m.State.InternalNdfLock.Unlock()
 
 	// Modify server and gateway versions
 	m.params.versionLock.Lock()
