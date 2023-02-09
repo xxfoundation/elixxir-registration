@@ -71,15 +71,11 @@ func (m *RegistrationImpl) updateAddressSpace(latest ndf.AddressSpace,
 			"changes (length of list %d).", latest.Size, len(addressSpaces))
 
 		// Update the NDF
-		m.NDFLock.Lock()
+		m.State.InternalNdfLock.Lock()
 		updateNDF := m.State.GetUnprunedNdf()
 		updateNDF.AddressSpace = addressSpaces
-		err = m.State.UpdateNdf(updateNDF)
-		m.NDFLock.Unlock()
-		if err != nil {
-			return ndf.AddressSpace{},
-				errors.Errorf("failed to update NDF AddressSpace: %+v", err)
-		}
+		m.State.UpdateInternalNdf(updateNDF)
+		m.State.InternalNdfLock.Unlock()
 	}
 
 	return latest, nil
