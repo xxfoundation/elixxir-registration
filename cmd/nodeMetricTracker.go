@@ -135,17 +135,18 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 			if !impl.params.disableNDFPruning {
 				// add disabled nodes to the prune list
 				jww.DEBUG.Printf("Setting %d pruned nodes", len(toPrune))
-				impl.NDFLock.Lock()
+				impl.State.InternalNdfLock.Lock()
 				impl.State.SetPrunedNodes(toPrune)
 				currentNdf := impl.State.GetUnprunedNdf()
 				currentNdf.WhitelistedIds = whitelistedIds
 				currentNdf.WhitelistedIpAddresses = whitelistedIpAddresses
-				err = impl.State.UpdateNdf(currentNdf)
-				if err != nil {
-					jww.ERROR.Printf("Failed to regenerate the " +
-						"NDF after changing pruning")
-				}
-				impl.NDFLock.Unlock()
+				impl.State.UpdateInternalNdf(currentNdf)
+				impl.State.InternalNdfLock.Unlock()
+			}
+
+			err = impl.State.UpdateOutputNdf()
+			if err != nil {
+				jww.ERROR.Printf("Failed to trigger NDF output: %+v", err)
 			}
 
 			paramsCopy := impl.schedulingParams.SafeCopy()
@@ -178,7 +179,6 @@ func TrackNodeMetrics(impl *RegistrationImpl, quitChan chan struct{}, nodeMetric
 				// If no errors, update impl
 				impl.UpdateEarliestRound(earliestClientRound, earliestGwRound, earliestGwRoundTs)
 			}
-
 		}
 	}
 }

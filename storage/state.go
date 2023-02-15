@@ -60,13 +60,15 @@ type NetworkState struct {
 	geoBins map[string]region.GeoBin
 
 	// NDF state
-	unprunedNdf  *ndf.NetworkDefinition
-	pruneListMux sync.RWMutex
+	InternalNdfLock sync.RWMutex
+	unprunedNdf     *ndf.NetworkDefinition
+	pruneListMux    sync.RWMutex
 	// Boolean determines whether Node is omitted from NDF
 	pruneList map[id.ID]bool
 
-	partialNdf *dataStructures.Ndf
-	fullNdf    *dataStructures.Ndf
+	outputNdfLock sync.RWMutex
+	partialNdf    *dataStructures.Ndf
+	fullNdf       *dataStructures.Ndf
 
 	// Address space size
 	addressSpaceSize *uint32
@@ -105,11 +107,11 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 		roundUpdates:               dataStructures.NewUpdates(),
 		update:                     make(chan node.UpdateNotification, updateBufferLength),
 		nodes:                      node.NewStateMap(),
-		unprunedNdf:                &ndf.NetworkDefinition{},
 		fullNdf:                    fullNdf,
 		partialNdf:                 partialNdf,
 		rsaPrivateKey:              rsaPrivKey,
 		addressSpaceSize:           &addressSpaceSize,
+		unprunedNdf:                &ndf.NetworkDefinition{},
 		pruneList:                  make(map[id.ID]bool),
 		fullNdfOutputPath:          fullNdfOutputPath,
 		signedPartialNdfOutputPath: signedPartialNdfOutputPath,
@@ -199,7 +201,12 @@ func (s *NetworkState) CountActiveNodes() int {
 	s.pruneListMux.Lock()
 	defer s.pruneListMux.Unlock()
 
-	return len(s.unprunedNdf.Nodes) - len(s.pruneList)
+	s.InternalNdfLock.RLock()
+	defer s.InternalNdfLock.RUnlock()
+
+	unpruned := s.GetUnprunedNdf()
+
+	return len(unpruned.Nodes) - len(s.pruneList)
 }
 
 // Adds pruned nodes, used by disabledNodes
@@ -253,11 +260,15 @@ func (s *NetworkState) GetUnprunedNdf() *ndf.NetworkDefinition {
 
 // GetFullNdf returns the full NDF.
 func (s *NetworkState) GetFullNdf() *dataStructures.Ndf {
+	s.outputNdfLock.RLock()
+	defer s.outputNdfLock.RUnlock()
 	return s.fullNdf
 }
 
 // GetPartialNdf returns the partial NDF.
 func (s *NetworkState) GetPartialNdf() *dataStructures.Ndf {
+	s.outputNdfLock.RLock()
+	defer s.outputNdfLock.RUnlock()
 	return s.partialNdf
 }
 
@@ -350,10 +361,36 @@ func (s *NetworkState) RoundAdderRoutine() {
 	}
 }
 
-// UpdateNdf updates internal NDF structures with the specified new NDF.
-func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
+// UpdateInternalNdf updates the unpruned internal NDF to the passed in NDF.
+// This will be used for the output NDF next time it is updated.  Note that
+// callers of this function should take s.InternalNdfLock as appropriate.
+func (s *NetworkState) UpdateInternalNdf(newNdf *ndf.NetworkDefinition) {
 	newNdf.Timestamp = time.Now()
 	s.unprunedNdf = newNdf.DeepCopy()
+}
+
+// UpdateOutputNdf takes the current unprunedNdf and signs and outputs
+// it to the full & partial ndf fields, along with writing it to disk.
+func (s *NetworkState) UpdateOutputNdf() (err error) {
+	s.outputNdfLock.Lock()
+	defer s.outputNdfLock.Unlock()
+
+	s.InternalNdfLock.RLock()
+	loadedNdf := s.unprunedNdf.DeepCopy()
+	s.InternalNdfLock.RUnlock()
+	// Sanity checks on loaded ndf data
+	if loadedNdf == nil {
+		jww.WARN.Printf("No unpruned NDF stored to output, skipping update")
+		return nil
+	} else if s.fullNdf != nil && s.fullNdf.Get() != nil &&
+		!loadedNdf.Timestamp.After(s.fullNdf.Get().Timestamp) {
+		jww.WARN.Printf("Skipping update: Loaded unpruned NDF timestamp"+
+			" %s is not later than current output NDF timestamp %s",
+			loadedNdf.Timestamp.String(), s.fullNdf.Get().Timestamp.String())
+		return nil
+	}
+
+	newNdf := loadedNdf.DeepCopy()
 
 	s.pruneListMux.RLock()
 	//prune the NDF

@@ -28,7 +28,8 @@ import (
 )
 
 // Handle registration check attempt by node. We assume
-//  the code being searched for is the node's.
+//
+//	the code being searched for is the node's.
 func (m *RegistrationImpl) CheckNodeRegistration(msg *mixmessages.RegisteredNodeCheck) (bool, error) {
 	//do edge check to ensure the message is not nil
 	if msg == nil {
@@ -197,7 +198,8 @@ func (m *RegistrationImpl) LoadAllRegisteredNodes() ([]*connect.Host, error) {
 
 // Handles including new registrations in the network
 // fixme: we should split this function into what is relevant to registering a  node and what is relevant
-//  to permissioning
+//
+//	to permissioning
 func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 	m.registrationLock.Lock()
@@ -208,11 +210,11 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	jww.INFO.Printf("Registered %d node(s)!", m.numRegistered)
 
 	// Add the new node to the topology
-	m.NDFLock.Lock()
+	m.State.InternalNdfLock.Lock()
 	networkDef := m.State.GetUnprunedNdf()
 	gateway, n, regTime, err := assembleNdf(regCode)
 	if err != nil {
-		m.NDFLock.Unlock()
+		m.State.InternalNdfLock.Unlock()
 		err := errors.Errorf("unable to assemble topology: %+v", err)
 		jww.ERROR.Print(err.Error())
 		return errors.Errorf("Could not complete registration: %+v", err)
@@ -220,14 +222,14 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 
 	nodeID, err := id.Unmarshal(n.ID)
 	if err != nil {
-		m.NDFLock.Unlock()
+		m.State.InternalNdfLock.Unlock()
 		return errors.WithMessage(err, "Error parsing node ID")
 	}
 
 	m.registrationTimes[*nodeID] = regTime
 	err = m.insertNdf(networkDef, gateway, n, regTime)
 	if err != nil {
-		m.NDFLock.Unlock()
+		m.State.InternalNdfLock.Unlock()
 		return errors.WithMessage(err, "Failed to insert nodes in definition")
 	}
 
@@ -238,11 +240,8 @@ func (m *RegistrationImpl) completeNodeRegistration(regCode string) error {
 	}
 
 	// update the internal state with the newly-updated ndf
-	err = m.State.UpdateNdf(networkDef)
-	m.NDFLock.Unlock()
-	if err != nil {
-		return err
-	}
+	m.State.UpdateInternalNdf(networkDef)
+	m.State.InternalNdfLock.Unlock()
 
 	// Kick off the network if the minimum number of nodes has been met
 	if uint32(m.numRegistered) == m.params.minimumNodes {

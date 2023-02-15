@@ -50,7 +50,8 @@ func TestRegistrationImpl_updateAddressSpace(t *testing.T) {
 	// Add only the first address space to the NDF and update
 	updateNDF := state.GetUnprunedNdf()
 	updateNDF.AddressSpace = addressSpaces[:1]
-	err = state.UpdateNdf(updateNDF)
+	state.UpdateInternalNdf(updateNDF)
+	err = state.UpdateOutputNdf()
 	if err != nil {
 		t.Errorf("Unable to update NDF: %+v", err)
 	}
@@ -109,7 +110,8 @@ func TestRegistrationImpl_updateAddressSpace_NoUpdates(t *testing.T) {
 	// Add only the latest address spaces to the NDF and update
 	updateNDF := state.GetUnprunedNdf()
 	updateNDF.AddressSpace = []ndf.AddressSpace{latest}
-	err = state.UpdateNdf(updateNDF)
+	state.UpdateInternalNdf(updateNDF)
+	err = state.UpdateOutputNdf()
 	if err != nil {
 		t.Errorf("Unable to update NDF: %+v", err)
 	}
