@@ -383,10 +383,18 @@ func (n *State) UpdateGatewayAddresses(gateway string) (bool, error) {
 	return true, nil
 }
 
+// UpdateEd25519Key updates the ed25519 key used for no registration if warranted
 func (n *State) UpdateEd25519Key(ed []byte) (bool, error) {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 
+	// Edge case in which we have an ED in state, but the poll gives us nil
+	if ed == nil && n.ed25519 != nil {
+		n.ed25519 = nil
+		return true, nil
+	}
+
+	// If passed in ED matches the one in state, return false
 	if ed == nil || (n.ed25519 != nil && bytes.Compare(n.ed25519.Bytes(), ed) == 0) {
 		return false, nil
 	}
