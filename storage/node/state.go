@@ -388,8 +388,8 @@ func (n *State) UpdateEd25519Key(ed []byte) (bool, error) {
 	n.mux.Lock()
 	defer n.mux.Unlock()
 
-	// Edge case in which we have an ED in state, but the poll gives us nil
-	if ed == nil && n.ed25519 != nil {
+	// Edge case in which we have an ED in state, but the poll gives us nil/empty
+	if (ed == nil || len(ed) == 0) && n.ed25519 != nil {
 		n.ed25519 = nil
 		return true, nil
 	}

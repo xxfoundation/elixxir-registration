@@ -339,10 +339,12 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 		return err
 	}
 	edUpdate, err := n.UpdateEd25519Key(msg.Ed25519)
+	if err != nil {
+		return err
+	}
 
 	// If state required changes, then check the NDF
 	if nodeUpdate || gatewayUpdate || edUpdate {
-
 		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", msg.ServerAddress,
 			gatewayAddress)
 
