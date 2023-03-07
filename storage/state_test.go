@@ -9,8 +9,10 @@ package storage
 
 import (
 	"crypto/rand"
+	gorsa "crypto/rsa"
 	"fmt"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/require"
 	pb "gitlab.com/elixxir/comms/mixmessages"
 	"gitlab.com/elixxir/comms/network/dataStructures"
 	"gitlab.com/elixxir/comms/testkeys"
@@ -304,8 +306,6 @@ func TestNetworkState_UpdateNdf(t *testing.T) {
 func TestNetworkState_UpdateNdf_SignError(t *testing.T) {
 	// Expected values
 	testNDF := &ndf.NetworkDefinition{}
-	expectedErr := "Unable to sign message: crypto/rsa: key size too small " +
-		"for PSS signature"
 
 	// Generate new NetworkState
 	state, _, err := generateTestNetworkState()
@@ -314,7 +314,7 @@ func TestNetworkState_UpdateNdf_SignError(t *testing.T) {
 	}
 
 	// Generate new invalid private key and insert into NetworkState
-	brokenPrivateKey, err := rsa.GenerateKey(rand.Reader, 128)
+	brokenPrivateKey, err := rsa.GenerateKey(rand.Reader, 512)
 	if err != nil {
 		t.Fatalf("Failed to generate private key:\n%v", err)
 	}
@@ -322,11 +322,10 @@ func TestNetworkState_UpdateNdf_SignError(t *testing.T) {
 
 	// Update NDF
 	err = state.UpdateNdf(testNDF)
+	require.Error(t, err)
 
-	if err == nil || err.Error() != expectedErr {
-		t.Errorf("UpdateNdf() did not produce an error when expected."+
-			"\n\texpected: %+v\n\treceived: %+v", expectedErr, err)
-	}
+	expectedErr := errors.Errorf("Unable to sign message: %+v", gorsa.ErrMessageTooLong)
+	require.EqualError(t, expectedErr, err.Error())
 }
 
 // Tests that GetPrivateKey() returns the correct private key.
