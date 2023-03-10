@@ -324,8 +324,14 @@ func TestNetworkState_UpdateNdf_SignError(t *testing.T) {
 	err = state.UpdateNdf(testNDF)
 	require.Error(t, err)
 
-	expectedErr := errors.Errorf("Unable to sign message: %+v", gorsa.ErrMessageTooLong)
-	require.EqualError(t, expectedErr, err.Error())
+	expectedErr := fmt.Sprintf("Unable to sign message: %+v", gorsa.ErrMessageTooLong)
+	expectedErrOldGoVersion := "Unable to sign message: crypto/rsa: key size too small " +
+		"for PSS signature"
+	if err == nil || (err.Error() != expectedErr && err.Error() != expectedErrOldGoVersion) {
+		t.Errorf("UpdateNdf() did not produce an error when expected."+
+			"\n\texpected: %+v\n\treceived: %+v", expectedErr, err)
+	}
+
 }
 
 // Tests that GetPrivateKey() returns the correct private key.
