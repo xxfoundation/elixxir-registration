@@ -8,7 +8,10 @@
 package node
 
 import (
+	"bytes"
 	"github.com/pkg/errors"
+	"gitlab.com/elixxir/crypto/nike"
+	"gitlab.com/elixxir/crypto/nike/ecdh"
 	"gitlab.com/elixxir/primitives/current"
 	"gitlab.com/elixxir/primitives/states"
 	"gitlab.com/elixxir/registration/storage/round"
@@ -91,6 +94,8 @@ type State struct {
 	// Status of node's connectivity, i.e. whether the node
 	// has port forwarding
 	connectivity *uint32
+
+	ed25519 nike.PublicKey
 }
 
 // Increment function for numPolls
@@ -375,6 +380,29 @@ func (n *State) UpdateGatewayAddresses(gateway string) (bool, error) {
 	n.gatewayAddress = gateway
 	n.lastGatewayUpdateTS = time.Now()
 
+	return true, nil
+}
+
+// UpdateEd25519Key updates the ed25519 key used for no registration if warranted
+func (n *State) UpdateEd25519Key(ed []byte) (bool, error) {
+	n.mux.Lock()
+	defer n.mux.Unlock()
+
+	// Edge case in which we have an ED in state, but the poll gives us nil/empty
+	if (ed == nil || len(ed) == 0) && n.ed25519 != nil {
+		n.ed25519 = nil
+		return true, nil
+	}
+
+	// If passed in ED matches the one in state, return false
+	if ed == nil || (n.ed25519 != nil && bytes.Compare(n.ed25519.Bytes(), ed) == 0) {
+		return false, nil
+	}
+	newEd, err := ecdh.ECDHNIKE.UnmarshalBinaryPublicKey(ed)
+	if err != nil {
+		return false, nil
+	}
+	n.ed25519 = newEd
 	return true, nil
 }
 

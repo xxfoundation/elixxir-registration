@@ -235,6 +235,18 @@ func checkVersion(p *Params, msg *pb.PermissioningPoll) error {
 	return nil
 }
 
+func updateNdfEd25519(nid *id.ID, ed []byte, ndf *ndf.NetworkDefinition) error {
+	for i, n := range ndf.Nodes {
+		if bytes.Equal(n.ID, nid[:]) {
+			ndf.Nodes[i].Ed25519 = ed
+			return nil
+
+		}
+	}
+	return errors.Errorf("Could not find node %s in the state map in "+
+		"order to update its ed25519 key", nid.String())
+}
+
 // updateNdfNodeAddr searches the NDF nodes for a matching node ID and updates
 // its address to the required address.
 func updateNdfNodeAddr(nid *id.ID, requiredAddr string, ndf *ndf.NetworkDefinition) error {
@@ -326,10 +338,13 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 	if err != nil {
 		return err
 	}
+	edUpdate, err := n.UpdateEd25519Key(msg.Ed25519)
+	if err != nil {
+		return err
+	}
 
 	// If state required changes, then check the NDF
-	if nodeUpdate || gatewayUpdate {
-
+	if nodeUpdate || gatewayUpdate || edUpdate {
 		jww.TRACE.Printf("UPDATING gateway and node update: %s, %s", msg.ServerAddress,
 			gatewayAddress)
 
@@ -374,6 +389,13 @@ func checkIPAddresses(m *RegistrationImpl, n *node.State,
 
 		if gatewayUpdate {
 			if err := updateNdfGatewayAddr(n.GetID(), gatewayAddress, currentNDF); err != nil {
+				m.State.InternalNdfLock.Unlock()
+				return err
+			}
+		}
+
+		if edUpdate {
+			if err := updateNdfEd25519(n.GetID(), msg.Ed25519, currentNDF); err != nil {
 				m.State.InternalNdfLock.Unlock()
 				return err
 			}
