@@ -61,13 +61,32 @@ var rootCmd = &cobra.Command{
 	Long:  `This server provides registration functions on cMix`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		profileOut := viper.GetString("profile-cpu")
+		profileOut := viper.GetString("profile-out")
 		if profileOut != "" {
-			f, err := os.Create(profileOut)
+			// Start CPU profiling
+			cpuFile, err := os.Create(profileOut + "-cpu")
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
-			pprof.StartCPUProfile(f)
+			err = pprof.StartCPUProfile(cpuFile)
+			if err != nil {
+				jww.FATAL.Panicf("%+v", err)
+			}
+
+			// Start memory profiling
+			memFile, err := os.Create(profileOut + "-mem")
+			if err != nil {
+				jww.FATAL.Panicf("%+v", err)
+			}
+			go func() {
+				for {
+					err = pprof.WriteHeapProfile(memFile)
+					if err != nil {
+						jww.FATAL.Panicf("%+v", err)
+					}
+					time.Sleep(time.Minute)
+				}
+			}()
 		}
 
 		cmixMap := viper.GetStringMapString("groups.cmix")
@@ -516,9 +535,9 @@ func init() {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}
 
-	rootCmd.Flags().String("profile-cpu", "",
-		"Enable cpu profiling to this file")
-	err = viper.BindPFlag("profile-cpu", rootCmd.Flags().Lookup("profile-cpu"))
+	rootCmd.Flags().String("profile-out", "",
+		"Enable profiling to this base file path")
+	err = viper.BindPFlag("profile-out", rootCmd.Flags().Lookup("profile-out"))
 	if err != nil {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}

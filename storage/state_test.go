@@ -10,6 +10,7 @@ package storage
 import (
 	"bytes"
 	"crypto/rand"
+	gorsa "crypto/rsa"
 	"fmt"
 	"github.com/pkg/errors"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -351,6 +352,7 @@ func TestNetworkState_UpdateOutputNdf_SignError(t *testing.T) {
 	testNDF := &ndf.NetworkDefinition{}
 	expectedErr := "Unable to sign message: crypto/rsa: key size too small " +
 		"for PSS signature"
+	expectedErrNewGoVersion := fmt.Sprintf("Unable to sign message: %+v", gorsa.ErrMessageTooLong)
 
 	// Generate new NetworkState
 	state, _, err := generateTestNetworkState()
@@ -368,7 +370,7 @@ func TestNetworkState_UpdateOutputNdf_SignError(t *testing.T) {
 	// Update NDF
 	state.UpdateInternalNdf(testNDF)
 	err = state.UpdateOutputNdf()
-	if err == nil || err.Error() != expectedErr {
+	if err == nil || (err.Error() != expectedErr && err.Error() != expectedErrNewGoVersion) {
 		t.Errorf("UpdateInternalNdf() did not produce an error when expected."+
 			"\n\texpected: %+v\n\treceived: %+v", expectedErr, err)
 	}
