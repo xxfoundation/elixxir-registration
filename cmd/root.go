@@ -79,17 +79,21 @@ var rootCmd = &cobra.Command{
 			}
 
 			// Start memory profiling
-			memFile, err := os.OpenFile(memPath, fileFlags, fileOpts)
-			if err != nil {
-				jww.FATAL.Panicf("%+v", err)
-			}
 			go func() {
 				for {
-					err = os.Truncate(memPath, 0)
+					memFile, err := os.OpenFile(memPath, fileFlags, fileOpts)
+					if err != nil {
+						jww.FATAL.Panicf("%+v", err)
+					}
+					err = memFile.Truncate(0)
 					if err != nil {
 						jww.FATAL.Panicf("%+v", err)
 					}
 					err = pprof.WriteHeapProfile(memFile)
+					if err != nil {
+						jww.FATAL.Panicf("%+v", err)
+					}
+					err = memFile.Close()
 					if err != nil {
 						jww.FATAL.Panicf("%+v", err)
 					}
