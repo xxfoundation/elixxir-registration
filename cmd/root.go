@@ -85,10 +85,6 @@ var rootCmd = &cobra.Command{
 					if err != nil {
 						jww.FATAL.Panicf("%+v", err)
 					}
-					err = memFile.Truncate(0)
-					if err != nil {
-						jww.FATAL.Panicf("%+v", err)
-					}
 					err = pprof.WriteHeapProfile(memFile)
 					if err != nil {
 						jww.FATAL.Panicf("%+v", err)
