@@ -74,7 +74,9 @@ var rootCmd = &cobra.Command{
 			}
 
 			// Start memory profiling
-			memFile, err := os.Create(profileOut + "-mem")
+			memFile, err := os.OpenFile(profileOut+"-mem",
+				os.O_CREATE|os.O_WRONLY|os.O_TRUNC,
+				0644)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
