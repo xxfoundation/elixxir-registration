@@ -63,8 +63,13 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		profileOut := viper.GetString("profile-out")
 		if profileOut != "" {
+			cpuPath := profileOut + "-cpu"
+			memPath := profileOut + "-mem"
+			fileFlags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+			fileOpts := os.FileMode(0644)
+
 			// Start CPU profiling
-			cpuFile, err := os.Create(profileOut + "-cpu")
+			cpuFile, err := os.OpenFile(cpuPath, fileFlags, fileOpts)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
@@ -74,14 +79,16 @@ var rootCmd = &cobra.Command{
 			}
 
 			// Start memory profiling
-			memFile, err := os.OpenFile(profileOut+"-mem",
-				os.O_CREATE|os.O_WRONLY|os.O_TRUNC,
-				0644)
+			memFile, err := os.OpenFile(memPath, fileFlags, fileOpts)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
 			go func() {
 				for {
+					err = os.Truncate(memPath, 0)
+					if err != nil {
+						jww.FATAL.Panicf("%+v", err)
+					}
 					err = pprof.WriteHeapProfile(memFile)
 					if err != nil {
 						jww.FATAL.Panicf("%+v", err)
