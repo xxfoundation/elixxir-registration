@@ -332,10 +332,10 @@ func (s *NetworkState) RoundAdderRoutine() {
 	for {
 		// Add the next round update from the channel
 		rnd := <-s.roundUpdatesToAddCh
-		rndID := rnd.Get().UpdateID
+		rndUpdateId := rnd.Get().UpdateID
 
-		// process any rounds before the expected id immediately
-		if rndID < nextID {
+		// If update is not current, process it immediately
+		if rndUpdateId < nextID {
 			err := s.roundUpdates.AddRound(rnd)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
@@ -343,13 +343,15 @@ func (s *NetworkState) RoundAdderRoutine() {
 			continue
 		}
 
-		rnds[rndID] = rnd
-		// if the next ID has not been set, then set it to this one
+		// if the next ID has not been set, then set it to the new ID
 		if nextID == 0 {
-			nextID = rndID
+			nextID = rndUpdateId
 		}
 
-		// Call add round until we run out of IDs.
+		// Update comes from the future, add it for future processing
+		rnds[rndUpdateId] = rnd
+
+		// Sequentially process updates added earlier until a gap is reached
 		for r, ok := rnds[nextID]; ok; r, ok = rnds[nextID] {
 			err := s.roundUpdates.AddRound(r)
 			if err != nil {
