@@ -330,14 +330,14 @@ func (s *NetworkState) RoundAdderRoutine() {
 	futureRoundUpdates := make(map[uint64]*dataStructures.Round)
 	nextID := uint64(0)
 	for {
+		// Add the next round update from the channel
+		rnd := <-s.roundUpdatesToAddCh
+		rndUpdateId := rnd.Get().UpdateID
+
 		if nextID%100 == 0 {
 			jww.DEBUG.Printf("RoundAdderRoutine has %d future updates queued",
 				len(futureRoundUpdates))
 		}
-
-		// Add the next round update from the channel
-		rnd := <-s.roundUpdatesToAddCh
-		rndUpdateId := rnd.Get().UpdateID
 
 		// If update is not current, process it immediately
 		if rndUpdateId < nextID {

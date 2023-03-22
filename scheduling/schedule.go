@@ -216,7 +216,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 		sc.realtimeDelta, sc.realtimeTimeout)
 
 	// Start receiving updates from nodes
-	for true {
+	for {
 
 		isRoundTimeout := false
 		var update node.UpdateNotification
