@@ -327,9 +327,14 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 // RoundAdderRoutine monitors a channel and keeps track of pending round updates,
 // adding them in order
 func (s *NetworkState) RoundAdderRoutine() {
-	rnds := make(map[uint64]*dataStructures.Round)
+	futureRoundUpdates := make(map[uint64]*dataStructures.Round)
 	nextID := uint64(0)
 	for {
+		if nextID%100 == 0 {
+			jww.DEBUG.Printf("RoundAdderRoutine has %d future updates queued",
+				len(futureRoundUpdates))
+		}
+
 		// Add the next round update from the channel
 		rnd := <-s.roundUpdatesToAddCh
 		rndUpdateId := rnd.Get().UpdateID
@@ -349,16 +354,22 @@ func (s *NetworkState) RoundAdderRoutine() {
 		}
 
 		// Update comes from the future, add it for future processing
-		rnds[rndUpdateId] = rnd
+		futureRoundUpdates[rndUpdateId] = rnd
 
 		// Sequentially process updates added earlier until a gap is reached
-		for r, ok := rnds[nextID]; ok; r, ok = rnds[nextID] {
+		for ; ; nextID++ {
+			r, ok := futureRoundUpdates[nextID]
+			if !ok {
+				continue
+			}
+
 			err := s.roundUpdates.AddRound(r)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
-			delete(rnds, nextID)
-			nextID++
+
+			// Clean up processed round
+			delete(futureRoundUpdates, nextID)
 		}
 	}
 }
