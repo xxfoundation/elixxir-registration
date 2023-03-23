@@ -357,19 +357,14 @@ func (s *NetworkState) RoundAdderRoutine() {
 		futureRoundUpdates[rndUpdateId] = rnd
 
 		// Sequentially process updates added earlier until a gap is reached
-		for ; ; nextID++ {
-			r, ok := futureRoundUpdates[nextID]
-			if !ok {
-				continue
-			}
-
+		for r, ok := futureRoundUpdates[nextID]; ok; r, ok = futureRoundUpdates[nextID] {
 			err := s.roundUpdates.AddRound(r)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
-
 			// Clean up processed round
 			delete(futureRoundUpdates, nextID)
+			nextID++
 		}
 	}
 }
