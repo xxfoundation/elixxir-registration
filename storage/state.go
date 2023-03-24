@@ -334,6 +334,8 @@ func (s *NetworkState) RoundAdderRoutine() {
 		rnd := <-s.roundUpdatesToAddCh
 		rndUpdateId := rnd.Get().UpdateID
 
+		// Print the size of the future updates map so that potential memory leaks
+		// as a result of the structure of this function can be noticed.
 		if nextID%100 == 0 {
 			jww.DEBUG.Printf("RoundAdderRoutine has %d future updates queued",
 				len(futureRoundUpdates))
