@@ -94,7 +94,7 @@ func TestDatabaseImpl_InsertApplication_Duplicate(t *testing.T) {
 	}
 
 	// Attempt to load in a duplicate code
-	// FIXME this property is not enforced on the database...
+	// TODO this property is not enforced on the database...
 	altAppId := uint64(20)
 	err = d.InsertApplication(&Application{Id: altAppId}, &Node{
 		Code:          "TEST",
