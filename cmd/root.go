@@ -49,10 +49,21 @@ var (
 	disabledNodesPollDuration time.Duration
 )
 
-// Default duration between polls of the disabled Node list for updates.
-const defaultDisabledNodesPollDuration = time.Minute
-const defaultPruneRetention = 24 * 7 * time.Hour
-const defaultMessageRetention = 24 * 7 * time.Hour
+const (
+	// Default mode for creating files
+	defaultFileMode = os.FileMode(0644)
+
+	// Default duration between polls of the disabled Node list for updates.
+	defaultDisabledNodesPollDuration = time.Minute
+	defaultPruneRetention            = 24 * 7 * time.Hour
+	defaultMessageRetention          = 24 * 7 * time.Hour
+
+	// Default settings for Go profiling
+	profilingOutputFlags   = os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+	cpuProfileFlag         = "cpu-profile"
+	memoryProfileFlag      = "mem-profile"
+	memoryProfileFrequency = time.Minute
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -61,15 +72,10 @@ var rootCmd = &cobra.Command{
 	Long:  `This server provides registration functions on cMix`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		profileOut := viper.GetString("profile-out")
-		if profileOut != "" {
-			cpuPath := profileOut + "-cpu"
-			memPath := profileOut + "-mem"
-			fileFlags := os.O_CREATE | os.O_WRONLY | os.O_TRUNC
-			fileOpts := os.FileMode(0644)
-
+		cpuPath := viper.GetString(cpuProfileFlag)
+		if cpuPath != "" {
 			// Start CPU profiling
-			cpuFile, err := os.OpenFile(cpuPath, fileFlags, fileOpts)
+			cpuFile, err := os.OpenFile(cpuPath, profilingOutputFlags, defaultFileMode)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
@@ -77,11 +83,14 @@ var rootCmd = &cobra.Command{
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
+		}
 
+		memPath := viper.GetString(memoryProfileFlag)
+		if len(memPath) > 0 {
 			// Start memory profiling
 			go func() {
 				for {
-					memFile, err := os.OpenFile(memPath, fileFlags, fileOpts)
+					memFile, err := os.OpenFile(memPath, profilingOutputFlags, defaultFileMode)
 					if err != nil {
 						jww.FATAL.Panicf("%+v", err)
 					}
@@ -93,7 +102,7 @@ var rootCmd = &cobra.Command{
 					if err != nil {
 						jww.FATAL.Panicf("%+v", err)
 					}
-					time.Sleep(time.Minute)
+					time.Sleep(memoryProfileFrequency)
 				}
 			}()
 		}
@@ -446,7 +455,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 		stopEverything := func() {
-			if profileOut != "" {
+			if cpuPath != "" {
 				pprof.StopCPUProfile()
 			}
 			stopOnce.Do(stopRounds)
@@ -544,9 +553,16 @@ func init() {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}
 
-	rootCmd.Flags().String("profile-out", "",
-		"Enable profiling to this base file path")
-	err = viper.BindPFlag("profile-out", rootCmd.Flags().Lookup("profile-out"))
+	rootCmd.Flags().String(cpuProfileFlag, "",
+		"Output CPU profiling to this path")
+	err = viper.BindPFlag(cpuProfileFlag, rootCmd.Flags().Lookup(cpuProfileFlag))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
+
+	rootCmd.Flags().String(memoryProfileFlag, "",
+		"Output memory profiling to this path")
+	err = viper.BindPFlag(memoryProfileFlag, rootCmd.Flags().Lookup(memoryProfileFlag))
 	if err != nil {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}
@@ -721,7 +737,7 @@ func initLog() {
 		fullLogPath, _ := utils.ExpandPath(logPath)
 		logFile, err := os.OpenFile(fullLogPath,
 			os.O_CREATE|os.O_WRONLY|os.O_APPEND,
-			0644)
+			defaultFileMode)
 		if err != nil {
 			jww.WARN.Println("Invalid or missing log path, default path used.")
 		} else {
