@@ -6,8 +6,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Handles the DatabaseImpl for node-related functionality
-//go:build !stateless
-// +build !stateless
 
 package storage
 
