@@ -28,7 +28,7 @@ func trackRounds(state *storage.NetworkState, pool *waitingPool,
 	// Period of polling the state map for logs
 	schedulingTicker := time.NewTicker(1 * time.Minute)
 
-	for true {
+	for {
 		realtimeNodes := 0
 		precompNodes := 0
 		waitingNodes := 0
