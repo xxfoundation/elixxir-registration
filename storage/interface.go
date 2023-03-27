@@ -253,22 +253,6 @@ type RoundMetricAlt struct {
 
 func (RoundMetricAlt) TableName() string { return "round_metrics" }
 
-// Initialize the database interface with Map backend
-func NewMap() Storage {
-	defer jww.INFO.Println("Map backend initialized successfully!")
-	return Storage{
-		&MapImpl{
-			applications:     make(map[uint64]*Application),
-			nodes:            make(map[string]*Node),
-			nodeMetrics:      make(map[uint64]*NodeMetric),
-			roundMetrics:     make(map[uint64]*RoundMetric),
-			states:           make(map[string]string),
-			ephemeralLengths: make(map[uint8]*EphemeralLength),
-			activeNodes:      make(map[id.ID]*ActiveNode),
-			geographicBin:    make(map[string]uint8),
-		}}
-}
-
 // Adds Node registration codes to the Database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
 	// TODO: This will eventually need to be updated to intake applications too

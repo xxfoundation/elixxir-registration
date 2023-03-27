@@ -126,21 +126,18 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 	// Ignore not found in Storage errors, zero-value will be handled below
 	state.updateID, err = state.GetUpdateID()
 	if err != nil &&
-		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
-		!strings.Contains(err.Error(), "Unable to locate state for key") {
+		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) {
 		return nil, err
 	}
 	state.roundID, err = state.GetRoundID()
 	if err != nil &&
-		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
-		!strings.Contains(err.Error(), "Unable to locate state for key") {
+		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) {
 		return nil, err
 	}
 
 	ellipticKey, err := state.getEcKey()
 	if err != nil &&
-		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
-		!strings.Contains(err.Error(), "Unable to locate state for key") {
+		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) {
 		return nil, err
 	}
 
