@@ -231,6 +231,28 @@ type EphemeralLength struct {
 	Timestamp time.Time `gorm:"NOT NULL;UNIQUE"`
 }
 
+// Struct representing Round Metrics table in the Database
+type RoundMetricAlt struct {
+	// Unique ID of the round as assigned by the network
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:false"`
+
+	// Round timestamp information
+	PrecompStart  time.Time `gorm:"NOT NULL"`
+	PrecompEnd    time.Time `gorm:"NOT NULL;INDEX;"`
+	RealtimeStart time.Time `gorm:"NOT NULL"`
+	RealtimeEnd   time.Time `gorm:"NOT NULL;INDEX;"` // Index for TPS calc
+	RoundEnd      time.Time `gorm:"NOT NULL;INDEX;"` // Index for TPS calc
+	BatchSize     uint32    `gorm:"NOT NULL"`
+
+	// Each RoundMetric has many Nodes participating in each Round
+	Topologies []Topology `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
+
+	// Each RoundMetric can have many Errors in each Round
+	RoundErrors []RoundError `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
+}
+
+func (RoundMetricAlt) TableName() string { return "round_metrics" }
+
 // Initialize the database interface with Map backend
 func NewMap() Storage {
 	defer jww.INFO.Println("Map backend initialized successfully!")

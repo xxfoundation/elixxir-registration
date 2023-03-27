@@ -70,3 +70,8 @@ func (s *Storage) GetStateInt(key string) (uint64, error) {
 func (s *Storage) GetMapImpl(t *testing.T) *MapImpl {
 	return s.database.(*MapImpl)
 }
+
+// Test use only function for exposing DatabaseImpl
+func (s *Storage) GetDatabaseImpl(t *testing.T) *DatabaseImpl {
+	return s.database.(*DatabaseImpl)
+}
