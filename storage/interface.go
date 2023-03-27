@@ -232,6 +232,8 @@ type EphemeralLength struct {
 }
 
 // Struct representing Round Metrics table in the Database
+// This table exists to enable creating the round_metrics table using sqlite.
+// The default on the main table uses a postgres_only function, so it cannot be used.
 type RoundMetricAlt struct {
 	// Unique ID of the round as assigned by the network
 	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:false"`
@@ -251,6 +253,7 @@ type RoundMetricAlt struct {
 	RoundErrors []RoundError `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
 }
 
+// Interface method which overrides the name of the table when created with gorm
 func (RoundMetricAlt) TableName() string { return "round_metrics" }
 
 // Adds Node registration codes to the Database

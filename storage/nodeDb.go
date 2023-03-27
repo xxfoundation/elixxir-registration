@@ -129,6 +129,7 @@ func (d *DatabaseImpl) GetActiveNodes() ([]*ActiveNode, error) {
 }
 
 // If Node registration code is valid, add Node information
+// This was originally part of the map impl, and is only used in testing
 func (d *DatabaseImpl) BannedNode(id *id.ID, t interface{}) error {
 	// Ensure we're called from a test only
 	switch t.(type) {

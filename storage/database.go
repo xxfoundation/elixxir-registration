@@ -104,7 +104,7 @@ func NewDatabase(username, password, database, address,
 	for _, model := range models {
 		err = db.AutoMigrate(model).Error
 		if err != nil {
-			return Storage{}, func() error { return nil }, errors.WithMessage(err, "Failed to create backend tables")
+			return Storage{}, func() error { return nil }, errors.WithMessage(err, "Failed to AutoMigrate schema")
 		}
 	}
 
