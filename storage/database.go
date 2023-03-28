@@ -61,21 +61,15 @@ func NewDatabase(username, password, database, address,
 		return Storage{}, nil, errors.Errorf("Unable to initialize database backend: %+v", err)
 	}
 
+	var roundMetricTable interface{} = &RoundMetric{}
 	maxOpenConns := 100
 	if useSqlite {
-		// Set busy timeout to 3 seconds
-		if err = db.Exec("PRAGMA busy_timeout = 3000", nil).Error; err != nil {
-			return Storage{}, nil, errors.WithMessage(err, "Failed to enable foreign keys")
+		err = setupSqlite(db)
+		if err != nil {
+			return Storage{}, nil, err
 		}
-		// Enable foreign keys because they are disabled in SQLite by default
-		if err = db.Exec("PRAGMA foreign_keys = ON", nil).Error; err != nil {
-			return Storage{}, nil, errors.WithMessage(err, "Failed to enable foreign keys")
-		}
-
-		// Enable Write Ahead Logging to enable multiple DB connections
-		if err = db.Exec("PRAGMA journal_mode = WAL;", nil).Error; err != nil {
-			return Storage{}, nil, errors.WithMessage(err, "Failed to enable journal mode")
-		}
+		// Set alternate round_metrics table definition with struct tags for sqlite
+		roundMetricTable = &RoundMetricAlt{}
 		// Prevent db locking errors by setting max open conns to 1
 		maxOpenConns = 1
 	}
@@ -93,17 +87,9 @@ func NewDatabase(username, password, database, address,
 
 	// Initialize the Database schema
 	// WARNING: Order is important. Do not change without Database testing
-	var models []interface{}
-	if useSqlite {
-		models = []interface{}{
-			&State{}, &Application{}, &Node{}, &RoundMetricAlt{}, &Topology{}, &NodeMetric{},
-			&RoundError{}, EphemeralLength{}, ActiveNode{}, GeoBin{},
-		}
-	} else {
-		models = []interface{}{
-			&State{}, &Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
-			&RoundError{}, EphemeralLength{}, ActiveNode{}, GeoBin{},
-		}
+	models := []interface{}{
+		&State{}, &Application{}, &Node{}, roundMetricTable, &Topology{}, &NodeMetric{},
+		&RoundError{}, EphemeralLength{}, ActiveNode{}, GeoBin{},
 	}
 
 	for _, model := range models {
@@ -116,4 +102,17 @@ func NewDatabase(username, password, database, address,
 	jww.INFO.Println("Database backend initialized successfully!")
 	return Storage{&DatabaseImpl{db: db}}, db.Close, nil
 
+}
+
+func setupSqlite(db *gorm.DB) error {
+	// Enable foreign keys because they are disabled in SQLite by default
+	if err := db.Exec("PRAGMA foreign_keys = ON", nil).Error; err != nil {
+		return errors.WithMessage(err, "Failed to enable foreign keys")
+	}
+
+	// Enable Write Ahead Logging to enable multiple DB connections
+	if err := db.Exec("PRAGMA journal_mode = WAL;", nil).Error; err != nil {
+		return errors.WithMessage(err, "Failed to enable journal mode")
+	}
+	return nil
 }
