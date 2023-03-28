@@ -61,7 +61,12 @@ func NewDatabase(username, password, database, address,
 		return Storage{}, nil, errors.Errorf("Unable to initialize database backend: %+v", err)
 	}
 
+	maxOpenConns := 100
 	if useSqlite {
+		// Set busy timeout to 3 seconds
+		if err = db.Exec("PRAGMA busy_timeout = 3000", nil).Error; err != nil {
+			return Storage{}, nil, errors.WithMessage(err, "Failed to enable foreign keys")
+		}
 		// Enable foreign keys because they are disabled in SQLite by default
 		if err = db.Exec("PRAGMA foreign_keys = ON", nil).Error; err != nil {
 			return Storage{}, nil, errors.WithMessage(err, "Failed to enable foreign keys")
@@ -71,6 +76,8 @@ func NewDatabase(username, password, database, address,
 		if err = db.Exec("PRAGMA journal_mode = WAL;", nil).Error; err != nil {
 			return Storage{}, nil, errors.WithMessage(err, "Failed to enable journal mode")
 		}
+		// Prevent db locking errors by setting max open conns to 1
+		maxOpenConns = 1
 	}
 
 	// Initialize the Database logger
@@ -80,7 +87,7 @@ func NewDatabase(username, password, database, address,
 	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
 	db.DB().SetMaxIdleConns(10)
 	// SetMaxOpenConns sets the maximum number of open connections to the Database.
-	db.DB().SetMaxOpenConns(100)
+	db.DB().SetMaxOpenConns(maxOpenConns)
 	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
 	db.DB().SetConnMaxLifetime(24 * time.Hour)
 
