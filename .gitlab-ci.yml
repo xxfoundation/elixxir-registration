@@ -91,11 +91,9 @@ build-macos:
   except:
     - tags
   script:
+    # We removed the upload-artifacts.sh here because nothing was ever written to it (see above build job) and it doesn't exist on the macOS runner
     - mkdir -p release
-    - rm -rf upload || true
     - GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -ldflags '-w -s' -o release/registration.darwin64 main.go
-    - mkdir -p upload
-    - /upload-artifacts.sh upload/
   artifacts:
     paths:
      - release/
