@@ -74,7 +74,7 @@ build:
     - rm -rf upload || true
     - GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags '-w -s' ./...
     - GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags '-w -s' -o release/registration.linux64 main.go
-    - GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -ldflags '-w -s' -o release/registration.win64 main.go
+    - GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -ldflags '-w -s' -o release/registration.win64 main.go
 #    - GOOS=windows GOARCH=386 CGO_ENABLED=1 go build -ldflags '-w -s' -o release/registration.win32 main.go
     - GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -ldflags '-w -s' -o release/registration.darwin64 main.go
     - mkdir -p upload
