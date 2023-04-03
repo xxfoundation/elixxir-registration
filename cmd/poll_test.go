@@ -263,8 +263,8 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 func TestRegistrationImpl_PollNdf(t *testing.T) {
 	//Create database
 	var err error
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("",
+		"", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -372,8 +372,7 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Create database
 	var err error
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -430,8 +429,7 @@ func TestPoll_BannedNode(t *testing.T) {
 	//Create database
 	var err error
 
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}

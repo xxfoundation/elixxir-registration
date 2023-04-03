@@ -6,7 +6,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Handles Database backend functionality
-//+build !stateless
 
 package storage
 
@@ -14,8 +13,17 @@ import (
 	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"github.com/pkg/errors"
 	jww "github.com/spf13/jwalterweatherman"
 	"time"
+)
+
+const (
+	postgresConnectString = "host=%s port=%s user=%s dbname=%s sslmode=disable"
+	sqliteDatabasePath    = "file:%s?mode=memory&cache=shared"
+	postgresDialect       = "postgres"
+	sqliteDialect         = "sqlite3"
 )
 
 // Struct implementing the Database Interface with an underlying DB
@@ -31,29 +39,43 @@ func NewDatabase(username, password, database, address,
 	var err error
 	var db *gorm.DB
 	//connect to the Database if the correct information is provided
+	var useSqlite bool
+	var connString, dialect string
+	// Connect to the database if the correct information is provided
 	if address != "" && port != "" {
-		// Create the Database connection
-		connectString := fmt.Sprintf(
-			"host=%s port=%s user=%s dbname=%s sslmode=disable",
+		// Create the database connection
+		connString = fmt.Sprintf(
+			postgresConnectString,
 			address, port, username, database)
-		// Handle empty Database password
+		// Handle empty database password
 		if len(password) > 0 {
-			connectString += fmt.Sprintf(" password=%s", password)
+			connString += fmt.Sprintf(" password=%s", password)
 		}
-		db, err = gorm.Open("postgres", connectString)
+		dialect = postgresDialect
+	} else {
+		useSqlite = true
+		jww.WARN.Printf("Database backend connection information not provided")
+		connString = fmt.Sprintf(sqliteDatabasePath, database)
+		dialect = sqliteDialect
 	}
 
-	// Return the map-backend interface
-	// in the event there is a Database error or information is not provided
-	if (address == "" || port == "") || err != nil {
+	// Create the database connection
+	db, err = gorm.Open(dialect, connString)
+	if err != nil {
+		return Storage{}, nil, errors.Errorf("Unable to initialize database backend: %+v", err)
+	}
 
+	var roundMetricTable interface{} = &RoundMetric{}
+	maxOpenConns := 100
+	if useSqlite {
+		err = setupSqlite(db)
 		if err != nil {
-			jww.WARN.Printf("Unable to initialize Database backend: %+v", err)
-		} else {
-			jww.WARN.Printf("Database backend connection information not provided")
+			return Storage{}, nil, err
 		}
-
-		return NewMap(), func() error { return nil }, nil
+		// Set alternate round_metrics table definition with struct tags for sqlite
+		roundMetricTable = &RoundMetricAlt{}
+		// Prevent db locking errors by setting max open conns to 1
+		maxOpenConns = 1
 	}
 
 	// Initialize the Database logger
@@ -63,24 +85,38 @@ func NewDatabase(username, password, database, address,
 	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
 	db.DB().SetMaxIdleConns(10)
 	// SetMaxOpenConns sets the maximum number of open connections to the Database.
-	db.DB().SetMaxOpenConns(100)
+	db.DB().SetMaxOpenConns(maxOpenConns)
 	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
 	db.DB().SetConnMaxLifetime(24 * time.Hour)
 
 	// Initialize the Database schema
 	// WARNING: Order is important. Do not change without Database testing
 	models := []interface{}{
-		&State{}, &Application{}, &Node{}, &RoundMetric{}, &Topology{}, &NodeMetric{},
+		&State{}, &Application{}, &Node{}, roundMetricTable, &Topology{}, &NodeMetric{},
 		&RoundError{}, EphemeralLength{}, ActiveNode{}, GeoBin{},
 	}
+
 	for _, model := range models {
 		err = db.AutoMigrate(model).Error
 		if err != nil {
-			return Storage{}, func() error { return nil }, err
+			return Storage{}, func() error { return nil }, errors.WithMessage(err, "Failed to AutoMigrate schema")
 		}
 	}
 
 	jww.INFO.Println("Database backend initialized successfully!")
 	return Storage{&DatabaseImpl{db: db}}, db.Close, nil
 
+}
+
+func setupSqlite(db *gorm.DB) error {
+	// Enable foreign keys because they are disabled in SQLite by default
+	if err := db.Exec("PRAGMA foreign_keys = ON", nil).Error; err != nil {
+		return errors.WithMessage(err, "Failed to enable foreign keys")
+	}
+
+	// Enable Write Ahead Logging to enable multiple DB connections
+	if err := db.Exec("PRAGMA journal_mode = WAL;", nil).Error; err != nil {
+		return errors.WithMessage(err, "Failed to enable journal mode")
+	}
+	return nil
 }

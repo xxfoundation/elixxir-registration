@@ -29,7 +29,7 @@ func TestTrackNodeMetrics(t *testing.T) {
 	interval := 500 * time.Millisecond
 
 	var err error
-	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "perm", "", "")
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -75,11 +75,10 @@ func TestTrackNodeMetrics(t *testing.T) {
 		t.Fatalf("Could not parse precanned time: %v", err.Error())
 	}
 	pruneNode.SetLastActiveTesting(pruneTimestamp, t)
-
 	// Add all nodes to database
 	nodeIds := []*id.ID{activeNodeID, staleNodeId, pruneNodeId}
 	status := []node.Status{node.Active, node.Inactive, node.Inactive}
-	for i := 0; i < 3; i++ {
+	for i := 1; i < 4; i++ {
 		regCode := strconv.Itoa(i)
 		//nid := createNode(state, strconv.Itoa(i), regCode, i, status[i], t)
 
@@ -97,14 +96,13 @@ func TestTrackNodeMetrics(t *testing.T) {
 				Code:          regCode,
 				Id:            idBytes,
 				ApplicationId: appId,
-				Status:        uint8(status[i]),
+				Status:        uint8(status[i-1]),
 				Sequence:      strconv.Itoa(i),
 			})
 		if err != nil {
 			t.Fatalf("Failed to insert application: %+v", err)
 		}
-
-		err = storage.PermissioningDb.RegisterNode(nodeIds[i], nil, regCode, "", "", "", "")
+		err = storage.PermissioningDb.RegisterNode(nodeIds[i-1], nil, regCode, "", "", "", "")
 		if err != nil {
 			t.Fatalf("Failed to prepopulate database: %+v", err)
 		}

@@ -32,7 +32,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 	var err error
 	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatalf(err.Error())
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)

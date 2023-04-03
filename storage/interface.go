@@ -231,21 +231,30 @@ type EphemeralLength struct {
 	Timestamp time.Time `gorm:"NOT NULL;UNIQUE"`
 }
 
-// Initialize the database interface with Map backend
-func NewMap() Storage {
-	defer jww.INFO.Println("Map backend initialized successfully!")
-	return Storage{
-		&MapImpl{
-			applications:     make(map[uint64]*Application),
-			nodes:            make(map[string]*Node),
-			nodeMetrics:      make(map[uint64]*NodeMetric),
-			roundMetrics:     make(map[uint64]*RoundMetric),
-			states:           make(map[string]string),
-			ephemeralLengths: make(map[uint8]*EphemeralLength),
-			activeNodes:      make(map[id.ID]*ActiveNode),
-			geographicBin:    make(map[string]uint8),
-		}}
+// Struct representing Round Metrics table in the Database
+// This table exists to enable creating the round_metrics table using sqlite.
+// The default on the main table uses a postgres_only function, so it cannot be used.
+type RoundMetricAlt struct {
+	// Unique ID of the round as assigned by the network
+	Id uint64 `gorm:"primary_key;AUTO_INCREMENT:false"`
+
+	// Round timestamp information
+	PrecompStart  time.Time `gorm:"NOT NULL"`
+	PrecompEnd    time.Time `gorm:"NOT NULL;INDEX;"`
+	RealtimeStart time.Time `gorm:"NOT NULL"`
+	RealtimeEnd   time.Time `gorm:"NOT NULL;INDEX;"` // Index for TPS calc
+	RoundEnd      time.Time `gorm:"NOT NULL;INDEX;"` // Index for TPS calc
+	BatchSize     uint32    `gorm:"NOT NULL"`
+
+	// Each RoundMetric has many Nodes participating in each Round
+	Topologies []Topology `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
+
+	// Each RoundMetric can have many Errors in each Round
+	RoundErrors []RoundError `gorm:"foreignkey:RoundMetricId;association_foreignkey:Id"`
 }
+
+// Interface method which overrides the name of the table when created with gorm
+func (RoundMetricAlt) TableName() string { return "round_metrics" }
 
 // Adds Node registration codes to the Database
 func PopulateNodeRegistrationCodes(infos []node.Info) {
