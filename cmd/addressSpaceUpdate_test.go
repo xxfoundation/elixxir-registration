@@ -22,7 +22,7 @@ func TestRegistrationImpl_updateAddressSpace(t *testing.T) {
 	addressSpaces, latest := makeSortedAddressSpaces(16)
 
 	// Initialise storage
-	store, _, err := storage.NewDatabase("", "", "", "", "")
+	store, _, err := storage.NewDatabase("", "", "TestRegistrationImpl_updateAddressSpace", "", "")
 	if err != nil {
 		t.Errorf("Failed to create new database: %+v", err)
 	}
@@ -34,7 +34,7 @@ func TestRegistrationImpl_updateAddressSpace(t *testing.T) {
 	for i, as := range addressSpaces {
 		err = store.InsertEphemeralLength(&storage.EphemeralLength{Length: as.Size, Timestamp: as.Timestamp})
 		if err != nil {
-			t.Errorf("Failed to insert address space as ephemeral length (%d): %+v", i, err)
+			t.Fatalf("Failed to insert address space as ephemeral length (%d): %+v", i, err)
 		}
 	}
 
@@ -85,7 +85,7 @@ func TestRegistrationImpl_updateAddressSpace_NoUpdates(t *testing.T) {
 	addressSpaces, latest := makeSortedAddressSpaces(16)
 
 	// Initialise storage
-	store, _, err := storage.NewDatabase("", "", "", "", "")
+	store, _, err := storage.NewDatabase("", "", "TestRegistrationImpl_updateAddressSpace_NoUpdates", "", "")
 	if err != nil {
 		t.Errorf("Failed to create new database: %+v", err)
 	}
@@ -192,7 +192,7 @@ func Test_GetAddressSpaceSizesFromStorage(t *testing.T) {
 // Error path: storage has no address spaces.
 func Test_GetAddressSpaceSizesFromStorage_EmptyStorageError(t *testing.T) {
 	// Initialise storage
-	store, _, err := storage.NewDatabase("", "", "", "", "")
+	store, _, err := storage.NewDatabase("", "", "Test_GetAddressSpaceSizesFromStorage_EmptyStorageError", "", "")
 	if err != nil {
 		t.Errorf("Failed to create new database: %+v", err)
 	}
@@ -208,7 +208,7 @@ func Test_GetAddressSpaceSizesFromStorage_EmptyStorageError(t *testing.T) {
 // timestamp with the newest last.
 func makeSortedAddressSpaces(n uint8) ([]ndf.AddressSpace, ndf.AddressSpace) {
 	addressSpaces := make([]ndf.AddressSpace, n)
-	initSize := uint8(0)
+	initSize := uint8(1)
 	initTime := time.Now()
 	var addressSpace ndf.AddressSpace
 
