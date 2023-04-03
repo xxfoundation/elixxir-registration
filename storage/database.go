@@ -19,8 +19,12 @@ import (
 	"time"
 )
 
-const postgresConnectString = "host=%s port=%s user=%s dbname=%s sslmode=disable"
-const sqliteDatabasePath = "file:%s?mode=memory&cache=shared"
+const (
+	postgresConnectString = "host=%s port=%s user=%s dbname=%s sslmode=disable"
+	sqliteDatabasePath    = "file:%s?mode=memory&cache=shared"
+	postgresDialect       = "postgres"
+	sqliteDialect         = "sqlite3"
+)
 
 // Struct implementing the Database Interface with an underlying DB
 type DatabaseImpl struct {
@@ -47,12 +51,12 @@ func NewDatabase(username, password, database, address,
 		if len(password) > 0 {
 			connString += fmt.Sprintf(" password=%s", password)
 		}
-		dialect = "postgres"
+		dialect = postgresDialect
 	} else {
 		useSqlite = true
 		jww.WARN.Printf("Database backend connection information not provided")
 		connString = fmt.Sprintf(sqliteDatabasePath, database)
-		dialect = "sqlite3"
+		dialect = sqliteDialect
 	}
 
 	// Create the database connection

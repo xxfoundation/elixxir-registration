@@ -109,9 +109,6 @@ func (d *DatabaseImpl) GetEphemeralLengths() ([]*EphemeralLength, error) {
 
 // Insert new EphemeralLength into Storage
 func (d *DatabaseImpl) InsertEphemeralLength(length *EphemeralLength) error {
-	ls, err := d.GetEphemeralLengths()
-	jww.INFO.Println(ls)
-	jww.INFO.Println(err)
 	jww.TRACE.Printf("Attempting to insert EphemeralLength into DB: %+v", length)
 	return d.db.Create(length).Error
 }
