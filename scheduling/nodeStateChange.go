@@ -41,10 +41,11 @@ type stateChanger struct {
 }
 
 // HandleNodeUpdates handles the node state changes.
-//  A node in waiting is added to the pool in preparation for precomputing.
-//  A node in standby is added to a round in preparation for realtime.
-//  A node in completed waits for all other nodes in the team to transition
-//   before the round is updated.
+//
+//	A node in waiting is added to the pool in preparation for precomputing.
+//	A node in standby is added to a round in preparation for realtime.
+//	A node in completed waits for all other nodes in the team to transition
+//	 before the round is updated.
 func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error {
 	// Check the round's error state
 	n := sc.state.GetNodeMap().GetNode(update.Node)
@@ -128,7 +129,7 @@ func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error 
 			// kill the precomp timeout and start a realtime timeout
 			r.DenoteRoundCompleted()
 			go waitForRoundTimeout(sc.roundTimeoutChan, sc.state, r,
-				sc.realtimeTimeout, "realtime")
+				sc.realtimeTimeout, true)
 
 			startTime := time.Now().Add(sc.realtimeDelay)
 			nextRoundMinimum := sc.lastRealtime.Add(sc.realtimeDelta)
@@ -227,9 +228,12 @@ func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error 
 		// If in an error state, kill the round if the node has one
 		var err error
 		if hasRound {
+			n.ClearRound()
+
 			//send the signal that the round is complete
 			r.DenoteRoundCompleted()
-			n.ClearRound()
+
+			// Clear the round and close it out
 			err = killRound(sc.state, r, update.Error, sc.roundTracker)
 		}
 		return err
@@ -311,5 +315,18 @@ func killRound(state *storage.NetworkState, r *round.State,
 		}
 	}()
 
+	// Ensure that every member of the round topology is done with the round
+	// inside the NodeMap before finally removing it in order to prevent
+	// infinite growth.
+	topology := r.GetTopology()
+	for i := 0; i < topology.Len(); i++ {
+		nId := topology.GetNodeAtIndex(i)
+		nodeState := state.GetNodeMap().GetNode(nId)
+		_, roundState := nodeState.GetCurrentRound()
+		if roundState.GetRoundID() == roundId {
+			return nil
+		}
+	}
+	state.GetRoundMap().DeleteRound(roundId)
 	return nil
 }
