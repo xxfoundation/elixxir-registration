@@ -84,8 +84,6 @@ build:
 build-macos:
   stage: build
   image: $DOCKER_IMAGE
-  tags:
-    - ios
   except:
     - tags
   script:
@@ -93,8 +91,8 @@ build-macos:
     - mkdir -p release
     - GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -ldflags '-w -s' -o release/registration.darwin64 main.go
     - if [ "$CI_COMMIT_REF_NAME" != "master" ] && [ "$CI_COMMIT_REF_NAME" != "release" ] && [ "$ARTIFACT_BRANCH_BYPASS" != "yes" ]; then echo 'Branch is not master or release, aborting script'; exit 0; fi
-    - mc alias set elixxir-s3 $ARTIFACT_S3_ENDPOINT $ARTIFACT_S3_KEY $ARTIFACT_S3_SECRET
-    - mc cp release/registration.darwin64 elixxir-s3/$ARTIFACT_S3_BUCKET/registration/registration.darwin64
+    #- mc alias set elixxir-s3 $ARTIFACT_S3_ENDPOINT $ARTIFACT_S3_KEY $ARTIFACT_S3_SECRET
+    #- mc cp release/registration.darwin64 elixxir-s3/$ARTIFACT_S3_BUCKET/registration/registration.darwin64
   artifacts:
     paths:
      - release/
