@@ -322,8 +322,8 @@ func killRound(state *storage.NetworkState, r *round.State,
 	for i := 0; i < topology.Len(); i++ {
 		nId := topology.GetNodeAtIndex(i)
 		nodeState := state.GetNodeMap().GetNode(nId)
-		_, roundState := nodeState.GetCurrentRound()
-		if roundState.GetRoundID() == roundId {
+		hasRound, roundState := nodeState.GetCurrentRound()
+		if hasRound && roundState.GetRoundID() == roundId {
 			return nil
 		}
 	}
