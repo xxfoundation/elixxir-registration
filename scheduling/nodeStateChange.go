@@ -290,45 +290,54 @@ func killRound(state *storage.NetworkState, r *round.State,
 			"update to kill round %v", roundId)
 	}
 
-	go func() {
-		// Attempt to insert the RoundMetric for the failed round
-		StoreRoundMetric(roundInfo, r.GetRoundState(), 0)
-
-		// Return early if there is no roundError
-		if roundError == nil {
-			return
-		}
-
-		nid, err := id.Unmarshal(roundError.NodeId)
-		var idStr string
-		if err != nil {
-			idStr = "N/A"
-		} else {
-			idStr = nid.String()
-		}
-
-		formattedError := fmt.Sprintf("Round Error from %s: %s", idStr, roundError.Error)
-		jww.INFO.Print(formattedError)
-
-		// Next, attempt to insert the error for the failed round
-		err = storage.PermissioningDb.InsertRoundError(roundId, formattedError)
-		if err != nil {
-			jww.WARN.Printf("Could not insert round error: %+v", err)
-		}
-	}()
-
-	// Ensure that every member of the round topology is done with the round
-	// inside the NodeMap before finally removing it in order to prevent
-	// infinite growth.
+	// Determine how many nodes have killed the round
+	numClearedNodes := 0
 	topology := r.GetTopology()
-	for i := 0; i < topology.Len(); i++ {
+	topologyLen := topology.Len()
+	for i := 0; i < topologyLen; i++ {
 		nId := topology.GetNodeAtIndex(i)
 		nodeState := state.GetNodeMap().GetNode(nId)
 		hasRound, roundState := nodeState.GetCurrentRound()
-		if hasRound && roundState.GetRoundID() == roundId {
-			return nil
+		if !hasRound || roundState.GetRoundID() != roundId {
+			numClearedNodes += 1
 		}
 	}
-	state.GetRoundMap().DeleteRound(roundId)
+
+	if allNodesCleared := numClearedNodes == topologyLen; allNodesCleared {
+		// Ensure that every member of the round topology is done with the round
+		// inside the NodeMap before finally removing it in order to prevent
+		// infinite growth.
+		state.GetRoundMap().DeleteRound(roundId)
+	} else if isFirstToClear := numClearedNodes == 1; isFirstToClear {
+		// Ensure we only store round metrics for the first node to kill
+		// the round in order to prevent pointless duplicate inserts.
+		go func() {
+			// Attempt to insert the RoundMetric for the failed round
+			StoreRoundMetric(roundInfo, r.GetRoundState(), 0)
+
+			// Return early if there is no roundError
+			if roundError == nil {
+				return
+			}
+
+			nid, err := id.Unmarshal(roundError.NodeId)
+			var idStr string
+			if err != nil {
+				idStr = "N/A"
+			} else {
+				idStr = nid.String()
+			}
+
+			formattedError := fmt.Sprintf("Round Error from %s: %s", idStr, roundError.Error)
+			jww.INFO.Print(formattedError)
+
+			// Next, attempt to insert the error for the failed round
+			err = storage.PermissioningDb.InsertRoundError(roundId, formattedError)
+			if err != nil {
+				jww.WARN.Printf("Could not insert round error: %+v", err)
+			}
+		}()
+	}
+
 	return nil
 }
