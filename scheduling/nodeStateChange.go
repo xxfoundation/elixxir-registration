@@ -324,9 +324,12 @@ func killRound(state *storage.NetworkState, r *round.State,
 		nodeState := state.GetNodeMap().GetNode(nId)
 		hasRound, roundState := nodeState.GetCurrentRound()
 		if hasRound && roundState.GetRoundID() == roundId {
+			jww.DEBUG.Printf("[TEST] NOT removing round %s in killRound,"+
+				"node %s still has it", roundId.String(), nId.String())
 			return nil
 		}
 	}
+	jww.DEBUG.Printf("[TEST] Removing round %s in killRound", roundId.String())
 	state.GetRoundMap().DeleteRound(roundId)
 	return nil
 }

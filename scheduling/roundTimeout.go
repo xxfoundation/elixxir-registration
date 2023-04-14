@@ -15,11 +15,6 @@ import (
 	"time"
 )
 
-const (
-	realtimeTimeout = "realtime"
-	precompTimeout  = "precomputation"
-)
-
 func waitForRoundTimeout(tracker chan id.Round, state *storage.NetworkState,
 	localRound *round.State, timeout time.Duration, isRealtime bool) {
 	roundID := localRound.GetRoundID()
@@ -36,6 +31,7 @@ func waitForRoundTimeout(tracker chan id.Round, state *storage.NetworkState,
 	// In this case, we can exit the go-routine
 	case <-localRound.GetRoundCompletedChan():
 		if isRealtime {
+			jww.DEBUG.Printf("[TEST] Removing round %s in waitForRoundTimeout", roundID.String())
 			state.GetRoundMap().DeleteRound(roundID)
 		}
 		return

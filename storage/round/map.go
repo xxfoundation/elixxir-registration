@@ -43,7 +43,7 @@ func (rsm *StateMap) AddRound(id id.Round, batchSize, addressSpaceSize uint32, r
 	}
 
 	rsm.rounds[id] = newState(id, batchSize, addressSpaceSize, resourceQueueTimeout, topology, time.Now())
-	jww.TRACE.Printf("Added round %s to StateMap[%d]", id, len(rsm.rounds))
+	jww.DEBUG.Printf("[TEST] Added round %s to StateMap[%d]", id, len(rsm.rounds))
 	return rsm.rounds[id], nil
 }
 
