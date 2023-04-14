@@ -126,7 +126,8 @@ func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error 
 					r.GetRoundID(), states.PRECOMPUTING, states.STANDBY)
 			}
 
-			// kill the precomp timeout and start a realtime timeout
+			// This signals the end of the precomp timeout,
+			// followed by initiating the realtime timeout.
 			r.DenoteRoundCompleted()
 			go waitForRoundTimeout(sc.roundTimeoutChan, sc.state, r,
 				sc.realtimeTimeout, true)
@@ -213,7 +214,7 @@ func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error 
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
 
-			//send the signal that the round is complete
+			// Signal the round as completed to disable the timeout
 			r.DenoteRoundCompleted()
 			sc.roundTracker.RemoveActiveRound(r.GetRoundID())
 
@@ -228,12 +229,13 @@ func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error 
 		// If in an error state, kill the round if the node has one
 		var err error
 		if hasRound {
+			// Clear the round from the node state
 			n.ClearRound()
 
-			//send the signal that the round is complete
+			// Signal the round as completed to disable the timeout
 			r.DenoteRoundCompleted()
 
-			// Clear the round and close it out
+			// Fail the round and make accompanying round state updates
 			err = killRound(sc.state, r, update.Error, sc.roundTracker)
 		}
 		return err
@@ -267,21 +269,21 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo, roundEnd states.Round, realtimeTs
 	}
 }
 
-// killRound sets the round to failed and clears the node's round
+// killRound updates the round.State to states.FAILED, stores the round metric,
+// and clears the round from round.StateMap if all nodes are finished.
 func killRound(state *storage.NetworkState, r *round.State,
 	roundError *pb.RoundError, roundTracker *RoundTracker) error {
 
+	// Append the error to and update the round state
 	roundId := r.GetRoundID()
 	r.AppendError(roundError)
-
 	err := r.Update(states.FAILED, time.Now())
 	if err == nil {
 		roundTracker.RemoveActiveRound(roundId)
 	}
 
+	// Build the new round info and update the network state
 	roundInfo := r.BuildRoundInfo()
-
-	// Build the round info and update the network state
 	err = state.AddRoundUpdate(roundInfo)
 	if err != nil {
 		return errors.WithMessagef(err, "Could not issue "+
