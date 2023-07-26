@@ -62,7 +62,7 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 	}
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
-	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+	impl.State.UpdateInternalNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
 			TlsCertificate: "",
@@ -74,6 +74,10 @@ func TestRegistrationImpl_Poll_NDF(t *testing.T) {
 			{ID: id.NewIdFromUInt(0, id.Node, t).Bytes()},
 		},
 	})
+	err = impl.State.UpdateOutputNdf()
+	if err != nil {
+		t.Fatalf("Failed to update ndf: %+v", err)
+	}
 
 	// Make a simple auth object that will pass the checks
 	testHost, _ := impl.Comms.AddHost(testID, testString,
@@ -143,7 +147,7 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 	}
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
-	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+	impl.State.UpdateInternalNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
 			TlsCertificate: "",
@@ -155,6 +159,10 @@ func TestRegistrationImpl_Poll_Round(t *testing.T) {
 			{ID: id.NewIdFromUInt(0, id.Node, t).Bytes()},
 		},
 	})
+	err = impl.State.UpdateOutputNdf()
+	if err != nil {
+		t.Fatalf("Failed to update output ndf: %+v", err)
+	}
 
 	// Make a simple auth object that will pass the checks
 	testHost, _ := impl.Comms.AddHost(testID, testString,
@@ -251,12 +259,12 @@ func TestRegistrationImpl_PollNoNdf(t *testing.T) {
 	}
 }*/
 
-//Happy path
+// Happy path
 func TestRegistrationImpl_PollNdf(t *testing.T) {
 	//Create database
 	var err error
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("",
+		"", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -327,6 +335,11 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 	case <-impl.beginScheduling:
 	}
 
+	err = impl.State.UpdateOutputNdf()
+	if err != nil {
+		t.Fatalf("Failed to update output ndf: %+v", err)
+	}
+
 	l.Lock()
 	observedNDFBytes, err := impl.PollNdf(nil)
 	l.Unlock()
@@ -349,14 +362,17 @@ func TestRegistrationImpl_PollNdf(t *testing.T) {
 		t.Errorf("Failed to set registration address. Expected: %v \n Recieved: %v",
 			permAddr, observedNDF.Registration.Address)
 	}
+
+	if len(observedNDF.Nodes) != 3 {
+		t.Errorf("Did not receive expected node count.\n\tExpected: %d\n\tReceived: %d\n", 3, len(observedNDF.Nodes))
+	}
 }
 
-//Error  path
+// Error  path
 func TestRegistrationImpl_PollNdf_NoNDF(t *testing.T) {
 	//Create database
 	var err error
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -413,8 +429,7 @@ func TestPoll_BannedNode(t *testing.T) {
 	//Create database
 	var err error
 
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -437,12 +452,16 @@ func TestPoll_BannedNode(t *testing.T) {
 	defer impl.Comms.Shutdown()
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
-	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+	impl.State.UpdateInternalNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
 			TlsCertificate: "",
 		},
 	})
+	err = impl.State.UpdateOutputNdf()
+	if err != nil {
+		t.Fatalf("Failed to update output ndf: %+v", err)
+	}
 
 	// Make a simple auth object that will pass the checks
 	testHost, _ := connect.NewHost(testID, testString,
@@ -502,7 +521,7 @@ func TestPoll_BannedNode(t *testing.T) {
 //	}
 //	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 //
-//	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+//	err = impl.State.UpdateInternalNdf(&ndf.NetworkDefinition{
 //		Registration: ndf.Registration{
 //			Address:        "420",
 //			TlsCertificate: "",
@@ -782,7 +801,7 @@ func TestCheckVersion_InvalidVersionGatewayAndServer(t *testing.T) {
 	}
 	atomic.CompareAndSwapUint32(impl.NdfReady, 0, 1)
 
-	err = impl.State.UpdateNdf(&ndf.NetworkDefinition{
+	err = impl.State.UpdateInternalNdf(&ndf.NetworkDefinition{
 		Registration: ndf.Registration{
 			Address:        "420",
 			TlsCertificate: "",

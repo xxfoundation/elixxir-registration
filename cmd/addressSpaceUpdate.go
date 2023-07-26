@@ -71,15 +71,11 @@ func (m *RegistrationImpl) updateAddressSpace(latest ndf.AddressSpace,
 			"changes (length of list %d).", latest.Size, len(addressSpaces))
 
 		// Update the NDF
-		m.NDFLock.Lock()
+		m.State.InternalNdfLock.Lock()
 		updateNDF := m.State.GetUnprunedNdf()
 		updateNDF.AddressSpace = addressSpaces
-		err = m.State.UpdateNdf(updateNDF)
-		m.NDFLock.Unlock()
-		if err != nil {
-			return ndf.AddressSpace{},
-				errors.Errorf("failed to update NDF AddressSpace: %+v", err)
-		}
+		m.State.UpdateInternalNdf(updateNDF)
+		m.State.InternalNdfLock.Unlock()
 	}
 
 	return latest, nil
@@ -90,11 +86,13 @@ func (m *RegistrationImpl) updateAddressSpace(latest ndf.AddressSpace,
 // ID lengths are found in storage.
 func GetAddressSpaceSizesFromStorage(store storage.Storage) ([]ndf.AddressSpace,
 	ndf.AddressSpace, error) {
-
 	// Get list of ephemeral ID lengths from storage
 	ephLens, err := store.GetEphemeralLengths()
 	if err != nil {
 		return nil, ndf.AddressSpace{}, err
+	}
+	if len(ephLens) < 1 {
+		return nil, ndf.AddressSpace{}, errors.New("No EphemeralLengths received")
 	}
 
 	// Sort ephemeral ID length list by timestamp

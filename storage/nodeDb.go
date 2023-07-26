@@ -6,7 +6,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Handles the DatabaseImpl for node-related functionality
-//+build !stateless
 
 package storage
 
@@ -15,6 +14,7 @@ import (
 	jww "github.com/spf13/jwalterweatherman"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
+	"testing"
 	"time"
 )
 
@@ -124,4 +124,19 @@ func (d *DatabaseImpl) GetActiveNodes() ([]*ActiveNode, error) {
 	var activeNodes []*ActiveNode
 	err := d.db.Find(&activeNodes).Error
 	return activeNodes, err
+}
+
+// If Node registration code is valid, add Node information
+// This was originally part of the map impl, and is only used in testing
+func (d *DatabaseImpl) BannedNode(id *id.ID, t interface{}) error {
+	// Ensure we're called from a test only
+	switch t.(type) {
+	case *testing.T:
+	case *testing.M:
+	case *testing.B:
+	default:
+		jww.FATAL.Panicf("BannedNode permissioning map function called outside testing")
+	}
+
+	return d.db.Model(&Node{}).Where("id = ?", id.Bytes()).Update("status", node.Banned).Error
 }

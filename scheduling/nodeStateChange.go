@@ -41,10 +41,11 @@ type stateChanger struct {
 }
 
 // HandleNodeUpdates handles the node state changes.
-//  A node in waiting is added to the pool in preparation for precomputing.
-//  A node in standby is added to a round in preparation for realtime.
-//  A node in completed waits for all other nodes in the team to transition
-//   before the round is updated.
+//
+//	A node in waiting is added to the pool in preparation for precomputing.
+//	A node in standby is added to a round in preparation for realtime.
+//	A node in completed waits for all other nodes in the team to transition
+//	 before the round is updated.
 func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error {
 	// Check the round's error state
 	n := sc.state.GetNodeMap().GetNode(update.Node)
@@ -125,10 +126,11 @@ func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error 
 					r.GetRoundID(), states.PRECOMPUTING, states.STANDBY)
 			}
 
-			// kill the precomp timeout and start a realtime timeout
+			// This signals the end of the precomp timeout,
+			// followed by initiating the realtime timeout.
 			r.DenoteRoundCompleted()
 			go waitForRoundTimeout(sc.roundTimeoutChan, sc.state, r,
-				sc.realtimeTimeout, "realtime")
+				sc.realtimeTimeout, true)
 
 			startTime := time.Now().Add(sc.realtimeDelay)
 			nextRoundMinimum := sc.lastRealtime.Add(sc.realtimeDelta)
@@ -212,7 +214,7 @@ func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error 
 					r.GetRoundID(), states.REALTIME, states.COMPLETED)
 			}
 
-			//send the signal that the round is complete
+			// Signal the round as completed to disable the timeout
 			r.DenoteRoundCompleted()
 			sc.roundTracker.RemoveActiveRound(r.GetRoundID())
 
@@ -227,9 +229,13 @@ func (sc *stateChanger) HandleNodeUpdates(update node.UpdateNotification) error 
 		// If in an error state, kill the round if the node has one
 		var err error
 		if hasRound {
-			//send the signal that the round is complete
-			r.DenoteRoundCompleted()
+			// Clear the round from the node state
 			n.ClearRound()
+
+			// Signal the round as completed to disable the timeout
+			r.DenoteRoundCompleted()
+
+			// Fail the round and make accompanying round state updates
 			err = killRound(sc.state, r, update.Error, sc.roundTracker)
 		}
 		return err
@@ -263,53 +269,75 @@ func StoreRoundMetric(roundInfo *pb.RoundInfo, roundEnd states.Round, realtimeTs
 	}
 }
 
-// killRound sets the round to failed and clears the node's round
+// killRound updates the round.State to states.FAILED, stores the round metric,
+// and clears the round from round.StateMap if all nodes are finished.
 func killRound(state *storage.NetworkState, r *round.State,
 	roundError *pb.RoundError, roundTracker *RoundTracker) error {
 
+	// Append the error to and update the round state
 	roundId := r.GetRoundID()
 	r.AppendError(roundError)
-
 	err := r.Update(states.FAILED, time.Now())
 	if err == nil {
 		roundTracker.RemoveActiveRound(roundId)
 	}
 
+	// Build the new round info and update the network state
 	roundInfo := r.BuildRoundInfo()
-
-	// Build the round info and update the network state
 	err = state.AddRoundUpdate(roundInfo)
 	if err != nil {
 		return errors.WithMessagef(err, "Could not issue "+
 			"update to kill round %v", roundId)
 	}
 
-	go func() {
-		// Attempt to insert the RoundMetric for the failed round
-		StoreRoundMetric(roundInfo, r.GetRoundState(), 0)
-
-		// Return early if there is no roundError
-		if roundError == nil {
-			return
+	// Determine how many nodes have killed the round
+	numClearedNodes := 0
+	topology := r.GetTopology()
+	topologyLen := topology.Len()
+	for i := 0; i < topologyLen; i++ {
+		nId := topology.GetNodeAtIndex(i)
+		nodeState := state.GetNodeMap().GetNode(nId)
+		hasRound, roundState := nodeState.GetCurrentRound()
+		if !hasRound || roundState.GetRoundID() != roundId {
+			numClearedNodes += 1
 		}
+	}
 
-		nid, err := id.Unmarshal(roundError.NodeId)
-		var idStr string
-		if err != nil {
-			idStr = "N/A"
-		} else {
-			idStr = nid.String()
-		}
+	if allNodesCleared := numClearedNodes == topologyLen; allNodesCleared {
+		// Ensure that every member of the round topology is done with the round
+		// inside the NodeMap before finally removing it in order to prevent
+		// infinite growth.
+		state.GetRoundMap().DeleteRound(roundId)
+	} else if isFirstToClear := numClearedNodes == 1; isFirstToClear {
+		// Ensure we only store round metrics for the first node to kill
+		// the round in order to prevent pointless duplicate inserts.
+		go func() {
+			// Attempt to insert the RoundMetric for the failed round
+			StoreRoundMetric(roundInfo, r.GetRoundState(), 0)
 
-		formattedError := fmt.Sprintf("Round Error from %s: %s", idStr, roundError.Error)
-		jww.INFO.Print(formattedError)
+			// Return early if there is no roundError
+			if roundError == nil {
+				return
+			}
 
-		// Next, attempt to insert the error for the failed round
-		err = storage.PermissioningDb.InsertRoundError(roundId, formattedError)
-		if err != nil {
-			jww.WARN.Printf("Could not insert round error: %+v", err)
-		}
-	}()
+			nid, err := id.Unmarshal(roundError.NodeId)
+			var idStr string
+			if err != nil {
+				idStr = "N/A"
+			} else {
+				idStr = nid.String()
+			}
+
+			formattedError := fmt.Sprintf("Round Error from %s: %s", idStr, roundError.Error)
+			jww.INFO.Print(formattedError)
+
+			// Next, attempt to insert the error for the failed round
+			err = storage.PermissioningDb.InsertRoundError(roundId, formattedError)
+			if err != nil {
+				jww.WARN.Printf("Could not insert round error: %+v", err)
+			}
+		}()
+	}
 
 	return nil
 }

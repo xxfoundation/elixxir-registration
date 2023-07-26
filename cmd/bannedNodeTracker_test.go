@@ -15,7 +15,6 @@ import (
 	"gitlab.com/xx_network/primitives/id"
 	"gitlab.com/xx_network/primitives/ndf"
 	"gitlab.com/xx_network/primitives/region"
-	"sync"
 	"testing"
 )
 
@@ -33,8 +32,7 @@ func TestBannedNodeTracker(t *testing.T) {
 
 	testState, err := storage.NewState(privKey, 8, "", "", region.GetCountryBins())
 	impl := &RegistrationImpl{
-		State:   testState,
-		NDFLock: sync.Mutex{},
+		State: testState,
 	}
 	if err != nil {
 		t.Errorf("Failed to create test state: %v", err)
@@ -61,9 +59,10 @@ func TestBannedNodeTracker(t *testing.T) {
 		Address:        "",
 		TlsCertificate: "",
 	})
-	err = testState.UpdateNdf(curDef)
+	testState.UpdateInternalNdf(curDef)
+	err = testState.UpdateOutputNdf()
 	if err != nil {
-		t.Error("Failed to update test state ndf")
+		t.Error("Failed to output test state ndf")
 	}
 
 	// Clean out banned nodes

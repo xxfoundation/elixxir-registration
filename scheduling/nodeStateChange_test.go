@@ -32,7 +32,7 @@ func TestHandleNodeStateChance_Waiting(t *testing.T) {
 	var err error
 	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Fatalf(err.Error())
 	}
 
 	privKey, _ := rsa.GenerateKey(rand.Reader, 2048)
@@ -1017,7 +1017,8 @@ func TestHandleNodeUpdates_RoundErrored(t *testing.T) {
 
 	// Set a round for the node in order to fully test the code path for
 	//  a waiting transition
-	roundState := round.NewState_Testing(roundID, 6, nil, t)
+	topology := connect.NewCircuit(nodeList)
+	roundState := round.NewState_Testing(roundID, 6, topology, t)
 	_ = testState.GetNodeMap().GetNode(nodeList[0]).SetRound(roundState)
 
 	// Unfilled poll s.t. we can add a node to the waiting pool

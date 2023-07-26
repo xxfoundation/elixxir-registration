@@ -8,7 +8,9 @@
 package storage
 
 import (
+	"bytes"
 	"crypto/rand"
+	gorsa "crypto/rsa"
 	"fmt"
 	"github.com/pkg/errors"
 	pb "gitlab.com/elixxir/comms/mixmessages"
@@ -253,10 +255,42 @@ func TestNetworkState_AddRoundUpdate(t *testing.T) {
 	}
 }
 
-// Tests that UpdateNdf() updates fullNdf and partialNdf correctly.
-func TestNetworkState_UpdateNdf(t *testing.T) {
+// Tests that UpdateInternalNdf() updates fullNdf and partialNdf correctly.
+func TestNetworkState_UpdateOutputNdf(t *testing.T) {
 	// Expected values
-	testNDF := &ndf.NetworkDefinition{}
+	testNDF := &ndf.NetworkDefinition{
+		Registration: ndf.Registration{
+			Address: "i'm an address",
+		},
+		Nodes: []ndf.Node{
+			{
+				ID: id.NewIdFromUInt(0, id.Node, t).Bytes(),
+			},
+		},
+		Gateways: []ndf.Gateway{
+			{
+				ID: id.NewIdFromUInt(0, id.Gateway, t).Bytes(),
+			},
+		},
+		UDB: ndf.UDB{
+			ID:                          id.UDB.Bytes(),
+			DhPubKey:                    []byte("dhpub"),
+			ChannelSigningPubKeyEd25519: []byte("chankey"),
+		},
+		AddressSpace: []ndf.AddressSpace{
+			{
+				Size:      8,
+				Timestamp: time.Now(),
+			},
+		},
+	}
+
+	var err error
+	PermissioningDb, _, err = NewDatabase("", "", "", "", "")
+	if err != nil {
+		t.Errorf(err.Error())
+		t.FailNow()
+	}
 
 	// Generate new NetworkState
 	state, _, err := generateTestNetworkState()
@@ -265,9 +299,10 @@ func TestNetworkState_UpdateNdf(t *testing.T) {
 	}
 
 	// Update NDF
-	err = state.UpdateNdf(testNDF)
+	state.UpdateInternalNdf(testNDF)
+	err = state.UpdateOutputNdf()
 	if err != nil {
-		t.Errorf("UpdateNdf() unexpectedly produced an error:\n%+v", err)
+		t.Errorf("UpdateOutputNdf() unexpectedly produced an error:\n%+v", err)
 	}
 
 	// DeepEqual does not handle time well, compare these separately and then
@@ -288,24 +323,36 @@ func TestNetworkState_UpdateNdf(t *testing.T) {
 			state.fullNdf.Get().Timestamp)
 	}
 
-	if !reflect.DeepEqual(*state.fullNdf.Get(), *testNDF) {
-		t.Errorf("UpdateNdf() saved the wrong NDF fullNdf."+
+	expectedBytes, err := testNDF.Marshal()
+	if err != nil {
+		t.Fatalf("Failed to marshal test ndf: %+v", err)
+	}
+	receivedFullBytes, err := state.fullNdf.Get().Marshal()
+	if err != nil {
+		t.Fatalf("Failed to marshal full ndf: %+v", err)
+	}
+	receivedPartialBytes, err := state.partialNdf.Get().Marshal()
+	if err != nil {
+		t.Fatalf("Failed to marshal partial ndf: %+v", err)
+	}
+	if !bytes.Equal(expectedBytes, receivedFullBytes) {
+		t.Errorf("UpdateInternalNdf() saved the wrong NDF fullNdf."+
 			"\n\texpected: %#v\n\treceived: %#v", *testNDF, *state.fullNdf.Get())
 	}
-
-	if !reflect.DeepEqual(*state.partialNdf.Get(), *testNDF) {
-		t.Errorf("UpdateNdf() saved the wrong NDF partialNdf."+
+	if !bytes.Equal(expectedBytes, receivedPartialBytes) {
+		t.Errorf("UpdateInternalNdf() saved the wrong NDF partialNdf."+
 			"\n\texpected: %#v\n\treceived: %#v", *testNDF, *state.partialNdf.Get())
 	}
 }
 
-// Tests that UpdateNdf() generates an error when injected with invalid private
+// Tests that UpdateInternalNdf() generates an error when injected with invalid private
 // key.
-func TestNetworkState_UpdateNdf_SignError(t *testing.T) {
+func TestNetworkState_UpdateOutputNdf_SignError(t *testing.T) {
 	// Expected values
 	testNDF := &ndf.NetworkDefinition{}
 	expectedErr := "Unable to sign message: crypto/rsa: key size too small " +
 		"for PSS signature"
+	expectedErrNewGoVersion := fmt.Sprintf("Unable to sign message: %+v", gorsa.ErrMessageTooLong)
 
 	// Generate new NetworkState
 	state, _, err := generateTestNetworkState()
@@ -321,10 +368,10 @@ func TestNetworkState_UpdateNdf_SignError(t *testing.T) {
 	state.rsaPrivateKey = brokenPrivateKey
 
 	// Update NDF
-	err = state.UpdateNdf(testNDF)
-
-	if err == nil || err.Error() != expectedErr {
-		t.Errorf("UpdateNdf() did not produce an error when expected."+
+	state.UpdateInternalNdf(testNDF)
+	err = state.UpdateOutputNdf()
+	if err == nil || (err.Error() != expectedErr && err.Error() != expectedErrNewGoVersion) {
+		t.Errorf("UpdateInternalNdf() did not produce an error when expected."+
 			"\n\texpected: %+v\n\treceived: %+v", expectedErr, err)
 	}
 }

@@ -16,22 +16,22 @@ import (
 )
 
 func waitForRoundTimeout(tracker chan id.Round, state *storage.NetworkState,
-	localRound *round.State, timeout time.Duration, timoutType string) {
-	roundID := localRound.GetRoundID()
+	localRound *round.State, timeout time.Duration, isRealtime bool) {
+	roundId := localRound.GetRoundID()
 	// Allow for round the to be added to the map
 	roundTimer := time.NewTimer(timeout)
 	select {
 	// Wait for the timer to go off
 	case <-roundTimer.C:
 		// Send the timed out round id to the timeout handler
-		jww.INFO.Printf("Round %v has %s timed out after %s, "+
-			"signaling exit", roundID, timoutType, timeout)
-		tracker <- roundID
+		jww.INFO.Printf("Round %v[Realtime: %t] has timed out after %s, "+
+			"signaling exit", roundId, isRealtime, timeout)
+		tracker <- roundId
 	// Signals the round has been completed.
 	// In this case, we can exit the go-routine
 	case <-localRound.GetRoundCompletedChan():
-		if timoutType == "realtime" {
-			state.GetRoundMap().DeleteRound(roundID)
+		if isRealtime {
+			state.GetRoundMap().DeleteRound(roundId)
 		}
 		return
 	}

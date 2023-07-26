@@ -16,8 +16,8 @@ before_script:
   - mkdir -p ~/.ssh
   - chmod 700 ~/.ssh
   - ssh-keyscan -t rsa $GITLAB_SERVER > ~/.ssh/known_hosts
-  - git config --global url."git@$GITLAB_SERVER:".insteadOf "https://gitlab.com/"
-  - git config --global url."git@$GITLAB_SERVER:".insteadOf "https://git.xx.network/" --add
+  - git config --global --replace-all url."git@$GITLAB_SERVER:".insteadOf "https://gitlab.com/"
+  - git config --global --replace-all url."git@$GITLAB_SERVER:".insteadOf "https://git.xx.network/" --add
   - export PATH=$HOME/go/bin:$PATH
 
 stages:
@@ -57,7 +57,7 @@ test:
     - go tool cover -html=testdata/coverage-real.out -o testdata/coverage.html
 
     # Test Coverage Check
-    - go tool cover -func=testdata/coverage.out | grep "total:" | awk '{print $3}' | sed 's/\%//g' > testdata/coverage-percentage.txt
+    - go tool cover -func=testdata/coverage-real.out | grep "total:" | awk '{print $3}' | sed 's/\%//g' > testdata/coverage-percentage.txt
     - export CODE_CHECK=$(echo "$(cat testdata/coverage-percentage.txt) >= $MIN_CODE_COVERAGE" | bc -l)
     - (if [ "$CODE_CHECK" == "1" ]; then echo "Minimum coverage of $MIN_CODE_COVERAGE succeeded"; else echo "Minimum coverage of $MIN_CODE_COVERAGE failed"; exit 1; fi);
   artifacts:
@@ -71,20 +71,30 @@ build:
     - tags
   script:
     - mkdir -p release
-    - rm -rf upload || true
-    - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' ./...
-    - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.linux64 main.go
-    - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.linux64 main.go
-    - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.win64 main.go
-    - GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.win64 main.go
-#    - GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.win32 main.go
-#    - GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.win32 main.go
-    - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags '-w -s' -o release/registration.darwin64 main.go
-    - GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -tags stateless -trimpath -ldflags '-w -s' -o release/registration.stateless.darwin64 main.go
-    - mkdir -p upload
-    - mv release/registration.stateless.* upload/
-    - /upload-artifacts.sh upload/
+    - GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags '-w -s' ./...
+    - GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags '-w -s' -o release/registration.linux64 main.go
+    - GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc go build -ldflags '-w -s' -o release/registration.win64 main.go
+#    - GOOS=windows GOARCH=386 CGO_ENABLED=1 go build -ldflags '-w -s' -o release/registration.win32 main.go
+    - /upload-artifacts.sh release/
     - /hash-file.sh release/registration.linux64
+  artifacts:
+    paths:
+     - release/
+
+build-macos:
+  stage: build
+  image: $DOCKER_IMAGE
+  tags:
+    - ios
+  except:
+    - tags
+  script:
+    # We removed the upload-artifacts.sh here because nothing was ever written to it (see above build job) and it doesn't exist on the macOS runner
+    - mkdir -p release
+    - GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -ldflags '-w -s' -o release/registration.darwin64 main.go
+    - if [ "$CI_COMMIT_REF_NAME" != "master" ] && [ "$CI_COMMIT_REF_NAME" != "release" ] && [ "$ARTIFACT_BRANCH_BYPASS" != "yes" ]; then echo 'Branch is not master or release, aborting script'; exit 0; fi
+    - mc alias set elixxir-s3 $ARTIFACT_S3_ENDPOINT $ARTIFACT_S3_KEY $ARTIFACT_S3_SECRET
+    - mc cp release/registration.darwin64 elixxir-s3/$ARTIFACT_S3_BUCKET/registration/registration.darwin64
   artifacts:
     paths:
      - release/

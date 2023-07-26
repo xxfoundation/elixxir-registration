@@ -51,7 +51,7 @@ type State struct {
 	mux sync.RWMutex
 }
 
-//creates a round state object
+// creates a round state object
 func newState(id id.Round, batchsize, addressSpaceSize uint32, resourceQueueTimeout time.Duration,
 	topology *connect.Circuit, pendingTs time.Time) *State {
 
@@ -86,7 +86,7 @@ func newState(id id.Round, batchsize, addressSpaceSize uint32, resourceQueueTime
 	}
 }
 
-//creates a round state object
+// creates a round state object
 func NewState_Testing(id id.Round, state states.Round, topology *connect.Circuit, t *testing.T) *State {
 	if t == nil {
 		jww.FATAL.Panic("Only for testing")
@@ -162,19 +162,19 @@ func (s *State) BuildRoundInfo() *pb.RoundInfo {
 	return CopyRoundInfo(s.base)
 }
 
-//returns the state of the round
+// returns the state of the round
 func (s *State) GetRoundState() states.Round {
 	s.mux.RLock()
 	defer s.mux.RUnlock()
 	return s.state
 }
 
-//returns the round's topology
+// returns the round's topology
 func (s *State) GetTopology() *connect.Circuit {
 	return s.topology
 }
 
-//returns the id of the round
+// returns the id of the round
 func (s *State) GetRoundID() id.Round {
 	rid := id.Round(s.base.ID)
 	return rid
@@ -212,13 +212,13 @@ func (s *State) AppendClientErrors(clientErrors []*pb.ClientError) {
 	s.clientErrors = append(s.clientErrors, clientErrors...)
 }
 
-//returns the channel used to stop the round timeout
+// returns the channel used to stop the round timeout
 func (s *State) GetRoundCompletedChan() <-chan struct{} {
 	return s.roundComplete
 }
 
-// sends on the round complete channel to the timeout thread notifying it
-// that the round has completed
+// DenoteRoundCompleted sends on the round complete channel to the
+// timeout thread to notify it that the round has completed
 func (s *State) DenoteRoundCompleted() {
 	select {
 	case s.roundComplete <- struct{}{}:

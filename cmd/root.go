@@ -49,10 +49,21 @@ var (
 	disabledNodesPollDuration time.Duration
 )
 
-// Default duration between polls of the disabled Node list for updates.
-const defaultDisabledNodesPollDuration = time.Minute
-const defaultPruneRetention = 24 * 7 * time.Hour
-const defaultMessageRetention = 24 * 7 * time.Hour
+const (
+	// Default mode for creating files
+	defaultFileMode = os.FileMode(0644)
+
+	// Default duration between polls of the disabled Node list for updates.
+	defaultDisabledNodesPollDuration = time.Minute
+	defaultPruneRetention            = 24 * 7 * time.Hour
+	defaultMessageRetention          = 24 * 7 * time.Hour
+
+	// Default settings for Go profiling
+	profilingOutputFlags   = os.O_CREATE | os.O_WRONLY | os.O_TRUNC
+	cpuProfileFlag         = "cpu-profile"
+	memoryProfileFlag      = "mem-profile"
+	memoryProfileFrequency = time.Minute
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -61,13 +72,39 @@ var rootCmd = &cobra.Command{
 	Long:  `This server provides registration functions on cMix`,
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		profileOut := viper.GetString("profile-cpu")
-		if profileOut != "" {
-			f, err := os.Create(profileOut)
+		cpuPath := viper.GetString(cpuProfileFlag)
+		if cpuPath != "" {
+			// Start CPU profiling
+			cpuFile, err := os.OpenFile(cpuPath, profilingOutputFlags, defaultFileMode)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
-			pprof.StartCPUProfile(f)
+			err = pprof.StartCPUProfile(cpuFile)
+			if err != nil {
+				jww.FATAL.Panicf("%+v", err)
+			}
+		}
+
+		memPath := viper.GetString(memoryProfileFlag)
+		if len(memPath) > 0 {
+			// Start memory profiling
+			go func() {
+				for {
+					memFile, err := os.OpenFile(memPath, profilingOutputFlags, defaultFileMode)
+					if err != nil {
+						jww.FATAL.Panicf("%+v", err)
+					}
+					err = pprof.WriteHeapProfile(memFile)
+					if err != nil {
+						jww.FATAL.Panicf("%+v", err)
+					}
+					err = memFile.Close()
+					if err != nil {
+						jww.FATAL.Panicf("%+v", err)
+					}
+					time.Sleep(memoryProfileFrequency)
+				}
+			}()
 		}
 
 		cmixMap := viper.GetStringMapString("groups.cmix")
@@ -260,6 +297,10 @@ var rootCmd = &cobra.Command{
 			leakedDuration: leakedDurations,
 		}
 
+		// Determine how long between storing Node metrics
+		nodeMetricInterval := time.Duration(
+			viper.GetInt64("nodeMetricInterval")) * time.Second
+
 		jww.INFO.Println("Starting Permissioning Server...")
 		jww.INFO.Printf("Params: %+v", RegParams)
 
@@ -295,10 +336,6 @@ var rootCmd = &cobra.Command{
 			jww.DEBUG.Printf("No disabled Node list path provided. Skipping " +
 				"disabled Node list polling.")
 		}
-
-		// Determine how long between storing Node metrics
-		nodeMetricInterval := time.Duration(
-			viper.GetInt64("nodeMetricInterval")) * time.Second
 
 		// Parse params JSON
 		params := scheduling.ParseParams(SchedulingConfig)
@@ -350,12 +387,16 @@ var rootCmd = &cobra.Command{
 		<-impl.beginScheduling
 		jww.INFO.Printf("Minimum number of nodes %v have registered, "+
 			"beginning scheduling and round creation", RegParams.minimumNodes)
+		err = impl.State.UpdateOutputNdf()
+		if err != nil {
+			jww.FATAL.Panicf("Failed to update output NDF with "+
+				"registered nodes for scheduling: %+v", err)
+		}
 
 		roundCreationQuitChan := make(chan chan struct{})
 
 		// Begin scheduling algorithm
 		go func() {
-
 			// Initialize scheduling
 			err = scheduling.Scheduler(params, impl.State, roundCreationQuitChan)
 			if err == nil {
@@ -414,7 +455,7 @@ var rootCmd = &cobra.Command{
 			}
 		}
 		stopEverything := func() {
-			if profileOut != "" {
+			if cpuPath != "" {
 				pprof.StopCPUProfile()
 			}
 			stopOnce.Do(stopRounds)
@@ -512,9 +553,16 @@ func init() {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}
 
-	rootCmd.Flags().String("profile-cpu", "",
-		"Enable cpu profiling to this file")
-	err = viper.BindPFlag("profile-cpu", rootCmd.Flags().Lookup("profile-cpu"))
+	rootCmd.Flags().String(cpuProfileFlag, "",
+		"Output CPU profiling to this path")
+	err = viper.BindPFlag(cpuProfileFlag, rootCmd.Flags().Lookup(cpuProfileFlag))
+	if err != nil {
+		jww.FATAL.Panicf("could not bind flag: %+v", err)
+	}
+
+	rootCmd.Flags().String(memoryProfileFlag, "",
+		"Output memory profiling to this path")
+	err = viper.BindPFlag(memoryProfileFlag, rootCmd.Flags().Lookup(memoryProfileFlag))
 	if err != nil {
 		jww.FATAL.Panicf("could not bind flag: %+v", err)
 	}
@@ -605,13 +653,13 @@ func (m *RegistrationImpl) updateRateLimiting() {
 	}
 	leakedDurations = leakedDurations * uint64(time.Millisecond)
 
-	m.NDFLock.Lock()
+	m.State.InternalNdfLock.Lock()
 	currentNdf := m.State.GetUnprunedNdf()
 	currentNdf.RateLimits.Capacity = uint(capacity)
 	currentNdf.RateLimits.LeakedTokens = uint(leakedTokens)
 	currentNdf.RateLimits.LeakDuration = leakedDurations
 
-	m.NDFLock.Unlock()
+	m.State.InternalNdfLock.Unlock()
 
 }
 
@@ -638,15 +686,12 @@ func (m *RegistrationImpl) updateVersions() {
 	}
 
 	// Modify the client version
-	m.NDFLock.Lock()
+	m.State.InternalNdfLock.Lock()
 	updateNDF := m.State.GetUnprunedNdf()
 	jww.DEBUG.Printf("Updating client version from %s to %s", updateNDF.ClientVersion, clientVersion)
 	updateNDF.ClientVersion = clientVersion
-	err = m.State.UpdateNdf(updateNDF)
-	if err != nil {
-		jww.FATAL.Panicf("Failed to update client version in NDF: %v", err)
-	}
-	m.NDFLock.Unlock()
+	m.State.UpdateInternalNdf(updateNDF)
+	m.State.InternalNdfLock.Unlock()
 
 	// Modify server and gateway versions
 	m.params.versionLock.Lock()
@@ -692,7 +737,7 @@ func initLog() {
 		fullLogPath, _ := utils.ExpandPath(logPath)
 		logFile, err := os.OpenFile(fullLogPath,
 			os.O_CREATE|os.O_WRONLY|os.O_APPEND,
-			0644)
+			defaultFileMode)
 		if err != nil {
 			jww.WARN.Println("Invalid or missing log path, default path used.")
 		} else {

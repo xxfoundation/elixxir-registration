@@ -12,6 +12,7 @@ import (
 	"gitlab.com/elixxir/registration/storage"
 	"gitlab.com/elixxir/registration/storage/node"
 	"gitlab.com/xx_network/primitives/id"
+	"math/rand"
 	"testing"
 )
 
@@ -31,15 +32,16 @@ func TestRegistrationImpl_setNodeBin_GeoIP2DB(t *testing.T) {
 	impl.geoIPDBStatus.ToRunning()
 
 	// Create a map database
-	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "TestRegistrationImpl_setNodeBin_GeoIP2DB", "", "")
 	if err != nil {
 		t.Fatalf("Failed to create new database: %+v", err)
 	}
 
 	// Add an application to it
 	testID := id.NewIdFromUInt(0, id.Node, t)
+	applicationId := rand.Uint64()
 	err = storage.PermissioningDb.InsertApplication(
-		&storage.Application{}, &storage.Node{Code: "AAAA"})
+		&storage.Application{Id: applicationId}, &storage.Node{Code: "AAAA"})
 	if err != nil {
 		t.Fatalf("Failed to insert application: %+v", err)
 	}

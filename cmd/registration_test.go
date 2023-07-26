@@ -98,8 +98,7 @@ func TestEmptyDataBase(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 	var err error
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -140,8 +139,7 @@ func TestEmptyDataBase(t *testing.T) {
 func TestRegCodeExists_InsertRegCode(t *testing.T) {
 
 	var err error
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -163,8 +161,7 @@ func TestRegCodeExists_InsertRegCode(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -197,8 +194,7 @@ func TestCompleteRegistration_HappyPath(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -251,8 +247,7 @@ func TestDoubleRegistration(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -307,8 +302,7 @@ func TestTopology_MultiNodes(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -376,8 +370,7 @@ func TestRegistrationImpl_CheckNodeRegistration(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -453,8 +446,7 @@ func TestCheckRegistration_NilMsg(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}
@@ -509,8 +501,7 @@ func TestCheckRegistration_InvalidID(t *testing.T) {
 	dblck.Lock()
 	defer dblck.Unlock()
 
-	storage.PermissioningDb, _, err = storage.NewDatabase("test",
-		"password", "regCodes", "0.0.0.0", "-1")
+	storage.PermissioningDb, _, err = storage.NewDatabase("", "", "", "", "")
 	if err != nil {
 		t.Errorf("%+v", err)
 	}

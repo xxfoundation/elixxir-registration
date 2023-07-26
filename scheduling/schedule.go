@@ -179,8 +179,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 			}
 
 			go waitForRoundTimeout(roundTimeoutTracker, state, ourRound,
-				paramsCopy.PrecomputationTimeout*time.Millisecond,
-				"precomputation")
+				paramsCopy.PrecomputationTimeout*time.Millisecond, false)
 		}
 
 		jww.FATAL.Panicf("Round creation thread should never exit: %v", err)
@@ -216,7 +215,7 @@ func Scheduler(params *SafeParams, state *storage.NetworkState, killchan chan ch
 		sc.realtimeDelta, sc.realtimeTimeout)
 
 	// Start receiving updates from nodes
-	for true {
+	for {
 
 		isRoundTimeout := false
 		var update node.UpdateNotification

@@ -29,12 +29,19 @@ whitelistedIdsPath: "whitelistedIds.json"
 # Path to JSON containing list of IP addresses exempt from rate limiting
 whitelistedIpAddressesPath: "whitelistedIpAddresses.json"
 
-# Specs on how to rate limit clients
+# Parameters for configuring rate limiting clients
+# Configures the leaky buckets used in gateway
+# In this method of rate limiting, requests add to a bucket with a specified capacity.  
+# The bucket leaks at a rate of leakedTokens/leakDuration, 
+# and any requests that would 'overflow the bucket' are not processed
 RateLimiting:
-  Capacity: 1
+  # Capacity determines the total capacity of a ratelimiting bucket
+  Capacity: 100
+  # The amount of capacity used decreases over time, at a rate of LeakedTokens/LeakedDuration
   LeakedTokens: 1
-  # Duration is in miliseconds
-  LeakDuration: 1
+  # Duration is in nanoseconds
+  LeakDuration: 2000000000
+
 
 
 # Minimum number of nodes to begin running rounds. This differs from the number

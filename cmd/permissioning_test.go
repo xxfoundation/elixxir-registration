@@ -74,7 +74,7 @@ func TestLoadAllRegisteredNodes(t *testing.T) {
 		t.Error(err)
 	}
 
-	permissioningMap := storage.PermissioningDb.GetMapImpl(t)
+	permissioningMap := storage.PermissioningDb.GetDatabaseImpl(t)
 	err = permissioningMap.BannedNode(bannedNodeId, t)
 	if err != nil {
 		t.Error(err)

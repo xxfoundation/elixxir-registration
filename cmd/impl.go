@@ -62,8 +62,6 @@ type RegistrationImpl struct {
 	// Status of the geoip2.Reader; signals if the reader is running or stopped
 	geoIPDBStatus geoipStatus
 
-	NDFLock sync.Mutex
-
 	earliestRoundTracker atomic.Value
 }
 
@@ -295,10 +293,7 @@ func StartRegistration(params Params) (*RegistrationImpl, error) {
 	}
 
 	// update the internal state with the newly-formed NDF
-	err = regImpl.State.UpdateNdf(networkDef)
-	if err != nil {
-		return nil, err
-	}
+	regImpl.State.UpdateInternalNdf(networkDef)
 
 	var hosts []*connect.Host
 
@@ -331,8 +326,8 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 		return errors.Errorf("Failed to get nodes by %s status: %v", node.Banned, err)
 	}
 
-	impl.NDFLock.Lock()
-	defer impl.NDFLock.Unlock()
+	impl.State.InternalNdfLock.Lock()
+	defer impl.State.InternalNdfLock.Unlock()
 	def := state.GetUnprunedNdf()
 
 	// Parse through the returned node list
@@ -386,10 +381,7 @@ func BannedNodeTracker(impl *RegistrationImpl) error {
 		}
 
 		if update {
-			err = state.UpdateNdf(def)
-			if err != nil {
-				return errors.WithMessage(err, "Failed to update NDF after bans")
-			}
+			state.UpdateInternalNdf(def)
 		}
 
 		// Get the node from the nodeMap

@@ -60,13 +60,15 @@ type NetworkState struct {
 	geoBins map[string]region.GeoBin
 
 	// NDF state
-	unprunedNdf  *ndf.NetworkDefinition
-	pruneListMux sync.RWMutex
+	InternalNdfLock sync.RWMutex
+	unprunedNdf     *ndf.NetworkDefinition
+	pruneListMux    sync.RWMutex
 	// Boolean determines whether Node is omitted from NDF
 	pruneList map[id.ID]bool
 
-	partialNdf *dataStructures.Ndf
-	fullNdf    *dataStructures.Ndf
+	outputNdfLock sync.RWMutex
+	partialNdf    *dataStructures.Ndf
+	fullNdf       *dataStructures.Ndf
 
 	// Address space size
 	addressSpaceSize *uint32
@@ -105,11 +107,11 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 		roundUpdates:               dataStructures.NewUpdates(),
 		update:                     make(chan node.UpdateNotification, updateBufferLength),
 		nodes:                      node.NewStateMap(),
-		unprunedNdf:                &ndf.NetworkDefinition{},
 		fullNdf:                    fullNdf,
 		partialNdf:                 partialNdf,
 		rsaPrivateKey:              rsaPrivKey,
 		addressSpaceSize:           &addressSpaceSize,
+		unprunedNdf:                &ndf.NetworkDefinition{},
 		pruneList:                  make(map[id.ID]bool),
 		fullNdfOutputPath:          fullNdfOutputPath,
 		signedPartialNdfOutputPath: signedPartialNdfOutputPath,
@@ -124,21 +126,18 @@ func NewState(rsaPrivKey *rsa.PrivateKey, addressSpaceSize uint32,
 	// Ignore not found in Storage errors, zero-value will be handled below
 	state.updateID, err = state.GetUpdateID()
 	if err != nil &&
-		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
-		!strings.Contains(err.Error(), "Unable to locate state for key") {
+		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) {
 		return nil, err
 	}
 	state.roundID, err = state.GetRoundID()
 	if err != nil &&
-		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
-		!strings.Contains(err.Error(), "Unable to locate state for key") {
+		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) {
 		return nil, err
 	}
 
 	ellipticKey, err := state.getEcKey()
 	if err != nil &&
-		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) &&
-		!strings.Contains(err.Error(), "Unable to locate state for key") {
+		!strings.Contains(err.Error(), gorm.ErrRecordNotFound.Error()) {
 		return nil, err
 	}
 
@@ -199,7 +198,12 @@ func (s *NetworkState) CountActiveNodes() int {
 	s.pruneListMux.Lock()
 	defer s.pruneListMux.Unlock()
 
-	return len(s.unprunedNdf.Nodes) - len(s.pruneList)
+	s.InternalNdfLock.RLock()
+	defer s.InternalNdfLock.RUnlock()
+
+	unpruned := s.GetUnprunedNdf()
+
+	return len(unpruned.Nodes) - len(s.pruneList)
 }
 
 // Adds pruned nodes, used by disabledNodes
@@ -253,11 +257,15 @@ func (s *NetworkState) GetUnprunedNdf() *ndf.NetworkDefinition {
 
 // GetFullNdf returns the full NDF.
 func (s *NetworkState) GetFullNdf() *dataStructures.Ndf {
+	s.outputNdfLock.RLock()
+	defer s.outputNdfLock.RUnlock()
 	return s.fullNdf
 }
 
 // GetPartialNdf returns the partial NDF.
 func (s *NetworkState) GetPartialNdf() *dataStructures.Ndf {
+	s.outputNdfLock.RLock()
+	defer s.outputNdfLock.RUnlock()
 	return s.partialNdf
 }
 
@@ -316,15 +324,22 @@ func (s *NetworkState) AddRoundUpdate(r *pb.RoundInfo) error {
 // RoundAdderRoutine monitors a channel and keeps track of pending round updates,
 // adding them in order
 func (s *NetworkState) RoundAdderRoutine() {
-	rnds := make(map[uint64]*dataStructures.Round)
+	futureRoundUpdates := make(map[uint64]*dataStructures.Round)
 	nextID := uint64(0)
 	for {
 		// Add the next round update from the channel
 		rnd := <-s.roundUpdatesToAddCh
-		rndID := rnd.Get().UpdateID
+		rndUpdateId := rnd.Get().UpdateID
 
-		// process any rounds before the expected id immediately
-		if rndID < nextID {
+		// Print the size of the future updates map so that potential memory leaks
+		// as a result of the structure of this function can be noticed.
+		if nextID%100 == 0 {
+			jww.DEBUG.Printf("RoundAdderRoutine has %d future updates queued",
+				len(futureRoundUpdates))
+		}
+
+		// If update is not current, process it immediately
+		if rndUpdateId < nextID {
 			err := s.roundUpdates.AddRound(rnd)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
@@ -332,28 +347,57 @@ func (s *NetworkState) RoundAdderRoutine() {
 			continue
 		}
 
-		rnds[rndID] = rnd
-		// if the next ID has not been set, then set it to this one
+		// if the next ID has not been set, then set it to the new ID
 		if nextID == 0 {
-			nextID = rndID
+			nextID = rndUpdateId
 		}
 
-		// Call add round until we run out of IDs.
-		for r, ok := rnds[nextID]; ok; r, ok = rnds[nextID] {
+		// Update comes from the future, add it for future processing
+		futureRoundUpdates[rndUpdateId] = rnd
+
+		// Sequentially process updates added earlier until a gap is reached
+		for r, ok := futureRoundUpdates[nextID]; ok; r, ok = futureRoundUpdates[nextID] {
 			err := s.roundUpdates.AddRound(r)
 			if err != nil {
 				jww.FATAL.Panicf("%+v", err)
 			}
-			delete(rnds, nextID)
+			// Clean up processed round
+			delete(futureRoundUpdates, nextID)
 			nextID++
 		}
 	}
 }
 
-// UpdateNdf updates internal NDF structures with the specified new NDF.
-func (s *NetworkState) UpdateNdf(newNdf *ndf.NetworkDefinition) (err error) {
+// UpdateInternalNdf updates the unpruned internal NDF to the passed in NDF.
+// This will be used for the output NDF next time it is updated.  Note that
+// callers of this function should take s.InternalNdfLock as appropriate.
+func (s *NetworkState) UpdateInternalNdf(newNdf *ndf.NetworkDefinition) {
 	newNdf.Timestamp = time.Now()
 	s.unprunedNdf = newNdf.DeepCopy()
+}
+
+// UpdateOutputNdf takes the current unprunedNdf and signs and outputs
+// it to the full & partial ndf fields, along with writing it to disk.
+func (s *NetworkState) UpdateOutputNdf() (err error) {
+	s.outputNdfLock.Lock()
+	defer s.outputNdfLock.Unlock()
+
+	s.InternalNdfLock.RLock()
+	loadedNdf := s.unprunedNdf.DeepCopy()
+	s.InternalNdfLock.RUnlock()
+	// Sanity checks on loaded ndf data
+	if loadedNdf == nil {
+		jww.WARN.Printf("No unpruned NDF stored to output, skipping update")
+		return nil
+	} else if s.fullNdf != nil && s.fullNdf.Get() != nil &&
+		!loadedNdf.Timestamp.After(s.fullNdf.Get().Timestamp) {
+		jww.WARN.Printf("Skipping update: Loaded unpruned NDF timestamp"+
+			" %s is not later than current output NDF timestamp %s",
+			loadedNdf.Timestamp.String(), s.fullNdf.Get().Timestamp.String())
+		return nil
+	}
+
+	newNdf := loadedNdf.DeepCopy()
 
 	s.pruneListMux.RLock()
 	//prune the NDF
